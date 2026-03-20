@@ -24,7 +24,14 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "my-maharaj",
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ]
   }
 }
