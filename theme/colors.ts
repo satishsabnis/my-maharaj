@@ -1,0 +1,9 @@
+export const navy = '#1B3A6B';
+export const gold = '#C9982A';
+export const parchment = '#FBF8F2';
+export const white = '#FFFFFF';
+export const lightGray = '#F5F5F5';
+export const midGray = '#9CA3AF';
+export const darkGray = '#4B5563';
+export const errorRed = '#DC2626';
+export const successGreen = '#16A34A';
