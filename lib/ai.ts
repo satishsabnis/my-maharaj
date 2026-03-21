@@ -221,6 +221,12 @@ STRICT RULES:
 6. Include prep-night instructions for all dinners
 7. Each meal slot must have EXACTLY 3 options for the user to choose from
 
+OUTPUT LENGTH — BE CONCISE:
+- Method: maximum 3 steps per dish
+- Ingredients: maximum 6 items per dish
+- prep_night: maximum 1 step per dish
+- health_tags: maximum 3 tags per dish
+
 Respond with ONLY valid JSON, no markdown, no explanation:
 {
   "days": [
@@ -282,17 +288,42 @@ export async function generateMealPlan(params: {
   tiffinRestrictions?: string;
   includeDessert?: boolean;
 }): Promise<MealPlanResult> {
-  const prompt = buildPrompt(params);
+  const days: MealPlanDay[] = [];
+  const allGrocery: GroceryItem[] = [];
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 8192,
-    messages: [{ role: 'user', content: prompt }],
+  // One API call per day to avoid token limit truncation
+  for (const date of params.dates) {
+    const prompt = buildPrompt({ ...params, dates: [date] });
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text =
+      message.content[0].type === 'text' ? message.content[0].text : '';
+    const clean = text.replace(/```json|```/g, '').trim();
+
+    try {
+      const dayResult = JSON.parse(clean) as MealPlanResult;
+      if (dayResult.days) days.push(...dayResult.days);
+      if (dayResult.grocery_list) allGrocery.push(...dayResult.grocery_list);
+    } catch (e) {
+      console.error(`[ai] Parse error for ${date}:`, e);
+      console.error('[ai] Raw response:', clean.slice(0, 300));
+      throw new Error(`Failed to parse meal plan for ${date}. Please try again.`);
+    }
+  }
+
+  // Deduplicate grocery list by name
+  const seen = new Set<string>();
+  const grocery = allGrocery.filter((item) => {
+    const key = item.name.toLowerCase().trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 
-  const text =
-    message.content[0].type === 'text' ? message.content[0].text : '';
-
-  const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean) as MealPlanResult;
+  return { days, grocery_list: grocery };
 }
