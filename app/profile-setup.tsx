@@ -32,6 +32,8 @@ const RELATIONSHIPS = ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other'];
 const CUISINES = [
   'Konkani', 'Malvani', 'Mangalorean', 'Kerala', 'Tamil Nadu',
   'Goan', 'Vidarbha', 'Madhya Pradesh', 'Bangalore', 'Sindhudurg',
+  'Gujarati', 'North Indian', 'Rajasthani', 'Mughlai', 'Lucknowi/Awadhi',
+  'Himachali', 'Uttarakhandi',
 ];
 
 const EXTRA_VEG_DAYS = ['Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
@@ -45,6 +47,7 @@ interface FamilyMember {
   is_diabetic: boolean;
   has_bp: boolean;
   has_pcos: boolean;
+  other_conditions: string[];
   food_likes: string;
   food_dislikes: string;
   allergies: string;
@@ -66,6 +69,7 @@ interface AddressEntry {
 const emptyMember = (): FamilyMember => ({
   name: '', age: '', relationship: 'Self',
   is_diabetic: false, has_bp: false, has_pcos: false,
+  other_conditions: [],
   food_likes: '', food_dislikes: '', allergies: '', remarks: '',
   lipidPdfUri: null, lipidPdfName: null,
   lipid_test_date: '', lipid_expiry_date: '',
@@ -257,6 +261,7 @@ export default function ProfileSetupScreen() {
             is_diabetic: m.is_diabetic,
             has_bp: m.has_bp,
             has_pcos: m.has_pcos,
+            other_conditions: m.other_conditions.length > 0 ? JSON.stringify(m.other_conditions) : null,
             food_likes: m.food_likes || null,
             food_dislikes: m.food_dislikes || null,
             allergies: m.allergies || null,
@@ -364,7 +369,7 @@ export default function ProfileSetupScreen() {
               <View key={i} style={s.memberCard}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.memberName}>{m.name}, {m.age}</Text>
-                  <Text style={s.memberSub}>{m.relationship}{m.is_diabetic ? ' · Diabetic' : ''}{m.has_bp ? ' · BP' : ''}{m.has_pcos ? ' · PCOS' : ''}</Text>
+                  <Text style={s.memberSub}>{m.relationship}{m.is_diabetic ? ' · Diabetic' : ''}{m.has_bp ? ' · BP' : ''}{m.has_pcos ? ' · PCOS' : ''}{m.other_conditions.length > 0 ? ` · ${m.other_conditions.join(', ')}` : ''}</Text>
                 </View>
                 <TouchableOpacity onPress={() => removeMember(i)}><Text style={{ color: errorRed, fontSize: 18 }}>✕</Text></TouchableOpacity>
               </View>
@@ -398,6 +403,24 @@ export default function ProfileSetupScreen() {
               onPress={() => updateMember(key as 'is_diabetic' | 'has_bp' | 'has_pcos', !currentMember[key as 'is_diabetic' | 'has_bp' | 'has_pcos'])}
             >
               <Text style={[s.chipText, currentMember[key as keyof FamilyMember] && s.chipTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <SectionLabel>Other Health Conditions</SectionLabel>
+        <View style={s.chipRow}>
+          {['Cholesterol', 'Thyroid', 'Kidney Disease', 'Heart Disease', 'Obesity', 'Anaemia', 'Lactose Intolerant', 'Gluten Intolerant'].map((cond) => (
+            <TouchableOpacity
+              key={cond}
+              style={[s.chip, currentMember.other_conditions.includes(cond) && s.chipActive]}
+              onPress={() => updateMember(
+                'other_conditions',
+                currentMember.other_conditions.includes(cond)
+                  ? currentMember.other_conditions.filter((c) => c !== cond)
+                  : [...currentMember.other_conditions, cond]
+              )}
+            >
+              <Text style={[s.chipText, currentMember.other_conditions.includes(cond) && s.chipTextActive]}>{cond}</Text>
             </TouchableOpacity>
           ))}
         </View>
