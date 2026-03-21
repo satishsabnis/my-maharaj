@@ -160,6 +160,8 @@ export default function MealWizardScreen() {
   // Step 6 – Selection
   // selections[dayIdx][slot] = optionIdx (0/1/2)
   const [selections, setSelections] = useState<Record<number, Record<MealSlotKey, number>>>({});
+  // expandedRecipe: key = `${dayIdx}-${slot}-${optIdx}`
+  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
 
   // Step 7 – Recipes
   const [recipeDishes, setRecipeDishes] = useState<string[]>([]);
@@ -429,13 +431,7 @@ export default function MealWizardScreen() {
   // ── WhatsApp share ────────────────────────────────────────────────────────
 
   function shareWhatsApp(grocery: Record<string, { name: string; qty: string; unit: string }[]>) {
-    const lines = ['*🛒 My Maharaj Grocery List*', ''];
-    Object.entries(grocery).forEach(([cat, items]) => {
-      lines.push(`*${CATEGORY_ICONS[cat]} ${cat}:*`);
-      items.forEach((i) => lines.push(`• ${i.name} — ${i.qty} ${i.unit}`));
-      lines.push('');
-    });
-    const text = lines.join('\n');
+    const text = buildGroceryText(grocery);
     const url = Platform.OS === 'web'
       ? `https://wa.me/?text=${encodeURIComponent(text)}`
       : `whatsapp://send?text=${encodeURIComponent(text)}`;
@@ -443,17 +439,10 @@ export default function MealWizardScreen() {
   }
 
   async function copyGrocery(grocery: Record<string, { name: string; qty: string; unit: string }[]>) {
-    const lines: string[] = ['My Maharaj Grocery List', ''];
-    Object.entries(grocery).forEach(([cat, items]) => {
-      lines.push(`${CATEGORY_ICONS[cat]} ${cat}:`);
-      items.forEach((i) => lines.push(`• ${i.name} — ${i.qty} ${i.unit}`));
-      lines.push('');
-    });
-    const text = lines.join('\n');
+    const text = buildGroceryText(grocery);
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
-        setError('');
       }
     } catch { /* silent */ }
   }
@@ -718,10 +707,15 @@ export default function MealWizardScreen() {
       { key: 'lunch', icon: '☀️', label: 'Lunch' },
       { key: 'dinner', icon: '🌙', label: 'Dinner' },
     ];
+
+    function toggleRecipe(key: string) {
+      setExpandedRecipes((prev) => ({ ...prev, [key]: !prev[key] }));
+    }
+
     return (
       <View>
         <Text style={s.stepTitle}>Choose Your Meals</Text>
-        <Text style={s.stepSub}>Select one option per meal slot for each day</Text>
+        <Text style={s.stepSub}>Select one option per meal — tap "View Recipe" to see full details</Text>
         {generatedPlan.map((day, dayIdx) => (
           <View key={day.date} style={s.dayCard}>
             <View style={s.dayCardHeader}>
@@ -731,23 +725,71 @@ export default function MealWizardScreen() {
             {slots.map(({ key, icon, label }) => (
               <View key={key} style={s.slotBlock}>
                 <Text style={s.slotLabel}>{icon} {label}</Text>
-                {day[key].options.map((opt, optIdx) => (
-                  <TouchableOpacity
-                    key={optIdx}
-                    style={[s.optionRow, selections[dayIdx]?.[key] === optIdx && s.optionRowActive]}
-                    onPress={() => setSelections((prev) => ({ ...prev, [dayIdx]: { ...(prev[dayIdx] ?? { breakfast: 0, lunch: 0, dinner: 0 }), [key]: optIdx } }))}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[s.radioSmall, selections[dayIdx]?.[key] === optIdx && s.radioSmallActive]}>
-                      {selections[dayIdx]?.[key] === optIdx && <View style={s.radioDotSmall} />}
+                {day[key].options.map((opt, optIdx) => {
+                  const recipeKey = `${dayIdx}-${key}-${optIdx}`;
+                  const isSelected = selections[dayIdx]?.[key] === optIdx;
+                  const isExpanded = expandedRecipes[recipeKey];
+                  const nut = opt.nutrition;
+                  return (
+                    <View key={optIdx} style={[s.optionCard, isSelected && s.optionCardActive]}>
+                      {/* Header row: radio + name + select */}
+                      <TouchableOpacity
+                        style={s.optionCardHeader}
+                        onPress={() => setSelections((prev) => ({ ...prev, [dayIdx]: { ...(prev[dayIdx] ?? { breakfast: 0, lunch: 0, dinner: 0 }), [key]: optIdx } }))}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[s.radioSmall, isSelected && s.radioSmallActive]}>
+                          {isSelected && <View style={s.radioDotSmall} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.optionName, isSelected && { color: navy, fontWeight: '700' }]}>{opt.name}</Text>
+                          {opt.health_tags.length > 0 && (
+                            <View style={s.tagRow}>
+                              {opt.health_tags.slice(0, 3).map((tag) => (
+                                <View key={tag} style={s.tagPill}><Text style={s.tagPillText}>{tag}</Text></View>
+                              ))}
+                            </View>
+                          )}
+                          <Text style={s.nutLine}>
+                            P {nut.protein_g}g · C {nut.carbs_g}g · F {nut.fat_g}g · Fibre {nut.fibre_g}g
+                          </Text>
+                        </View>
+                        <Text style={s.optionNum}>#{optIdx + 1}</Text>
+                      </TouchableOpacity>
+
+                      {/* View Recipe toggle */}
+                      <TouchableOpacity style={s.viewRecipeBtn} onPress={() => toggleRecipe(recipeKey)} activeOpacity={0.7}>
+                        <Text style={s.viewRecipeText}>{isExpanded ? '▲ Hide Recipe' : '▼ View Recipe'}</Text>
+                      </TouchableOpacity>
+
+                      {/* Inline recipe */}
+                      {isExpanded && (
+                        <View style={s.inlineRecipe}>
+                          <Text style={s.inlineRecipeSection}>Ingredients</Text>
+                          {opt.ingredients.map((ing, i) => (
+                            <Text key={i} style={s.inlineRecipeItem}>• {ing.name} — {ing.qty} {ing.unit}</Text>
+                          ))}
+                          {opt.method.length > 0 && (
+                            <>
+                              <Text style={s.inlineRecipeSection}>Method</Text>
+                              {opt.method.map((step, i) => (
+                                <Text key={i} style={s.inlineRecipeItem}>{i + 1}. {step}</Text>
+                              ))}
+                            </>
+                          )}
+                          {opt.prep_night.length > 0 && (
+                            <>
+                              <Text style={[s.inlineRecipeSection, { color: '#92400E' }]}>Prep Night</Text>
+                              {opt.prep_night.map((p, i) => (
+                                <Text key={i} style={[s.inlineRecipeItem, { color: '#92400E' }]}>• {p}</Text>
+                              ))}
+                            </>
+                          )}
+                        </View>
+                      )}
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.optionName, selections[dayIdx]?.[key] === optIdx && { color: navy, fontWeight: '700' }]}>{opt.name}</Text>
-                      {opt.health_tags.length > 0 && <Text style={s.optionTags}>{opt.health_tags.join(' · ')}</Text>}
-                    </View>
-                    <Text style={s.optionNum}>#{optIdx + 1}</Text>
-                  </TouchableOpacity>
-                ))}
+                  );
+                })}
               </View>
             ))}
             <NutritionBars nutrition={getDayNutrition(dayIdx)} />
@@ -830,6 +872,34 @@ export default function MealWizardScreen() {
     );
   }
 
+  function buildGroceryText(grocery: Record<string, { name: string; qty: string; unit: string }[]>): string {
+    const catOrder = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pantry'];
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const lines: string[] = ['MY MAHARAJ SHOPPING LIST', `Date: ${today}`, ''];
+    catOrder.forEach((cat) => {
+      const items = grocery[cat];
+      if (!items || items.length === 0) return;
+      lines.push(`${CATEGORY_ICONS[cat]} ${cat.toUpperCase()}:`);
+      items.forEach((i) => lines.push(`  - ${i.name}: ${i.qty} ${i.unit}`));
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  async function downloadGrocery(grocery: Record<string, { name: string; qty: string; unit: string }[]>) {
+    if (Platform.OS !== 'web') return;
+    const text = buildGroceryText(grocery);
+    try {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'MyMaharaj-Shopping-List.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* silent */ }
+  }
+
   function renderGrocery() {
     const grocery = buildGroceryList();
     const catOrder = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pantry'];
@@ -837,6 +907,21 @@ export default function MealWizardScreen() {
       <View>
         <Text style={s.stepTitle}>🛒 Your Grocery List</Text>
         <Text style={s.stepSub}>All ingredients for your selected meals, grouped by category</Text>
+
+        {/* Action buttons at top */}
+        <View style={s.groceryBtns}>
+          <TouchableOpacity style={s.copyBtn} onPress={() => void copyGrocery(grocery)} activeOpacity={0.85}>
+            <Text style={s.copyBtnText}>📋 Copy List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.waBtn} onPress={() => shareWhatsApp(grocery)} activeOpacity={0.85}>
+            <Text style={s.waBtnText}>📱 WhatsApp</Text>
+          </TouchableOpacity>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity style={s.downloadBtn} onPress={() => void downloadGrocery(grocery)} activeOpacity={0.85}>
+              <Text style={s.downloadBtnText}>📄 Download</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {catOrder.map((cat) => {
           const items = grocery[cat];
@@ -854,12 +939,13 @@ export default function MealWizardScreen() {
           );
         })}
 
+        {/* Action buttons at bottom too */}
         <View style={s.groceryBtns}>
-          <TouchableOpacity style={s.waBtn} onPress={() => shareWhatsApp(grocery)} activeOpacity={0.85}>
-            <Text style={s.waBtnText}>📱 Send to WhatsApp</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={s.copyBtn} onPress={() => void copyGrocery(grocery)} activeOpacity={0.85}>
             <Text style={s.copyBtnText}>📋 Copy List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.waBtn} onPress={() => shareWhatsApp(grocery)} activeOpacity={0.85}>
+            <Text style={s.waBtnText}>📱 WhatsApp</Text>
           </TouchableOpacity>
         </View>
 
@@ -1114,16 +1200,32 @@ const s = StyleSheet.create({
   dayCardHeader: { backgroundColor: navy, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
   dayCardDay: { color: white, fontWeight: '700', fontSize: 15 },
   dayCardDate: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
-  slotBlock: { borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
-  slotLabel: { fontSize: 11, fontWeight: '700', color: midGray, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-  optionRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7, paddingHorizontal: 4, borderRadius: 8, marginBottom: 2, gap: 8 },
-  optionRowActive: { backgroundColor: '#EFF6FF' },
-  radioSmall: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  slotBlock: { borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 },
+  slotLabel: { fontSize: 11, fontWeight: '700', color: midGray, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+
+  // Option cards with expandable recipes
+  optionCard: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, marginBottom: 8, overflow: 'hidden', backgroundColor: '#FAFAFA' },
+  optionCardActive: { borderColor: navy, backgroundColor: '#EFF6FF' },
+  optionCardHeader: { flexDirection: 'row', alignItems: 'flex-start', padding: 10, gap: 8 },
+  radioSmall: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 },
   radioSmallActive: { borderColor: navy },
   radioDotSmall: { width: 8, height: 8, borderRadius: 4, backgroundColor: navy },
-  optionName: { fontSize: 13, color: darkGray, lineHeight: 19 },
-  optionTags: { fontSize: 10, color: midGray, marginTop: 1 },
+  optionName: { fontSize: 13, color: darkGray, lineHeight: 19, fontWeight: '600' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 },
+  tagPill: { backgroundColor: '#DBEAFE', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  tagPillText: { fontSize: 9, color: '#1D4ED8', fontWeight: '600' },
+  nutLine: { fontSize: 10, color: midGray, marginTop: 4 },
   optionNum: { fontSize: 11, color: midGray, marginTop: 2 },
+  viewRecipeBtn: { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingVertical: 7, paddingHorizontal: 10, backgroundColor: '#F8FAFC' },
+  viewRecipeText: { fontSize: 12, color: navy, fontWeight: '600', textAlign: 'center' },
+  inlineRecipe: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 4, backgroundColor: '#F0F7FF' },
+  inlineRecipeSection: { fontSize: 10, fontWeight: '700', color: gold, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 10, marginBottom: 4 },
+  inlineRecipeItem: { fontSize: 12, color: darkGray, lineHeight: 20 },
+
+  // Legacy (kept for recipes screen)
+  optionRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7, paddingHorizontal: 4, borderRadius: 8, marginBottom: 2, gap: 8 },
+  optionRowActive: { backgroundColor: '#EFF6FF' },
+  optionTags: { fontSize: 10, color: midGray, marginTop: 1 },
 
   // Recipes
   dishCheckRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: white, borderRadius: 10, padding: 12, marginBottom: 6, borderWidth: 1.5, borderColor: '#E5E7EB', gap: 10 },
@@ -1141,11 +1243,13 @@ const s = StyleSheet.create({
   groceryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   groceryItem: { fontSize: 13, color: darkGray, flex: 1 },
   groceryQty: { fontSize: 13, color: midGray, fontWeight: '600', textAlign: 'right' },
-  groceryBtns: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  groceryBtns: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   waBtn: { flex: 1, backgroundColor: '#25D366', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
-  waBtnText: { color: white, fontWeight: '700', fontSize: 14 },
+  waBtnText: { color: white, fontWeight: '700', fontSize: 13 },
   copyBtn: { flex: 1, borderWidth: 1.5, borderColor: navy, borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
-  copyBtnText: { color: navy, fontWeight: '700', fontSize: 14 },
+  copyBtnText: { color: navy, fontWeight: '700', fontSize: 13 },
+  downloadBtn: { flex: 1, backgroundColor: '#4B5563', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
+  downloadBtnText: { color: white, fontWeight: '700', fontSize: 13 },
 
   // Feedback
   feedbackRow: { backgroundColor: white, borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#E5E7EB' },

@@ -11,6 +11,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+const LogoImg = require('../assets/logo.png');
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getLipidStatus, LipidStatus } from '../lib/notifications';
@@ -179,8 +181,8 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Title */}
-        <Text style={s.headerTitle}>My Maharaj</Text>
+        {/* Logo */}
+        <Image source={LogoImg} style={s.headerLogo} />
 
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={() => setShowLogoutModal(true)} activeOpacity={0.7}>
@@ -264,7 +266,7 @@ const s = StyleSheet.create({
   headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: gold },
   headerInitials: { width: 40, height: 40, borderRadius: 20, backgroundColor: gold, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
   headerInitialsText: { color: white, fontSize: 17, fontWeight: '800' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: white, letterSpacing: 0.3 },
+  headerLogo: { height: 50, width: 140, resizeMode: 'contain' },
   logoutBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   logoutIcon: { color: white, fontSize: 18 },
 
