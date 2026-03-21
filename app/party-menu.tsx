@@ -4,12 +4,16 @@ import {
   ScrollView, ActivityIndicator, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+import Anthropic from '@anthropic-ai/sdk';
 import { navy, gold, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
 const OCCASIONS = ['Birthday', 'Anniversary', 'Festival', 'Get-together', 'Dinner Party', 'Baby Shower', 'Wedding', 'Office Party'];
 const FOOD_TYPES = ['Vegetarian', 'Non-Vegetarian', 'Mixed'];
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const GEMINI_API_KEY = 'AIzaSyDi9MUZ29m4DK1LswIV8cI1EfxGkrkU7fk';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
+  dangerouslyAllowBrowser: true,
+});
 
 interface PartyMenu {
   starters: { name: string; description: string }[];
@@ -58,14 +62,12 @@ Respond with ONLY valid JSON:
 Include 3-5 items per section.`;
 
     try {
-      const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096 } }),
+      const message = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
       });
-      if (!res.ok) throw new Error('Generation failed. Please try again.');
-      const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      const text = message.content[0].type === 'text' ? message.content[0].text : '';
       const clean = text.replace(/```json|```/g, '').trim();
       setMenu(JSON.parse(clean) as PartyMenu);
       setStep('result');
