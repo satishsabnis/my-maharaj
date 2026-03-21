@@ -12,17 +12,55 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// ─── Security helper ──────────────────────────────────────────────────────────
+// Use this for all data fetches — ensures the authenticated user can only
+// access their own rows and auto-signs out on any identity mismatch.
+
+export async function getSecureUserData(table: string, userId: string) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) {
+    await supabase.auth.signOut();
+    throw new Error('Unauthorized access attempt');
+  }
+  return supabase.from(table).select('*').eq('user_id', userId);
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export type Profile = {
   id: string;
   full_name: string;
-  health_conditions: string[];
+  family_name: string | null;
+  mobile_number: string | null;
+  avatar_url: string | null;
+  app_language: string;
+  is_diabetic: boolean;
+  has_bp: boolean;
+  has_pcos: boolean;
+  appetite_level: string;
   breakfast_count: number;
   lunch_count: number;
   dinner_count: number;
-  appetite: string;
-  cuisine_preferences: string[];
-  language: string;
-  store_preference: string;
+  store_preference: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type FamilyMember = {
+  id: string;
+  user_id: string;
+  name: string;
+  age: number;
+  relationship: string | null;
+  is_diabetic: boolean;
+  has_bp: boolean;
+  has_pcos: boolean;
+  food_likes: string | null;
+  food_dislikes: string | null;
+  allergies: string | null;
+  remarks: string | null;
+  lipid_profile_url: string | null;
+  lipid_test_date: string | null;
+  lipid_expiry_date: string | null;
+  created_at?: string;
 };

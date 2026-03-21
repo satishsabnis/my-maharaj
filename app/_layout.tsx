@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { checkLipidExpiry, requestNotificationPermissions } from '../lib/notifications';
 
 export default function Layout() {
   const router = useRouter();
@@ -21,6 +22,15 @@ export default function Layout() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Request notification permissions and check lipid expiry on login
+  useEffect(() => {
+    if (!session?.user) return;
+    void (async () => {
+      await requestNotificationPermissions();
+      await checkLipidExpiry(session.user.id);
+    })();
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (loading) return;
@@ -46,6 +56,14 @@ export default function Layout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="profile-setup" />
       <Stack.Screen name="home" />
+      <Stack.Screen name="dietary-profile" />
+      <Stack.Screen name="festivals" />
+      <Stack.Screen name="party-menu" />
+      <Stack.Screen name="cuisine-selection" />
+      <Stack.Screen name="table-etiquettes" />
+      <Stack.Screen name="traditional-plating" />
+      <Stack.Screen name="menu-history" />
+      <Stack.Screen name="meal-wizard" />
     </Stack>
   );
 }

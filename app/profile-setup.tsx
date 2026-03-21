@@ -2,38 +2,23 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
   Platform,
+  Image,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { supabase } from '../lib/supabase';
 import { navy, gold, white, lightGray, darkGray, midGray, errorRed } from '../theme/colors';
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const HEALTH_CONDITIONS = ['Diabetic', 'Blood Pressure', 'PCOS/PCOD'];
-
-const APPETITES = ['Poor Eater', 'Normal', 'Hearty'] as const;
-type Appetite = (typeof APPETITES)[number];
-
-const CUISINES = [
-  'Konkani',
-  'Malvani',
-  'Mangalorean',
-  'Kerala',
-  'Tamil Nadu',
-  'Goan',
-  'Vidarbha',
-  'Madhya Pradesh',
-  'Bangalore',
-  'Sindhudurg',
-];
-
-const STORES = ['Carrefour', 'Spinneys', 'Lulu', 'All'];
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const LANGUAGES = [
   { code: 'en', label: 'EN' },
@@ -42,459 +27,666 @@ const LANGUAGES = [
   { code: 'gu', label: 'ગુજરાતી' },
 ];
 
+const RELATIONSHIPS = ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other'];
+
+const CUISINES = [
+  'Konkani', 'Malvani', 'Mangalorean', 'Kerala', 'Tamil Nadu',
+  'Goan', 'Vidarbha', 'Madhya Pradesh', 'Bangalore', 'Sindhudurg',
+];
+
+const EXTRA_VEG_DAYS = ['Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface FamilyMember {
+  name: string;
+  age: string;
+  relationship: string;
+  is_diabetic: boolean;
+  has_bp: boolean;
+  has_pcos: boolean;
+  food_likes: string;
+  food_dislikes: string;
+  allergies: string;
+  remarks: string;
+  lipidPdfUri: string | null;
+  lipidPdfName: string | null;
+  lipid_test_date: string;
+  lipid_expiry_date: string;
+}
+
+interface AddressEntry {
+  label: string;
+  address_line: string;
+  city: string;
+  country: string;
+  is_default: boolean;
+}
+
+const emptyMember = (): FamilyMember => ({
+  name: '', age: '', relationship: 'Self',
+  is_diabetic: false, has_bp: false, has_pcos: false,
+  food_likes: '', food_dislikes: '', allergies: '', remarks: '',
+  lipidPdfUri: null, lipidPdfName: null,
+  lipid_test_date: '', lipid_expiry_date: '',
+});
+
+const emptyAddress = (): AddressEntry => ({
+  label: 'Home', address_line: '', city: 'Dubai', country: 'UAE', is_default: false,
+});
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProfileSetupScreen() {
-  const [healthConditions, setHealthConditions] = useState<string[]>([]);
-  const [breakfastCount, setBreakfastCount] = useState(2);
-  const [lunchCount, setLunchCount] = useState(2);
-  const [dinnerCount, setDinnerCount] = useState(2);
-  const [appetite, setAppetite] = useState<Appetite>('Normal');
-  const [cuisines, setCuisines] = useState<string[]>([]);
-  const [language, setLanguage] = useState('en');
-  const [storePreference, setStorePreference] = useState('All');
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  function toggleHealth(condition: string) {
-    setHealthConditions((prev) =>
-      prev.includes(condition) ? prev.filter((c) => c !== condition) : [...prev, condition]
-    );
+  // Step 1
+  const [familyName, setFamilyName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [language, setLanguage] = useState('en');
+
+  // Step 2
+  const [savedMembers, setSavedMembers] = useState<FamilyMember[]>([]);
+  const [currentMember, setCurrentMember] = useState<FamilyMember>(emptyMember());
+
+  // Step 3
+  const [addresses, setAddresses] = useState<AddressEntry[]>([emptyAddress()]);
+
+  // Step 4
+  const [cuisines, setCuisines] = useState<string[]>([]);
+  const [extraVegDays, setExtraVegDays] = useState<string[]>([]);
+
+  // ── Step 1: Avatar picker ──────────────────────────────────────────────────
+
+  async function pickAvatar() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { setError('Photo library permission required.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
   }
 
-  function toggleCuisine(cuisine: string) {
-    setCuisines((prev) =>
-      prev.includes(cuisine) ? prev.filter((c) => c !== cuisine) : [...prev, cuisine]
-    );
+  // ── Step 2: Member helpers ─────────────────────────────────────────────────
+
+  function updateMember<K extends keyof FamilyMember>(key: K, value: FamilyMember[K]) {
+    setCurrentMember((prev) => ({ ...prev, [key]: value }));
   }
+
+  function calcExpiry(testDate: string, age: string): string {
+    if (!testDate) return '';
+    const d = new Date(testDate);
+    if (isNaN(d.getTime())) return '';
+    const ageNum = parseInt(age, 10);
+    const days = !isNaN(ageNum) && ageNum >= 50 ? 90 : 180;
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  }
+
+  function handleTestDateChange(date: string) {
+    const expiry = calcExpiry(date, currentMember.age);
+    setCurrentMember((prev) => ({ ...prev, lipid_test_date: date, lipid_expiry_date: expiry }));
+  }
+
+  async function pickLipidPdf() {
+    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
+    if (!result.canceled && result.assets[0]) {
+      updateMember('lipidPdfUri', result.assets[0].uri);
+      updateMember('lipidPdfName', result.assets[0].name);
+    }
+  }
+
+  function addMember() {
+    if (!currentMember.name.trim()) { setError('Please enter member name.'); return; }
+    if (!currentMember.age.trim()) { setError('Please enter member age.'); return; }
+    setError('');
+    setSavedMembers((prev) => [...prev, currentMember]);
+    setCurrentMember(emptyMember());
+  }
+
+  function removeMember(idx: number) {
+    setSavedMembers((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // ── Step 3: Address helpers ────────────────────────────────────────────────
+
+  function updateAddress<K extends keyof AddressEntry>(idx: number, key: K, value: AddressEntry[K]) {
+    setAddresses((prev) => prev.map((a, i) => i === idx ? { ...a, [key]: value } : a));
+  }
+
+  function setDefaultAddress(idx: number) {
+    setAddresses((prev) => prev.map((a, i) => ({ ...a, is_default: i === idx })));
+  }
+
+  function addAddress() {
+    if (addresses.length >= 3) return;
+    setAddresses((prev) => [...prev, emptyAddress()]);
+  }
+
+  function removeAddress(idx: number) {
+    if (addresses.length <= 1) return;
+    setAddresses((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+
+  function nextStep() {
+    setError('');
+    if (currentStep === 1) {
+      if (!familyName.trim()) { setError('Please enter your family name.'); return; }
+    }
+    if (currentStep < 4) setCurrentStep((s) => (s + 1) as 1|2|3|4);
+    else void handleSave();
+  }
+
+  function prevStep() {
+    setError('');
+    if (currentStep > 1) setCurrentStep((s) => (s - 1) as 1|2|3|4);
+    else router.back();
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    setError('');
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Not authenticated. Please log in again.');
-      return;
-    }
-
     setLoading(true);
+    setError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated.');
 
-    // Step 1: Save profile fields
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: user.id,
-      full_name: user.user_metadata?.full_name ?? '',
-      app_language: language,
-      is_diabetic: healthConditions.includes('Diabetic'),
-      has_bp: healthConditions.includes('Blood Pressure'),
-      has_pcos: healthConditions.includes('PCOS/PCOD'),
-      appetite_level: appetite,
-      breakfast_count: breakfastCount,
-      lunch_count: lunchCount,
-      dinner_count: dinnerCount,
-      veg_monday: true,
-      veg_friday: true,
-      sunday_thali_mode: true,
-      wednesday_surprise: true,
-      store_preference: storePreference,
-    });
-
-    if (profileError) {
-      setLoading(false);
-      setError(profileError.message);
-      return;
-    }
-
-    // Step 2: Save cuisine preferences to separate table
-    if (cuisines.length > 0) {
-      const cuisineRows = cuisines.map((cuisineName) => ({
-        user_id: user.id,
-        cuisine_name: cuisineName,
-        is_excluded: false,
-        weight: 5,
-      }));
-
-      const { error: cuisineError } = await supabase
-        .from('cuisine_preferences')
-        .insert(cuisineRows);
-
-      if (cuisineError) {
-        setLoading(false);
-        setError(cuisineError.message);
-        return;
+      // Upload avatar
+      let avatarUrl: string | null = null;
+      if (avatarUri) {
+        try {
+          const response = await fetch(avatarUri);
+          const blob = await response.blob();
+          const { data: uploadData } = await supabase.storage
+            .from('avatars')
+            .upload(`${user.id}/avatar.jpg`, blob, { upsert: true, contentType: 'image/jpeg' });
+          if (uploadData) {
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
+            avatarUrl = publicUrl;
+          }
+        } catch { /* storage bucket may not exist yet */ }
       }
-    }
 
-    setLoading(false);
-    router.replace('/home');
+      // Upsert profile
+      const { error: profileErr } = await supabase.from('profiles').upsert({
+        id: user.id,
+        full_name: user.user_metadata?.full_name ?? '',
+        family_name: familyName.trim(),
+        mobile_number: mobileNumber.trim() ? `+971${mobileNumber.trim()}` : null,
+        avatar_url: avatarUrl,
+        app_language: language,
+      });
+      if (profileErr) throw new Error(profileErr.message);
+
+      // Save family members
+      const allMembers = currentMember.name.trim()
+        ? [...savedMembers, currentMember]
+        : savedMembers;
+
+      if (allMembers.length > 0) {
+        await supabase.from('family_members').delete().eq('user_id', user.id);
+        const memberRows = await Promise.all(allMembers.map(async (m) => {
+          let lipidUrl: string | null = null;
+          if (m.lipidPdfUri) {
+            try {
+              const res = await fetch(m.lipidPdfUri);
+              const blob = await res.blob();
+              const safeName = m.name.replace(/\s+/g, '_');
+              await supabase.storage.from('documents').upload(
+                `${user.id}/lipid_${safeName}.pdf`, blob, { upsert: true, contentType: 'application/pdf' }
+              );
+              lipidUrl = m.lipidPdfUri;
+            } catch { /* skip */ }
+          }
+          return {
+            user_id: user.id,
+            name: m.name,
+            age: parseInt(m.age, 10) || 0,
+            relationship: m.relationship,
+            is_diabetic: m.is_diabetic,
+            has_bp: m.has_bp,
+            has_pcos: m.has_pcos,
+            food_likes: m.food_likes || null,
+            food_dislikes: m.food_dislikes || null,
+            allergies: m.allergies || null,
+            remarks: m.remarks || null,
+            lipid_profile_url: lipidUrl,
+            lipid_test_date: m.lipid_test_date || null,
+            lipid_expiry_date: m.lipid_expiry_date || null,
+          };
+        }));
+        const { error: membErr } = await supabase.from('family_members').insert(memberRows);
+        if (membErr) throw new Error(membErr.message);
+      }
+
+      // Save addresses
+      const validAddresses = addresses.filter((a) => a.address_line.trim());
+      if (validAddresses.length > 0) {
+        await supabase.from('user_addresses').delete().eq('user_id', user.id);
+        const { error: addrErr } = await supabase.from('user_addresses').insert(
+          validAddresses.map((a) => ({ ...a, user_id: user.id }))
+        );
+        if (addrErr) throw new Error(addrErr.message);
+      }
+
+      // Save cuisines
+      if (cuisines.length > 0) {
+        await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
+        const { error: cuisErr } = await supabase.from('cuisine_preferences').insert(
+          cuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false, weight: 5 }))
+        );
+        if (cuisErr) throw new Error(cuisErr.message);
+      }
+
+      router.replace('/home');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.headerBar}>
-            <Text style={styles.headerTitle}>Tell us about your family</Text>
-            <Text style={styles.headerSub}>
-              This helps us personalise your weekly meal plan
-            </Text>
-          </View>
+  // ── Render helpers ─────────────────────────────────────────────────────────
 
-          {/* Section 1 — Health */}
-          <Section title="Health Conditions" subtitle="Select all that apply">
-            <View style={styles.chipRow}>
-              {HEALTH_CONDITIONS.map((c) => (
-                <Chip
-                  key={c}
-                  label={c}
-                  selected={healthConditions.includes(c)}
-                  onPress={() => toggleHealth(c)}
-                />
-              ))}
-            </View>
-          </Section>
-
-          {/* Section 2 — Family Size */}
-          <Section title="Family Size" subtitle="How many people eat each meal?">
-            <View style={styles.mealRow}>
-              <MealCounter label="Breakfast" value={breakfastCount} onChange={setBreakfastCount} />
-              <MealCounter label="Lunch" value={lunchCount} onChange={setLunchCount} />
-              <MealCounter label="Dinner" value={dinnerCount} onChange={setDinnerCount} />
-            </View>
-          </Section>
-
-          {/* Section 3 — Appetite */}
-          <Section title="Appetite" subtitle="General eating style">
-            <View style={styles.segmentRow}>
-              {APPETITES.map((a) => (
-                <TouchableOpacity
-                  key={a}
-                  style={[styles.segment, appetite === a && styles.segmentActive]}
-                  onPress={() => setAppetite(a)}
-                >
-                  <Text style={[styles.segmentText, appetite === a && styles.segmentTextActive]}>
-                    {a}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Section>
-
-          {/* Section 4 — Cuisine Preferences */}
-          <Section title="Cuisine Preferences" subtitle="Select cuisines you enjoy">
-            <View style={styles.chipGrid}>
-              {CUISINES.map((c) => (
-                <Chip
-                  key={c}
-                  label={c}
-                  selected={cuisines.includes(c)}
-                  onPress={() => toggleCuisine(c)}
-                />
-              ))}
-            </View>
-          </Section>
-
-          {/* Section 5 — Language */}
-          <Section title="Preferred Language">
-            <View style={styles.segmentRow}>
-              {LANGUAGES.map((l) => (
-                <TouchableOpacity
-                  key={l.code}
-                  style={[styles.segment, language === l.code && styles.segmentActive]}
-                  onPress={() => setLanguage(l.code)}
-                >
-                  <Text style={[styles.segmentText, language === l.code && styles.segmentTextActive]}>
-                    {l.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Section>
-
-          {/* Section 6 — Store Preference */}
-          <Section title="Preferred Supermarket">
-            <View style={styles.segmentRow}>
-              {STORES.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.segment, storePreference === s && styles.segmentActive]}
-                  onPress={() => setStorePreference(s)}
-                >
-                  <Text style={[styles.segmentText, storePreference === s && styles.segmentTextActive]}>
-                    {s}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Section>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {/* Save button */}
-          <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color={white} />
+  function renderStep1() {
+    return (
+      <View>
+        <SectionLabel>Profile Photo</SectionLabel>
+        <View style={s.avatarRow}>
+          <TouchableOpacity style={s.avatarPicker} onPress={pickAvatar} activeOpacity={0.8}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={s.avatarImage} />
             ) : (
-              <Text style={styles.saveButtonText}>Save Profile</Text>
+              <View style={s.avatarPlaceholder}>
+                <Text style={s.avatarPlaceholderText}>📷</Text>
+                <Text style={s.avatarPlaceholderLabel}>Upload Photo</Text>
+              </View>
             )}
           </TouchableOpacity>
+        </View>
+
+        <SectionLabel>Family Name</SectionLabel>
+        <TextInput
+          style={s.input}
+          value={familyName}
+          onChangeText={setFamilyName}
+          placeholder="e.g. The Sharma Family"
+          placeholderTextColor={midGray}
+        />
+
+        <SectionLabel>Mobile Number</SectionLabel>
+        <View style={s.mobileRow}>
+          <View style={s.countryCode}><Text style={s.countryCodeText}>🇦🇪 +971</Text></View>
+          <TextInput
+            style={s.mobileInput}
+            value={mobileNumber}
+            onChangeText={setMobileNumber}
+            placeholder="50 123 4567"
+            placeholderTextColor={midGray}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <SectionLabel>Preferred Language</SectionLabel>
+        <View style={s.segRow}>
+          {LANGUAGES.map((l) => (
+            <TouchableOpacity
+              key={l.code}
+              style={[s.seg, language === l.code && s.segActive]}
+              onPress={() => setLanguage(l.code)}
+            >
+              <Text style={[s.segText, language === l.code && s.segTextActive]}>{l.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  function renderStep2() {
+    return (
+      <View>
+        {savedMembers.length > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={s.subLabel}>{savedMembers.length} member{savedMembers.length > 1 ? 's' : ''} added</Text>
+            {savedMembers.map((m, i) => (
+              <View key={i} style={s.memberCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.memberName}>{m.name}, {m.age}</Text>
+                  <Text style={s.memberSub}>{m.relationship}{m.is_diabetic ? ' · Diabetic' : ''}{m.has_bp ? ' · BP' : ''}{m.has_pcos ? ' · PCOS' : ''}</Text>
+                </View>
+                <TouchableOpacity onPress={() => removeMember(i)}><Text style={{ color: errorRed, fontSize: 18 }}>✕</Text></TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <Text style={s.sectionTitle}>Add Family Member</Text>
+
+        <SectionLabel>Name *</SectionLabel>
+        <TextInput style={s.input} value={currentMember.name} onChangeText={(v) => updateMember('name', v)} placeholder="Member name" placeholderTextColor={midGray} />
+
+        <SectionLabel>Age *</SectionLabel>
+        <TextInput style={s.input} value={currentMember.age} onChangeText={(v) => updateMember('age', v)} placeholder="Age" placeholderTextColor={midGray} keyboardType="numeric" />
+
+        <SectionLabel>Relationship</SectionLabel>
+        <View style={s.chipRow}>
+          {RELATIONSHIPS.map((r) => (
+            <TouchableOpacity key={r} style={[s.chip, currentMember.relationship === r && s.chipActive]} onPress={() => updateMember('relationship', r)}>
+              <Text style={[s.chipText, currentMember.relationship === r && s.chipTextActive]}>{r}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <SectionLabel>Health Conditions</SectionLabel>
+        <View style={s.chipRow}>
+          {[['Diabetic', 'is_diabetic'], ['Blood Pressure', 'has_bp'], ['PCOS/PCOD', 'has_pcos']].map(([label, key]) => (
+            <TouchableOpacity
+              key={key}
+              style={[s.chip, currentMember[key as keyof FamilyMember] && s.chipActive]}
+              onPress={() => updateMember(key as 'is_diabetic' | 'has_bp' | 'has_pcos', !currentMember[key as 'is_diabetic' | 'has_bp' | 'has_pcos'])}
+            >
+              <Text style={[s.chipText, currentMember[key as keyof FamilyMember] && s.chipTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <SectionLabel>Food Likes</SectionLabel>
+        <TextInput style={s.input} value={currentMember.food_likes} onChangeText={(v) => updateMember('food_likes', v)} placeholder="e.g. rice, dal, biryani" placeholderTextColor={midGray} />
+
+        <SectionLabel>Food Dislikes</SectionLabel>
+        <TextInput style={s.input} value={currentMember.food_dislikes} onChangeText={(v) => updateMember('food_dislikes', v)} placeholder="e.g. bitter gourd" placeholderTextColor={midGray} />
+
+        <SectionLabel>Allergies</SectionLabel>
+        <TextInput style={s.input} value={currentMember.allergies} onChangeText={(v) => updateMember('allergies', v)} placeholder="e.g. nuts, shellfish" placeholderTextColor={midGray} />
+
+        <SectionLabel>Remarks</SectionLabel>
+        <TextInput style={[s.input, { height: 72 }]} value={currentMember.remarks} onChangeText={(v) => updateMember('remarks', v)} placeholder="Any other notes" placeholderTextColor={midGray} multiline />
+
+        <SectionLabel>Lipid Profile Report (PDF)</SectionLabel>
+        <TouchableOpacity style={s.uploadBtn} onPress={pickLipidPdf} activeOpacity={0.8}>
+          <Text style={s.uploadBtnText}>{currentMember.lipidPdfName ?? '📄 Upload PDF'}</Text>
+        </TouchableOpacity>
+
+        <SectionLabel>Lipid Test Date (YYYY-MM-DD)</SectionLabel>
+        <TextInput
+          style={s.input}
+          value={currentMember.lipid_test_date}
+          onChangeText={handleTestDateChange}
+          placeholder="2025-01-15"
+          placeholderTextColor={midGray}
+        />
+        {currentMember.lipid_expiry_date ? (
+          <Text style={s.expiryLabel}>
+            Expires: {currentMember.lipid_expiry_date}
+            {parseInt(currentMember.age, 10) >= 50 ? ' (90-day cycle — age 50+)' : ' (180-day cycle)'}
+          </Text>
+        ) : null}
+
+        <TouchableOpacity style={s.addMemberBtn} onPress={addMember} activeOpacity={0.8}>
+          <Text style={s.addMemberBtnText}>+ Add Another Member</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  function renderStep3() {
+    return (
+      <View>
+        <Text style={s.subLabel}>Add up to 3 addresses</Text>
+        {addresses.map((addr, idx) => (
+          <View key={idx} style={s.addressCard}>
+            <View style={s.addressCardHeader}>
+              <Text style={s.addressCardTitle}>Address {idx + 1}</Text>
+              {addresses.length > 1 && (
+                <TouchableOpacity onPress={() => removeAddress(idx)}>
+                  <Text style={{ color: errorRed }}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <SectionLabel>Label</SectionLabel>
+            <View style={s.chipRow}>
+              {['Home', 'Work', 'Other'].map((lbl) => (
+                <TouchableOpacity key={lbl} style={[s.chip, addr.label === lbl && s.chipActive]} onPress={() => updateAddress(idx, 'label', lbl)}>
+                  <Text style={[s.chipText, addr.label === lbl && s.chipTextActive]}>{lbl}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <SectionLabel>Address Line</SectionLabel>
+            <TextInput style={s.input} value={addr.address_line} onChangeText={(v) => updateAddress(idx, 'address_line', v)} placeholder="Building, street, area" placeholderTextColor={midGray} />
+
+            <SectionLabel>City</SectionLabel>
+            <TextInput style={s.input} value={addr.city} onChangeText={(v) => updateAddress(idx, 'city', v)} placeholder="Dubai" placeholderTextColor={midGray} />
+
+            <SectionLabel>Country</SectionLabel>
+            <TextInput style={s.input} value={addr.country} onChangeText={(v) => updateAddress(idx, 'country', v)} placeholder="UAE" placeholderTextColor={midGray} />
+
+            <TouchableOpacity
+              style={[s.defaultToggle, addr.is_default && s.defaultToggleActive]}
+              onPress={() => setDefaultAddress(idx)}
+            >
+              <Text style={[s.defaultToggleText, addr.is_default && s.defaultToggleTextActive]}>
+                {addr.is_default ? '✓ Default Address' : 'Set as Default'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        {addresses.length < 3 && (
+          <TouchableOpacity style={s.addMemberBtn} onPress={addAddress} activeOpacity={0.8}>
+            <Text style={s.addMemberBtnText}>+ Add Another Address</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
+
+  function renderStep4() {
+    return (
+      <View>
+        <SectionLabel>Select Cuisines You Enjoy</SectionLabel>
+        <View style={s.chipRow}>
+          {CUISINES.map((c) => (
+            <TouchableOpacity
+              key={c}
+              style={[s.chip, cuisines.includes(c) && s.chipActive]}
+              onPress={() => setCuisines((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
+            >
+              <Text style={[s.chipText, cuisines.includes(c) && s.chipTextActive]}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <SectionLabel>Vegetarian Days</SectionLabel>
+        <Text style={s.subLabel}>Monday and Friday are always vegetarian</Text>
+        <View style={s.chipRow}>
+          {['Monday', 'Friday'].map((d) => (
+            <View key={d} style={[s.chip, s.chipActive, { opacity: 0.6 }]}>
+              <Text style={[s.chipText, s.chipTextActive]}>{d} 🔒</Text>
+            </View>
+          ))}
+          {EXTRA_VEG_DAYS.map((d) => (
+            <TouchableOpacity
+              key={d}
+              style={[s.chip, extraVegDays.includes(d) && s.chipActive]}
+              onPress={() => setExtraVegDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d])}
+            >
+              <Text style={[s.chipText, extraVegDays.includes(d) && s.chipTextActive]}>{d}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  const STEP_TITLES = ['Family Info', 'Family Members', 'Address', 'Cuisine'];
+  const stepContent = [renderStep1, renderStep2, renderStep3, renderStep4][currentStep - 1];
+
+  return (
+    <SafeAreaView style={s.safe}>
+      {/* Progress bar */}
+      <View style={s.progressBar}>
+        {STEP_TITLES.map((title, i) => (
+          <TouchableOpacity
+            key={i}
+            style={s.progressStep}
+            onPress={() => { if (i + 1 < currentStep) setCurrentStep((i + 1) as 1|2|3|4); }}
+          >
+            <View style={[s.progressDot, currentStep > i + 1 && s.progressDotDone, currentStep === i + 1 && s.progressDotActive]}>
+              <Text style={[s.progressDotText, (currentStep >= i + 1) && s.progressDotTextActive]}>
+                {currentStep > i + 1 ? '✓' : String(i + 1)}
+              </Text>
+            </View>
+            <Text style={[s.progressLabel, currentStep === i + 1 && s.progressLabelActive]}>{title}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={s.container}>
+          <Text style={s.stepTitle}>Step {currentStep} of 4 — {STEP_TITLES[currentStep - 1]}</Text>
+
+          {stepContent?.()}
+
+          {error ? <Text style={s.errorText}>{error}</Text> : null}
+
+          {/* Navigation buttons */}
+          <View style={s.navRow}>
+            <TouchableOpacity style={s.backBtn} onPress={prevStep}>
+              <Text style={s.backBtnText}>← {currentStep === 1 ? 'Cancel' : 'Back'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.nextBtn, loading && { opacity: 0.6 }]}
+              onPress={nextStep}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color={white} />
+              ) : (
+                <Text style={s.nextBtnText}>{currentStep === 4 ? 'Save & Continue →' : 'Next →'}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {currentStep === 2 && (
+            <TouchableOpacity style={s.skipLink} onPress={() => { setError(''); setCurrentStep(3); }}>
+              <Text style={s.skipLinkText}>Skip — add members later</Text>
+            </TouchableOpacity>
+          )}
+          {currentStep === 3 && (
+            <TouchableOpacity style={s.skipLink} onPress={() => { setError(''); setCurrentStep(4); }}>
+              <Text style={s.skipLinkText}>Skip — add address later</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Sub-component ─────────────────────────────────────────────────────────────
 
-function Section({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null}
-      {children}
-    </View>
-  );
-}
-
-function Chip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.chip, selected && styles.chipActive]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function MealCounter({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <View style={styles.counter}>
-      <Text style={styles.counterLabel}>{label}</Text>
-      <View style={styles.counterRow}>
-        <TouchableOpacity
-          style={styles.counterBtn}
-          onPress={() => onChange(Math.max(1, value - 1))}
-        >
-          <Text style={styles.counterBtnText}>−</Text>
-        </TouchableOpacity>
-        <Text style={styles.counterValue}>{value}</Text>
-        <TouchableOpacity
-          style={styles.counterBtn}
-          onPress={() => onChange(Math.min(6, value + 1))}
-        >
-          <Text style={styles.counterBtnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <Text style={s.fieldLabel}>{children}</Text>;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: white },
   scroll: { flexGrow: 1 },
-  container: {
-    paddingBottom: 60,
-    maxWidth: 560,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  headerBar: {
-    backgroundColor: navy,
-    paddingHorizontal: 28,
-    paddingTop: Platform.OS === 'web' ? 48 : 28,
-    paddingBottom: 28,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: white,
-    marginBottom: 6,
-  },
-  headerSub: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.65)',
-  },
-  section: {
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: navy,
-    marginBottom: 4,
-  },
-  sectionSub: {
-    fontSize: 12,
-    color: midGray,
-    marginBottom: 14,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    backgroundColor: white,
-  },
-  chipActive: {
-    backgroundColor: navy,
-    borderColor: navy,
-  },
-  chipText: {
-    fontSize: 13,
-    color: darkGray,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: white,
-    fontWeight: '600',
-  },
-  mealRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    marginBottom: 8,
-    gap: 12,
-  },
-  counter: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: lightGray,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-  },
-  counterLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: midGray,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  counterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  counterBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  counterBtnText: {
-    color: white,
-    fontSize: 20,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  counterValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: navy,
-    minWidth: 28,
-    textAlign: 'center',
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  segment: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    backgroundColor: white,
-  },
-  segmentActive: {
-    backgroundColor: gold,
-    borderColor: gold,
-  },
-  segmentText: {
-    fontSize: 14,
-    color: darkGray,
-    fontWeight: '500',
-  },
-  segmentTextActive: {
-    color: white,
-    fontWeight: '700',
-  },
-  errorText: {
-    color: errorRed,
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 20,
-    paddingHorizontal: 24,
-  },
-  saveButton: {
-    backgroundColor: gold,
-    borderRadius: 14,
-    marginHorizontal: 24,
-    marginTop: 32,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: {
-    color: white,
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  container: { paddingHorizontal: 24, paddingBottom: 60, maxWidth: 560, width: '100%', alignSelf: 'center' },
+
+  // Progress
+  progressBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: navy, paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 28 : 16, paddingBottom: 20 },
+  progressStep: { flex: 1, alignItems: 'center', gap: 6 },
+  progressDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  progressDotActive: { backgroundColor: gold },
+  progressDotDone: { backgroundColor: '#16A34A' },
+  progressDotText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '700' },
+  progressDotTextActive: { color: white },
+  progressLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontWeight: '500' },
+  progressLabelActive: { color: white, fontWeight: '700' },
+
+  stepTitle: { fontSize: 18, fontWeight: '800', color: navy, marginTop: 28, marginBottom: 20 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: navy, marginBottom: 12, marginTop: 8 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: darkGray, marginTop: 16, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  subLabel: { fontSize: 12, color: midGray, marginBottom: 12 },
+
+  input: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111827', backgroundColor: lightGray },
+
+  // Avatar
+  avatarRow: { alignItems: 'center', marginBottom: 8 },
+  avatarPicker: { width: 96, height: 96, borderRadius: 48, overflow: 'hidden', borderWidth: 2, borderColor: gold },
+  avatarImage: { width: 96, height: 96 },
+  avatarPlaceholder: { width: 96, height: 96, backgroundColor: lightGray, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  avatarPlaceholderText: { fontSize: 28 },
+  avatarPlaceholderLabel: { fontSize: 10, color: midGray, fontWeight: '600' },
+
+  // Mobile
+  mobileRow: { flexDirection: 'row', gap: 10 },
+  countryCode: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: lightGray, justifyContent: 'center' },
+  countryCodeText: { fontSize: 14, color: darkGray, fontWeight: '600' },
+  mobileInput: { flex: 1, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111827', backgroundColor: lightGray },
+
+  // Language / Segment
+  segRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  seg: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: white },
+  segActive: { backgroundColor: gold, borderColor: gold },
+  segText: { fontSize: 14, color: darkGray, fontWeight: '500' },
+  segTextActive: { color: white, fontWeight: '700' },
+
+  // Chips
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: white },
+  chipActive: { backgroundColor: navy, borderColor: navy },
+  chipText: { fontSize: 13, color: darkGray, fontWeight: '500' },
+  chipTextActive: { color: white, fontWeight: '600' },
+
+  // Members
+  memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF', borderRadius: 10, padding: 12, marginBottom: 8 },
+  memberName: { fontSize: 14, fontWeight: '700', color: navy },
+  memberSub: { fontSize: 12, color: midGray, marginTop: 2 },
+
+  // Upload
+  uploadBtn: { borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: lightGray },
+  uploadBtnText: { fontSize: 14, color: darkGray },
+  expiryLabel: { fontSize: 12, color: midGray, marginTop: 6 },
+
+  // Add member
+  addMemberBtn: { borderWidth: 1.5, borderColor: navy, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 20, marginBottom: 8 },
+  addMemberBtnText: { color: navy, fontSize: 15, fontWeight: '700' },
+
+  // Address
+  addressCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+  addressCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  addressCardTitle: { fontSize: 14, fontWeight: '700', color: navy },
+  defaultToggle: { marginTop: 12, borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  defaultToggleActive: { borderColor: '#16A34A', backgroundColor: '#F0FDF4' },
+  defaultToggleText: { fontSize: 13, color: midGray, fontWeight: '600' },
+  defaultToggleTextActive: { color: '#16A34A' },
+
+  // Nav
+  navRow: { flexDirection: 'row', gap: 12, marginTop: 32 },
+  backBtn: { flex: 1, borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
+  backBtnText: { color: darkGray, fontSize: 15, fontWeight: '600' },
+  nextBtn: { flex: 2, backgroundColor: gold, borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
+  nextBtnText: { color: white, fontSize: 15, fontWeight: '700' },
+  skipLink: { alignItems: 'center', marginTop: 16 },
+  skipLinkText: { color: midGray, fontSize: 13 },
+  errorText: { color: errorRed, fontSize: 13, textAlign: 'center', marginTop: 16 },
 });
