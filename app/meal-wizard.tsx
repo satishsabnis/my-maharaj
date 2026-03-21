@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { generateMealPlan, MealOption, MealPlanDay } from '../lib/gemini';
+import { generateMealPlan, MealOption, MealPlanDay } from '../lib/ai';
 import { darkGray, errorRed, gold, midGray, navy, white } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
