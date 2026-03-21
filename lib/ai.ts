@@ -106,13 +106,15 @@ async function generateOneMeal(
   healthInfo: string,
   foodPref: string,
   language: string,
+  mealPrefs?: string[],
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
+  const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}.` : '';
 
   const prompt = `You are Maharaj, Indian chef in Dubai.
 2 ${mealType} options for ${day} ${date}. Cuisine: ${cuisine}.
-Health: ${healthInfo}. Food: ${foodNote}. Language: ${language}.
+Health: ${healthInfo}. Food: ${foodNote}. Language: ${language}.${prefsNote ? ` ${prefsNote}` : ''}
 Reply ONLY with this JSON, no other text:
 {"options":[{"name":"dish1","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]},{"name":"dish2","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]}]}`;
 
@@ -158,6 +160,10 @@ export async function generateMealPlan(
     tiffinMembers?: string[];
     tiffinRestrictions?: string;
     includeDessert?: boolean;
+    vegDays?: string[];
+    breakfastPrefs?: string[];
+    lunchPrefs?: string[];
+    dinnerPrefs?: string[];
   },
   onProgress?: (current: number, total: number) => void,
 ): Promise<MealPlanResult> {
@@ -182,7 +188,7 @@ export async function generateMealPlan(
   if (hf.glutenIntolerant) healthParts.push('No gluten');
   const healthInfo = healthParts.length > 0 ? healthParts.join(', ') : 'Normal healthy';
 
-  const foodPref =
+  const baseFoodPref =
     params.foodPrefs.type === 'veg'
       ? params.foodPrefs.vegType === 'fasting'
         ? 'Fasting only (sabudana/rajgira/fruits)'
@@ -200,11 +206,19 @@ export async function generateMealPlan(
 
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
 
-    // 3 parallel calls per day — each is tiny (≤512 tokens)
+    // Force vegetarian on designated veg days
+    const isVegDay = params.vegDays?.includes(dayName) ?? false;
+    const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
+
+    // For non-veg: encourage mixing — not every meal needs to be non-veg
+    const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
+      ? `${foodPref}. Mix veg and non-veg naturally — not every meal needs meat.`
+      : foodPref;
+
     const [breakfast, lunch, dinner] = await Promise.all([
-      generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref, lang),
-      generateOneMeal('lunch', date, dayName, cuisine, healthInfo, foodPref, lang),
-      generateOneMeal('dinner', date, dayName, cuisine, healthInfo, foodPref, lang),
+      generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref, lang, params.breakfastPrefs),
+      generateOneMeal('lunch', date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, params.lunchPrefs),
+      generateOneMeal('dinner', date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, params.dinnerPrefs),
     ]);
 
     days.push({ date, day: dayName, breakfast, lunch, dinner });

@@ -16,11 +16,13 @@ import { supabase } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { darkGray, errorRed, gold, midGray, navy, white } from '../theme/colors';
 
+const LogoImg = require('../assets/logo.png');
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WizardStep =
   | 'period' | 'tiffin' | 'food-pref' | 'veg-type' | 'nonveg-options'
-  | 'unwell' | 'nutrition' | 'generating' | 'generating-error'
+  | 'meal-prefs' | 'unwell' | 'nutrition' | 'generating' | 'generating-error'
   | 'selection' | 'recipes' | 'grocery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner';
@@ -76,7 +78,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 const PROGRESS_STEPS = ['Period', 'Food', 'Health', 'Generate', 'Select', 'Finish'];
 function stepToProgress(step: WizardStep): number {
   if (['period','tiffin'].includes(step)) return 0;
-  if (['food-pref','veg-type','nonveg-options'].includes(step)) return 1;
+  if (['food-pref','veg-type','nonveg-options','meal-prefs'].includes(step)) return 1;
   if (['unwell','nutrition'].includes(step)) return 2;
   if (['generating','generating-error'].includes(step)) return 3;
   if (step === 'selection') return 4;
@@ -107,6 +109,9 @@ export default function MealWizardScreen() {
   const [vegType, setVegType] = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
+  const [breakfastPrefs, setBreakfastPrefs] = useState<string[]>([]);
+  const [lunchPrefs, setLunchPrefs] = useState<string[]>([]);
+  const [dinnerPrefs, setDinnerPrefs] = useState<string[]>([]);
 
   // Step 3 – Unwell
   const [familyMembers, setFamilyMembers] = useState<DBMember[]>([]);
@@ -151,7 +156,7 @@ export default function MealWizardScreen() {
   useEffect(() => {
     if (step !== 'generating') return;
     const anim = Animated.loop(Animated.sequence([
-      Animated.timing(pulseAnim, { toValue: 1.25, duration: 900, useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 0.5, duration: 900, useNativeDriver: true }),
       Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
     ]));
     anim.start();
@@ -171,7 +176,7 @@ export default function MealWizardScreen() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_diabetic,has_bp,has_pcos,breakfast_count,lunch_count,dinner_count,appetite_level,app_language')
+        .select('is_diabetic,has_bp,has_pcos,breakfast_count,lunch_count,dinner_count,appetite_level,app_language,veg_days')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -255,6 +260,10 @@ export default function MealWizardScreen() {
         tiffinMembers: tiffinNames.length > 0 ? tiffinNames : undefined,
         tiffinRestrictions: tiffinRestrictions || undefined,
         includeDessert,
+        breakfastPrefs: breakfastPrefs.length > 0 ? breakfastPrefs : undefined,
+        lunchPrefs: lunchPrefs.length > 0 ? lunchPrefs : undefined,
+        dinnerPrefs: dinnerPrefs.length > 0 ? dinnerPrefs : undefined,
+        vegDays: profile?.veg_days ?? [],
       }, (current, total) => setGeneratingProgress({ current, total }));
 
       // Default: select option 0 for all slots
@@ -271,7 +280,7 @@ export default function MealWizardScreen() {
       setError(`One moment — Maharaj is still thinking. ${msg}`);
       setStep('generating-error');
     }
-  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionFocus, includeTiffin, tiffinMemberIds, tiffinRestrictions, includeDessert]);
+  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionFocus, includeTiffin, tiffinMemberIds, tiffinRestrictions, includeDessert, breakfastPrefs, lunchPrefs, dinnerPrefs]);
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
@@ -482,9 +491,14 @@ export default function MealWizardScreen() {
               placeholder="e.g. No onion garlic, no messy items, nut-free"
               placeholderTextColor={midGray}
             />
-            <TouchableOpacity style={s.goldBtn} onPress={() => advance('food-pref')}>
-              <Text style={s.goldBtnText}>Continue →</Text>
-            </TouchableOpacity>
+            <View style={s.btnRow}>
+              <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+                <Text style={s.backBtnText}>← Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => advance('food-pref')} activeOpacity={0.85}>
+                <Text style={s.goldBtnText}>Continue →</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity style={s.skipLink} onPress={() => { setIncludeTiffin(false); setTiffinMemberIds([]); setTiffinRestrictions(''); advance('food-pref'); }}>
               <Text style={s.skipLinkText}>Cancel tiffin</Text>
             </TouchableOpacity>
@@ -526,6 +540,7 @@ export default function MealWizardScreen() {
             <Text style={s.prefLabel}>Non-Vegetarian</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={s.skipLink} onPress={goBack}><Text style={s.skipLinkText}>← Back</Text></TouchableOpacity>
       </View>
     );
   }
@@ -534,13 +549,14 @@ export default function MealWizardScreen() {
     return (
       <View>
         <Text style={s.stepTitle}>What type of vegetarian?</Text>
+        <TouchableOpacity style={s.skipLink} onPress={goBack}><Text style={s.skipLinkText}>← Back</Text></TouchableOpacity>
         <View style={s.prefCards}>
-          <TouchableOpacity style={s.prefCard} onPress={() => { setVegType('normal'); advance('unwell'); }} activeOpacity={0.85}>
+          <TouchableOpacity style={s.prefCard} onPress={() => { setVegType('normal'); advance('meal-prefs'); }} activeOpacity={0.85}>
             <Text style={s.prefIcon}>🥗</Text>
             <Text style={s.prefLabel}>Normal Vegetarian</Text>
             <Text style={s.prefDesc}>Onion & garlic allowed</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.prefCard} onPress={() => { setVegType('fasting'); advance('unwell'); }} activeOpacity={0.85}>
+          <TouchableOpacity style={s.prefCard} onPress={() => { setVegType('fasting'); advance('meal-prefs'); }} activeOpacity={0.85}>
             <Text style={s.prefIcon}>🙏</Text>
             <Text style={s.prefLabel}>Fasting / Upvas</Text>
             <Text style={s.prefDesc}>Sabudana, rajgira, sama rice</Text>
@@ -563,9 +579,85 @@ export default function MealWizardScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity style={[s.goldBtn, nonVegOpts.length === 0 && { opacity: 0.4 }]} onPress={() => { if (nonVegOpts.length > 0) advance('unwell'); }} disabled={nonVegOpts.length === 0}>
-          <Text style={s.goldBtnText}>Continue →</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain, nonVegOpts.length === 0 && { opacity: 0.4 }]} onPress={() => { if (nonVegOpts.length > 0) advance('meal-prefs'); }} disabled={nonVegOpts.length === 0} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>Continue →</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  function renderMealPrefs() {
+    const BFAST = ['Hot dish (pohe/upma/idli)', 'Bread/Paratha', 'Eggs', 'Fruits', 'Juice/Smoothie', 'Light snack only', 'Full elaborate thali'];
+    const LUNCH_OPTS = ['Rice based', 'Roti/Chapati based', 'Dal compulsory', 'Sabzi/Vegetable dish', 'Salad', 'Raita/Curd', 'Papad', 'Pickle'];
+    const DINNER_OPTS = ['Rice based', 'Roti/Chapati based', 'Non-veg main dish', 'Veg main dish', 'Soup as starter', 'Salad', 'Dessert', 'Light meal only'];
+
+    const eggsOption = 'Eggs';
+    const nonvegDinnerOption = 'Non-veg main dish';
+
+    function toggle(list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, item: string) {
+      setList((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]);
+    }
+
+    return (
+      <View>
+        <Text style={s.stepTitle}>What would you like in each meal?</Text>
+        <Text style={s.stepSub}>Multi-select your preferences for each meal type</Text>
+
+        <Text style={s.mealPrefSection}>🌅 Breakfast</Text>
+        <View style={s.chipRow}>
+          {BFAST.filter((o) => o !== eggsOption || foodPref === 'nonveg').map((opt) => (
+            <TouchableOpacity
+              key={opt}
+              style={[s.chip, breakfastPrefs.includes(opt) && s.chipActive]}
+              onPress={() => toggle(breakfastPrefs, setBreakfastPrefs, opt)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.chipText, breakfastPrefs.includes(opt) && s.chipTextActive]}>{opt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={s.mealPrefSection}>☀️ Lunch</Text>
+        <View style={s.chipRow}>
+          {LUNCH_OPTS.map((opt) => (
+            <TouchableOpacity
+              key={opt}
+              style={[s.chip, lunchPrefs.includes(opt) && s.chipActive]}
+              onPress={() => toggle(lunchPrefs, setLunchPrefs, opt)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.chipText, lunchPrefs.includes(opt) && s.chipTextActive]}>{opt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={s.mealPrefSection}>🌙 Dinner</Text>
+        <View style={s.chipRow}>
+          {DINNER_OPTS.filter((o) => o !== nonvegDinnerOption || foodPref === 'nonveg').map((opt) => (
+            <TouchableOpacity
+              key={opt}
+              style={[s.chip, dinnerPrefs.includes(opt) && s.chipActive]}
+              onPress={() => toggle(dinnerPrefs, setDinnerPrefs, opt)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.chipText, dinnerPrefs.includes(opt) && s.chipTextActive]}>{opt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => advance('unwell')} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>Continue →</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -590,9 +682,14 @@ export default function MealWizardScreen() {
             ))}
           </View>
         )}
-        <TouchableOpacity style={s.goldBtn} onPress={() => advance('nutrition')}>
-          <Text style={s.goldBtnText}>{unwellIds.length > 0 ? `Continue (${unwellIds.length} selected)` : 'No, everyone is fine →'}</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => advance('nutrition')} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>{unwellIds.length > 0 ? `Continue (${unwellIds.length} selected)` : 'Everyone is fine →'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -626,9 +723,14 @@ export default function MealWizardScreen() {
           </TouchableOpacity>
         ))}
         {error ? <Text style={s.errorText}>{error}</Text> : null}
-        <TouchableOpacity style={s.goldBtn} onPress={() => { setError(''); setStep('generating'); }}>
-          <Text style={s.goldBtnText}>🍳 Generate My Meal Plan</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => { setError(''); setStep('generating'); }} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>🍳 Generate My Meal Plan</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -636,9 +738,10 @@ export default function MealWizardScreen() {
   function renderGenerating() {
     return (
       <View style={s.generatingScreen}>
-        <Animated.View style={[s.pulseLogo, { transform: [{ scale: pulseAnim }] }]}>
-          <Text style={s.pulseLogoText}>M</Text>
-        </Animated.View>
+        <Animated.Image
+          source={LogoImg}
+          style={[s.pulseLogoImg, { opacity: pulseAnim }]}
+        />
         <Text style={s.generatingTitle}>Maharaj is cooking up your plan...</Text>
         {generatingProgress ? (
           <Text style={s.generatingSubtitle}>
@@ -975,7 +1078,8 @@ export default function MealWizardScreen() {
       'food-pref': 'tiffin',
       'veg-type': 'food-pref',
       'nonveg-options': 'food-pref',
-      'unwell': foodPref === 'veg' ? 'veg-type' : 'nonveg-options',
+      'meal-prefs': foodPref === 'veg' ? 'veg-type' : 'nonveg-options',
+      'unwell': 'meal-prefs',
       'nutrition': 'unwell',
       'selection': 'nutrition',
       'recipes': 'selection',
@@ -993,6 +1097,7 @@ export default function MealWizardScreen() {
     'food-pref': renderFoodPref,
     'veg-type': renderVegType,
     'nonveg-options': renderNonVegOptions,
+    'meal-prefs': renderMealPrefs,
     'unwell': renderUnwell,
     'nutrition': renderNutrition,
     'generating': renderGenerating,
@@ -1248,4 +1353,12 @@ const s = StyleSheet.create({
   skipLink: { alignItems: 'center', paddingVertical: 12 },
   skipLinkText: { color: midGray, fontSize: 13 },
   errorText: { color: errorRed, fontSize: 13, textAlign: 'center', marginBottom: 12 },
+
+  // Meal prefs + back buttons
+  pulseLogoImg: { width: 200, height: 120, resizeMode: 'contain' },
+  mealPrefSection: { fontSize: 16, fontWeight: '700', color: navy, marginBottom: 12, marginTop: 4 },
+  btnRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  backBtn: { flex: 1, borderWidth: 2, borderColor: '#D1D5DB', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  backBtnText: { color: darkGray, fontWeight: '600', fontSize: 15 },
+  btnRowMain: { flex: 2 },
 });
