@@ -18,6 +18,13 @@ const CUISINES: { name: string; description: string; icon: string }[] = [
   { name: 'Madhya Pradesh', description: 'Bhutte ka kees, poha and wheat-based dishes', icon: '🌽' },
   { name: 'Bangalore', description: 'MTR-style breakfasts, bisi bele bath', icon: '☕' },
   { name: 'Sindhudurg', description: 'Authentic Malvani village-style coastal food', icon: '🌊' },
+  { name: 'Gujarati', description: 'Thali, dhokla, undhiyu and sweet-salty balance', icon: '🫙' },
+  { name: 'North Indian', description: 'Punjabi dals, sabzis, rotis and rich gravies', icon: '🫓' },
+  { name: 'Rajasthani', description: 'Dal baati churma, ker sangri and desert spices', icon: '🏜️' },
+  { name: 'Mughlai', description: 'Biryani, korma, kebabs and aromatic dum dishes', icon: '🫕' },
+  { name: 'Lucknowi/Awadhi', description: 'Dum pukht, galouti kebab and subtle nawabi flavours', icon: '🍛' },
+  { name: 'Himachali', description: 'Sidu, chha gosht and mountain valley comfort food', icon: '🏔️' },
+  { name: 'Uttarakhandi', description: 'Kafuli, chainsoo and Garhwali highland dishes', icon: '🌿' },
 ];
 
 export default function CuisineSelectionScreen() {

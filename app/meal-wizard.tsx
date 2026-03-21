@@ -13,13 +13,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { generateMealPlan, MealOption, MealPlanDay } from '../lib/ai';
+import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { darkGray, errorRed, gold, midGray, navy, white } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WizardStep =
-  | 'period' | 'food-pref' | 'veg-type' | 'nonveg-options'
+  | 'period' | 'tiffin' | 'food-pref' | 'veg-type' | 'nonveg-options'
   | 'unwell' | 'nutrition' | 'generating'
   | 'selection' | 'recipes' | 'grocery' | 'feedback';
 
@@ -75,7 +75,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const PROGRESS_STEPS = ['Period', 'Food', 'Health', 'Generate', 'Select', 'Finish'];
 function stepToProgress(step: WizardStep): number {
-  if (step === 'period') return 0;
+  if (['period','tiffin'].includes(step)) return 0;
   if (['food-pref','veg-type','nonveg-options'].includes(step)) return 1;
   if (['unwell','nutrition'].includes(step)) return 2;
   if (step === 'generating') return 3;
@@ -135,10 +135,16 @@ export default function MealWizardScreen() {
   const [pickerTo, setPickerTo] = useState(addDays(startOfDay(new Date()), 1));
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Step 1b – Tiffin
+  const [includeTiffin, setIncludeTiffin] = useState(false);
+  const [tiffinMemberIds, setTiffinMemberIds] = useState<string[]>([]);
+  const [tiffinRestrictions, setTiffinRestrictions] = useState('');
+
   // Step 2 – Food preference
   const [foodPref, setFoodPref] = useState<'veg' | 'nonveg' | null>(null);
   const [vegType, setVegType] = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
+  const [includeDessert, setIncludeDessert] = useState(false);
 
   // Step 3 – Unwell
   const [familyMembers, setFamilyMembers] = useState<DBMember[]>([]);
@@ -206,16 +212,33 @@ export default function MealWizardScreen() {
 
       const { data: memberRows } = await supabase
         .from('family_members')
-        .select('is_diabetic,has_bp,has_pcos')
+        .select('is_diabetic,has_bp,has_pcos,other_conditions')
         .eq('user_id', user.id);
 
       const aggFlags = (memberRows ?? []).reduce(
-        (acc: { diabetic: boolean; bp: boolean; pcos: boolean }, m: { is_diabetic: boolean; has_bp: boolean; has_pcos: boolean }) => ({
-          diabetic: acc.diabetic || m.is_diabetic,
-          bp: acc.bp || m.has_bp,
-          pcos: acc.pcos || m.has_pcos,
-        }),
-        { diabetic: profile?.is_diabetic ?? false, bp: profile?.has_bp ?? false, pcos: profile?.has_pcos ?? false }
+        (acc: HealthFlags, m: { is_diabetic: boolean; has_bp: boolean; has_pcos: boolean; other_conditions: string | null }) => {
+          let otherConds: string[] = [];
+          try { if (m.other_conditions) otherConds = JSON.parse(m.other_conditions); } catch { /* ignore */ }
+          return {
+            diabetic: acc.diabetic || m.is_diabetic,
+            bp: acc.bp || m.has_bp,
+            pcos: acc.pcos || m.has_pcos,
+            cholesterol: acc.cholesterol || otherConds.includes('Cholesterol'),
+            thyroid: acc.thyroid || otherConds.includes('Thyroid'),
+            kidneyDisease: acc.kidneyDisease || otherConds.includes('Kidney Disease'),
+            heartDisease: acc.heartDisease || otherConds.includes('Heart Disease'),
+            obesity: acc.obesity || otherConds.includes('Obesity'),
+            anaemia: acc.anaemia || otherConds.includes('Anaemia'),
+            lactoseIntolerant: acc.lactoseIntolerant || otherConds.includes('Lactose Intolerant'),
+            glutenIntolerant: acc.glutenIntolerant || otherConds.includes('Gluten Intolerant'),
+          };
+        },
+        {
+          ...emptyHealthFlags(),
+          diabetic: profile?.is_diabetic ?? false,
+          bp: profile?.has_bp ?? false,
+          pcos: profile?.has_pcos ?? false,
+        }
       );
 
       const { data: cuisineData } = await supabase
@@ -238,6 +261,10 @@ export default function MealWizardScreen() {
         .filter((m) => unwellIds.includes(m.id))
         .map((m) => m.name);
 
+      const tiffinNames = includeTiffin
+        ? familyMembers.filter((m) => tiffinMemberIds.includes(m.id)).map((m) => m.name)
+        : [];
+
       const plan = await generateMealPlan({
         userId: user.id,
         dates: getDates(selectedFrom, selectedTo),
@@ -258,6 +285,10 @@ export default function MealWizardScreen() {
         },
         unwellMembers: unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: nutritionFocus !== 'Balanced' ? nutritionFocus : undefined,
+        includeTiffin,
+        tiffinMembers: tiffinNames.length > 0 ? tiffinNames : undefined,
+        tiffinRestrictions: tiffinRestrictions || undefined,
+        includeDessert,
       });
 
       // Default: select option 0 for all slots
@@ -273,7 +304,7 @@ export default function MealWizardScreen() {
       setError(e instanceof Error ? e.message : 'Generation failed');
       setStep('nutrition');
     }
-  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionFocus]);
+  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionFocus, includeTiffin, tiffinMemberIds, tiffinRestrictions, includeDessert]);
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
@@ -432,10 +463,10 @@ export default function MealWizardScreen() {
   function renderPeriod() {
     const today = startOfDay(new Date());
     const periodCards = [
-      { label: 'Today', icon: '📅', fn: () => { setSelectedFrom(today); setSelectedTo(today); setShowDatePicker(false); advance('food-pref'); } },
-      { label: 'Tomorrow', icon: '📆', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('food-pref'); } },
-      { label: 'This Week\n(Sun–Sat)', icon: '🗓️', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
-      { label: 'Next Week', icon: '📋', fn: () => { const { start, end } = getWeekRange(1); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
+      { label: 'Today', icon: '📅', fn: () => { setSelectedFrom(today); setSelectedTo(today); setShowDatePicker(false); advance('tiffin'); } },
+      { label: 'Tomorrow', icon: '📆', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('tiffin'); } },
+      { label: 'This Week\n(Sun–Sat)', icon: '🗓️', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('tiffin'); } },
+      { label: 'Next Week', icon: '📋', fn: () => { const { start, end } = getWeekRange(1); setSelectedFrom(start); setSelectedTo(end); advance('tiffin'); } },
       { label: 'Choose Dates', icon: '🔢', fn: () => setShowDatePicker(true) },
     ];
     return (
@@ -455,8 +486,70 @@ export default function MealWizardScreen() {
             <Text style={s.datePickerTitle}>Select Date Range</Text>
             <DateRow label="From" date={pickerFrom} onDecrement={() => { const n = addDays(pickerFrom, -1); if (n >= today) { setPickerFrom(n); if (pickerTo <= n) setPickerTo(addDays(n, 1)); } }} onIncrement={() => { const n = addDays(pickerFrom, 1); setPickerFrom(n); if (pickerTo <= n) setPickerTo(addDays(n, 1)); }} canDecrement={pickerFrom > today} />
             <DateRow label="To" date={pickerTo} onDecrement={() => { const n = addDays(pickerTo, -1); if (n > pickerFrom) setPickerTo(n); }} onIncrement={() => setPickerTo(addDays(pickerTo, 1))} canDecrement={addDays(pickerTo, -1) > pickerFrom} />
-            <TouchableOpacity style={s.goldBtn} onPress={() => { setSelectedFrom(pickerFrom); setSelectedTo(pickerTo); advance('food-pref'); }}>
+            <TouchableOpacity style={s.goldBtn} onPress={() => { setSelectedFrom(pickerFrom); setSelectedTo(pickerTo); advance('tiffin'); }}>
               <Text style={s.goldBtnText}>Plan {fmt(pickerFrom)} → {fmt(pickerTo)}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  function renderTiffin() {
+    return (
+      <View>
+        <Text style={s.stepTitle}>Tiffin / Lunchbox?</Text>
+        <Text style={s.stepSub}>Do you need pack-friendly lunchbox meals for school or work?</Text>
+
+        {!includeTiffin ? (
+          <View style={s.prefCards}>
+            <TouchableOpacity style={s.prefCard} onPress={() => setIncludeTiffin(true)} activeOpacity={0.85}>
+              <Text style={s.prefIcon}>🥡</Text>
+              <Text style={s.prefLabel}>Yes, include Tiffin</Text>
+              <Text style={s.prefDesc}>Pack-friendly meals for school/work</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.prefCard} onPress={() => advance('food-pref')} activeOpacity={0.85}>
+              <Text style={s.prefIcon}>🍽️</Text>
+              <Text style={s.prefLabel}>No, skip Tiffin</Text>
+              <Text style={s.prefDesc}>Only breakfast, lunch & dinner</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            {familyMembers.length > 0 && (
+              <>
+                <Text style={s.stepSub}>Who needs tiffin?</Text>
+                <View style={s.memberCheckList}>
+                  {familyMembers.map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[s.memberCheckRow, tiffinMemberIds.includes(m.id) && s.memberCheckRowActive]}
+                      onPress={() => setTiffinMemberIds((prev) => prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id])}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[s.checkbox, tiffinMemberIds.includes(m.id) && s.checkboxActive]}>
+                        {tiffinMemberIds.includes(m.id) && <Text style={s.checkmark}>✓</Text>}
+                      </View>
+                      <Text style={s.memberCheckName}>{m.name}</Text>
+                      <Text style={s.memberCheckAge}>{m.age} yrs</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+            <Text style={s.fieldLabel}>Tiffin restrictions (optional)</Text>
+            <TextInput
+              style={s.tiffinInput}
+              value={tiffinRestrictions}
+              onChangeText={setTiffinRestrictions}
+              placeholder="e.g. No onion garlic, no messy items, nut-free"
+              placeholderTextColor={midGray}
+            />
+            <TouchableOpacity style={s.goldBtn} onPress={() => advance('food-pref')}>
+              <Text style={s.goldBtnText}>Continue →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.skipLink} onPress={() => { setIncludeTiffin(false); setTiffinMemberIds([]); setTiffinRestrictions(''); advance('food-pref'); }}>
+              <Text style={s.skipLinkText}>Cancel tiffin</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -469,6 +562,23 @@ export default function MealWizardScreen() {
       <View>
         <Text style={s.stepTitle}>What is your food preference?</Text>
         {selectedFrom && <Text style={s.stepSub}>{fmtLong(selectedFrom)}{selectedTo && selectedTo !== selectedFrom ? ` – ${fmtLong(selectedTo)}` : ''}</Text>}
+
+        {/* Dessert toggle */}
+        <TouchableOpacity
+          style={[s.toggleRow, includeDessert && s.toggleRowActive]}
+          onPress={() => setIncludeDessert((v) => !v)}
+          activeOpacity={0.8}
+        >
+          <Text style={s.toggleRowIcon}>🍮</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.toggleRowLabel, includeDessert && { color: navy }]}>Include Desserts</Text>
+            <Text style={s.toggleRowDesc}>Sunday festive sweets · Weekday quick treats</Text>
+          </View>
+          <View style={[s.toggleSwitch, includeDessert && s.toggleSwitchOn]}>
+            <View style={[s.toggleKnob, includeDessert && s.toggleKnobOn]} />
+          </View>
+        </TouchableOpacity>
+
         <View style={s.prefCards}>
           <TouchableOpacity style={s.prefCard} onPress={() => { setFoodPref('veg'); setStep('veg-type'); }} activeOpacity={0.85}>
             <Text style={s.prefIcon}>🥗</Text>
@@ -551,13 +661,17 @@ export default function MealWizardScreen() {
   }
 
   function renderNutrition() {
-    const options = ['Balanced', 'High Protein focus', 'Low Carb', 'High Fibre', 'Doctor Recommended'];
+    const options = ['Balanced', 'Low Calorie', 'Keto', 'High Protein', 'Less Oil / Low Fat', 'High Fibre', 'Doctor Recommended', 'Weight Loss', 'Weight Gain / Muscle Building'];
     const descs: Record<string, string> = {
       'Balanced': 'Recommended · All macros in healthy proportions',
-      'High Protein focus': 'More dal, paneer, eggs, lean meats',
-      'Low Carb': 'Less rice & bread, more vegetables & protein',
-      'High Fibre': 'More whole grains, vegetables & legumes',
-      'Doctor Recommended': 'Follows health profiles strictly — diabetic, BP, PCOS rules',
+      'Low Calorie': 'Under 1400 kcal/day · Small portions, high-volume vegetables',
+      'Keto': 'Very low carb (< 50g/day) · High fat, moderate protein · No rice/bread',
+      'High Protein': 'Protein at every meal · Dal, paneer, eggs, lean meats, seeds',
+      'Less Oil / Low Fat': 'Max 2 tsp oil/day · Steam, bake or air-fry everything',
+      'High Fibre': 'Whole grains, raw vegetables, legumes · Min 35g fibre/day',
+      'Doctor Recommended': 'Strictly follows all your health profiles — diabetic, BP, PCOS and other conditions',
+      'Weight Loss': 'Caloric deficit · Low GI · No refined carbs · High protein to preserve muscle',
+      'Weight Gain / Muscle Building': 'Caloric surplus · High protein + complex carbs · Healthy fats · 5–6 meals/day',
     };
     return (
       <View>
@@ -812,7 +926,8 @@ export default function MealWizardScreen() {
   function goBack() {
     setError('');
     const back: Partial<Record<WizardStep, WizardStep>> = {
-      'food-pref': 'period',
+      'tiffin': 'period',
+      'food-pref': 'tiffin',
       'veg-type': 'food-pref',
       'nonveg-options': 'food-pref',
       'unwell': foodPref === 'veg' ? 'veg-type' : 'nonveg-options',
@@ -829,6 +944,7 @@ export default function MealWizardScreen() {
 
   const STEP_RENDER: Record<WizardStep, () => React.ReactNode> = {
     'period': renderPeriod,
+    'tiffin': renderTiffin,
     'food-pref': renderFoodPref,
     'veg-type': renderVegType,
     'nonveg-options': renderNonVegOptions,
@@ -1046,6 +1162,21 @@ const s = StyleSheet.create({
   bonAppetitEmoji: { fontSize: 72, marginBottom: 20 },
   bonAppetitTitle: { fontSize: 30, fontWeight: '900', color: navy, marginBottom: 12 },
   bonAppetitSub: { fontSize: 15, color: midGray, textAlign: 'center', lineHeight: 24, marginBottom: 32 },
+
+  // Tiffin
+  tiffinInput: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#111827', backgroundColor: white, marginBottom: 8 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: darkGray, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 16, marginBottom: 6 },
+
+  // Dessert toggle
+  toggleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: white, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1.5, borderColor: '#E5E7EB', gap: 12 },
+  toggleRowActive: { borderColor: navy, backgroundColor: '#EFF6FF' },
+  toggleRowIcon: { fontSize: 24 },
+  toggleRowLabel: { fontSize: 14, fontWeight: '700', color: darkGray, marginBottom: 2 },
+  toggleRowDesc: { fontSize: 11, color: midGray },
+  toggleSwitch: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#D1D5DB', justifyContent: 'center', paddingHorizontal: 2 },
+  toggleSwitchOn: { backgroundColor: navy },
+  toggleKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: white, alignSelf: 'flex-start' },
+  toggleKnobOn: { alignSelf: 'flex-end' },
 
   // Shared
   goldBtn: { backgroundColor: gold, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 8 },
