@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { darkGray, errorRed, gold, midGray, navy, white } from '../theme/colors';
+import AnimatedLogo, { AnimatedLogoRef } from '../components/AnimatedLogo';
 
 const LogoImg = require('../assets/logo.png');
 
@@ -124,6 +125,7 @@ export default function MealWizardScreen() {
   const [generatedPlan, setGeneratedPlan] = useState<MealPlanDay[] | null>(null);
   const [generatingProgress, setGeneratingProgress] = useState<{ current: number; total: number } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const generatingLogoRef = useRef<AnimatedLogoRef>(null);
 
   // Step 6 – Selection
   // selections[dayIdx][slot] = optionIdx (0/1/2)
@@ -152,16 +154,7 @@ export default function MealWizardScreen() {
     void load();
   }, []);
 
-  // Pulse animation during generation
-  useEffect(() => {
-    if (step !== 'generating') return;
-    const anim = Animated.loop(Animated.sequence([
-      Animated.timing(pulseAnim, { toValue: 0.5, duration: 900, useNativeDriver: true }),
-      Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-    ]));
-    anim.start();
-    return () => anim.stop();
-  }, [step]);
+  // Animation handled by AnimatedLogo ref (generatingLogoRef)
 
   // ── Generation ────────────────────────────────────────────────────────────
 
@@ -274,7 +267,12 @@ export default function MealWizardScreen() {
 
       setGeneratedPlan(plan.days);
       setSelections(defaultSelections);
-      setStep('selection');
+      // Play success bounce on logo, then transition
+      if (generatingLogoRef.current) {
+        generatingLogoRef.current.playSuccess(() => setStep('selection'));
+      } else {
+        setStep('selection');
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Generation failed';
       setError(`One moment — Maharaj is still thinking. ${msg}`);
@@ -738,9 +736,11 @@ export default function MealWizardScreen() {
   function renderGenerating() {
     return (
       <View style={s.generatingScreen}>
-        <Animated.Image
-          source={LogoImg}
-          style={[s.pulseLogoImg, { opacity: pulseAnim }]}
+        <AnimatedLogo
+          ref={generatingLogoRef}
+          animation="pulse"
+          width={220}
+          height={130}
         />
         <Text style={s.generatingTitle}>Maharaj is cooking up your plan...</Text>
         {generatingProgress ? (
