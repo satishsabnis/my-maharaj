@@ -1,6 +1,53 @@
 const GEMINI_API_KEY = 'AIzaSyDi9MUZ29m4DK1LswIV8cI1EfxGkrkU7fk';
 const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const FALLBACK_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const FALLBACK_URL_2 =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface MealNutrition {
+  protein_g: number;
+  carbs_g: number;
+  fibre_g: number;
+  fat_g: number;
+  vitamins: string[];
+}
+
+export interface MealOption {
+  name: string;
+  is_vegetarian: boolean;
+  health_tags: string[];
+  ingredients: { name: string; qty: string; unit: string }[];
+  method: string[];
+  prep_night: string[];
+  nutrition: MealNutrition;
+}
+
+export interface MealSlot {
+  options: MealOption[];
+}
+
+export interface MealPlanDay {
+  date: string;
+  day: string;
+  breakfast: MealSlot;
+  lunch: MealSlot;
+  dinner: MealSlot;
+  nutrition_total: {
+    protein_g: number;
+    carbs_g: number;
+    fibre_g: number;
+    fat_g: number;
+  };
+}
+
+// Keep for legacy compatibility
+export type MealItem = MealOption;
+
+// ─── Generator ────────────────────────────────────────────────────────────────
 
 export async function generateMealPlan(params: {
   userId: string;
@@ -16,6 +63,8 @@ export async function generateMealPlan(params: {
     vegType?: 'normal' | 'fasting';
     nonVegOptions?: string[];
   };
+  unwellMembers?: string[];
+  nutritionFocus?: string;
 }) {
   const langMap: Record<string, string> = {
     en: 'English',
@@ -24,26 +73,37 @@ export async function generateMealPlan(params: {
     gu: 'Gujarati',
   };
 
+  const foodPrefText =
+    params.foodPrefs.type === 'veg' && params.foodPrefs.vegType === 'fasting'
+      ? 'Strict fasting food (upvas) only. Use: sabudana, rajgira, singhara flour, sama rice, potatoes, sweet potatoes, fruits, milk, curd, ghee, rock salt (sendha namak). No regular salt, no onion, no garlic.'
+      : params.foodPrefs.type === 'veg'
+      ? 'All meals strictly vegetarian. No eggs, no meat, no fish. Onion and garlic allowed.'
+      : `Non-vegetarian allowed. Include: ${(params.foodPrefs.nonVegOptions ?? []).join(', ')}. Monday and Friday must remain vegetarian regardless.`;
+
+  const unwellText =
+    params.unwellMembers && params.unwellMembers.length > 0
+      ? `\nUNWELL MEMBERS: ${params.unwellMembers.join(', ')} are feeling unwell. Include a light/recovery meal note in their relevant meal options (khichdi, congee, moong dal, plain rice with curd, or similar easy-to-digest foods as one of the 3 options per slot).`
+      : '';
+
+  const nutritionText = params.nutritionFocus && params.nutritionFocus !== 'Balanced'
+    ? `\nNUTRITION FOCUS: ${params.nutritionFocus}. Adjust all meal options accordingly.`
+    : '';
+
   const prompt = `You are Maharaj, an expert Indian regional cuisine chef and nutritionist.
 Generate a meal plan for the following dates: ${params.dates.join(', ')}.
 
-LANGUAGE: Respond with all dish names, ingredients and instructions in ${langMap[params.language] || 'English'}.
-
+LANGUAGE: All dish names, ingredients and instructions in ${langMap[params.language] || 'English'}.
 CUISINE THIS WEEK: ${params.cuisine}
 
 FOOD PREFERENCES:
-${
-  params.foodPrefs.type === 'veg' && params.foodPrefs.vegType === 'fasting'
-    ? '- Strict fasting food (upvas) only. Use: sabudana, rajgira, singhara flour, sama rice, potatoes, sweet potatoes, fruits, milk, curd, ghee, rock salt (sendha namak). No regular salt, no onion, no garlic.'
-    : params.foodPrefs.type === 'veg'
-    ? '- All meals strictly vegetarian. No eggs, no meat, no fish. Onion and garlic allowed.'
-    : `- Non-vegetarian allowed. Include these options: ${(params.foodPrefs.nonVegOptions ?? []).join(', ')}. Monday and Friday must remain vegetarian regardless.`
-}
+${foodPrefText}
 
 HEALTH REQUIREMENTS:
 ${params.healthFlags.diabetic ? '- DIABETIC: Low GI only. Millets, nachni, jowar. No refined sugar.' : ''}
 ${params.healthFlags.bp ? '- BLOOD PRESSURE: Zero added salt. No packaged masalas.' : ''}
 ${params.healthFlags.pcos ? '- PCOS: Anti-inflammatory spices. No maida. Include methi, flaxseed.' : ''}
+${unwellText}
+${nutritionText}
 
 SERVING SIZES (${params.appetite} eater):
 - Breakfast: ${params.servings.breakfast} people
@@ -56,6 +116,8 @@ RULES:
 3. Do NOT repeat any of these dishes: ${params.dishHistory.join(', ') || 'none yet'}
 4. ALL ingredients must be available at Carrefour, Spinneys or Lulu in Dubai UAE
 5. Include prep-night instructions for all dinners
+6. Provide EXACTLY 3 options per meal slot (breakfast/lunch/dinner) per day
+7. Include accurate nutritional estimates per option
 
 Respond with ONLY valid JSON in this exact format:
 {
@@ -64,27 +126,42 @@ Respond with ONLY valid JSON in this exact format:
       "date": "YYYY-MM-DD",
       "day": "Monday",
       "breakfast": {
-        "name": "dish name",
-        "is_vegetarian": true,
-        "health_tags": ["low-gi"],
-        "ingredients": [{"name": "ingredient", "qty": "amount", "unit": "g"}],
-        "method": ["step 1", "step 2"],
-        "prep_night": ["prep step if any"]
+        "options": [
+          {
+            "name": "dish name",
+            "is_vegetarian": true,
+            "health_tags": ["low-gi"],
+            "ingredients": [{"name": "ingredient", "qty": "2", "unit": "cups"}],
+            "method": ["step 1", "step 2"],
+            "prep_night": ["prep step if any"],
+            "nutrition": {"protein_g": 12, "carbs_g": 45, "fibre_g": 4, "fat_g": 8, "vitamins": ["B1", "Iron"]}
+          },
+          { "name": "option 2 dish", "is_vegetarian": true, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 10, "carbs_g": 40, "fibre_g": 3, "fat_g": 6, "vitamins": []} },
+          { "name": "option 3 dish", "is_vegetarian": true, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 8, "carbs_g": 35, "fibre_g": 5, "fat_g": 5, "vitamins": []} }
+        ]
       },
-      "lunch": { "name": "dish name", "is_vegetarian": true, "health_tags": [], "ingredients": [], "method": [], "prep_night": [] },
-      "dinner": { "name": "dish name", "is_vegetarian": false, "health_tags": [], "ingredients": [], "method": [], "prep_night": [] }
+      "lunch": {
+        "options": [
+          { "name": "...", "is_vegetarian": true, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 20, "carbs_g": 60, "fibre_g": 6, "fat_g": 12, "vitamins": []} },
+          { "name": "...", "is_vegetarian": true, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 18, "carbs_g": 55, "fibre_g": 5, "fat_g": 10, "vitamins": []} },
+          { "name": "...", "is_vegetarian": true, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 22, "carbs_g": 50, "fibre_g": 8, "fat_g": 15, "vitamins": []} }
+        ]
+      },
+      "dinner": {
+        "options": [
+          { "name": "...", "is_vegetarian": false, "health_tags": [], "ingredients": [], "method": [], "prep_night": ["soak overnight"], "nutrition": {"protein_g": 25, "carbs_g": 40, "fibre_g": 5, "fat_g": 18, "vitamins": []} },
+          { "name": "...", "is_vegetarian": false, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 28, "carbs_g": 35, "fibre_g": 4, "fat_g": 20, "vitamins": []} },
+          { "name": "...", "is_vegetarian": false, "health_tags": [], "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g": 22, "carbs_g": 42, "fibre_g": 6, "fat_g": 16, "vitamins": []} }
+        ]
+      },
+      "nutrition_total": {"protein_g": 57, "carbs_g": 145, "fibre_g": 15, "fat_g": 38}
     }
   ]
 }`;
 
-  const FALLBACK_URL =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-  const FALLBACK_URL_2 =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent';
-
   const requestBody = {
     contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+    generationConfig: { temperature: 0.7, maxOutputTokens: 16384 },
   };
 
   async function callGemini(url: string): Promise<Response> {
@@ -103,49 +180,19 @@ Respond with ONLY valid JSON in this exact format:
     return JSON.parse(clean) as { days: MealPlanDay[] };
   }
 
-  // First attempt
   let response = await callGemini(GEMINI_URL);
 
-  // 429 → wait 45 s and retry same model
   if (response.status === 429) {
     await new Promise((resolve) => setTimeout(resolve, 45000));
     response = await callGemini(GEMINI_URL);
   }
+  if (response.status === 429) response = await callGemini(FALLBACK_URL);
+  if (response.status === 429) response = await callGemini(FALLBACK_URL_2);
 
-  // Still 429 → try gemini-1.5-flash fallback
-  if (response.status === 429) {
-    response = await callGemini(FALLBACK_URL);
-  }
-
-  // Still 429 → try gemini-1.5-flash-8b fallback
-  if (response.status === 429) {
-    response = await callGemini(FALLBACK_URL_2);
-  }
-
-  // Any other non-OK
   if (!response.ok) {
     throw new Error('Maharaj is taking a short break. Please try again in a minute.');
   }
 
   const data = await response.json();
   return parseResponse(data);
-}
-
-// ─── Shared types (also imported by home.tsx) ─────────────────────────────────
-
-export interface MealItem {
-  name: string;
-  is_vegetarian: boolean;
-  health_tags: string[];
-  ingredients: { name: string; qty: string; unit: string }[];
-  method: string[];
-  prep_night: string[];
-}
-
-export interface MealPlanDay {
-  date: string;
-  day: string;
-  breakfast: MealItem;
-  lunch: MealItem;
-  dinner: MealItem;
 }
