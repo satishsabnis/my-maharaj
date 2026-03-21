@@ -112,9 +112,13 @@ async function generateOneMeal(
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
   const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}.` : '';
 
+  const nonVegCritical = foodNote.toLowerCase().includes('non-veg') || foodNote.toLowerCase().includes('chicken') || foodNote.toLowerCase().includes('fish') || foodNote.toLowerCase().includes('egg') || foodNote.toLowerCase().includes('mutton')
+    ? ' CRITICAL: If non-veg options include chicken, fish, eggs or mutton, these MUST appear in at least one lunch AND one dinner option. Do not generate all vegetarian options when non-veg is selected.'
+    : '';
+
   const prompt = `You are Maharaj, Indian chef in Dubai.
 2 ${mealType} options for ${day} ${date}. Cuisine: ${cuisine}.
-Health: ${healthInfo}. Food: ${foodNote}. Language: ${language}.${prefsNote ? ` ${prefsNote}` : ''}
+Health: ${healthInfo}. Food: ${foodNote}. Language: ${language}.${prefsNote ? ` ${prefsNote}` : ''}${nonVegCritical}
 Reply ONLY with this JSON, no other text:
 {"options":[{"name":"dish1","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]},{"name":"dish2","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]}]}`;
 

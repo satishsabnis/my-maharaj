@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   Linking,
   Platform,
   SafeAreaView,
@@ -15,7 +16,6 @@ import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { darkGray, errorRed, gold, midGray, navy, white } from '../theme/colors';
-import AnimatedLogo, { AnimatedLogoRef } from '../components/AnimatedLogo';
 
 const LogoImg = require('../assets/logo.png');
 
@@ -126,7 +126,6 @@ export default function MealWizardScreen() {
   const [generatedPlan, setGeneratedPlan] = useState<MealPlanDay[] | null>(null);
   const [generatingProgress, setGeneratingProgress] = useState<{ current: number; total: number } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const generatingLogoRef = useRef<AnimatedLogoRef>(null);
 
   // Step 6 – Selection
   // selections[dayIdx][slot] = optionIdx (0/1/2)
@@ -268,12 +267,7 @@ export default function MealWizardScreen() {
 
       setGeneratedPlan(plan.days);
       setSelections(defaultSelections);
-      // Play success bounce on logo, then transition
-      if (generatingLogoRef.current) {
-        generatingLogoRef.current.playSuccess(() => setStep('selection'));
-      } else {
-        setStep('selection');
-      }
+      setStep('selection');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Generation failed';
       setError(`One moment — Maharaj is still thinking. ${msg}`);
@@ -781,12 +775,7 @@ export default function MealWizardScreen() {
   function renderGenerating() {
     return (
       <View style={s.generatingScreen}>
-        <AnimatedLogo
-          ref={generatingLogoRef}
-          animation="pulse"
-          width={220}
-          height={130}
-        />
+        <Image source={require('../assets/logo.png')} style={{ width: 200, height: 70, resizeMode: 'contain' }} />
         <Text style={s.generatingTitle}>Maharaj is cooking up your plan...</Text>
         {generatingProgress ? (
           <Text style={s.generatingSubtitle}>
@@ -805,7 +794,7 @@ export default function MealWizardScreen() {
   function renderGeneratingError() {
     return (
       <View style={s.generatingScreen}>
-        <AnimatedLogo animation="fadeIn" width={200} height={120} />
+        <Image source={require('../assets/logo.png')} style={{ width: 200, height: 70, resizeMode: 'contain' }} />
         <Text style={s.generatingTitle}>One moment — Maharaj is still thinking.</Text>
         <Text style={[s.generatingSubtitle, { textAlign: 'center', paddingHorizontal: 32, marginTop: 8 }]}>
           {error || 'The meal plan could not be generated. Please try again.'}
