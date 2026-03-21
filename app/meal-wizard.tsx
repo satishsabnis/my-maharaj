@@ -1045,16 +1045,6 @@ export default function MealWizardScreen() {
           );
         })}
 
-        {/* Action buttons at bottom too */}
-        <View style={s.groceryBtns}>
-          <TouchableOpacity style={s.copyBtn} onPress={() => void copyGrocery(grocery)} activeOpacity={0.85}>
-            <Text style={s.copyBtnText}>📋 Copy List</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.waBtn} onPress={() => shareWhatsApp(grocery)} activeOpacity={0.85}>
-            <Text style={s.waBtnText}>📱 WhatsApp</Text>
-          </TouchableOpacity>
-        </View>
-
         <View style={s.btnRow}>
           <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
             <Text style={s.backBtnText}>← Back</Text>
