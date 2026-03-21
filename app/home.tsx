@@ -11,12 +11,12 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-
-const LogoImg = require('../assets/logo.png');
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getLipidStatus, LipidStatus } from '../lib/notifications';
 import { gold, navy, white } from '../theme/colors';
+
+const LogoImg = require('../assets/logo.png');
 
 // ── Festival data ─────────────────────────────────────────────────────────────
 
@@ -266,7 +266,7 @@ const s = StyleSheet.create({
   headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: gold },
   headerInitials: { width: 40, height: 40, borderRadius: 20, backgroundColor: gold, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
   headerInitialsText: { color: white, fontSize: 17, fontWeight: '800' },
-  headerLogo: { height: 50, width: 140, resizeMode: 'contain' },
+  headerLogo: { width: 180, height: 60, resizeMode: 'contain' },
   logoutBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   logoutIcon: { color: white, fontSize: 18 },
 
