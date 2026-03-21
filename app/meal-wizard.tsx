@@ -117,6 +117,7 @@ export default function MealWizardScreen() {
 
   // Generation
   const [generatedPlan, setGeneratedPlan] = useState<MealPlanDay[] | null>(null);
+  const [generatingProgress, setGeneratingProgress] = useState<{ current: number; total: number } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Step 6 – Selection
@@ -229,6 +230,7 @@ export default function MealWizardScreen() {
         ? familyMembers.filter((m) => tiffinMemberIds.includes(m.id)).map((m) => m.name)
         : [];
 
+      setGeneratingProgress(null);
       const plan = await generateMealPlan({
         userId: user.id,
         dates: getDates(selectedFrom, selectedTo),
@@ -253,7 +255,7 @@ export default function MealWizardScreen() {
         tiffinMembers: tiffinNames.length > 0 ? tiffinNames : undefined,
         tiffinRestrictions: tiffinRestrictions || undefined,
         includeDessert,
-      });
+      }, (current, total) => setGeneratingProgress({ current, total }));
 
       // Default: select option 0 for all slots
       const defaultSelections: Record<number, Record<MealSlotKey, number>> = {};
@@ -638,7 +640,13 @@ export default function MealWizardScreen() {
           <Text style={s.pulseLogoText}>M</Text>
         </Animated.View>
         <Text style={s.generatingTitle}>Maharaj is cooking up your plan...</Text>
-        <Text style={s.generatingSubtitle}>Planning each day one by one — please wait</Text>
+        {generatingProgress ? (
+          <Text style={s.generatingSubtitle}>
+            Generating day {generatingProgress.current} of {generatingProgress.total}... please wait
+          </Text>
+        ) : (
+          <Text style={s.generatingSubtitle}>Starting up — please wait</Text>
+        )}
         <View style={s.dotRow}>
           {[0, 1, 2].map((i) => <View key={i} style={[s.dot, { opacity: 0.3 + i * 0.3 }]} />)}
         </View>

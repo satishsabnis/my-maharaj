@@ -54,7 +54,6 @@ export interface MealPlanResult {
   grocery_list?: GroceryItem[];
 }
 
-
 export interface HealthFlags {
   diabetic: boolean;
   bp: boolean;
@@ -76,174 +75,157 @@ export const emptyHealthFlags = (): HealthFlags => ({
   lactoseIntolerant: false, glutenIntolerant: false,
 });
 
-// ─── Prompt builder ───────────────────────────────────────────────────────────
+// ─── Core API call ────────────────────────────────────────────────────────────
 
-function buildPrompt(params: {
-  userId: string;
-  dates: string[];
-  healthFlags: HealthFlags;
-  servings: { breakfast: number; lunch: number; dinner: number };
-  appetite: string;
-  language: string;
-  cuisine: string;
-  dishHistory: string[];
-  foodPrefs: {
-    type: 'veg' | 'nonveg';
-    vegType?: 'normal' | 'fasting';
-    nonVegOptions?: string[];
-  };
-  unwellMembers?: string[];
-  nutritionFocus?: string;
-  includeTiffin?: boolean;
-  tiffinMembers?: string[];
-  tiffinRestrictions?: string;
-  includeDessert?: boolean;
-}): string {
-  const langMap: Record<string, string> = {
-    en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati',
-  };
-
-  const hf = params.healthFlags;
-  const healthLines: string[] = [];
-  if (hf.diabetic) healthLines.push('- DIABETIC: Low GI only. Millets, nachni, jowar. No refined sugar. High fibre.');
-  if (hf.bp) healthLines.push('- BLOOD PRESSURE: Zero added salt. No packaged masalas. Potassium-rich.');
-  if (hf.pcos) healthLines.push('- PCOS: Anti-inflammatory spices. No maida. Include methi, flaxseed.');
-  if (hf.cholesterol) healthLines.push('- HIGH CHOLESTEROL: No trans fats. Oats, barley, flaxseed. Avoid deep-fried. Heart-healthy oils only (olive/mustard). No coconut cream.');
-  if (hf.thyroid) healthLines.push('- THYROID: Selenium-rich foods (eggs, Brazil nuts, seeds). Limit raw goitrogens (cabbage, broccoli). Iodised salt. Include turmeric.');
-  if (hf.kidneyDisease) healthLines.push('- KIDNEY DISEASE: Low potassium, low phosphorus, low sodium. Limit dairy and legumes. Small lean protein portions. No tomato concentrate.');
-  if (hf.heartDisease) healthLines.push('- HEART DISEASE: Low saturated fat. Max 1 tsp ghee/day. Omega-3 rich (flaxseed, walnuts, mustard oil). Prefer steamed/baked over fried.');
-  if (hf.obesity) healthLines.push('- OBESITY: Low calorie density. Large vegetable portions. Limit oil to 1 tsp per meal. No added sugar. High protein to maintain satiety.');
-  if (hf.anaemia) healthLines.push('- ANAEMIA: Iron-rich: green leafy vegetables, beetroot, dates, jaggery, dry fruits. Pair with Vitamin C (lemon, amla) for better absorption. Avoid tea/coffee with meals.');
-  if (hf.lactoseIntolerant) healthLines.push('- LACTOSE INTOLERANT: No milk, cream, paneer, butter, ghee. Use coconut milk, almond milk. Tofu instead of paneer. Coconut oil instead of ghee.');
-  if (hf.glutenIntolerant) healthLines.push('- GLUTEN INTOLERANT/COELIAC: No wheat, maida, atta, semolina, barley, rye. Use rice, jowar, bajra, nachni, rajgira, sabudana, besan only.');
-
-  const nutritionDescs: Record<string, string> = {
-    'Balanced': 'All macros in healthy proportions — standard Indian family nutrition.',
-    'Low Calorie': 'Under 1400 kcal/day total. Small portions, high-volume vegetables, minimal oil (½ tsp/meal).',
-    'Keto': 'Very low carb (under 50g/day). High healthy fats, moderate protein. No rice, no bread, no sugar, no root vegetables.',
-    'High Protein': 'Protein at every single meal. Dal, paneer, eggs, lean chicken, Greek yogurt, seeds. Aim 1.5g protein per kg body weight.',
-    'Less Oil / Low Fat': 'Maximum 2 tsp oil for the entire day. Steam, bake or air-fry everything. No deep frying. No ghee.',
-    'High Fibre': 'Whole grains, raw vegetables, legumes every meal. Minimum 35g dietary fibre per day. Include psyllium-husk-rich options.',
-    'Doctor Recommended': 'Strictly follows ALL health profiles set above — diabetic, BP, PCOS and all other conditions. No exceptions.',
-    'Weight Loss': 'Caloric deficit (300–500 kcal below TDEE). Low GI. No refined carbs or sugar. High protein to preserve muscle. No snacking.',
-    'Weight Gain / Muscle Building': 'Caloric surplus (300–500 kcal above TDEE). High protein (every meal), complex carbs, healthy fats. 5–6 smaller meals spread through day.',
-  };
-
-  const tiffinSection = params.includeTiffin
-    ? `TIFFIN: 2 pack-friendly options for ${(params.tiffinMembers ?? ['family']).join(', ')}.${params.tiffinRestrictions ? ` Restrictions: ${params.tiffinRestrictions}.` : ''} No thin gravies.`
-    : '';
-
-  const dessertSection = params.includeDessert
-    ? `DESSERT: One simple dessert. Sunday: traditional sweet. Weekdays: quick 2-ingredient treat. Comply with health restrictions.`
-    : '';
-
-  const tiffinJson = params.includeTiffin
-    ? ',\n      "tiffin": {"options": [{"name": "...", "vegetarian": true, "ingredients": ["item qty"], "steps": ["step"]}]}'
-    : '';
-  const dessertJson = params.includeDessert
-    ? ',\n      "dessert": {"name": "...", "vegetarian": true, "ingredients": ["item qty"], "steps": ["step"]}'
-    : '';
-
-  return `IMPORTANT: Keep your entire response under 3000 tokens. Be very concise. Short dish names, minimal ingredients, brief steps only.
-
-You are Maharaj, an Indian cuisine chef for families in Dubai, UAE.
-Date: ${params.dates.join(', ')} | Cuisine: ${params.cuisine || 'Konkani'} | Language: ${langMap[params.language] || 'English'}
-
-HEALTH: ${healthLines.length > 0 ? healthLines.join(' ') : 'None.'}
-FOOD: ${
-  params.foodPrefs.type === 'veg'
-    ? params.foodPrefs.vegType === 'fasting' ? 'Fasting only (sabudana/rajgira/sama rice/fruits/rock salt)' : 'Vegetarian only'
-    : `Non-veg allowed: ${(params.foodPrefs.nonVegOptions ?? []).join(', ')}`
+async function askClaude(prompt: string): Promise<string> {
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
+  return text.replace(/```json|```/g, '').trim();
 }
-SERVINGS: B${params.servings.breakfast}/L${params.servings.lunch}/D${params.servings.dinner} | ${params.appetite} appetite
-FOCUS: ${params.nutritionFocus || 'Balanced'} — ${nutritionDescs[params.nutritionFocus ?? 'Balanced'] ?? nutritionDescs['Balanced']}
-${params.unwellMembers?.length ? `UNWELL: Light meals for ${params.unwellMembers.join(', ')}` : ''}
-${tiffinSection}
-${dessertSection}
 
-RULES: Mon/Fri vegetarian. Sun breakfast = festive thali. No repeat of: ${params.dishHistory.slice(0, 5).join(', ') || 'none'}.
+// ─── Per-meal generator ───────────────────────────────────────────────────────
 
-OUTPUT: EXACTLY 2 options per meal slot. Max 4 ingredients per dish (as "Item qty" strings). Max 2 steps. Max 2 tags.
+function fallbackSlot(cuisine: string, mealType: string): MealSlot {
+  return {
+    options: [
+      { name: `${cuisine} ${mealType} 1`, vegetarian: true, tags: [], ingredients: [], steps: [] },
+      { name: `${cuisine} ${mealType} 2`, vegetarian: true, tags: [], ingredients: [], steps: [] },
+    ],
+  };
+}
 
-Respond ONLY with valid JSON:
-{
-  "days": [
-    {
-      "date": "YYYY-MM-DD",
-      "day": "Saturday",
-      "breakfast": {"options": [
-        {"name": "Pohe", "vegetarian": true, "tags": ["light"], "ingredients": ["Poha 1 cup", "Onion 1", "Mustard seeds 1 tsp", "Curry leaves 6"], "steps": ["Soak poha 5 min", "Temper and mix"]},
-        {"name": "Upma", "vegetarian": true, "tags": ["quick"], "ingredients": ["Semolina 1 cup", "Mixed veg 1 cup", "Ghee 1 tsp", "Mustard seeds 1 tsp"], "steps": ["Roast semolina", "Add water and cook"]}
-      ]},
-      "lunch": {"options": [...]},
-      "dinner": {"options": [...]}${tiffinJson}${dessertJson}
-    }
-  ],
-  "grocery_list": [
-    {"name": "Poha", "qty": "200g", "category": "grains"}
-  ]
-}`;
+async function generateOneMeal(
+  mealType: string,
+  date: string,
+  day: string,
+  cuisine: string,
+  healthInfo: string,
+  foodPref: string,
+  language: string,
+): Promise<MealSlot> {
+  const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
+  const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
+
+  const prompt = `You are Maharaj, Indian chef in Dubai.
+2 ${mealType} options for ${day} ${date}. Cuisine: ${cuisine}.
+Health: ${healthInfo}. Food: ${foodNote}. Language: ${language}.
+Reply ONLY with this JSON, no other text:
+{"options":[{"name":"dish1","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]},{"name":"dish2","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]}]}`;
+
+  try {
+    const text = await askClaude(prompt);
+    const raw = JSON.parse(text) as {
+      options: Array<{ name: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
+    };
+    return {
+      options: (raw.options ?? []).map((o) => ({
+        name: o.name ?? '',
+        vegetarian: o.veg ?? true,
+        tags: o.tags ?? [],
+        ingredients: o.ing ?? [],
+        steps: o.steps ?? [],
+      })),
+    };
+  } catch {
+    return fallbackSlot(cuisine, mealType);
+  }
 }
 
 // ─── Main generator ───────────────────────────────────────────────────────────
 
-export async function generateMealPlan(params: {
-  userId: string;
-  dates: string[];
-  healthFlags: HealthFlags;
-  servings: { breakfast: number; lunch: number; dinner: number };
-  appetite: string;
-  language: string;
-  cuisine: string;
-  dishHistory: string[];
-  foodPrefs: {
-    type: 'veg' | 'nonveg';
-    vegType?: 'normal' | 'fasting';
-    nonVegOptions?: string[];
+export async function generateMealPlan(
+  params: {
+    userId: string;
+    dates: string[];
+    healthFlags: HealthFlags;
+    servings: { breakfast: number; lunch: number; dinner: number };
+    appetite: string;
+    language: string;
+    cuisine: string;
+    dishHistory: string[];
+    foodPrefs: {
+      type: 'veg' | 'nonveg';
+      vegType?: 'normal' | 'fasting';
+      nonVegOptions?: string[];
+    };
+    unwellMembers?: string[];
+    nutritionFocus?: string;
+    includeTiffin?: boolean;
+    tiffinMembers?: string[];
+    tiffinRestrictions?: string;
+    includeDessert?: boolean;
+  },
+  onProgress?: (current: number, total: number) => void,
+): Promise<MealPlanResult> {
+  const cuisine = params.cuisine || 'Konkani';
+  const language = params.language || 'en';
+  const langName: Record<string, string> = {
+    en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati',
   };
-  unwellMembers?: string[];
-  nutritionFocus?: string;
-  includeTiffin?: boolean;
-  tiffinMembers?: string[];
-  tiffinRestrictions?: string;
-  includeDessert?: boolean;
-}): Promise<MealPlanResult> {
+
+  const hf = params.healthFlags;
+  const healthParts: string[] = [];
+  if (hf.diabetic) healthParts.push('Diabetic-Low GI');
+  if (hf.bp) healthParts.push('Low sodium');
+  if (hf.pcos) healthParts.push('No maida');
+  if (hf.cholesterol) healthParts.push('No fried food');
+  if (hf.thyroid) healthParts.push('Selenium-rich foods');
+  if (hf.kidneyDisease) healthParts.push('Low potassium/phosphorus');
+  if (hf.heartDisease) healthParts.push('Low saturated fat');
+  if (hf.obesity) healthParts.push('Low calorie density');
+  if (hf.anaemia) healthParts.push('Iron-rich foods');
+  if (hf.lactoseIntolerant) healthParts.push('No dairy');
+  if (hf.glutenIntolerant) healthParts.push('No gluten');
+  const healthInfo = healthParts.length > 0 ? healthParts.join(', ') : 'Normal healthy';
+
+  const foodPref =
+    params.foodPrefs.type === 'veg'
+      ? params.foodPrefs.vegType === 'fasting'
+        ? 'Fasting only (sabudana/rajgira/fruits)'
+        : 'Vegetarian'
+      : `Non-veg: ${params.foodPrefs.nonVegOptions?.join(', ') || 'all'}`;
+
+  const lang = langName[language] || 'English';
   const days: MealPlanDay[] = [];
-  const allGrocery: GroceryItem[] = [];
+  const allIngredients: string[] = [];
+  const total = params.dates.length;
 
-  // One API call per day to avoid token limit truncation
-  for (const date of params.dates) {
-    const prompt = buildPrompt({ ...params, dates: [date] });
+  for (let i = 0; i < params.dates.length; i++) {
+    const date = params.dates[i];
+    onProgress?.(i + 1, total);
 
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }],
+    const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+
+    // 3 parallel calls per day — each is tiny (≤512 tokens)
+    const [breakfast, lunch, dinner] = await Promise.all([
+      generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref, lang),
+      generateOneMeal('lunch', date, dayName, cuisine, healthInfo, foodPref, lang),
+      generateOneMeal('dinner', date, dayName, cuisine, healthInfo, foodPref, lang),
+    ]);
+
+    days.push({ date, day: dayName, breakfast, lunch, dinner });
+
+    [breakfast, lunch, dinner].forEach((slot) => {
+      slot.options.forEach((opt) => {
+        opt.ingredients.forEach((ing) => allIngredients.push(ing));
+      });
     });
-
-    const text =
-      message.content[0].type === 'text' ? message.content[0].text : '';
-    const clean = text.replace(/```json|```/g, '').trim();
-
-    try {
-      const dayResult = JSON.parse(clean) as MealPlanResult;
-      if (dayResult.days) days.push(...dayResult.days);
-      if (dayResult.grocery_list) allGrocery.push(...dayResult.grocery_list);
-    } catch (e) {
-      console.error(`[ai] Parse error for ${date}:`, e);
-      console.error('[ai] Raw response:', clean.slice(0, 300));
-      throw new Error(`Failed to parse meal plan for ${date}. Please try again.`);
-    }
   }
 
-  // Deduplicate grocery list by name
+  // Deduplicate grocery list
   const seen = new Set<string>();
-  const grocery = allGrocery.filter((item) => {
-    const key = item.name.toLowerCase().trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  const grocery_list: GroceryItem[] = [];
+  allIngredients.forEach((ing) => {
+    const key = ing.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      grocery_list.push({ name: ing, qty: '', category: 'general' });
+    }
   });
 
-  return { days, grocery_list: grocery };
+  return { days, grocery_list };
 }
