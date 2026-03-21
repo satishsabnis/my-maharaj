@@ -15,8 +15,7 @@ import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getLipidStatus, LipidStatus } from '../lib/notifications';
 import { gold, navy, white } from '../theme/colors';
-
-const LogoImg = require('../assets/logo.png');
+import AnimatedLogo from '../components/AnimatedLogo';
 
 // ── Festival data ─────────────────────────────────────────────────────────────
 
@@ -181,8 +180,8 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Logo */}
-        <Image source={LogoImg} style={s.headerLogo} />
+        {/* Logo — bounces in on mount */}
+        <AnimatedLogo animation="bounce" width={240} height={80} />
 
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={() => setShowLogoutModal(true)} activeOpacity={0.7}>
