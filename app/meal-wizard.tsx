@@ -20,7 +20,7 @@ import { darkGray, errorRed, gold, midGray, navy, white } from '../theme/colors'
 
 type WizardStep =
   | 'period' | 'tiffin' | 'food-pref' | 'veg-type' | 'nonveg-options'
-  | 'unwell' | 'nutrition' | 'generating'
+  | 'unwell' | 'nutrition' | 'generating' | 'generating-error'
   | 'selection' | 'recipes' | 'grocery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner';
@@ -78,7 +78,7 @@ function stepToProgress(step: WizardStep): number {
   if (['period','tiffin'].includes(step)) return 0;
   if (['food-pref','veg-type','nonveg-options'].includes(step)) return 1;
   if (['unwell','nutrition'].includes(step)) return 2;
-  if (step === 'generating') return 3;
+  if (['generating','generating-error'].includes(step)) return 3;
   if (step === 'selection') return 4;
   return 5;
 }
@@ -303,8 +303,9 @@ export default function MealWizardScreen() {
       setSelections(defaultSelections);
       setStep('selection');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Generation failed');
-      setStep('nutrition');
+      const msg = e instanceof Error ? e.message : 'Generation failed';
+      setError(`One moment — Maharaj is still thinking. ${msg}`);
+      setStep('generating-error');
     }
   }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionFocus, includeTiffin, tiffinMemberIds, tiffinRestrictions, includeDessert]);
 
@@ -692,10 +693,35 @@ export default function MealWizardScreen() {
           <Text style={s.pulseLogoText}>M</Text>
         </Animated.View>
         <Text style={s.generatingTitle}>Maharaj is cooking up your plan...</Text>
-        <Text style={s.generatingSubtitle}>This usually takes 10–15 seconds</Text>
+        <Text style={s.generatingSubtitle}>Planning each day one by one — please wait</Text>
         <View style={s.dotRow}>
           {[0, 1, 2].map((i) => <View key={i} style={[s.dot, { opacity: 0.3 + i * 0.3 }]} />)}
         </View>
+      </View>
+    );
+  }
+
+  function renderGeneratingError() {
+    return (
+      <View style={s.generatingScreen}>
+        <Text style={{ fontSize: 64, marginBottom: 16 }}>🍳</Text>
+        <Text style={s.generatingTitle}>One moment — Maharaj is still thinking.</Text>
+        <Text style={[s.generatingSubtitle, { textAlign: 'center', paddingHorizontal: 32, marginTop: 8 }]}>
+          {error || 'The meal plan could not be generated. Please try again.'}
+        </Text>
+        <TouchableOpacity
+          style={[s.goldBtn, { marginTop: 32, paddingHorizontal: 40 }]}
+          onPress={() => { setError(''); setStep('generating'); }}
+          activeOpacity={0.85}
+        >
+          <Text style={s.goldBtnText}>Try Again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.skipLink, { marginTop: 8 }]}
+          onPress={() => { setError(''); setStep('nutrition'); }}
+        >
+          <Text style={s.skipLinkText}>← Back to settings</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -1037,6 +1063,7 @@ export default function MealWizardScreen() {
     'unwell': renderUnwell,
     'nutrition': renderNutrition,
     'generating': renderGenerating,
+    'generating-error': renderGeneratingError,
     'selection': renderSelection,
     'recipes': renderRecipes,
     'grocery': renderGrocery,
@@ -1044,13 +1071,13 @@ export default function MealWizardScreen() {
   };
 
   const progIdx = stepToProgress(step);
-  const isFullScreen = step === 'generating';
+  const isFullScreen = step === 'generating' || step === 'generating-error';
 
   return (
     <SafeAreaView style={s.safe}>
       {/* Header */}
       <View style={s.header}>
-        {step !== 'generating' && (
+        {!isFullScreen && (
           <TouchableOpacity onPress={goBack}><Text style={s.backText}>←</Text></TouchableOpacity>
         )}
         <Text style={s.headerTitle}>Meal Plan Wizard</Text>
