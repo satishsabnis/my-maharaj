@@ -216,6 +216,14 @@ export default function DietaryProfileScreen() {
             <FieldLabel>Remarks</FieldLabel>
             <TextInput style={[f.input, { height: 72, textAlignVertical: 'top' }]} value={form.remarks} onChangeText={(v) => updateForm('remarks', v)} placeholder="Any other notes" placeholderTextColor={midGray} multiline />
 
+            <FieldLabel>Lipid Profile Report — <Text style={{ color: midGray, fontWeight: '400', textTransform: 'none' }}>OPTIONAL</Text></FieldLabel>
+            {parseInt(form.age, 10) >= 50 && (
+              <Text style={f.lipidNote}>⚠️ Age 50+ — lipid profile is recommended. Please upload when available.</Text>
+            )}
+            <View style={f.lipidBox}>
+              <Text style={f.lipidBoxText}>📄 Upload PDF or image (optional — can be added later in Dietary Profile)</Text>
+            </View>
+
             {formError ? <Text style={f.errorText}>{formError}</Text> : null}
 
             <View style={f.btnRow}>
@@ -418,4 +426,7 @@ const f = StyleSheet.create({
   cancelBtnText: { color: darkGray, fontWeight: '600', fontSize: 15 },
   saveBtn: { flex: 2, backgroundColor: gold, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   saveBtnText: { color: white, fontWeight: '700', fontSize: 15 },
+  lipidNote: { fontSize: 12, color: '#B45309', fontWeight: '600', backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, marginBottom: 8 },
+  lipidBox: { borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10, borderStyle: 'dashed', padding: 16, alignItems: 'center', backgroundColor: lightGray },
+  lipidBoxText: { fontSize: 13, color: midGray, textAlign: 'center', lineHeight: 20 },
 });
