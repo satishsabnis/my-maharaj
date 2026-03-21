@@ -118,8 +118,9 @@ export default function MealWizardScreen() {
   const [familyMembers, setFamilyMembers] = useState<DBMember[]>([]);
   const [unwellIds, setUnwellIds] = useState<string[]>([]);
 
-  // Step 4 – Nutrition
-  const [nutritionFocus, setNutritionFocus] = useState('Balanced');
+  // Step 4 – Nutrition (multi-select)
+  const [nutritionFocus, setNutritionFocus] = useState<string[]>(['Balanced']);
+  const [nutritionDropOpen, setNutritionDropOpen] = useState(false);
 
   // Generation
   const [generatedPlan, setGeneratedPlan] = useState<MealPlanDay[] | null>(null);
@@ -248,7 +249,7 @@ export default function MealWizardScreen() {
           nonVegOptions: nonVegOpts.length > 0 ? nonVegOpts : undefined,
         },
         unwellMembers: unwellNames.length > 0 ? unwellNames : undefined,
-        nutritionFocus: nutritionFocus !== 'Balanced' ? nutritionFocus : undefined,
+        nutritionFocus: nutritionFocus.length > 0 ? nutritionFocus.join(', ') : undefined,
         includeTiffin,
         tiffinMembers: tiffinNames.length > 0 ? tiffinNames : undefined,
         tiffinRestrictions: tiffinRestrictions || undefined,
@@ -693,39 +694,83 @@ export default function MealWizardScreen() {
   }
 
   function renderNutrition() {
-    const options = ['Balanced', 'Low Calorie', 'Keto', 'High Protein', 'Less Oil / Low Fat', 'High Fibre', 'Doctor Recommended', 'Weight Loss', 'Weight Gain / Muscle Building'];
-    const descs: Record<string, string> = {
-      'Balanced': 'Recommended · All macros in healthy proportions',
-      'Low Calorie': 'Under 1400 kcal/day · Small portions, high-volume vegetables',
-      'Keto': 'Very low carb (< 50g/day) · High fat, moderate protein · No rice/bread',
-      'High Protein': 'Protein at every meal · Dal, paneer, eggs, lean meats, seeds',
-      'Less Oil / Low Fat': 'Max 2 tsp oil/day · Steam, bake or air-fry everything',
-      'High Fibre': 'Whole grains, raw vegetables, legumes · Min 35g fibre/day',
-      'Doctor Recommended': 'Strictly follows all your health profiles — diabetic, BP, PCOS and other conditions',
-      'Weight Loss': 'Caloric deficit · Low GI · No refined carbs · High protein to preserve muscle',
-      'Weight Gain / Muscle Building': 'Caloric surplus · High protein + complex carbs · Healthy fats · 5–6 meals/day',
-    };
+    const OPTIONS = [
+      { label: 'Balanced', desc: 'All macros in healthy proportions' },
+      { label: 'Low Calorie', desc: 'Under 1400 kcal/day · High-volume vegetables' },
+      { label: 'Keto', desc: 'Very low carb (<50g/day) · High fat · No rice/bread' },
+      { label: 'High Protein', desc: 'Protein at every meal · Dal, paneer, eggs, meats' },
+      { label: 'Less Oil / Low Fat', desc: 'Max 2 tsp oil/day · Steam or air-fry everything' },
+      { label: 'High Fibre', desc: 'Whole grains, legumes · Min 35g fibre/day' },
+      { label: 'Doctor Recommended', desc: 'Follows all health conditions — diabetic, BP, PCOS…' },
+      { label: 'Weight Loss', desc: 'Caloric deficit · Low GI · No refined carbs' },
+      { label: 'Weight Gain / Muscle Building', desc: 'Caloric surplus · High protein + complex carbs · 5–6 meals' },
+    ];
+
+    function toggleOption(label: string) {
+      setNutritionFocus((prev) =>
+        prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label],
+      );
+    }
+
     return (
       <View>
         <Text style={s.stepTitle}>Nutritional Focus</Text>
-        <Text style={s.stepSub}>How would you like your meals balanced?</Text>
-        {options.map((opt) => (
-          <TouchableOpacity key={opt} style={[s.nutritionCard, nutritionFocus === opt && s.nutritionCardActive]} onPress={() => setNutritionFocus(opt)} activeOpacity={0.85}>
-            <View style={[s.radio, nutritionFocus === opt && s.radioActive]}>
-              {nutritionFocus === opt && <View style={s.radioDot} />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.nutritionLabel, nutritionFocus === opt && { color: navy, fontWeight: '700' }]}>{opt}</Text>
-              <Text style={s.nutritionDesc}>{descs[opt]}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <Text style={s.stepSub}>Select one or more goals for your meals</Text>
+
+        {/* Dropdown trigger */}
+        <TouchableOpacity
+          style={s.dropdownBtn}
+          onPress={() => setNutritionDropOpen((v) => !v)}
+          activeOpacity={0.85}
+        >
+          <Text style={s.dropdownBtnText}>
+            {nutritionFocus.length === 0 ? 'Select nutrition goals…' : `${nutritionFocus.length} goal${nutritionFocus.length > 1 ? 's' : ''} selected`}
+          </Text>
+          <Text style={s.dropdownCaret}>{nutritionDropOpen ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+
+        {/* Dropdown list */}
+        {nutritionDropOpen && (
+          <View style={s.dropdownList}>
+            {OPTIONS.map(({ label, desc }) => {
+              const selected = nutritionFocus.includes(label);
+              return (
+                <TouchableOpacity
+                  key={label}
+                  style={[s.dropdownItem, selected && s.dropdownItemActive]}
+                  onPress={() => toggleOption(label)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[s.dropdownCheck, selected && s.dropdownCheckActive]}>
+                    {selected && <Text style={s.dropdownCheckMark}>✓</Text>}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.nutritionLabel, selected && { color: navy, fontWeight: '700' }]}>{label}</Text>
+                    <Text style={s.nutritionDesc}>{desc}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Selected pills */}
+        {nutritionFocus.length > 0 && (
+          <View style={s.nutritionPillRow}>
+            {nutritionFocus.map((f) => (
+              <TouchableOpacity key={f} style={s.nutritionPill} onPress={() => toggleOption(f)} activeOpacity={0.8}>
+                <Text style={s.nutritionPillText}>{f} ✕</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {error ? <Text style={s.errorText}>{error}</Text> : null}
         <View style={s.btnRow}>
           <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
             <Text style={s.backBtnText}>← Back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => { setError(''); setStep('generating'); }} activeOpacity={0.85}>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => { setError(''); setNutritionDropOpen(false); setStep('generating'); }} activeOpacity={0.85}>
             <Text style={s.goldBtnText}>🍳 Generate My Meal Plan</Text>
           </TouchableOpacity>
         </View>
@@ -760,7 +805,7 @@ export default function MealWizardScreen() {
   function renderGeneratingError() {
     return (
       <View style={s.generatingScreen}>
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>🍳</Text>
+        <AnimatedLogo animation="fadeIn" width={200} height={120} />
         <Text style={s.generatingTitle}>One moment — Maharaj is still thinking.</Text>
         <Text style={[s.generatingSubtitle, { textAlign: 'center', paddingHorizontal: 32, marginTop: 8 }]}>
           {error || 'The meal plan could not be generated. Please try again.'}
@@ -864,9 +909,14 @@ export default function MealWizardScreen() {
             ))}
           </View>
         ))}
-        <TouchableOpacity style={s.goldBtn} onPress={() => { setRecipeDishes([]); advance('recipes'); }}>
-          <Text style={s.goldBtnText}>Confirm My Selections ✓</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => { setRecipeDishes([]); advance('recipes'); }} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>Confirm My Selections ✓</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -928,9 +978,14 @@ export default function MealWizardScreen() {
           </View>
         )}
 
-        <TouchableOpacity style={s.goldBtn} onPress={() => { void saveToHistory(recipeDishes.length > 0, false); setFeedbacks(buildFeedbackEntries()); advance('grocery'); }}>
-          <Text style={s.goldBtnText}>{recipeDishes.length > 0 ? 'Save Recipes & Continue →' : 'Skip Recipes →'}</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => { void saveToHistory(recipeDishes.length > 0, false); setFeedbacks(buildFeedbackEntries()); advance('grocery'); }} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>{recipeDishes.length > 0 ? 'Save Recipes & Continue →' : 'Skip Recipes →'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -1011,9 +1066,14 @@ export default function MealWizardScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={s.goldBtn} onPress={() => { void saveToHistory(recipeDishes.length > 0, true); advance('feedback'); }}>
-          <Text style={s.goldBtnText}>Continue to Feedback →</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => { void saveToHistory(recipeDishes.length > 0, true); advance('feedback'); }} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>Continue to Feedback →</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -1057,9 +1117,14 @@ export default function MealWizardScreen() {
             )}
           </View>
         ))}
-        <TouchableOpacity style={s.goldBtn} onPress={() => void submitFeedback()}>
-          <Text style={s.goldBtnText}>Submit Feedback & Finish</Text>
-        </TouchableOpacity>
+        <View style={s.btnRow}>
+          <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.goldBtn, s.btnRowMain]} onPress={() => void submitFeedback()} activeOpacity={0.85}>
+            <Text style={s.goldBtnText}>Submit Feedback & Finish</Text>
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity style={s.skipLink} onPress={() => { setFeedbackSubmitted(true); }}>
           <Text style={s.skipLinkText}>Skip feedback</Text>
         </TouchableOpacity>
@@ -1250,6 +1315,20 @@ const s = StyleSheet.create({
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: gold },
   nutritionLabel: { fontSize: 14, fontWeight: '600', color: darkGray, marginBottom: 2 },
   nutritionDesc: { fontSize: 12, color: midGray, lineHeight: 18 },
+
+  // Nutrition dropdown
+  dropdownBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: white, borderRadius: 12, borderWidth: 2, borderColor: '#D1D5DB', paddingHorizontal: 16, paddingVertical: 14, marginBottom: 4 },
+  dropdownBtnText: { fontSize: 15, color: navy, fontWeight: '600', flex: 1 },
+  dropdownCaret: { fontSize: 14, color: midGray, marginLeft: 8 },
+  dropdownList: { backgroundColor: white, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', marginBottom: 12, overflow: 'hidden' },
+  dropdownItem: { flexDirection: 'row', alignItems: 'flex-start', padding: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', gap: 12 },
+  dropdownItemActive: { backgroundColor: '#FFFBEB' },
+  dropdownCheck: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginTop: 1, flexShrink: 0 },
+  dropdownCheckActive: { backgroundColor: navy, borderColor: navy },
+  dropdownCheckMark: { color: white, fontSize: 12, fontWeight: '700' },
+  nutritionPillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16, marginTop: 4 },
+  nutritionPill: { backgroundColor: navy, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  nutritionPillText: { color: white, fontSize: 12, fontWeight: '600' },
 
   // Generating
   generatingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F4F6FB', gap: 20 },
