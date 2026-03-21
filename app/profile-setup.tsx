@@ -36,7 +36,7 @@ const CUISINES = [
   'Himachali', 'Uttarakhandi',
 ];
 
-const EXTRA_VEG_DAYS = ['Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
+const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ export default function ProfileSetupScreen() {
 
   // Step 4
   const [cuisines, setCuisines] = useState<string[]>([]);
-  const [extraVegDays, setExtraVegDays] = useState<string[]>([]);
+  const [vegDays, setVegDays] = useState<string[]>([]);
 
   // ── Step 1: Avatar picker ──────────────────────────────────────────────────
 
@@ -233,6 +233,7 @@ export default function ProfileSetupScreen() {
         mobile_number: mobileNumber.trim() ? `+971${mobileNumber.trim()}` : null,
         avatar_url: avatarUrl,
         app_language: language,
+        veg_days: vegDays,
       });
       if (profileErr) throw new Error(profileErr.message);
 
@@ -558,21 +559,16 @@ export default function ProfileSetupScreen() {
           ))}
         </View>
 
-        <SectionLabel>Vegetarian Days</SectionLabel>
-        <Text style={s.subLabel}>Monday and Friday are always vegetarian</Text>
+        <SectionLabel>Vegetarian Days (optional)</SectionLabel>
+        <Text style={s.subLabel}>Select which days should be fully vegetarian — can be none, some, or all</Text>
         <View style={s.chipRow}>
-          {['Monday', 'Friday'].map((d) => (
-            <View key={d} style={[s.chip, s.chipActive, { opacity: 0.6 }]}>
-              <Text style={[s.chipText, s.chipTextActive]}>{d} 🔒</Text>
-            </View>
-          ))}
-          {EXTRA_VEG_DAYS.map((d) => (
+          {ALL_DAYS.map((d) => (
             <TouchableOpacity
               key={d}
-              style={[s.chip, extraVegDays.includes(d) && s.chipActive]}
-              onPress={() => setExtraVegDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d])}
+              style={[s.chip, vegDays.includes(d) && s.chipActive]}
+              onPress={() => setVegDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d])}
             >
-              <Text style={[s.chipText, extraVegDays.includes(d) && s.chipTextActive]}>{d}</Text>
+              <Text style={[s.chipText, vegDays.includes(d) && s.chipTextActive]}>{d}</Text>
             </TouchableOpacity>
           ))}
         </View>

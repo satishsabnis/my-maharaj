@@ -266,7 +266,7 @@ const s = StyleSheet.create({
   headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: gold },
   headerInitials: { width: 40, height: 40, borderRadius: 20, backgroundColor: gold, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
   headerInitialsText: { color: white, fontSize: 17, fontWeight: '800' },
-  headerLogo: { width: 180, height: 60, resizeMode: 'contain' },
+  headerLogo: { width: 240, height: 80, resizeMode: 'contain' },
   logoutBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   logoutIcon: { color: white, fontSize: 18 },
 
