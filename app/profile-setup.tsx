@@ -92,9 +92,10 @@ export default function ProfileSetupScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [language, setLanguage] = useState('en');
 
-  // Step 2
-  const [savedMembers, setSavedMembers] = useState<FamilyMember[]>([]);
-  const [currentMember, setCurrentMember] = useState<FamilyMember>(emptyMember());
+  // Step 2 – member count then member details
+  const [memberCount, setMemberCount] = useState(1);
+  const [memberCountSet, setMemberCountSet] = useState(false);
+  const [members, setMembers] = useState<FamilyMember[]>([emptyMember()]);
 
   // Step 3
   const [addresses, setAddresses] = useState<AddressEntry[]>([emptyAddress()]);
@@ -121,8 +122,18 @@ export default function ProfileSetupScreen() {
 
   // ── Step 2: Member helpers ─────────────────────────────────────────────────
 
-  function updateMember<K extends keyof FamilyMember>(key: K, value: FamilyMember[K]) {
-    setCurrentMember((prev) => ({ ...prev, [key]: value }));
+  function updateMemberAt<K extends keyof FamilyMember>(idx: number, key: K, value: FamilyMember[K]) {
+    setMembers((prev) => prev.map((m, i) => i === idx ? { ...m, [key]: value } : m));
+  }
+
+  function initMembers(count: number) {
+    setMemberCount(count);
+    setMembers((prev) => {
+      const next: FamilyMember[] = [];
+      for (let i = 0; i < count; i++) next.push(prev[i] ?? emptyMember());
+      return next;
+    });
+    setMemberCountSet(true);
   }
 
   function calcExpiry(testDate: string, age: string): string {
@@ -135,29 +146,17 @@ export default function ProfileSetupScreen() {
     return d.toISOString().split('T')[0];
   }
 
-  function handleTestDateChange(date: string) {
-    const expiry = calcExpiry(date, currentMember.age);
-    setCurrentMember((prev) => ({ ...prev, lipid_test_date: date, lipid_expiry_date: expiry }));
+  function handleTestDateChangeAt(idx: number, date: string) {
+    const expiry = calcExpiry(date, members[idx]?.age ?? '');
+    setMembers((prev) => prev.map((m, i) => i === idx ? { ...m, lipid_test_date: date, lipid_expiry_date: expiry } : m));
   }
 
-  async function pickLipidPdf() {
+  async function pickLipidPdfAt(idx: number) {
     const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
     if (!result.canceled && result.assets[0]) {
-      updateMember('lipidPdfUri', result.assets[0].uri);
-      updateMember('lipidPdfName', result.assets[0].name);
+      updateMemberAt(idx, 'lipidPdfUri', result.assets[0].uri);
+      updateMemberAt(idx, 'lipidPdfName', result.assets[0].name);
     }
-  }
-
-  function addMember() {
-    if (!currentMember.name.trim()) { setError('Please enter member name.'); return; }
-    if (!currentMember.age.trim()) { setError('Please enter member age.'); return; }
-    setError('');
-    setSavedMembers((prev) => [...prev, currentMember]);
-    setCurrentMember(emptyMember());
-  }
-
-  function removeMember(idx: number) {
-    setSavedMembers((prev) => prev.filter((_, i) => i !== idx));
   }
 
   // ── Step 3: Address helpers ────────────────────────────────────────────────
@@ -186,6 +185,10 @@ export default function ProfileSetupScreen() {
     setError('');
     if (currentStep === 1) {
       if (!familyName.trim()) { setError('Please enter your family name.'); return; }
+    }
+    if (currentStep === 2 && memberCountSet) {
+      const invalid = members.find((m) => !m.name.trim() || !m.age.trim());
+      if (invalid) { setError('Please enter name and age for all members.'); return; }
     }
     if (currentStep < 4) setCurrentStep((s) => (s + 1) as 1|2|3|4);
     else void handleSave();
@@ -234,9 +237,7 @@ export default function ProfileSetupScreen() {
       if (profileErr) throw new Error(profileErr.message);
 
       // Save family members
-      const allMembers = currentMember.name.trim()
-        ? [...savedMembers, currentMember]
-        : savedMembers;
+      const allMembers = members.filter((m) => m.name.trim());
 
       if (allMembers.length > 0) {
         await supabase.from('family_members').delete().eq('user_id', user.id);
@@ -360,106 +361,130 @@ export default function ProfileSetupScreen() {
   }
 
   function renderStep2() {
+    // Sub-step A: ask how many members
+    if (!memberCountSet) {
+      return (
+        <View>
+          <Text style={s.sectionTitle}>How many family members are in your household?</Text>
+          <Text style={s.subLabel}>Including yourself (min 1, max 10)</Text>
+          <View style={s.counterRow}>
+            <TouchableOpacity
+              style={[s.counterBtn, memberCount <= 1 && s.counterBtnDisabled]}
+              onPress={() => setMemberCount((c) => Math.max(1, c - 1))}
+              disabled={memberCount <= 1}
+            >
+              <Text style={s.counterBtnText}>−</Text>
+            </TouchableOpacity>
+            <Text style={s.counterValue}>{memberCount}</Text>
+            <TouchableOpacity
+              style={[s.counterBtn, memberCount >= 10 && s.counterBtnDisabled]}
+              onPress={() => setMemberCount((c) => Math.min(10, c + 1))}
+              disabled={memberCount >= 10}
+            >
+              <Text style={s.counterBtnText}>+</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={s.addMemberBtn} onPress={() => initMembers(memberCount)} activeOpacity={0.8}>
+            <Text style={s.addMemberBtnText}>Continue — Fill in {memberCount} member{memberCount > 1 ? 's' : ''} →</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Sub-step B: fill in details for each member
+    const ALL_CONDITIONS: Array<[string, 'is_diabetic' | 'has_bp' | 'has_pcos']> = [
+      ['Diabetic', 'is_diabetic'], ['Blood Pressure', 'has_bp'], ['PCOS/PCOD', 'has_pcos'],
+    ];
+    const OTHER_CONDS = ['Cholesterol', 'Thyroid', 'Kidney Disease', 'Heart Disease', 'Obesity', 'Anaemia', 'Lactose Intolerant', 'Gluten Intolerant'];
+
     return (
       <View>
-        {savedMembers.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={s.subLabel}>{savedMembers.length} member{savedMembers.length > 1 ? 's' : ''} added</Text>
-            {savedMembers.map((m, i) => (
-              <View key={i} style={s.memberCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.memberName}>{m.name}, {m.age}</Text>
-                  <Text style={s.memberSub}>{m.relationship}{m.is_diabetic ? ' · Diabetic' : ''}{m.has_bp ? ' · BP' : ''}{m.has_pcos ? ' · PCOS' : ''}{m.other_conditions.length > 0 ? ` · ${m.other_conditions.join(', ')}` : ''}</Text>
-                </View>
-                <TouchableOpacity onPress={() => removeMember(i)}><Text style={{ color: errorRed, fontSize: 18 }}>✕</Text></TouchableOpacity>
+        <View style={s.counterEditRow}>
+          <Text style={s.sectionTitle}>{memberCount} Family Member{memberCount > 1 ? 's' : ''}</Text>
+          <TouchableOpacity onPress={() => setMemberCountSet(false)}>
+            <Text style={s.editCountLink}>Change count</Text>
+          </TouchableOpacity>
+        </View>
+
+        {members.map((m, idx) => {
+          const ageNum = parseInt(m.age, 10);
+          const lipidHint = !isNaN(ageNum) && ageNum >= 50
+            ? 'Recommended — age 50+ should upload lipid profile'
+            : 'Optional — upload if available';
+          return (
+            <View key={idx} style={s.memberFormCard}>
+              <Text style={s.memberFormTitle}>Member {idx + 1}</Text>
+
+              <SectionLabel>Name *</SectionLabel>
+              <TextInput style={s.input} value={m.name} onChangeText={(v) => updateMemberAt(idx, 'name', v)} placeholder="Full name" placeholderTextColor={midGray} />
+
+              <SectionLabel>Age *</SectionLabel>
+              <TextInput style={s.input} value={m.age} onChangeText={(v) => updateMemberAt(idx, 'age', v)} placeholder="Age" placeholderTextColor={midGray} keyboardType="numeric" />
+
+              <SectionLabel>Relationship</SectionLabel>
+              <View style={s.chipRow}>
+                {RELATIONSHIPS.map((r) => (
+                  <TouchableOpacity key={r} style={[s.chip, m.relationship === r && s.chipActive]} onPress={() => updateMemberAt(idx, 'relationship', r)}>
+                    <Text style={[s.chipText, m.relationship === r && s.chipTextActive]}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            ))}
-          </View>
-        )}
 
-        <Text style={s.sectionTitle}>Add Family Member</Text>
+              <SectionLabel>Health Conditions</SectionLabel>
+              <View style={s.chipRow}>
+                {ALL_CONDITIONS.map(([label, key]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[s.chip, m[key] && s.chipActive]}
+                    onPress={() => updateMemberAt(idx, key, !m[key])}
+                  >
+                    <Text style={[s.chipText, m[key] && s.chipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.chipRow}>
+                {OTHER_CONDS.map((cond) => (
+                  <TouchableOpacity
+                    key={cond}
+                    style={[s.chip, m.other_conditions.includes(cond) && s.chipActive]}
+                    onPress={() => updateMemberAt(idx, 'other_conditions',
+                      m.other_conditions.includes(cond)
+                        ? m.other_conditions.filter((c) => c !== cond)
+                        : [...m.other_conditions, cond]
+                    )}
+                  >
+                    <Text style={[s.chipText, m.other_conditions.includes(cond) && s.chipTextActive]}>{cond}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-        <SectionLabel>Name *</SectionLabel>
-        <TextInput style={s.input} value={currentMember.name} onChangeText={(v) => updateMember('name', v)} placeholder="Member name" placeholderTextColor={midGray} />
+              <SectionLabel>Lipid Profile Report (PDF) — <Text style={{ color: midGray, fontWeight: '400' }}>Optional</Text></SectionLabel>
+              <Text style={s.lipidHint}>{lipidHint}</Text>
+              <TouchableOpacity style={s.uploadBtn} onPress={() => void pickLipidPdfAt(idx)} activeOpacity={0.8}>
+                <Text style={s.uploadBtnText}>{m.lipidPdfName ?? '📄 Upload PDF (optional)'}</Text>
+              </TouchableOpacity>
 
-        <SectionLabel>Age *</SectionLabel>
-        <TextInput style={s.input} value={currentMember.age} onChangeText={(v) => updateMember('age', v)} placeholder="Age" placeholderTextColor={midGray} keyboardType="numeric" />
-
-        <SectionLabel>Relationship</SectionLabel>
-        <View style={s.chipRow}>
-          {RELATIONSHIPS.map((r) => (
-            <TouchableOpacity key={r} style={[s.chip, currentMember.relationship === r && s.chipActive]} onPress={() => updateMember('relationship', r)}>
-              <Text style={[s.chipText, currentMember.relationship === r && s.chipTextActive]}>{r}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <SectionLabel>Health Conditions</SectionLabel>
-        <View style={s.chipRow}>
-          {[['Diabetic', 'is_diabetic'], ['Blood Pressure', 'has_bp'], ['PCOS/PCOD', 'has_pcos']].map(([label, key]) => (
-            <TouchableOpacity
-              key={key}
-              style={[s.chip, currentMember[key as keyof FamilyMember] && s.chipActive]}
-              onPress={() => updateMember(key as 'is_diabetic' | 'has_bp' | 'has_pcos', !currentMember[key as 'is_diabetic' | 'has_bp' | 'has_pcos'])}
-            >
-              <Text style={[s.chipText, currentMember[key as keyof FamilyMember] && s.chipTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <SectionLabel>Other Health Conditions</SectionLabel>
-        <View style={s.chipRow}>
-          {['Cholesterol', 'Thyroid', 'Kidney Disease', 'Heart Disease', 'Obesity', 'Anaemia', 'Lactose Intolerant', 'Gluten Intolerant'].map((cond) => (
-            <TouchableOpacity
-              key={cond}
-              style={[s.chip, currentMember.other_conditions.includes(cond) && s.chipActive]}
-              onPress={() => updateMember(
-                'other_conditions',
-                currentMember.other_conditions.includes(cond)
-                  ? currentMember.other_conditions.filter((c) => c !== cond)
-                  : [...currentMember.other_conditions, cond]
-              )}
-            >
-              <Text style={[s.chipText, currentMember.other_conditions.includes(cond) && s.chipTextActive]}>{cond}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <SectionLabel>Food Likes</SectionLabel>
-        <TextInput style={s.input} value={currentMember.food_likes} onChangeText={(v) => updateMember('food_likes', v)} placeholder="e.g. rice, dal, biryani" placeholderTextColor={midGray} />
-
-        <SectionLabel>Food Dislikes</SectionLabel>
-        <TextInput style={s.input} value={currentMember.food_dislikes} onChangeText={(v) => updateMember('food_dislikes', v)} placeholder="e.g. bitter gourd" placeholderTextColor={midGray} />
-
-        <SectionLabel>Allergies</SectionLabel>
-        <TextInput style={s.input} value={currentMember.allergies} onChangeText={(v) => updateMember('allergies', v)} placeholder="e.g. nuts, shellfish" placeholderTextColor={midGray} />
-
-        <SectionLabel>Remarks</SectionLabel>
-        <TextInput style={[s.input, { height: 72 }]} value={currentMember.remarks} onChangeText={(v) => updateMember('remarks', v)} placeholder="Any other notes" placeholderTextColor={midGray} multiline />
-
-        <SectionLabel>Lipid Profile Report (PDF)</SectionLabel>
-        <TouchableOpacity style={s.uploadBtn} onPress={pickLipidPdf} activeOpacity={0.8}>
-          <Text style={s.uploadBtnText}>{currentMember.lipidPdfName ?? '📄 Upload PDF'}</Text>
-        </TouchableOpacity>
-
-        <SectionLabel>Lipid Test Date (YYYY-MM-DD)</SectionLabel>
-        <TextInput
-          style={s.input}
-          value={currentMember.lipid_test_date}
-          onChangeText={handleTestDateChange}
-          placeholder="2025-01-15"
-          placeholderTextColor={midGray}
-        />
-        {currentMember.lipid_expiry_date ? (
-          <Text style={s.expiryLabel}>
-            Expires: {currentMember.lipid_expiry_date}
-            {parseInt(currentMember.age, 10) >= 50 ? ' (90-day cycle — age 50+)' : ' (180-day cycle)'}
-          </Text>
-        ) : null}
-
-        <TouchableOpacity style={s.addMemberBtn} onPress={addMember} activeOpacity={0.8}>
-          <Text style={s.addMemberBtnText}>+ Add Another Member</Text>
-        </TouchableOpacity>
+              {m.lipidPdfUri ? (
+                <>
+                  <SectionLabel>Lipid Test Date (YYYY-MM-DD)</SectionLabel>
+                  <TextInput
+                    style={s.input}
+                    value={m.lipid_test_date}
+                    onChangeText={(v) => handleTestDateChangeAt(idx, v)}
+                    placeholder="2025-01-15"
+                    placeholderTextColor={midGray}
+                  />
+                  {m.lipid_expiry_date ? (
+                    <Text style={s.expiryLabel}>
+                      Expires: {m.lipid_expiry_date}
+                      {!isNaN(ageNum) && ageNum >= 50 ? ' (90-day cycle — age 50+)' : ' (180-day cycle)'}
+                    </Text>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+          );
+        })}
       </View>
     );
   }
@@ -680,7 +705,21 @@ const s = StyleSheet.create({
   chipText: { fontSize: 13, color: darkGray, fontWeight: '500' },
   chipTextActive: { color: white, fontWeight: '600' },
 
-  // Members
+  // Member count picker
+  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginVertical: 24 },
+  counterBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: navy, alignItems: 'center', justifyContent: 'center' },
+  counterBtnDisabled: { backgroundColor: '#D1D5DB' },
+  counterBtnText: { color: white, fontSize: 26, fontWeight: '700', lineHeight: 30 },
+  counterValue: { fontSize: 48, fontWeight: '900', color: navy, minWidth: 60, textAlign: 'center' },
+  counterEditRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  editCountLink: { fontSize: 13, color: navy, fontWeight: '600', textDecorationLine: 'underline' },
+
+  // Member form card
+  memberFormCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1.5, borderColor: '#E5E7EB' },
+  memberFormTitle: { fontSize: 15, fontWeight: '800', color: navy, marginBottom: 8 },
+  lipidHint: { fontSize: 11, color: midGray, marginBottom: 8, fontStyle: 'italic' },
+
+  // Legacy members
   memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF', borderRadius: 10, padding: 12, marginBottom: 8 },
   memberName: { fontSize: 14, fontWeight: '700', color: navy },
   memberSub: { fontSize: 12, color: midGray, marginTop: 2 },
