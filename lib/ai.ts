@@ -7,22 +7,12 @@ const client = new Anthropic({
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface MealNutrition {
-  protein_g: number;
-  carbs_g: number;
-  fibre_g: number;
-  fat_g: number;
-  vitamins?: string[];
-}
-
 export interface MealOption {
   name: string;
-  is_vegetarian: boolean;
-  health_tags: string[];
-  ingredients: { name: string; qty: string; unit: string }[];
-  method: string[];
-  prep_night: string[];
-  nutrition: MealNutrition;
+  vegetarian: boolean;
+  tags: string[];
+  ingredients: string[];
+  steps: string[];
 }
 
 export interface MealSlot {
@@ -31,18 +21,16 @@ export interface MealSlot {
 
 export interface TiffinItem {
   name: string;
-  is_vegetarian: boolean;
-  ingredients: { name: string; qty: string; unit: string }[];
-  method: string[];
-  prep_night: string[];
-  nutrition: MealNutrition;
+  vegetarian: boolean;
+  ingredients: string[];
+  steps: string[];
 }
 
 export interface DessertItem {
   name: string;
-  is_vegetarian: boolean;
-  ingredients: { name: string; qty: string; unit: string }[];
-  method: string[];
+  vegetarian: boolean;
+  ingredients: string[];
+  steps: string[];
 }
 
 export interface MealPlanDay {
@@ -53,23 +41,12 @@ export interface MealPlanDay {
   dinner: MealSlot;
   tiffin?: { options: TiffinItem[] };
   dessert?: DessertItem;
-  nutrition_total?: {
-    protein_g: number;
-    carbs_g: number;
-    fibre_g: number;
-    fat_g: number;
-  };
 }
 
 export interface GroceryItem {
   name: string;
-  name_hi?: string;
-  name_mr?: string;
-  name_gu?: string;
   qty: string;
-  unit: string;
   category: string;
-  store?: string;
 }
 
 export interface MealPlanResult {
@@ -77,8 +54,6 @@ export interface MealPlanResult {
   grocery_list?: GroceryItem[];
 }
 
-// Keep for legacy compatibility
-export type MealItem = MealOption;
 
 export interface HealthFlags {
   diabetic: boolean;
@@ -155,112 +130,57 @@ function buildPrompt(params: {
   };
 
   const tiffinSection = params.includeTiffin
-    ? `\nTIFFIN / LUNCHBOX (include for EVERY day):
-For: ${(params.tiffinMembers ?? ['the family']).join(', ')}
-${params.tiffinRestrictions ? `Restrictions: ${params.tiffinRestrictions}` : ''}
-Rules: Must be pack-friendly and non-messy. No thin gravies. Must survive 2–3 hours without refrigeration.
-Include prep_night steps. Provide 2 options per day as "tiffin": {"options": [...]}`
+    ? `TIFFIN: 2 pack-friendly options for ${(params.tiffinMembers ?? ['family']).join(', ')}.${params.tiffinRestrictions ? ` Restrictions: ${params.tiffinRestrictions}.` : ''} No thin gravies.`
     : '';
 
   const dessertSection = params.includeDessert
-    ? `\nDESSERT (include for EVERY day):
-- Sunday: Elaborate traditional dessert (kheer, halwa, modak, gulab jamun, shrikhand etc.)
-- Weekdays: Simple quick sweet (1–2 ingredients, under 15 min) e.g. banana halwa, fruit chaat, jaggery laddoo
-- All desserts must comply with health restrictions (use jaggery/dates instead of sugar for diabetic; dairy-free if lactose intolerant; gluten-free alternatives if needed)
-Output as "dessert": {"name": "...", "is_vegetarian": true/false, "ingredients": [...], "method": [...]}`
+    ? `DESSERT: One simple dessert. Sunday: traditional sweet. Weekdays: quick 2-ingredient treat. Comply with health restrictions.`
     : '';
 
   const tiffinJson = params.includeTiffin
-    ? ',\n      "tiffin": { "options": [ { "name": "...", "is_vegetarian": true, "ingredients": [], "method": [], "prep_night": [], "nutrition": {"protein_g":0,"carbs_g":0,"fat_g":0,"fibre_g":0} } ] }'
+    ? ',\n      "tiffin": {"options": [{"name": "...", "vegetarian": true, "ingredients": ["item qty"], "steps": ["step"]}]}'
     : '';
   const dessertJson = params.includeDessert
-    ? ',\n      "dessert": {"name": "...", "is_vegetarian": true, "ingredients": [], "method": []}'
+    ? ',\n      "dessert": {"name": "...", "vegetarian": true, "ingredients": ["item qty"], "steps": ["step"]}'
     : '';
 
-  return `You are Maharaj, an expert Indian regional cuisine chef and nutritionist serving Indian families in Dubai, UAE.
+  return `IMPORTANT: Keep your entire response under 3000 tokens. Be very concise. Short dish names, minimal ingredients, brief steps only.
 
-Generate a complete meal plan for these dates: ${params.dates.join(', ')}.
+You are Maharaj, an Indian cuisine chef for families in Dubai, UAE.
+Date: ${params.dates.join(', ')} | Cuisine: ${params.cuisine || 'Konkani'} | Language: ${langMap[params.language] || 'English'}
 
-LANGUAGE: Respond with all dish names, ingredients and instructions in ${langMap[params.language] || 'English'}.
-
-CUISINE: ${params.cuisine || 'Konkani'}
-
-HEALTH REQUIREMENTS:
-${healthLines.length > 0 ? healthLines.join('\n') : '- None specified. Standard healthy Indian family meals.'}
-
-FOOD PREFERENCE: ${
+HEALTH: ${healthLines.length > 0 ? healthLines.join(' ') : 'None.'}
+FOOD: ${
   params.foodPrefs.type === 'veg'
-    ? params.foodPrefs.vegType === 'fasting'
-      ? 'STRICT FASTING (upvas): sabudana, rajgira, singhara, sama rice, potatoes, fruits, rock salt only'
-      : 'Vegetarian only. No eggs, no meat.'
-    : `Non-vegetarian allowed: ${(params.foodPrefs.nonVegOptions ?? []).join(', ')}`
+    ? params.foodPrefs.vegType === 'fasting' ? 'Fasting only (sabudana/rajgira/sama rice/fruits/rock salt)' : 'Vegetarian only'
+    : `Non-veg allowed: ${(params.foodPrefs.nonVegOptions ?? []).join(', ')}`
 }
-
-SERVING SIZES (${params.appetite} eater):
-- Breakfast: ${params.servings.breakfast} people
-- Lunch: ${params.servings.lunch} people
-- Dinner: ${params.servings.dinner} people
-
-UNWELL MEMBERS: ${
-  params.unwellMembers && params.unwellMembers.length > 0
-    ? `Generate light/recovery meals for: ${params.unwellMembers.join(', ')}`
-    : 'Everyone is well'
-}
-
-NUTRITIONAL FOCUS: ${params.nutritionFocus || 'Balanced'}
-Strategy: ${nutritionDescs[params.nutritionFocus ?? 'Balanced'] ?? nutritionDescs['Balanced']}
+SERVINGS: B${params.servings.breakfast}/L${params.servings.lunch}/D${params.servings.dinner} | ${params.appetite} appetite
+FOCUS: ${params.nutritionFocus || 'Balanced'} — ${nutritionDescs[params.nutritionFocus ?? 'Balanced'] ?? nutritionDescs['Balanced']}
+${params.unwellMembers?.length ? `UNWELL: Light meals for ${params.unwellMembers.join(', ')}` : ''}
 ${tiffinSection}
 ${dessertSection}
 
-STRICT RULES:
-1. Monday and Friday must be fully vegetarian
-2. Sunday breakfast: elaborate festive Thali (special occasion)
-3. All other breakfasts: light and simple
-4. Do NOT repeat these dishes: ${params.dishHistory.join(', ') || 'none yet'}
-5. ALL ingredients must be available at Carrefour, Spinneys or Lulu Dubai
-6. Include prep-night instructions for all dinners
-7. Each meal slot must have EXACTLY 3 options for the user to choose from
+RULES: Mon/Fri vegetarian. Sun breakfast = festive thali. No repeat of: ${params.dishHistory.slice(0, 5).join(', ') || 'none'}.
 
-OUTPUT LENGTH — BE CONCISE:
-- Method: maximum 3 steps per dish
-- Ingredients: maximum 6 items per dish
-- prep_night: maximum 1 step per dish
-- health_tags: maximum 3 tags per dish
+OUTPUT: EXACTLY 2 options per meal slot. Max 4 ingredients per dish (as "Item qty" strings). Max 2 steps. Max 2 tags.
 
-Respond with ONLY valid JSON, no markdown, no explanation:
+Respond ONLY with valid JSON:
 {
   "days": [
     {
       "date": "YYYY-MM-DD",
-      "day": "Monday",
-      "breakfast": {
-        "options": [
-          {
-            "name": "dish name",
-            "is_vegetarian": true,
-            "health_tags": ["low-gi", "bp-safe"],
-            "ingredients": [{"name": "item", "qty": "amount", "unit": "g"}],
-            "method": ["step 1", "step 2"],
-            "prep_night": ["prep step"],
-            "nutrition": {"protein_g": 8, "carbs_g": 30, "fat_g": 4, "fibre_g": 3}
-          }
-        ]
-      },
-      "lunch": { "options": [ ] },
-      "dinner": { "options": [ ] }${tiffinJson}${dessertJson}
+      "day": "Saturday",
+      "breakfast": {"options": [
+        {"name": "Pohe", "vegetarian": true, "tags": ["light"], "ingredients": ["Poha 1 cup", "Onion 1", "Mustard seeds 1 tsp", "Curry leaves 6"], "steps": ["Soak poha 5 min", "Temper and mix"]},
+        {"name": "Upma", "vegetarian": true, "tags": ["quick"], "ingredients": ["Semolina 1 cup", "Mixed veg 1 cup", "Ghee 1 tsp", "Mustard seeds 1 tsp"], "steps": ["Roast semolina", "Add water and cook"]}
+      ]},
+      "lunch": {"options": [...]},
+      "dinner": {"options": [...]}${tiffinJson}${dessertJson}
     }
   ],
   "grocery_list": [
-    {
-      "name": "ingredient",
-      "name_hi": "हिंदी नाम",
-      "name_mr": "मराठी नाव",
-      "name_gu": "ગુજરાતી નામ",
-      "qty": "total",
-      "unit": "g",
-      "category": "vegetables",
-      "store": "Carrefour"
-    }
+    {"name": "Poha", "qty": "200g", "category": "grains"}
   ]
 }`;
 }

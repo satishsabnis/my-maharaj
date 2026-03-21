@@ -83,44 +83,6 @@ function stepToProgress(step: WizardStep): number {
   return 5;
 }
 
-// ─── Nutrition bars ───────────────────────────────────────────────────────────
-
-const DAILY_TARGET = { protein_g: 60, carbs_g: 250, fibre_g: 30, fat_g: 65 };
-const NUT_COLORS = { protein_g: '#3B82F6', carbs_g: gold, fibre_g: '#16A34A', fat_g: '#EF4444' };
-
-function NutritionBars({ nutrition }: { nutrition: { protein_g: number; carbs_g: number; fibre_g: number; fat_g: number } }) {
-  const bars: { key: keyof typeof DAILY_TARGET; label: string }[] = [
-    { key: 'protein_g', label: 'Protein' },
-    { key: 'carbs_g', label: 'Carbs' },
-    { key: 'fibre_g', label: 'Fibre' },
-    { key: 'fat_g', label: 'Fat' },
-  ];
-  return (
-    <View style={nut.wrap}>
-      {bars.map(({ key, label }) => {
-        const val = nutrition[key];
-        const pct = Math.min(100, Math.round((val / DAILY_TARGET[key]) * 100));
-        return (
-          <View key={key} style={nut.row}>
-            <Text style={nut.label}>{label}</Text>
-            <View style={nut.track}>
-              <View style={[nut.fill, { width: `${pct}%` as const, backgroundColor: NUT_COLORS[key] }]} />
-            </View>
-            <Text style={nut.val}>{val}g</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-const nut = StyleSheet.create({
-  wrap: { paddingHorizontal: 14, paddingBottom: 12, paddingTop: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 5, gap: 8 },
-  label: { width: 46, fontSize: 10, color: midGray, fontWeight: '600' },
-  track: { flex: 1, height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' },
-  fill: { height: 6, borderRadius: 3, minWidth: 4 },
-  val: { width: 36, fontSize: 10, color: darkGray, textAlign: 'right' },
-});
 
 // ─── Main Wizard ──────────────────────────────────────────────────────────────
 
@@ -322,43 +284,27 @@ export default function MealWizardScreen() {
     return day[slot].options[optIdx] ?? null;
   }
 
-  // ── Day nutrition total from selections ───────────────────────────────────
-
-  function getDayNutrition(dayIdx: number) {
-    const slots: MealSlotKey[] = ['breakfast', 'lunch', 'dinner'];
-    const total = { protein_g: 0, carbs_g: 0, fibre_g: 0, fat_g: 0 };
-    slots.forEach((slot) => {
-      const opt = getSelectedOption(dayIdx, slot);
-      if (opt?.nutrition) {
-        total.protein_g += opt.nutrition.protein_g;
-        total.carbs_g += opt.nutrition.carbs_g;
-        total.fibre_g += opt.nutrition.fibre_g;
-        total.fat_g += opt.nutrition.fat_g;
-      }
-    });
-    return total;
-  }
-
   // ── Build grocery list ────────────────────────────────────────────────────
 
   function buildGroceryList(): Record<string, { name: string; qty: string; unit: string }[]> {
     if (!generatedPlan) return {};
-    const seen = new Map<string, { qty: string; unit: string }>();
+    const seen = new Set<string>();
     const slots: MealSlotKey[] = ['breakfast', 'lunch', 'dinner'];
+    const grouped: Record<string, { name: string; qty: string; unit: string }[]> = {};
     generatedPlan.forEach((_, dayIdx) => {
       slots.forEach((slot) => {
         const opt = getSelectedOption(dayIdx, slot);
         opt?.ingredients.forEach((ing) => {
-          const key = ing.name.toLowerCase().trim();
-          if (!seen.has(key)) seen.set(key, { qty: ing.qty, unit: ing.unit });
+          // ingredients are strings like "Poha 1 cup"
+          const key = ing.toLowerCase().trim();
+          if (!seen.has(key)) {
+            seen.add(key);
+            const cat = categorise(ing);
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push({ name: ing, qty: '', unit: '' });
+          }
         });
       });
-    });
-    const grouped: Record<string, { name: string; qty: string; unit: string }[]> = {};
-    seen.forEach(({ qty, unit }, name) => {
-      const cat = categorise(name);
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ name, qty, unit });
     });
     return grouped;
   }
@@ -391,7 +337,6 @@ export default function MealWizardScreen() {
       breakfast: getSelectedOption(dayIdx, 'breakfast'),
       lunch: getSelectedOption(dayIdx, 'lunch'),
       dinner: getSelectedOption(dayIdx, 'dinner'),
-      nutrition_total: getDayNutrition(dayIdx),
     }));
 
     const dishRows = generatedPlan.flatMap((day, dayIdx) => {
@@ -755,10 +700,9 @@ export default function MealWizardScreen() {
                   const recipeKey = `${dayIdx}-${key}-${optIdx}`;
                   const isSelected = selections[dayIdx]?.[key] === optIdx;
                   const isExpanded = expandedRecipes[recipeKey];
-                  const nut = opt.nutrition;
                   return (
                     <View key={optIdx} style={[s.optionCard, isSelected && s.optionCardActive]}>
-                      {/* Header row: radio + name + select */}
+                      {/* Header row: radio + name */}
                       <TouchableOpacity
                         style={s.optionCardHeader}
                         onPress={() => setSelections((prev) => ({ ...prev, [dayIdx]: { ...(prev[dayIdx] ?? { breakfast: 0, lunch: 0, dinner: 0 }), [key]: optIdx } }))}
@@ -769,16 +713,13 @@ export default function MealWizardScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[s.optionName, isSelected && { color: navy, fontWeight: '700' }]}>{opt.name}</Text>
-                          {opt.health_tags.length > 0 && (
+                          {opt.tags.length > 0 && (
                             <View style={s.tagRow}>
-                              {opt.health_tags.slice(0, 3).map((tag) => (
+                              {opt.tags.slice(0, 2).map((tag) => (
                                 <View key={tag} style={s.tagPill}><Text style={s.tagPillText}>{tag}</Text></View>
                               ))}
                             </View>
                           )}
-                          <Text style={s.nutLine}>
-                            P {nut.protein_g}g · C {nut.carbs_g}g · F {nut.fat_g}g · Fibre {nut.fibre_g}g
-                          </Text>
                         </View>
                         <Text style={s.optionNum}>#{optIdx + 1}</Text>
                       </TouchableOpacity>
@@ -793,21 +734,13 @@ export default function MealWizardScreen() {
                         <View style={s.inlineRecipe}>
                           <Text style={s.inlineRecipeSection}>Ingredients</Text>
                           {opt.ingredients.map((ing, i) => (
-                            <Text key={i} style={s.inlineRecipeItem}>• {ing.name} — {ing.qty} {ing.unit}</Text>
+                            <Text key={i} style={s.inlineRecipeItem}>• {ing}</Text>
                           ))}
-                          {opt.method.length > 0 && (
+                          {opt.steps.length > 0 && (
                             <>
                               <Text style={s.inlineRecipeSection}>Method</Text>
-                              {opt.method.map((step, i) => (
+                              {opt.steps.map((step, i) => (
                                 <Text key={i} style={s.inlineRecipeItem}>{i + 1}. {step}</Text>
-                              ))}
-                            </>
-                          )}
-                          {opt.prep_night.length > 0 && (
-                            <>
-                              <Text style={[s.inlineRecipeSection, { color: '#92400E' }]}>Prep Night</Text>
-                              {opt.prep_night.map((p, i) => (
-                                <Text key={i} style={[s.inlineRecipeItem, { color: '#92400E' }]}>• {p}</Text>
                               ))}
                             </>
                           )}
@@ -818,7 +751,6 @@ export default function MealWizardScreen() {
                 })}
               </View>
             ))}
-            <NutritionBars nutrition={getDayNutrition(dayIdx)} />
           </View>
         ))}
         <TouchableOpacity style={s.goldBtn} onPress={() => { setRecipeDishes([]); advance('recipes'); }}>
@@ -865,23 +797,17 @@ export default function MealWizardScreen() {
                 return (
                   <View key={`${dayIdx}-${slot}`} style={s.recipeCard}>
                     <Text style={s.recipeName}>{opt.name}</Text>
-                    {opt.health_tags.length > 0 && <Text style={s.recipeTags}>{opt.health_tags.join(' · ')}</Text>}
+                    {opt.tags.length > 0 && <Text style={s.recipeTags}>{opt.tags.join(' · ')}</Text>}
                     <Text style={s.recipeSection}>Ingredients</Text>
                     {opt.ingredients.map((ing, i) => (
-                      <Text key={i} style={s.recipeItem}>• {ing.name} — {ing.qty} {ing.unit}</Text>
+                      <Text key={i} style={s.recipeItem}>• {ing}</Text>
                     ))}
-                    {opt.method.length > 0 && (
+                    {opt.steps.length > 0 && (
                       <>
                         <Text style={s.recipeSection}>Method</Text>
-                        {opt.method.map((step, i) => (
+                        {opt.steps.map((step, i) => (
                           <Text key={i} style={s.recipeItem}>{i + 1}. {step}</Text>
                         ))}
-                      </>
-                    )}
-                    {opt.prep_night.length > 0 && (
-                      <>
-                        <Text style={s.recipeSection}>Prep Night</Text>
-                        {opt.prep_night.map((p, i) => <Text key={i} style={[s.recipeItem, { color: '#92400E' }]}>• {p}</Text>)}
                       </>
                     )}
                   </View>
@@ -906,7 +832,7 @@ export default function MealWizardScreen() {
       const items = grocery[cat];
       if (!items || items.length === 0) return;
       lines.push(`${CATEGORY_ICONS[cat]} ${cat.toUpperCase()}:`);
-      items.forEach((i) => lines.push(`  - ${i.name}: ${i.qty} ${i.unit}`));
+      items.forEach((i) => lines.push(`  - ${i.name}`));
       lines.push('');
     });
     return lines.join('\n');
@@ -958,7 +884,6 @@ export default function MealWizardScreen() {
               {items.map((item, i) => (
                 <View key={i} style={s.groceryRow}>
                   <Text style={s.groceryItem}>{item.name}</Text>
-                  <Text style={s.groceryQty}>{item.qty} {item.unit}</Text>
                 </View>
               ))}
             </View>
