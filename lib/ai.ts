@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
-  apiKey: 'YOUR_CLAUDE_API_KEY_HERE',
+  apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
   dangerouslyAllowBrowser: true,
 });
 
