@@ -773,10 +773,25 @@ export default function MealWizardScreen() {
   }
 
   function renderGenerating() {
+    // Start pulse loop when this renders
+    React.useEffect(() => {
+      const anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.1, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.9, duration: 700, useNativeDriver: true }),
+        ])
+      );
+      anim.start();
+      return () => anim.stop();
+    }, []);
+
     return (
       <View style={s.generatingScreen}>
-        <Image source={require('../assets/logo.png')} style={{ width: 200, height: 70, resizeMode: 'contain' }} />
-        <Text style={s.generatingTitle}>Maharaj is cooking up your plan...</Text>
+        <Animated.Image
+          source={LogoImg}
+          style={{ width: 200, height: 70, resizeMode: 'contain', transform: [{ scale: pulseAnim }] }}
+        />
+        <Text style={s.generatingTitle}>Maharaj is preparing your plan...</Text>
         {generatingProgress ? (
           <Text style={s.generatingSubtitle}>
             Generating day {generatingProgress.current} of {generatingProgress.total}... please wait

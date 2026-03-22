@@ -180,7 +180,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Logo */}
-        <Image source={require('../assets/logo.png')} style={{ width: 200, height: 70, resizeMode: 'contain' }} />
+        <Image source={require('../assets/logo.png')} style={{ width: 200, height: 65, resizeMode: 'contain' }} />
 
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={() => setShowLogoutModal(true)} activeOpacity={0.7}>

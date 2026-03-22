@@ -187,8 +187,8 @@ export default function ProfileSetupScreen() {
       if (!familyName.trim()) { setError('Please enter your family name.'); return; }
     }
     if (currentStep === 2 && memberCountSet) {
-      const invalid = members.find((m) => !m.name.trim() || !m.age.trim());
-      if (invalid) { setError('Please enter name and age for all members.'); return; }
+      const invalid = members.find((m) => !m.name.trim());
+      if (invalid) { setError('Please enter a name for all members.'); return; }
     }
     if (currentStep < 4) setCurrentStep((s) => (s + 1) as 1|2|3|4);
     else void handleSave();
@@ -242,36 +242,11 @@ export default function ProfileSetupScreen() {
 
       if (allMembers.length > 0) {
         await supabase.from('family_members').delete().eq('user_id', user.id);
-        const memberRows = await Promise.all(allMembers.map(async (m) => {
-          let lipidUrl: string | null = null;
-          if (m.lipidPdfUri) {
-            try {
-              const res = await fetch(m.lipidPdfUri);
-              const blob = await res.blob();
-              const safeName = m.name.replace(/\s+/g, '_');
-              await supabase.storage.from('documents').upload(
-                `${user.id}/lipid_${safeName}.pdf`, blob, { upsert: true, contentType: 'application/pdf' }
-              );
-              lipidUrl = m.lipidPdfUri;
-            } catch { /* skip */ }
-          }
-          return {
-            user_id: user.id,
-            name: m.name,
-            age: parseInt(m.age, 10) || 0,
-            relationship: m.relationship,
-            is_diabetic: m.is_diabetic,
-            has_bp: m.has_bp,
-            has_pcos: m.has_pcos,
-            other_conditions: m.other_conditions.length > 0 ? JSON.stringify(m.other_conditions) : null,
-            food_likes: m.food_likes || null,
-            food_dislikes: m.food_dislikes || null,
-            allergies: m.allergies || null,
-            remarks: m.remarks || null,
-            lipid_profile_url: lipidUrl,
-            lipid_test_date: m.lipid_test_date || null,
-            lipid_expiry_date: m.lipid_expiry_date || null,
-          };
+        const memberRows = allMembers.map((m) => ({
+          user_id: user.id,
+          name: m.name.trim(),
+          age: parseInt(m.age, 10) || 0,
+          health_notes: m.remarks.trim() || null,
         }));
         const { error: membErr } = await supabase.from('family_members').insert(memberRows);
         if (membErr) throw new Error(membErr.message);
@@ -393,11 +368,6 @@ export default function ProfileSetupScreen() {
     }
 
     // Sub-step B: fill in details for each member
-    const ALL_CONDITIONS: Array<[string, 'is_diabetic' | 'has_bp' | 'has_pcos']> = [
-      ['Diabetic', 'is_diabetic'], ['Blood Pressure', 'has_bp'], ['PCOS/PCOD', 'has_pcos'],
-    ];
-    const OTHER_CONDS = ['Cholesterol', 'Thyroid', 'Kidney Disease', 'Heart Disease', 'Obesity', 'Anaemia', 'Lactose Intolerant', 'Gluten Intolerant'];
-
     return (
       <View>
         <View style={s.counterEditRow}>
@@ -407,85 +377,31 @@ export default function ProfileSetupScreen() {
           </TouchableOpacity>
         </View>
 
-        {members.map((m, idx) => {
-          const ageNum = parseInt(m.age, 10);
-          const lipidHint = !isNaN(ageNum) && ageNum >= 50
-            ? 'Recommended — age 50+ should upload lipid profile'
-            : 'Optional — upload if available';
-          return (
-            <View key={idx} style={s.memberFormCard}>
-              <Text style={s.memberFormTitle}>Member {idx + 1}</Text>
+        {members.map((m, idx) => (
+          <View key={idx} style={s.memberFormCard}>
+            <Text style={s.memberFormTitle}>Member {idx + 1}</Text>
 
-              <SectionLabel>Name *</SectionLabel>
-              <TextInput style={s.input} value={m.name} onChangeText={(v) => updateMemberAt(idx, 'name', v)} placeholder="Full name" placeholderTextColor={midGray} />
+            <SectionLabel>Name *</SectionLabel>
+            <TextInput style={s.input} value={m.name} onChangeText={(v) => updateMemberAt(idx, 'name', v)} placeholder="Full name" placeholderTextColor={midGray} />
 
-              <SectionLabel>Age *</SectionLabel>
-              <TextInput style={s.input} value={m.age} onChangeText={(v) => updateMemberAt(idx, 'age', v)} placeholder="Age" placeholderTextColor={midGray} keyboardType="numeric" />
+            <SectionLabel>Age</SectionLabel>
+            <TextInput style={s.input} value={m.age} onChangeText={(v) => updateMemberAt(idx, 'age', v)} placeholder="Age" placeholderTextColor={midGray} keyboardType="numeric" />
 
-              <SectionLabel>Relationship</SectionLabel>
-              <View style={s.chipRow}>
-                {RELATIONSHIPS.map((r) => (
-                  <TouchableOpacity key={r} style={[s.chip, m.relationship === r && s.chipActive]} onPress={() => updateMemberAt(idx, 'relationship', r)}>
-                    <Text style={[s.chipText, m.relationship === r && s.chipTextActive]}>{r}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <SectionLabel>Health Notes (optional)</SectionLabel>
+            <TextInput
+              style={[s.input, { minHeight: 60, textAlignVertical: 'top', paddingTop: 10 }]}
+              value={m.remarks}
+              onChangeText={(v) => updateMemberAt(idx, 'remarks', v)}
+              placeholder="e.g. Diabetic, BP, low salt, no dairy"
+              placeholderTextColor={midGray}
+              multiline
+            />
 
-              <SectionLabel>Health Conditions</SectionLabel>
-              <View style={s.chipRow}>
-                {ALL_CONDITIONS.map(([label, key]) => (
-                  <TouchableOpacity
-                    key={key}
-                    style={[s.chip, m[key] && s.chipActive]}
-                    onPress={() => updateMemberAt(idx, key, !m[key])}
-                  >
-                    <Text style={[s.chipText, m[key] && s.chipTextActive]}>{label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={s.chipRow}>
-                {OTHER_CONDS.map((cond) => (
-                  <TouchableOpacity
-                    key={cond}
-                    style={[s.chip, m.other_conditions.includes(cond) && s.chipActive]}
-                    onPress={() => updateMemberAt(idx, 'other_conditions',
-                      m.other_conditions.includes(cond)
-                        ? m.other_conditions.filter((c) => c !== cond)
-                        : [...m.other_conditions, cond]
-                    )}
-                  >
-                    <Text style={[s.chipText, m.other_conditions.includes(cond) && s.chipTextActive]}>{cond}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <SectionLabel>Lipid Profile Report (PDF) — <Text style={{ color: midGray, fontWeight: '400' }}>Optional</Text></SectionLabel>
-              <Text style={s.lipidHint}>{lipidHint}</Text>
-              <TouchableOpacity style={s.uploadBtn} onPress={() => void pickLipidPdfAt(idx)} activeOpacity={0.8}>
-                <Text style={s.uploadBtnText}>{m.lipidPdfName ?? '📄 Upload PDF (optional)'}</Text>
-              </TouchableOpacity>
-
-              {m.lipidPdfUri ? (
-                <>
-                  <SectionLabel>Lipid Test Date (YYYY-MM-DD)</SectionLabel>
-                  <TextInput
-                    style={s.input}
-                    value={m.lipid_test_date}
-                    onChangeText={(v) => handleTestDateChangeAt(idx, v)}
-                    placeholder="2025-01-15"
-                    placeholderTextColor={midGray}
-                  />
-                  {m.lipid_expiry_date ? (
-                    <Text style={s.expiryLabel}>
-                      Expires: {m.lipid_expiry_date}
-                      {!isNaN(ageNum) && ageNum >= 50 ? ' (90-day cycle — age 50+)' : ' (180-day cycle)'}
-                    </Text>
-                  ) : null}
-                </>
-              ) : null}
-            </View>
-          );
-        })}
+            <TouchableOpacity style={s.lipidOptionalBtn} activeOpacity={0.8}>
+              <Text style={s.lipidOptionalText}>📄 Lipid Profile — OPTIONAL</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
       </View>
     );
   }
@@ -714,6 +630,8 @@ const s = StyleSheet.create({
   memberFormCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1.5, borderColor: '#E5E7EB' },
   memberFormTitle: { fontSize: 15, fontWeight: '800', color: navy, marginBottom: 8 },
   lipidHint: { fontSize: 11, color: midGray, marginBottom: 8, fontStyle: 'italic' },
+  lipidOptionalBtn: { borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', borderStyle: 'dashed', marginTop: 12 },
+  lipidOptionalText: { fontSize: 13, color: midGray, fontWeight: '500' },
 
   // Legacy members
   memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF', borderRadius: 10, padding: 12, marginBottom: 8 },
