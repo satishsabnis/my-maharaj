@@ -664,7 +664,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
-      <div class="dash-card" style="border-color:var(--gold);border-width:2px" onclick="showScreen('wizard')">
+      <div class="dash-card" style="border-color:var(--gold);border-width:2px" onclick="resetWizard();showScreen('wizard')">
         <div class="dash-card-icon" style="background:#FAF3DC">🍳</div>
         <div class="dash-card-info">
           <div class="dash-card-title" style="color:var(--gold)">Generate Meal Plan</div>
@@ -1636,17 +1636,60 @@ async function generatePartyMenu() {
   const guests = document.getElementById('party-guests').value;
   const occasion = document.getElementById('party-occasion').value;
   const foodType = document.querySelector('#party-food-pills .pill.active')?.dataset.val || 'veg';
-  const budget = document.getElementById('party-budget').value;
-  if (!guests || !occasion) { showToast('Please fill in guests and occasion'); return; }
-  const btn = event.target; btn.textContent = 'Generating...'; btn.disabled = true;
+  const budget = document.getElementById('party-budget').value || '50';
+  if (!guests) { showToast('Please enter number of guests'); return; }
+  if (!occasion) { showToast('Please enter the occasion'); return; }
+  const btn = event.target;
+  btn.textContent = 'Generating...'; btn.disabled = true;
   const result = document.getElementById('party-result');
   result.style.display = 'block';
-  result.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">🍛 Maharaj is creating your party menu...</div>';
+  result.innerHTML = `<div style="text-align:center;padding:32px">
+    <div style="font-size:36px;margin-bottom:12px;animation:pulse 1s infinite">🍛</div>
+    <div style="font-weight:600;color:var(--navy)">Maharaj is planning your party menu...</div>
+  </div>`;
   try {
-    const prompt = `You are Maharaj, an expert Indian party planner. Create a party menu for ${guests} guests for a ${occasion} occasion. Food type: ${foodType}. Budget: AED ${budget || 50} per head. Include: Starters (3 options), Main Course (4 dishes), Bread/Rice, Desserts (2 options), Drinks. All ingredients available in Dubai supermarkets. Format as a clean readable menu with sections. Be specific with dish names.`;
-    const text = await callClaude(prompt, 800);
-    result.innerHTML = `<div style="font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text)">${text}</div>`;
-  } catch(e) { result.innerHTML = '<div style="color:var(--error)">Error generating menu. Please try again.</div>'; }
+    const prompt = `You are Maharaj, expert Indian party menu planner in Dubai UAE.
+
+Create a complete party menu for:
+- Guests: ${guests} people
+- Occasion: ${occasion}
+- Food type: ${foodType}
+- Budget: AED ${budget} per head
+
+Create a detailed menu with:
+
+WELCOME DRINKS (2-3 options):
+List specific drinks
+
+STARTERS / APPETIZERS (3-4 dishes):
+Each with brief description
+
+MAIN COURSE (4-5 dishes):
+Rice, breads, gravies, dry dishes
+
+ACCOMPANIMENTS:
+Raita, salads, pickles, papad
+
+DESSERTS (2-3 options):
+Traditional Indian sweets
+
+ESTIMATED COST PER HEAD: AED ${budget}
+
+SHOPPING TIPS FOR DUBAI:
+Where to buy specialty ingredients in Dubai
+
+Format clearly with sections and specific dish names.
+All ingredients available at Carrefour UAE, Lulu, or Spinneys.`;
+    const text = await callClaude(prompt, 1500);
+    result.innerHTML = `
+      <div style="font-size:14px;line-height:1.9;color:var(--text);white-space:pre-wrap">${text}</div>
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('party-result').innerText).then(()=>showToast('Menu copied!'))">📋 Copy Menu</button>
+        <button class="btn btn-secondary btn-sm" style="background:#25D366;border:none" onclick="window.open('https://wa.me/?text='+encodeURIComponent(document.getElementById('party-result').innerText),'_blank')">📱 Share on WhatsApp</button>
+      </div>`;
+  } catch(e) {
+    result.innerHTML = `<div style="color:var(--error);padding:16px">Error: ${e.message}. Please try again.</div>`;
+  }
   btn.textContent = 'Generate Party Menu 🎉'; btn.disabled = false;
 }
 
@@ -1691,6 +1734,37 @@ let wizardStep = 0;
 const WIZARD_STEPS = 11;
 
 function exitWizard() { showScreen('home'); wizardStep = 0; }
+
+function resetWizard() {
+  wizardStep = 0;
+  appState.wizardData = {
+    period: 'today', dates: [], foodType: 'veg', vegType: 'normal',
+    nonVegOptions: [], breakfastPrefs: [], lunchPrefs: [], dinnerPrefs: [],
+    unwellMembers: [], nutritionGoals: ['Balanced'], includeDesserts: false,
+  };
+  appState.mealPlan = null;
+  appState.selectedMeals = {};
+  document.querySelectorAll('.period-card').forEach(c => c.classList.remove('active'));
+  document.querySelector('.period-card[data-val="today"]')?.classList.add('active');
+  document.querySelectorAll('.food-card').forEach(c => c.classList.remove('active'));
+  document.querySelector('.food-card[data-val="veg"]')?.classList.add('active');
+  const vegSub = document.getElementById('veg-sub');
+  const nonvegSub = document.getElementById('nonveg-sub');
+  if (vegSub) vegSub.style.display = 'block';
+  if (nonvegSub) nonvegSub.style.display = 'none';
+  document.querySelectorAll('#nonveg-pills .pill').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#nutrition-pills .pill').forEach(p => p.classList.remove('active'));
+  document.querySelector('#nutrition-pills [data-val="Balanced"]')?.classList.add('active');
+  const customDates = document.getElementById('custom-dates');
+  const unwellMembers = document.getElementById('unwell-members');
+  if (customDates) customDates.style.display = 'none';
+  if (unwellMembers) unwellMembers.style.display = 'none';
+  document.querySelector('.food-card[data-val="no"]')?.classList.add('active');
+  document.querySelector('.food-card[data-val="yes"]')?.classList.remove('active');
+  const cuisinePills = document.getElementById('wizard-cuisine-pills');
+  if (cuisinePills) cuisinePills.innerHTML = '';
+  updateWizardUI();
+}
 
 function updateWizardUI() {
   // Hide all steps
@@ -1856,8 +1930,10 @@ async function generateMealPlan() {
   const nonVegOptions = Array.from(document.querySelectorAll('#nonveg-pills .pill.active')).map(p=>p.dataset.val);
   const nutritionGoals = Array.from(document.querySelectorAll('#nutrition-pills .pill.active')).map(p=>p.dataset.val);
   const includeDesserts = document.getElementById('include-desserts')?.checked;
-  const cuisine = appState.cuisines.length ? appState.cuisines[Math.floor(Math.random()*appState.cuisines.length)].cuisine_name : 'Konkani';
-  
+  const selectedCuisine = document.querySelector('#wizard-cuisine-pills .pill.active')?.dataset.val || 'Konkani';
+  const allUserCuisines = appState.cuisines.map(c => c.cuisine_name);
+  const cuisinePool = allUserCuisines.length > 1 ? allUserCuisines : [selectedCuisine];
+
   const healthFlags = appState.members.map(m=>m.health_notes).filter(Boolean).join('. ');
   const vegDays = appState.profile?.veg_days || [];
 
@@ -1875,7 +1951,11 @@ async function generateMealPlan() {
     const prompt = `You are Maharaj, expert Indian regional cuisine chef in Dubai.
 Generate a meal plan for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
 
-CUISINE TODAY: ${cuisine}
+CUISINE THEME: ${selectedCuisine} is the primary cuisine.
+For variety, breakfast can be from any of these cuisines: ${cuisinePool.join(', ')}.
+Lunch must be ${selectedCuisine} cuisine.
+Dinner can alternate between ${selectedCuisine} and ${cuisinePool[1] || selectedCuisine}.
+Each dish must be a real named Indian dish.
 FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - no meat, no eggs':foodPrefText}
 HEALTH CONDITIONS: ${healthFlags||'None - normal healthy family'}
 NUTRITION GOALS: ${nutritionGoals.join(', ')}
@@ -1883,7 +1963,7 @@ ${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali wit
 ${includeDesserts?'INCLUDE: Add one traditional dessert to dinner':''}
 
 RULES:
-1. Use REAL named Indian dishes from ${cuisine} cuisine (not generic descriptions)
+1. Use REAL named Indian dishes - follow the cuisine rules above strictly
 2. All ingredients available at Carrefour UAE, Spinneys, or Lulu Dubai
 3. Give EXACTLY 2 options per meal slot
 4. Each option must be a specific named dish
@@ -1894,7 +1974,7 @@ Respond ONLY with valid JSON:
 {
   "date":"${date}",
   "day":"${dayName}",
-  "cuisine":"${cuisine}",
+  "cuisine":"${selectedCuisine}",
   "breakfast":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":["low-gi"],"ingredients":["item 200g","item2 1 tsp"],"method":["step 1","step 2"],"prep_night":null},{"name":"Dish 2","vegetarian":true,"health_tags":[],"ingredients":["item 1 cup"],"method":["step 1"],"prep_night":null}]},
   "lunch":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":[],"ingredients":["item 200g"],"method":["step 1","step 2"],"prep_night":"soak lentils overnight"},{"name":"Dish 2","vegetarian":false,"health_tags":["high-protein"],"ingredients":["chicken 300g"],"method":["step 1"],"prep_night":"marinate chicken overnight"}]},
   "dinner":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":[],"ingredients":["item 200g"],"method":["step 1"],"prep_night":"soak rice"},{"name":"Dish 2","vegetarian":true,"health_tags":[],"ingredients":["item"],"method":["step 1"],"prep_night":null}]}${includeDesserts?`,"dessert":{"name":"Sweet Dish","ingredients":["item"],"method":["step 1"]}`:''}}`;
@@ -1906,7 +1986,7 @@ Respond ONLY with valid JSON:
       allDays.push(day);
     } catch(e) {
       console.error('Parse error for '+date, e);
-      allDays.push({date,day:dayName,cuisine,breakfast:{options:[{name:`${cuisine} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${cuisine} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${cuisine} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
+      allDays.push({date,day:dayName,cuisine:selectedCuisine,breakfast:{options:[{name:`${selectedCuisine} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${selectedCuisine} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${selectedCuisine} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
     }
   }
 
@@ -1917,7 +1997,7 @@ Respond ONLY with valid JSON:
   history.unshift({
     created_at: new Date().toISOString(),
     period: appState.wizardData.period,
-    cuisine,
+    cuisine: selectedCuisine,
     dietary_notes: [foodType==='veg'?(vegType==='fasting'?'Fasting/Upvas':'Vegetarian'):'Non-vegetarian', ...nutritionGoals].join(' · ')
   });
   localStorage.setItem('mm_history', JSON.stringify(history.slice(0,90)));
@@ -1932,57 +2012,80 @@ function renderMealResults() {
   const plan = appState.mealPlan;
   if (!plan) return;
   appState.selectedMeals = {};
-  const dateRange = plan.days.length===1 ? new Date(plan.days[0].date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}) : `${new Date(plan.days[0].date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})} - ${new Date(plan.days[plan.days.length-1].date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}`;
+
+  const dateRange = plan.days.length === 1
+    ? new Date(plan.days[0].date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})
+    : `${new Date(plan.days[0].date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})} - ${new Date(plan.days[plan.days.length-1].date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}`;
   document.getElementById('results-date-range').textContent = dateRange;
 
   let totalMeals = 0;
-  const html = plan.days.map((day,di)=>{
-    const mealSlots = ['breakfast','lunch','dinner'];
-    totalMeals += mealSlots.filter(m=>day[m]?.options?.length).length;
-    return `
-    <div class="day-section">
-      <div class="day-header" onclick="toggleDay(this)">
-        <span class="day-header-title">${day.day}, ${new Date(day.date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})} · ${day.cuisine}</span>
-        <span class="day-header-arrow">▾</span>
+  plan.days.forEach((day) => {
+    ['breakfast','lunch','dinner'].forEach(m => { if (day[m]?.options?.length) totalMeals++; });
+  });
+
+  const selectAllHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:12px 16px;background:var(--navy-light);border-radius:var(--radius-sm)">
+      <span style="font-size:14px;color:var(--navy);font-weight:600">Select all first options to proceed quickly</span>
+      <button class="btn btn-primary btn-sm" onclick="selectAllFirstOptions()">Select All Option 1</button>
+    </div>`;
+
+  const html = plan.days.map((day, di) => `
+    <div class="day-section" style="margin-bottom:24px;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <div class="day-header open" onclick="toggleDay(this)" style="background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+        <span style="font-size:15px;font-weight:700;font-family:'Playfair Display',serif">${day.day}, ${new Date(day.date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})} · ${day.cuisine}</span>
+        <span style="font-size:16px;transition:transform 0.2s" class="day-header-arrow">▾</span>
       </div>
-      <div class="day-content ${di===0?'open':''}">
-        ${mealSlots.filter(m=>day[m]?.options?.length).map(mealType=>`
-        <div class="meal-slot">
-          <div class="meal-slot-header">
-            <span class="meal-slot-icon">${mealType==='breakfast'?'🌅':mealType==='lunch'?'☀️':'🌙'}</span>
-            <span class="meal-slot-title">${mealType}</span>
+      <div class="day-content open" style="padding:16px">
+        ${['breakfast','lunch','dinner'].filter(m => day[m]?.options?.length).map(mealType => `
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)">
+            <span style="font-size:18px">${mealType==='breakfast'?'🌅':mealType==='lunch'?'☀️':'🌙'}</span>
+            <span style="font-size:14px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px">${mealType}</span>
           </div>
-          ${day[mealType].options.map((opt,oi)=>`
-          <div class="option-card" id="opt-${di}-${mealType}-${oi}" onclick="selectOption(${di},'${mealType}',${oi},this)">
-            <div class="option-card-top">
-              <div class="option-radio" id="radio-${di}-${mealType}-${oi}"></div>
-              <span class="option-name">${opt.name}</span>
-            </div>
-            <div class="option-tags">
-              <span class="tag ${opt.vegetarian?'tag-veg':'tag-nonveg'}">${opt.vegetarian?'Veg':'Non-Veg'}</span>
-              ${(opt.health_tags||[]).map(t=>`<span class="tag tag-health">${t}</span>`).join('')}
-            </div>
-            <button class="recipe-toggle" onclick="event.stopPropagation();toggleRecipe('recipe-${di}-${mealType}-${oi}',this)">▶ View Recipe</button>
-            <div class="recipe-content" id="recipe-${di}-${mealType}-${oi}">
-              ${opt.ingredients?.length?`<div class="recipe-section-title">Ingredients</div><ul class="recipe-list">${opt.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul>`:''}
-              ${opt.method?.length?`<div class="recipe-section-title">Method</div><ol class="recipe-list numbered">${opt.method.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
-              ${opt.prep_night?`<div class="recipe-section-title">Prep Night</div><ul class="recipe-list"><li>${opt.prep_night}</li></ul>`:''}
-            </div>
-          </div>`).join('')}
-          ${day.dessert&&mealType==='dinner'?`<div style="margin-top:10px;padding:12px;background:var(--gold-light);border-radius:var(--radius-sm);font-size:14px"><strong style="color:var(--navy)">🍮 Dessert:</strong> ${day.dessert.name}</div>`:''}
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+            ${day[mealType].options.map((opt, oi) => `
+            <div class="option-card" id="opt-${di}-${mealType}-${oi}"
+                 onclick="selectOption(${di},'${mealType}',${oi},this)"
+                 style="border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:all 0.15s">
+              <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+                <div class="option-radio" id="radio-${di}-${mealType}-${oi}" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center"></div>
+                <span style="font-size:15px;font-weight:600;color:var(--navy);line-height:1.3">${opt.name}</span>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;margin-left:30px">
+                <span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${opt.vegetarian?'#E8F5E9':'#FFEBEE'};color:${opt.vegetarian?'#2E7D32':'#C62828'}">${opt.vegetarian?'Veg':'Non-Veg'}</span>
+                ${(opt.health_tags||[]).slice(0,2).map(t=>`<span style="padding:3px 8px;border-radius:12px;font-size:11px;background:var(--navy-light);color:var(--navy)">${t}</span>`).join('')}
+              </div>
+              <button onclick="event.stopPropagation();toggleRecipe('recipe-${di}-${mealType}-${oi}',this)"
+                      style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;margin-left:30px;padding:0">▶ View Recipe</button>
+              <div class="recipe-content" id="recipe-${di}-${mealType}-${oi}">
+                ${opt.ingredients?.length?`<div class="recipe-section-title">Ingredients</div><ul class="recipe-list">${opt.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul>`:''}
+                ${opt.method?.length?`<div class="recipe-section-title">Method</div><ol class="recipe-list numbered">${opt.method.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
+                ${opt.prep_night?`<div style="background:#FFF8E1;border-radius:6px;padding:8px 12px;font-size:13px;color:#795548"><strong>🌙 Prep Night:</strong> ${opt.prep_night}</div>`:''}
+              </div>
+            </div>`).join('')}
+          </div>
         </div>`).join('')}
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 
-  document.getElementById('meal-results').innerHTML = html;
+  document.getElementById('meal-results').innerHTML = selectAllHtml + html;
   document.getElementById('confirm-total').textContent = totalMeals;
   document.getElementById('confirm-count').textContent = '0';
   document.getElementById('confirm-btn').disabled = true;
+}
 
-  // Open first day
-  const firstContent = document.querySelector('.day-content');
-  if (firstContent) { firstContent.classList.add('open'); document.querySelector('.day-header').classList.add('open'); }
+function selectAllFirstOptions() {
+  const plan = appState.mealPlan;
+  if (!plan) return;
+  plan.days.forEach((day, di) => {
+    ['breakfast','lunch','dinner'].forEach(mealType => {
+      if (day[mealType]?.options?.length) {
+        const el = document.getElementById(`opt-${di}-${mealType}-0`);
+        if (el) selectOption(di, mealType, 0, el);
+      }
+    });
+  });
+  showToast('All first options selected!');
 }
 
 function toggleDay(header) {
@@ -2014,7 +2117,52 @@ function updateConfirmBar() {
 function goToRecipes() {
   wizardStep = 8;
   updateWizardUI();
+  renderSummaryTable();
+}
+
+function renderSummaryTable() {
+  const plan = appState.mealPlan;
+  const selected = appState.selectedMeals;
+  let html = `
+    <div style="overflow-x:auto;margin-bottom:24px">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="background:var(--navy);color:#fff">
+            <th style="padding:12px 16px;text-align:left;font-weight:700">Date</th>
+            <th style="padding:12px 16px;text-align:left;font-weight:700">🌅 Breakfast</th>
+            <th style="padding:12px 16px;text-align:left;font-weight:700">☀️ Lunch</th>
+            <th style="padding:12px 16px;text-align:left;font-weight:700">🌙 Dinner</th>
+          </tr>
+        </thead>
+        <tbody>`;
+  plan.days.forEach((day, di) => {
+    const bg = di % 2 === 0 ? '#fff' : 'var(--surface)';
+    const breakfast = selected[di]?.breakfast !== undefined ? day.breakfast?.options[selected[di].breakfast]?.name : '-';
+    const lunch = selected[di]?.lunch !== undefined ? day.lunch?.options[selected[di].lunch]?.name : '-';
+    const dinner = selected[di]?.dinner !== undefined ? day.dinner?.options[selected[di].dinner]?.name : '-';
+    html += `
+      <tr style="background:${bg};border-bottom:1px solid var(--border)">
+        <td style="padding:12px 16px;font-weight:600;color:var(--navy);white-space:nowrap">
+          <div>${day.day}</div>
+          <div style="font-size:12px;color:var(--text-secondary)">${new Date(day.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
+        </td>
+        <td style="padding:12px 16px;color:var(--text)">${breakfast}</td>
+        <td style="padding:12px 16px;color:var(--text)">${lunch}</td>
+        <td style="padding:12px 16px;color:var(--text)">${dinner}</td>
+      </tr>`;
+  });
+  html += `</tbody></table></div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+      <button class="btn btn-primary" style="width:100%" onclick="showRecipes()">📖 View Full Recipes</button>
+      <button class="btn btn-secondary" style="width:100%" onclick="goToShoppingList()">🛒 Generate Shopping List</button>
+      <button class="btn btn-outline" style="width:100%" onclick="exitWizard()">🏠 Back to Dashboard</button>
+    </div>`;
+  document.getElementById('recipe-results').innerHTML = html;
+}
+
+function showRecipes() {
   renderRecipes();
+  document.getElementById('wizard-content').scrollTop = 0;
 }
 function renderRecipes() {
   const plan = appState.mealPlan;
