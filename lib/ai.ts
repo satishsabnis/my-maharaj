@@ -5,7 +5,7 @@ const client = new Anthropic({
   dangerouslyAllowBrowser: true,
 });
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface MealOption {
   name: string;
@@ -19,28 +19,12 @@ export interface MealSlot {
   options: MealOption[];
 }
 
-export interface TiffinItem {
-  name: string;
-  vegetarian: boolean;
-  ingredients: string[];
-  steps: string[];
-}
-
-export interface DessertItem {
-  name: string;
-  vegetarian: boolean;
-  ingredients: string[];
-  steps: string[];
-}
-
 export interface MealPlanDay {
   date: string;
   day: string;
   breakfast: MealSlot;
   lunch: MealSlot;
   dinner: MealSlot;
-  tiffin?: { options: TiffinItem[] };
-  dessert?: DessertItem;
 }
 
 export interface GroceryItem {
@@ -87,16 +71,51 @@ async function askClaude(prompt: string): Promise<string> {
   return text.replace(/```json|```/g, '').trim();
 }
 
-// ─── Per-meal generator ───────────────────────────────────────────────────────
+// ─── Fallback ────────────────────────────────────────────────────────────────
 
-function fallbackSlot(cuisine: string, mealType: string): MealSlot {
+const REAL_DISHES: Record<string, string[][]> = {
+  breakfast: [
+    ['Pohe', 'Kanda Pohe', 'Batata Pohe'],
+    ['Upma', 'Rava Upma', 'Semolina Upma'],
+    ['Idli Sambhar', 'Idli with Coconut Chutney', 'Mini Idli'],
+    ['Methi Thepla', 'Gujarati Thepla', 'Methi Paratha'],
+    ['Sabudana Khichdi', 'Sabudana Vada', 'Sago Khichdi'],
+    ['Dosa', 'Masala Dosa', 'Rava Dosa'],
+    ['Puri Bhaji', 'Batata Puri', 'Aloo Puri'],
+  ],
+  lunch: [
+    ['Dal Khichdi', 'Moong Dal Khichdi', 'Masala Khichdi'],
+    ['Rajma Chawal', 'Kidney Bean Curry with Rice', 'Rajma Rice'],
+    ['Chole Bhature', 'Amritsari Chole', 'Punjabi Chole'],
+    ['Palak Dal', 'Spinach Toor Dal', 'Dal Palak'],
+    ['Jeera Rice with Dal Tadka', 'Tadka Dal Chawal', 'Dal Fry with Rice'],
+    ['Bhindi Masala Roti', 'Okra Sabzi with Chapati', 'Bhindi Fry'],
+    ['Pav Bhaji', 'Mumbai Pav Bhaji', 'Buttered Pav Bhaji'],
+  ],
+  dinner: [
+    ['Chicken Curry with Rice', 'Konkani Chicken Curry', 'Kali Mirch Chicken'],
+    ['Mutton Rogan Josh', 'Kashmiri Rogan Josh', 'Lamb Rogan Josh'],
+    ['Paneer Butter Masala', 'Shahi Paneer', 'Paneer Tikka Masala'],
+    ['Fish Curry', 'Goan Fish Curry', 'Malvani Fish Curry'],
+    ['Dal Makhani', 'Slow Cooked Dal Makhani', 'Black Dal'],
+    ['Egg Bhurji with Roti', 'Masala Omelette', 'Anda Bhurji'],
+    ['Veg Biryani', 'Hyderabadi Veg Biryani', 'Kacchi Biryani'],
+  ],
+};
+
+function fallbackSlot(mealType: string, idx: number): MealSlot {
+  const key = mealType as keyof typeof REAL_DISHES;
+  const arr = REAL_DISHES[key] ?? REAL_DISHES['lunch'];
+  const pick = arr[idx % arr.length];
   return {
     options: [
-      { name: `${cuisine} ${mealType} 1`, vegetarian: true, tags: [], ingredients: [], steps: [] },
-      { name: `${cuisine} ${mealType} 2`, vegetarian: true, tags: [], ingredients: [], steps: [] },
+      { name: pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
+      { name: pick[1] ?? pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
     ],
   };
 }
+
+// ─── Per-meal generator ───────────────────────────────────────────────────────
 
 async function generateOneMeal(
   mealType: string,
@@ -107,37 +126,54 @@ async function generateOneMeal(
   foodPref: string,
   language: string,
   mealPrefs?: string[],
+  unwellNote?: string,
+  nutritionGoals?: string,
+  dayIdx = 0,
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
   const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}.` : '';
+  const unwellStr = unwellNote ? `Gentle recovery meals for: ${unwellNote}.` : '';
+  const nutritionStr = nutritionGoals ? `Nutrition goal: ${nutritionGoals}.` : '';
 
-  const nonVegCritical = foodNote.toLowerCase().includes('non-veg') || foodNote.toLowerCase().includes('chicken') || foodNote.toLowerCase().includes('fish') || foodNote.toLowerCase().includes('egg') || foodNote.toLowerCase().includes('mutton')
-    ? ' CRITICAL: If non-veg options include chicken, fish, eggs or mutton, these MUST appear in at least one lunch AND one dinner option. Do not generate all vegetarian options when non-veg is selected.'
+  const nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
+    ['chicken','fish','egg','mutton'].some((w) => foodNote.toLowerCase().includes(w))
+    ? ' CRITICAL: At least one option MUST be a real non-veg dish with chicken/fish/eggs/mutton.'
     : '';
 
-  const prompt = `You are Maharaj, Indian chef in Dubai.
-2 ${mealType} options for ${day} ${date}. Cuisine: ${cuisine}.
-Health: ${healthInfo}. Food: ${foodNote}. Language: ${language}.${prefsNote ? ` ${prefsNote}` : ''}${nonVegCritical}
-Reply ONLY with this JSON, no other text:
-{"options":[{"name":"dish1","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]},{"name":"dish2","veg":true,"tags":["tag"],"ing":["item 100g","item2"],"steps":["step1","step2"]}]}`;
+  const prompt = `You are Maharaj, a professional Indian chef in Dubai specialising in authentic regional Indian cooking.
+
+Generate exactly 2 real, named ${mealType} options for ${day} ${date}.
+Cuisine style: ${cuisine}. Health considerations: ${healthInfo}.
+Food preference: ${foodNote}. Language for dish names: ${language}.
+${prefsNote} ${unwellStr} ${nutritionStr}${nonVegCritical}
+
+IMPORTANT RULES:
+- Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
+- NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
+- Include 5-8 real ingredients with quantities (e.g. "Flattened rice 200g", "Onion 1 medium")
+- Include 4-6 clear cooking steps
+- Tags: vegetarian/non-vegetarian, plus relevant health tags
+
+Reply ONLY with this JSON (no other text, no markdown):
+{"options":[{"name":"Real Dish Name","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
 
   try {
     const text = await askClaude(prompt);
     const raw = JSON.parse(text) as {
       options: Array<{ name: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
     };
-    return {
-      options: (raw.options ?? []).map((o) => ({
-        name: o.name ?? '',
-        vegetarian: o.veg ?? true,
-        tags: o.tags ?? [],
-        ingredients: o.ing ?? [],
-        steps: o.steps ?? [],
-      })),
-    };
+    const opts = (raw.options ?? []).map((o) => ({
+      name: o.name ?? '',
+      vegetarian: o.veg ?? true,
+      tags: o.tags ?? [],
+      ingredients: o.ing ?? [],
+      steps: o.steps ?? [],
+    }));
+    if (opts.length === 0) return fallbackSlot(mealType, dayIdx);
+    return { options: opts };
   } catch {
-    return fallbackSlot(cuisine, mealType);
+    return fallbackSlot(mealType, dayIdx);
   }
 }
 
@@ -160,6 +196,7 @@ export async function generateMealPlan(
     };
     unwellMembers?: string[];
     nutritionFocus?: string;
+    mealPrefs?: { breakfast?: string[]; lunch?: string[]; dinner?: string[] };
     includeTiffin?: boolean;
     tiffinMembers?: string[];
     tiffinRestrictions?: string;
@@ -171,35 +208,44 @@ export async function generateMealPlan(
   },
   onProgress?: (current: number, total: number) => void,
 ): Promise<MealPlanResult> {
-  const cuisine = params.cuisine || 'Konkani';
+  const cuisine  = params.cuisine || 'Konkani';
   const language = params.language || 'en';
-  const langName: Record<string, string> = {
-    en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati',
-  };
+  const langName: Record<string, string> = { en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati' };
+  const lang     = langName[language] || 'English';
 
   const hf = params.healthFlags;
   const healthParts: string[] = [];
-  if (hf.diabetic) healthParts.push('Diabetic-Low GI');
-  if (hf.bp) healthParts.push('Low sodium');
-  if (hf.pcos) healthParts.push('No maida');
-  if (hf.cholesterol) healthParts.push('No fried food');
-  if (hf.thyroid) healthParts.push('Selenium-rich foods');
-  if (hf.kidneyDisease) healthParts.push('Low potassium/phosphorus');
-  if (hf.heartDisease) healthParts.push('Low saturated fat');
-  if (hf.obesity) healthParts.push('Low calorie density');
-  if (hf.anaemia) healthParts.push('Iron-rich foods');
-  if (hf.lactoseIntolerant) healthParts.push('No dairy');
+  if (hf.diabetic)         healthParts.push('Diabetic — Low GI foods');
+  if (hf.bp)               healthParts.push('Low sodium');
+  if (hf.pcos)             healthParts.push('No maida, PCOS-friendly');
+  if (hf.cholesterol)      healthParts.push('No fried food, low cholesterol');
+  if (hf.thyroid)          healthParts.push('Selenium-rich foods');
+  if (hf.kidneyDisease)    healthParts.push('Low potassium & phosphorus');
+  if (hf.heartDisease)     healthParts.push('Low saturated fat, heart-healthy');
+  if (hf.obesity)          healthParts.push('Low calorie density');
+  if (hf.anaemia)          healthParts.push('Iron-rich foods');
+  if (hf.lactoseIntolerant)healthParts.push('No dairy');
   if (hf.glutenIntolerant) healthParts.push('No gluten');
-  const healthInfo = healthParts.length > 0 ? healthParts.join(', ') : 'Normal healthy';
+  const healthInfo = healthParts.length > 0 ? healthParts.join('; ') : 'Normal healthy';
 
   const baseFoodPref =
     params.foodPrefs.type === 'veg'
       ? params.foodPrefs.vegType === 'fasting'
-        ? 'Fasting only (sabudana/rajgira/fruits)'
+        ? 'Fasting only (sabudana/rajgira/fruits/sama rice)'
         : 'Vegetarian'
-      : `Non-veg: ${params.foodPrefs.nonVegOptions?.join(', ') || 'all'}`;
+      : `Non-vegetarian: include ${params.foodPrefs.nonVegOptions?.join(', ') || 'chicken, fish, eggs, mutton'}`;
 
-  const lang = langName[language] || 'English';
+  const unwellNote = params.unwellMembers && params.unwellMembers.length > 0
+    ? params.unwellMembers.join(', ')
+    : undefined;
+
+  const nutritionGoals = params.nutritionFocus
+    || (params.mealPrefs ? undefined : undefined);
+
+  const bfPrefs  = params.breakfastPrefs ?? params.mealPrefs?.breakfast;
+  const lnPrefs  = params.lunchPrefs ?? params.mealPrefs?.lunch;
+  const dnPrefs  = params.dinnerPrefs ?? params.mealPrefs?.dinner;
+
   const days: MealPlanDay[] = [];
   const allIngredients: string[] = [];
   const total = params.dates.length;
@@ -209,32 +255,28 @@ export async function generateMealPlan(
     onProgress?.(i + 1, total);
 
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-
-    // Force vegetarian on designated veg days
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
     const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
-
-    // For non-veg: encourage mixing — not every meal needs to be non-veg
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
-      ? `${foodPref}. Mix veg and non-veg naturally — not every meal needs meat.`
+      ? `${foodPref}. Mix veg and non-veg naturally across the week.`
       : foodPref;
 
     const [breakfast, lunch, dinner] = await Promise.all([
-      generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref, lang, params.breakfastPrefs),
-      generateOneMeal('lunch', date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, params.lunchPrefs),
-      generateOneMeal('dinner', date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, params.dinnerPrefs),
+      generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref, lang, bfPrefs, unwellNote, nutritionGoals, i),
+      generateOneMeal('lunch',     date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, lnPrefs, unwellNote, nutritionGoals, i),
+      generateOneMeal('dinner',    date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, dnPrefs, unwellNote, nutritionGoals, i),
     ]);
 
     days.push({ date, day: dayName, breakfast, lunch, dinner });
 
-    [breakfast, lunch, dinner].forEach((slot) => {
-      slot.options.forEach((opt) => {
-        opt.ingredients.forEach((ing) => allIngredients.push(ing));
-      });
-    });
+    [breakfast, lunch, dinner].forEach((slot) =>
+      slot.options.forEach((opt) =>
+        opt.ingredients.forEach((ing) => allIngredients.push(ing))
+      )
+    );
   }
 
-  // Deduplicate grocery list
+  // Build grocery list
   const seen = new Set<string>();
   const grocery_list: GroceryItem[] = [];
   allIngredients.forEach((ing) => {

@@ -1,128 +1,115 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  ActivityIndicator,
-  Platform,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { navy, gold, white, lightGray, darkGray, midGray, errorRed } from '../theme/colors';
+import Logo from '../components/Logo';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import { navy, gold, textSec, errorRed, white, border } from '../theme/colors';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [formError, setFormError] = useState('');
+  const [emailErr, setEmailErr] = useState('');
+  const [passErr, setPassErr]   = useState('');
+
+  function validate(): boolean {
+    let ok = true;
+    setEmailErr(''); setPassErr(''); setFormError('');
+    if (!email.trim())            { setEmailErr('Email is required'); ok = false; }
+    else if (!email.includes('@')){ setEmailErr('Enter a valid email'); ok = false; }
+    if (!password)                { setPassErr('Password is required'); ok = false; }
+    return ok;
+  }
 
   async function handleLogin() {
-    setError('');
-    if (!email.trim()) return setError('Please enter your email.');
-    if (!password) return setError('Please enter your password.');
-
+    if (!validate()) return;
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setLoading(false);
-
-    if (authError) { setError(authError.message); return; }
-    router.replace('/home');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (error) { setFormError('Invalid email or password. Please try again.'); return; }
+      router.replace('/home');
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Sign in failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.container}>
-            <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
-              <Text style={styles.backText}>← Back</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={s.safe}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={s.backArrow}>←</Text>
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Welcome Back</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-            <Text style={styles.header}>Welcome back</Text>
-            <Text style={styles.subheader}>Log in to your My Maharaj account</Text>
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={s.logoRow}><Logo size="small" /></View>
 
-            <View style={styles.form}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={midGray}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+        <View style={s.form}>
+          <Text style={s.formTitle}>Sign in to Maharaj</Text>
+          <Text style={s.formSub}>Welcome back! We missed you 🙏</Text>
 
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.inputInner}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Your password"
-                  placeholderTextColor={midGray}
-                  secureTextEntry={!showPassword}
-                  autoComplete="current-password"
-                />
-                <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁'}</Text>
-                </TouchableOpacity>
-              </View>
+          <Input label="Email Address" value={email} onChangeText={setEmail}
+            placeholder="you@example.com" keyboardType="email-address"
+            autoCapitalize="none" error={emailErr} />
+          <Input label="Password" value={password} onChangeText={setPassword}
+            placeholder="Your password" secureTextEntry error={passErr} />
 
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <TouchableOpacity style={s.forgotWrap} onPress={() => {}} activeOpacity={0.7}>
+            <Text style={s.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                onPress={handleLogin}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                {loading ? <ActivityIndicator color={white} /> : <Text style={styles.submitButtonText}>Log In</Text>}
-              </TouchableOpacity>
+          {formError ? (
+            <View style={s.errorBox}>
+              <Text style={s.errorBoxText}>{formError}</Text>
             </View>
+          ) : null}
 
-            <TouchableOpacity onPress={() => router.replace('/signup')}>
-              <Text style={styles.linkText}>
-                Don't have an account?{' '}
-                <Text style={styles.linkHighlight}>Sign up</Text>
-              </Text>
+          <View style={{ marginTop: 8 }}>
+            <Button title="Sign In" onPress={handleLogin} loading={loading} />
+          </View>
+
+          <View style={s.altRow}>
+            <Text style={s.altText}>New here? </Text>
+            <TouchableOpacity onPress={() => router.push('/signup')} activeOpacity={0.7}>
+              <Text style={s.altLink}>Create Account</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: white },
-  scroll: { flexGrow: 1 },
-  container: { flex: 1, paddingHorizontal: 28, paddingTop: 20, paddingBottom: 40, maxWidth: 480, width: '100%', alignSelf: 'center' },
-  backRow: { marginBottom: 24 },
-  backText: { color: navy, fontSize: 15, fontWeight: '500' },
-  header: { fontSize: 30, fontWeight: '800', color: navy, marginBottom: 8 },
-  subheader: { fontSize: 15, color: midGray, marginBottom: 32 },
-  form: { width: '100%', marginBottom: 24 },
-  label: { fontSize: 13, fontWeight: '600', color: darkGray, marginBottom: 6, marginTop: 16 },
-  input: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#111827', backgroundColor: lightGray },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, backgroundColor: lightGray },
-  inputInner: { flex: 1, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#111827' },
-  eyeBtn: { paddingHorizontal: 14, paddingVertical: 12 },
-  eyeText: { fontSize: 18 },
-  errorText: { color: errorRed, fontSize: 13, marginTop: 14, textAlign: 'center' },
-  submitButton: { backgroundColor: gold, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: white, fontSize: 17, fontWeight: '700' },
-  linkText: { textAlign: 'center', color: midGray, fontSize: 14 },
-  linkHighlight: { color: navy, fontWeight: '700' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: border,
+  },
+  backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backArrow:   { fontSize: 22, color: navy },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: navy },
+  scroll:      { paddingBottom: 48 },
+  logoRow:     { alignItems: 'center', paddingVertical: 20 },
+  form:        { paddingHorizontal: 24 },
+  formTitle:   { fontSize: 22, fontWeight: '800', color: navy, marginBottom: 4 },
+  formSub:     { fontSize: 14, color: textSec, marginBottom: 24 },
+  forgotWrap:  { alignSelf: 'flex-end', marginTop: -8, marginBottom: 8 },
+  forgotText:  { fontSize: 13, color: gold, fontWeight: '600' },
+  errorBox:    { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 8 },
+  errorBoxText:{ fontSize: 13, color: errorRed, textAlign: 'center' },
+  altRow:  { flexDirection: 'row', justifyContent: 'center', marginTop: 24, alignItems: 'center' },
+  altText: { fontSize: 14, color: textSec },
+  altLink: { fontSize: 14, color: gold, fontWeight: '700' },
 });

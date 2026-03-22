@@ -1,306 +1,336 @@
-import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView, ActivityIndicator, Platform, Image,
-} from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { navy, gold, white, midGray, darkGray, lightGray, errorRed } from '../theme/colors';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import { navy, gold, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface MemberRow {
+interface Member {
+  id: string;
   name: string;
-  age: string;
-  health_notes: string;
+  age: number;
+  relationship: string | null;
+  health_notes: string | null;
 }
 
-function emptyRow(): MemberRow {
-  return { name: '', age: '', health_notes: '' };
+interface MemberForm {
+  name: string;
+  age: string;
+  relationship: string;
+  healthConditions: string[];
+  notes: string;
+}
+
+const RELS         = ['Self', 'Spouse', 'Child', 'Parent', 'Other'];
+const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
+
+function formToNotes(form: MemberForm): string {
+  return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
+}
+
+function emptyForm(): MemberForm {
+  return { name: '', age: '', relationship: 'Self', healthConditions: [], notes: '' };
+}
+
+function memberToForm(m: Member): MemberForm {
+  const notes  = m.health_notes ?? '';
+  const conds  = HEALTH_PILLS.filter((p) => notes.toLowerCase().includes(p.toLowerCase()));
+  const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
+  return {
+    name: m.name, age: String(m.age || ''),
+    relationship: m.relationship ?? 'Self',
+    healthConditions: conds, notes: others,
+  };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DietaryProfileScreen() {
-  // Screen 1 state
-  const [screen, setScreen] = useState<1 | 2>(1);
-  const [familyName, setFamilyName] = useState('');
-  const [memberCount, setMemberCount] = useState(1);
+  const [members, setMembers]       = useState<Member[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState(false);
+  const [modalOpen, setModalOpen]   = useState(false);
+  const [editId, setEditId]         = useState<string | null>(null);
+  const [form, setForm]             = useState<MemberForm>(emptyForm());
+  const [formError, setFormError]   = useState('');
 
-  // Screen 2 state
-  const [members, setMembers] = useState<MemberRow[]>([emptyRow()]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+    const { data } = await supabase.from('family_members').select('id, name, age, relationship, health_notes').eq('user_id', user.id);
+    setMembers((data as Member[]) ?? []);
+    setLoading(false);
+  }, []);
 
-  // ── Screen 1 handlers ───────────────────────────────────────────────────────
+  useEffect(() => { void load(); }, []);
 
-  function goToScreen2() {
-    setError('');
-    if (!familyName.trim()) { setError('Please enter your family name.'); return; }
-    // Build the exact number of member rows
-    setMembers(Array.from({ length: memberCount }, (_, i) => members[i] ?? emptyRow()));
-    setScreen(2);
+  function openAdd() {
+    setEditId(null);
+    setForm(emptyForm());
+    setFormError('');
+    setModalOpen(true);
   }
 
-  // ── Screen 2 handlers ───────────────────────────────────────────────────────
-
-  function updateMember<K extends keyof MemberRow>(idx: number, key: K, value: string) {
-    setMembers((prev) => prev.map((m, i) => i === idx ? { ...m, [key]: value } : m));
+  function openEdit(m: Member) {
+    setEditId(m.id);
+    setForm(memberToForm(m));
+    setFormError('');
+    setModalOpen(true);
   }
 
-  async function saveAllMembers() {
-    setError('');
-    const invalid = members.find((m) => !m.name.trim());
-    if (invalid) { setError('Please enter a name for every member.'); return; }
+  function toggleHealth(cond: string) {
+    setForm((prev) => ({
+      ...prev,
+      healthConditions: prev.healthConditions.includes(cond)
+        ? prev.healthConditions.filter((c) => c !== cond)
+        : [...prev.healthConditions, cond],
+    }));
+  }
 
+  async function saveMember() {
+    if (!form.name.trim()) { setFormError('Name is required'); return; }
     setSaving(true);
+    setFormError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
-      // Update family name in profile
-      await supabase.from('profiles').upsert({ id: user.id, family_name: familyName.trim() });
-
-      // Replace all existing family members
-      await supabase.from('family_members').delete().eq('user_id', user.id);
-
-      const rows = members.map((m) => ({
+      const payload = {
         user_id: user.id,
-        name: m.name.trim(),
-        age: parseInt(m.age, 10) || 0,
-        health_notes: m.health_notes.trim() || null,
-      }));
-
-      const { error: insertErr } = await supabase.from('family_members').insert(rows);
-      if (insertErr) throw new Error(insertErr.message);
-
-      setSaved(true);
+        name: form.name.trim(),
+        age: parseInt(form.age, 10) || 0,
+        relationship: form.relationship,
+        health_notes: formToNotes(form) || null,
+      };
+      if (editId) {
+        await supabase.from('family_members').update(payload).eq('id', editId);
+      } else {
+        await supabase.from('family_members').insert(payload);
+      }
+      setModalOpen(false);
+      await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed. Please try again.');
+      setFormError(e instanceof Error ? e.message : 'Save failed. Please try again.');
     } finally {
       setSaving(false);
     }
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  async function deleteMember(id: string) {
+    await supabase.from('family_members').delete().eq('id', id);
+    await load();
+  }
 
-  if (saved) {
+  function Pill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
     return (
-      <SafeAreaView style={s.safe}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>← Back</Text></TouchableOpacity>
-          <Text style={s.headerTitle}>Dietary Profile</Text>
-          <View style={{ width: 60 }} />
-        </View>
-        <View style={s.successBox}>
-          <Text style={s.successIcon}>✅</Text>
-          <Text style={s.successTitle}>Saved!</Text>
-          <Text style={s.successSub}>{members.length} family member{members.length > 1 ? 's' : ''} saved for {familyName}</Text>
-          <TouchableOpacity style={s.goldBtn} onPress={() => router.replace('/home')} activeOpacity={0.85}>
-            <Text style={s.goldBtnText}>Back to Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.outlineBtn} onPress={() => { setSaved(false); setScreen(1); }} activeOpacity={0.85}>
-            <Text style={s.outlineBtnText}>Edit Again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <TouchableOpacity style={[ps.pill, active && ps.pillActive]} onPress={onPress} activeOpacity={0.75}>
+        <Text style={[ps.pillText, active && ps.pillTextActive]}>{label}</Text>
+      </TouchableOpacity>
     );
   }
 
-  // ── Screen 1: Family Setup ───────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
-  if (screen === 1) {
-    return (
-      <SafeAreaView style={s.safe}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>← Back</Text></TouchableOpacity>
-          <Text style={s.headerTitle}>Family Setup</Text>
-          <View style={{ width: 60 }} />
-        </View>
-
-        <View style={s.logoRow}>
-          <Image source={require('../assets/logo.png')} style={s.logo} />
-        </View>
-
-        <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
-          <Text style={s.fieldLabel}>Family Name</Text>
-          <TextInput
-            style={s.input}
-            value={familyName}
-            onChangeText={setFamilyName}
-            placeholder="e.g. The Sharma Family"
-            placeholderTextColor={midGray}
-          />
-
-          <Text style={s.fieldLabel}>How many members?</Text>
-          <View style={s.counterRow}>
-            <TouchableOpacity
-              style={[s.counterBtn, memberCount <= 1 && s.counterBtnDisabled]}
-              onPress={() => setMemberCount((c) => Math.max(1, c - 1))}
-              disabled={memberCount <= 1}
-            >
-              <Text style={s.counterBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={s.counterValue}>{memberCount}</Text>
-            <TouchableOpacity
-              style={[s.counterBtn, memberCount >= 10 && s.counterBtnDisabled]}
-              onPress={() => setMemberCount((c) => Math.min(10, c + 1))}
-              disabled={memberCount >= 10}
-            >
-              <Text style={s.counterBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={s.counterHint}>Including yourself · Min 1, Max 10</Text>
-
-          {error ? <Text style={s.errorText}>{error}</Text> : null}
-
-          <TouchableOpacity style={s.goldBtn} onPress={goToScreen2} activeOpacity={0.85}>
-            <Text style={s.goldBtnText}>Next — Fill in {memberCount} member{memberCount > 1 ? 's' : ''} →</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Screen 2: Member Details ─────────────────────────────────────────────────
+  const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
+    Diabetic:    { bg: '#FEF2F2', fg: '#DC2626' },
+    BP:          { bg: '#FFF7ED', fg: '#C2410C' },
+    PCOS:        { bg: '#FDF4FF', fg: '#7E22CE' },
+    Cholesterol: { bg: '#FFF1F2', fg: '#BE123C' },
+    Thyroid:     { bg: '#ECFDF5', fg: '#059669' },
+    Heart:       { bg: '#FEF2F2', fg: '#DC2626' },
+    Kidney:      { bg: '#EFF6FF', fg: '#1D4ED8' },
+    Anaemia:     { bg: '#FFF7ED', fg: '#B45309' },
+    Lactose:     { bg: '#F0FDF4', fg: '#166534' },
+    Gluten:      { bg: '#FFFBEB', fg: '#92400E' },
+  };
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => setScreen(1)}><Text style={s.backText}>← Back</Text></TouchableOpacity>
-        <Text style={s.headerTitle}>Member Details</Text>
-        <Text style={s.headerCount}>{members.length} member{members.length > 1 ? 's' : ''}</Text>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={s.backArrow}>←</Text>
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Dietary Profile</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
-        <Text style={s.stepSub}>Fill in details for each family member</Text>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <Text style={s.loadingText}>Loading...</Text>
+        ) : members.length === 0 ? (
+          <View style={s.emptyState}>
+            <Text style={s.emptyIcon}>👨‍👩‍👧‍👦</Text>
+            <Text style={s.emptyTitle}>No family members yet</Text>
+            <Text style={s.emptySub}>Add your family members to personalise meal plans</Text>
+          </View>
+        ) : (
+          members.map((m) => {
+            const pills = HEALTH_PILLS.filter((p) => (m.health_notes ?? '').toLowerCase().includes(p.toLowerCase()));
+            const otherNotes = pills.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), m.health_notes ?? '').replace(/^,+|,+$/g, '').trim();
+            return (
+              <View key={m.id} style={s.card}>
+                <View style={s.cardHeader}>
+                  <View style={s.memberInfo}>
+                    <Text style={s.memberName}>{m.name}</Text>
+                    <View style={s.metaRow}>
+                      {m.age > 0 && <Text style={s.metaText}>{m.age} yrs</Text>}
+                      {m.relationship && <Text style={s.metaDot}>·</Text>}
+                      {m.relationship && <Text style={s.metaText}>{m.relationship}</Text>}
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => openEdit(m)} style={s.editBtn} activeOpacity={0.7}>
+                    <Text style={s.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
 
-        {members.map((m, idx) => (
-          <View key={idx} style={s.memberRow}>
-            {/* Number badge */}
-            <View style={s.memberBadge}>
-              <Text style={s.memberBadgeText}>{idx + 1}</Text>
-            </View>
+                {pills.length > 0 && (
+                  <View style={s.pillWrap}>
+                    {pills.map((p) => (
+                      <View key={p} style={[s.healthPill, { backgroundColor: HEALTH_COLORS[p]?.bg ?? '#F3F4F6' }]}>
+                        <Text style={[s.healthPillText, { color: HEALTH_COLORS[p]?.fg ?? '#374151' }]}>{p}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
 
-            {/* Fields */}
-            <View style={s.memberFields}>
-              <TextInput
-                style={s.memberInput}
-                value={m.name}
-                onChangeText={(v) => updateMember(idx, 'name', v)}
-                placeholder="Name *"
-                placeholderTextColor={midGray}
-              />
-              <TextInput
-                style={[s.memberInput, s.memberInputAge]}
-                value={m.age}
-                onChangeText={(v) => updateMember(idx, 'age', v)}
-                placeholder="Age"
-                placeholderTextColor={midGray}
-                keyboardType="numeric"
-              />
-              <TextInput
-                style={[s.memberInput, s.memberInputNotes]}
-                value={m.health_notes}
-                onChangeText={(v) => updateMember(idx, 'health_notes', v)}
-                placeholder="e.g. Diabetic, BP, doctor says low salt"
-                placeholderTextColor={midGray}
-              />
-              <TouchableOpacity style={s.lipidBtn} activeOpacity={0.8}>
-                <Text style={s.lipidBtnText}>📄 Lipid Profile (Optional)</Text>
+                {otherNotes ? (
+                  <Text style={s.notesText}>{otherNotes}</Text>
+                ) : null}
+
+                <TouchableOpacity onPress={() => deleteMember(m.id)} style={s.deleteBtn} activeOpacity={0.7}>
+                  <Text style={s.deleteBtnText}>Remove member</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })
+        )}
+
+        <View style={s.addWrap}>
+          <Button title="+ Add Family Member" onPress={openAdd} />
+        </View>
+      </ScrollView>
+
+      {/* Modal */}
+      <Modal visible={modalOpen} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>{editId ? 'Edit Member' : 'Add Member'}</Text>
+              <TouchableOpacity onPress={() => setModalOpen(false)} style={s.modalClose}>
+                <Text style={s.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            <ScrollView contentContainerStyle={s.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Input label="Name *" value={form.name} onChangeText={(v) => setForm((prev) => ({ ...prev, name: v }))} placeholder="Full name" />
+
+              <View style={s.twoCol}>
+                <View style={{ flex: 2, marginRight: 10 }}>
+                  <Input label="Age" value={form.age} onChangeText={(v) => setForm((prev) => ({ ...prev, age: v }))} placeholder="Age" keyboardType="numeric" />
+                </View>
+              </View>
+
+              <Text style={s.sectionLabel}>RELATIONSHIP</Text>
+              <View style={s.pillRow}>
+                {RELS.map((r) => (
+                  <Pill key={r} label={r} active={form.relationship === r} onPress={() => setForm((prev) => ({ ...prev, relationship: r }))} />
+                ))}
+              </View>
+
+              <Text style={s.sectionLabel}>HEALTH CONDITIONS</Text>
+              <View style={s.pillRow}>
+                {HEALTH_PILLS.map((cond) => (
+                  <Pill key={cond} label={cond} active={form.healthConditions.includes(cond)} onPress={() => toggleHealth(cond)} />
+                ))}
+              </View>
+
+              <Input label="Medical Notes (optional)" value={form.notes} onChangeText={(v) => setForm((prev) => ({ ...prev, notes: v }))}
+                placeholder="e.g. Low salt, no fried food, doctor says..." multiline numberOfLines={3} />
+
+              <TouchableOpacity style={s.lipidBtn} activeOpacity={0.8}>
+                <Text style={s.lipidBtnText}>📄 Lipid Report — OPTIONAL</Text>
+              </TouchableOpacity>
+
+              {formError ? <Text style={s.formError}>{formError}</Text> : null}
+
+              <View style={{ marginTop: 16, gap: 10 }}>
+                <Button title="Save Member" onPress={() => void saveMember()} loading={saving} />
+                <Button title="Cancel" onPress={() => setModalOpen(false)} variant="outline" />
+              </View>
+            </ScrollView>
           </View>
-        ))}
-
-        {error ? <Text style={s.errorText}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={[s.goldBtn, saving && { opacity: 0.6 }]}
-          onPress={saveAllMembers}
-          disabled={saving}
-          activeOpacity={0.85}
-        >
-          {saving
-            ? <ActivityIndicator color={white} />
-            : <Text style={s.goldBtnText}>Save All Members →</Text>
-          }
-        </TouchableOpacity>
-        <View style={{ height: 40 }} />
-      </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// ─── Pill ─────────────────────────────────────────────────────────────────────
+
+const ps = StyleSheet.create({
+  pill:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: white },
+  pillActive:    { backgroundColor: navy, borderColor: navy },
+  pillText:      { fontSize: 13, color: navy, fontWeight: '500' },
+  pillTextActive:{ color: white, fontWeight: '600' },
+});
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F4F6FB' },
+  safe:   { flex: 1, backgroundColor: white },
   header: {
-    backgroundColor: navy,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'web' ? 20 : 14,
-    paddingBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: border,
   },
-  backText: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '500', width: 60 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: white },
-  headerCount: { color: gold, fontSize: 13, fontWeight: '600', width: 60, textAlign: 'right' },
+  backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backArrow:   { fontSize: 22, color: navy },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: navy },
 
-  logoRow: { alignItems: 'center', backgroundColor: navy, paddingBottom: 20 },
-  logo: { width: 200, height: 70, resizeMode: 'contain' },
+  scroll:      { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48, maxWidth: 700, width: '100%', alignSelf: 'center' },
+  loadingText: { textAlign: 'center', color: textSec, marginTop: 40 },
 
-  body: { padding: 20, maxWidth: 640, width: '100%', alignSelf: 'center' },
-  stepSub: { fontSize: 14, color: midGray, marginBottom: 16, lineHeight: 21 },
+  emptyState: { alignItems: 'center', paddingVertical: 60 },
+  emptyIcon:  { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: navy, marginBottom: 8 },
+  emptySub:   { fontSize: 14, color: textSec, textAlign: 'center' },
 
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: darkGray, marginBottom: 8, marginTop: 20, textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#111827', backgroundColor: white },
+  card:       { backgroundColor: white, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 16, fontWeight: '700', color: navy },
+  metaRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  metaText:   { fontSize: 13, color: textSec },
+  metaDot:    { fontSize: 13, color: textSec },
+  editBtn:    { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: border },
+  editBtnText:{ fontSize: 13, color: navy, fontWeight: '600' },
+  pillWrap:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  healthPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  healthPillText: { fontSize: 12, fontWeight: '600' },
+  notesText:  { fontSize: 13, color: textSec, fontStyle: 'italic', marginTop: 4 },
+  deleteBtn:  { marginTop: 10, alignSelf: 'flex-end' },
+  deleteBtnText: { fontSize: 12, color: errorRed, fontWeight: '500' },
 
-  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginVertical: 16 },
-  counterBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: navy, alignItems: 'center', justifyContent: 'center' },
-  counterBtnDisabled: { backgroundColor: '#D1D5DB' },
-  counterBtnText: { color: white, fontSize: 26, fontWeight: '700', lineHeight: 30 },
-  counterValue: { fontSize: 48, fontWeight: '900', color: navy, minWidth: 60, textAlign: 'center' },
-  counterHint: { fontSize: 12, color: midGray, textAlign: 'center', marginBottom: 8 },
+  addWrap: { marginTop: 8, marginBottom: 16 },
 
-  // Member rows
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: white,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  memberBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: navy, alignItems: 'center', justifyContent: 'center', marginTop: 4, flexShrink: 0 },
-  memberBadgeText: { color: gold, fontSize: 15, fontWeight: '800' },
-  memberFields: { flex: 1, gap: 8 },
-  memberInput: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827', backgroundColor: lightGray },
-  memberInputAge: { width: 80 },
-  memberInputNotes: {},
-  lipidBtn: { borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, alignItems: 'center', borderStyle: 'dashed' },
-  lipidBtnText: { fontSize: 13, color: midGray, fontWeight: '500' },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet:   { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: border },
+  modalTitle:   { fontSize: 18, fontWeight: '700', color: navy },
+  modalClose:   { width: 32, height: 32, borderRadius: 16, backgroundColor: surface, alignItems: 'center', justifyContent: 'center' },
+  modalCloseText:{ fontSize: 14, color: textSec, fontWeight: '600' },
+  modalScroll:  { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
 
-  // Buttons
-  goldBtn: { backgroundColor: gold, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
-  goldBtnText: { color: white, fontWeight: '700', fontSize: 16 },
-  outlineBtn: { borderWidth: 2, borderColor: '#D1D5DB', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 12 },
-  outlineBtnText: { color: darkGray, fontWeight: '600', fontSize: 15 },
+  twoCol:      { flexDirection: 'row' },
+  sectionLabel:{ fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
+  pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
 
-  errorText: { color: errorRed, fontSize: 13, fontWeight: '600', marginTop: 12, textAlign: 'center' },
+  lipidBtn:    { borderWidth: 1.5, borderColor: border, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center', borderStyle: 'dashed', marginTop: 8 },
+  lipidBtnText:{ fontSize: 13, color: textSec, fontWeight: '500' },
 
-  // Success
-  successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  successIcon: { fontSize: 64, marginBottom: 16 },
-  successTitle: { fontSize: 28, fontWeight: '900', color: navy, marginBottom: 8 },
-  successSub: { fontSize: 15, color: midGray, textAlign: 'center', marginBottom: 32, lineHeight: 22 },
+  formError: { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
 });

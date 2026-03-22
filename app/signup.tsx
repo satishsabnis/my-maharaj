@@ -1,167 +1,122 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  ActivityIndicator,
-  Platform,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { navy, gold, white, lightGray, darkGray, midGray, errorRed } from '../theme/colors';
+import Logo from '../components/Logo';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import { navy, gold, textSec, errorRed, white, border } from '../theme/colors';
 
 export default function SignupScreen() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [name, setName]           = useState('');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [confirm, setConfirm]     = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [formError, setFormError] = useState('');
+  const [nameErr, setNameErr]     = useState('');
+  const [emailErr, setEmailErr]   = useState('');
+  const [passErr, setPassErr]     = useState('');
+  const [confErr, setConfErr]     = useState('');
+
+  function validate(): boolean {
+    let ok = true;
+    setNameErr(''); setEmailErr(''); setPassErr(''); setConfErr(''); setFormError('');
+    if (!name.trim())             { setNameErr('Full name is required'); ok = false; }
+    if (!email.trim())            { setEmailErr('Email is required'); ok = false; }
+    else if (!email.includes('@')){ setEmailErr('Enter a valid email address'); ok = false; }
+    if (!password)                { setPassErr('Password is required'); ok = false; }
+    else if (password.length < 8) { setPassErr('Password must be at least 8 characters'); ok = false; }
+    if (!confirm)                 { setConfErr('Please confirm your password'); ok = false; }
+    else if (password !== confirm){ setConfErr('Passwords do not match'); ok = false; }
+    return ok;
+  }
 
   async function handleSignUp() {
-    setError('');
-    if (!fullName.trim()) return setError('Please enter your full name.');
-    if (!email.trim()) return setError('Please enter your email.');
-    if (password.length < 6) return setError('Password must be at least 6 characters.');
-    if (password !== confirmPassword) return setError('Passwords do not match.');
-
+    if (!validate()) return;
     setLoading(true);
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { data: { full_name: fullName.trim() } },
-    });
-    setLoading(false);
-
-    if (authError) { setError(authError.message); return; }
-    if (data.user) {
-      setSuccess(true);
-      setTimeout(() => router.replace('/profile-setup'), 1200);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: { data: { full_name: name.trim() } },
+      });
+      if (error) { setFormError(error.message); return; }
+      router.replace('/profile-setup');
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Sign up failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.container}>
-            <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
-              <Text style={styles.backText}>← Back</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={s.safe}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={s.backArrow}>←</Text>
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Create Account</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-            <Text style={styles.header}>Create your account</Text>
-            <Text style={styles.subheader}>Join My Maharaj to start planning your kitchen</Text>
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={s.logoRow}><Logo size="small" /></View>
 
-            <View style={styles.form}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                style={styles.input}
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="Your full name"
-                placeholderTextColor={midGray}
-                autoCapitalize="words"
-                autoComplete="name"
-              />
+        <View style={s.form}>
+          <Text style={s.formTitle}>Welcome to Maharaj</Text>
+          <Text style={s.formSub}>Create your account to get started</Text>
 
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={midGray}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+          <Input label="Full Name" value={name} onChangeText={setName}
+            placeholder="e.g. Satish Sabnis" error={nameErr} />
+          <Input label="Email Address" value={email} onChangeText={setEmail}
+            placeholder="you@example.com" keyboardType="email-address"
+            autoCapitalize="none" error={emailErr} />
+          <Input label="Password" value={password} onChangeText={setPassword}
+            placeholder="Minimum 8 characters" secureTextEntry error={passErr} />
+          <Input label="Confirm Password" value={confirm} onChangeText={setConfirm}
+            placeholder="Re-enter your password" secureTextEntry error={confErr} />
 
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.inputInner}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Min. 6 characters"
-                  placeholderTextColor={midGray}
-                  secureTextEntry={!showPassword}
-                  autoComplete="new-password"
-                />
-                <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.label}>Confirm Password</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.inputInner}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Repeat your password"
-                  placeholderTextColor={midGray}
-                  secureTextEntry={!showConfirm}
-                  autoComplete="new-password"
-                />
-                <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowConfirm(!showConfirm)}>
-                  <Text style={styles.eyeText}>{showConfirm ? '🙈' : '👁'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              {success ? <Text style={styles.successText}>Account created! Taking you to profile setup...</Text> : null}
-
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                onPress={handleSignUp}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                {loading ? <ActivityIndicator color={white} /> : <Text style={styles.submitButtonText}>Create Account</Text>}
-              </TouchableOpacity>
+          {formError ? (
+            <View style={s.errorBox}>
+              <Text style={s.errorBoxText}>{formError}</Text>
             </View>
+          ) : null}
 
-            <TouchableOpacity onPress={() => router.replace('/login')}>
-              <Text style={styles.linkText}>
-                Already have an account?{' '}
-                <Text style={styles.linkHighlight}>Log in</Text>
-              </Text>
+          <View style={{ marginTop: 8 }}>
+            <Button title="Create Account" onPress={handleSignUp} loading={loading} />
+          </View>
+
+          <View style={s.altRow}>
+            <Text style={s.altText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7}>
+              <Text style={s.altLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: white },
-  scroll: { flexGrow: 1 },
-  container: { flex: 1, paddingHorizontal: 28, paddingTop: 20, paddingBottom: 40, maxWidth: 480, width: '100%', alignSelf: 'center' },
-  backRow: { marginBottom: 24 },
-  backText: { color: navy, fontSize: 15, fontWeight: '500' },
-  header: { fontSize: 30, fontWeight: '800', color: navy, marginBottom: 8 },
-  subheader: { fontSize: 15, color: midGray, marginBottom: 32 },
-  form: { width: '100%', marginBottom: 24 },
-  label: { fontSize: 13, fontWeight: '600', color: darkGray, marginBottom: 6, marginTop: 16 },
-  input: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#111827', backgroundColor: lightGray },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, backgroundColor: lightGray },
-  inputInner: { flex: 1, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#111827' },
-  eyeBtn: { paddingHorizontal: 14, paddingVertical: 12 },
-  eyeText: { fontSize: 18 },
-  errorText: { color: errorRed, fontSize: 13, marginTop: 14, textAlign: 'center' },
-  successText: { color: '#16A34A', fontSize: 13, marginTop: 14, textAlign: 'center' },
-  submitButton: { backgroundColor: gold, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: white, fontSize: 17, fontWeight: '700' },
-  linkText: { textAlign: 'center', color: midGray, fontSize: 14 },
-  linkHighlight: { color: navy, fontWeight: '700' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: border,
+  },
+  backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backArrow:   { fontSize: 22, color: navy },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: navy },
+  scroll:      { paddingBottom: 48 },
+  logoRow:     { alignItems: 'center', paddingVertical: 20 },
+  form:        { paddingHorizontal: 24 },
+  formTitle:   { fontSize: 22, fontWeight: '800', color: navy, marginBottom: 4 },
+  formSub:     { fontSize: 14, color: textSec, marginBottom: 24 },
+  errorBox:    { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 8 },
+  errorBoxText:{ fontSize: 13, color: errorRed, textAlign: 'center' },
+  altRow:  { flexDirection: 'row', justifyContent: 'center', marginTop: 24, alignItems: 'center' },
+  altText: { fontSize: 14, color: textSec },
+  altLink: { fontSize: 14, color: gold, fontWeight: '700' },
 });
