@@ -938,19 +938,53 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <div id="meal-results"></div>
       <div class="confirm-bar" id="confirm-bar">
         <div class="confirm-bar-text"><strong id="confirm-count">0</strong> of <strong id="confirm-total">0</strong> meals selected</div>
-        <button class="btn btn-primary btn-sm" id="confirm-btn" onclick="goToRecipes()" disabled>Confirm Selections</button>
+        <button class="btn btn-primary btn-sm" id="confirm-btn" onclick="goToCookOrder()" disabled>Confirm Selections</button>
       </div>
     </div>
 
-    <!-- W-STEP 10: Recipes -->
+    <!-- W-STEP 10: Cook or Order Out -->
     <div class="wizard-step wizard-body" id="wstep-9" style="display:none">
+      <div class="wizard-step-title">Ready to make it happen? 🍽️</div>
+      <div class="wizard-step-desc">Choose how you want to get your meals done today</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px">
+        <div class="food-card active" data-val="cook" id="cook-card" onclick="selectCookMode(this)"
+             style="border:2px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all 0.15s">
+          <span style="font-size:40px;display:block;margin-bottom:12px">👨‍🍳</span>
+          <div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px">Cook at Home</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Get recipes and shopping list</div>
+        </div>
+        <div class="food-card" data-val="order" id="order-card" onclick="selectCookMode(this)"
+             style="border:2px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all 0.15s">
+          <span style="font-size:40px;display:block;margin-bottom:12px">🛵</span>
+          <div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px">Order Out</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Find restaurants on Zomato</div>
+        </div>
+      </div>
+
+      <div id="cook-mode-info" style="background:var(--peacock-light);border-radius:var(--radius-sm);padding:16px;font-size:14px;color:var(--peacock)">
+        <strong>🍳 Cook at Home:</strong> Maharaj will give you full recipes with ingredient quantities scaled for your family size, plus a complete shopping list you can share on WhatsApp.
+      </div>
+
+      <div id="order-mode-info" style="display:none;background:var(--gold-light);border-radius:var(--radius-sm);padding:16px">
+        <div style="font-size:14px;color:var(--navy);font-weight:600;margin-bottom:10px">🛵 Order Out from nearby restaurants</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Maharaj will open Zomato pre-searched for your selected cuisine near your location in Dubai.</div>
+        <div class="input-group" style="margin-bottom:0">
+          <label>Your Area in Dubai</label>
+          <input id="order-location" class="input" placeholder="e.g. JLT, Al Barsha, Bur Dubai, Deira" value="Dubai">
+        </div>
+      </div>
+    </div>
+
+    <!-- W-STEP 11: Recipes -->
+    <div class="wizard-step wizard-body" id="wstep-10" style="display:none">
       <div class="wizard-step-title">Your Selected Menu 📋</div>
       <div class="wizard-step-desc">For your selected meals</div>
       <div id="recipe-results"></div>
     </div>
 
-    <!-- W-STEP 11: Shopping List -->
-    <div class="wizard-step wizard-body" id="wstep-10" style="display:none">
+    <!-- W-STEP 12: Shopping List -->
+    <div class="wizard-step wizard-body" id="wstep-11" style="display:none">
       <div class="wizard-step-title">Your Shopping List 🛒</div>
       <div class="wizard-step-desc" id="shop-item-count">All ingredients for your selected meals</div>
       <div class="shop-actions">
@@ -961,8 +995,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <div id="shopping-list-content"></div>
     </div>
 
-    <!-- W-STEP 12: Feedback -->
-    <div class="wizard-step wizard-body" id="wstep-11" style="display:none">
+    <!-- W-STEP 13: Feedback -->
+    <div class="wizard-step wizard-body" id="wstep-12" style="display:none">
       <div style="text-align:center;margin-bottom:32px">
         <div style="font-size:52px;margin-bottom:16px">🙏</div>
         <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--navy);margin-bottom:8px">Bon Appétit!</div>
@@ -1765,7 +1799,7 @@ function showProfileModal() { showToast('Profile settings coming soon!'); }
 // WIZARD
 // ══════════════════════════════════════════════════════════
 let wizardStep = 0;
-const WIZARD_STEPS = 12;
+const WIZARD_STEPS = 13;
 
 function exitWizard() { showScreen('home'); wizardStep = 0; }
 
@@ -1776,6 +1810,7 @@ function resetWizard() {
     nonVegOptions: [], breakfastPrefs: [], lunchPrefs: [], dinnerPrefs: [],
     unwellMembers: [], nutritionGoals: ['Balanced'], includeDesserts: false,
     serving_breakfast: 4, serving_lunch: 4, serving_dinner: 4,
+    cookMode: 'cook',
   };
   appState.mealPlan = null;
   appState.selectedMeals = {};
@@ -1846,8 +1881,25 @@ function updateWizardUI() {
   nav.style.display='flex';
   backBtn.style.display = wizardStep===0?'none':'flex';
 
+  // Cook/Order step: sync UI to current mode
+  if (wizardStep === 9) {
+    const mode = appState.wizardData.cookMode || 'cook';
+    const cookCard = document.getElementById('cook-card');
+    const orderCard = document.getElementById('order-card');
+    const cookInfo = document.getElementById('cook-mode-info');
+    const orderInfo = document.getElementById('order-mode-info');
+    if (cookCard && orderCard) {
+      cookCard.classList.toggle('active', mode === 'cook');
+      orderCard.classList.toggle('active', mode === 'order');
+    }
+    if (cookInfo) cookInfo.style.display = mode === 'cook' ? 'block' : 'none';
+    if (orderInfo) orderInfo.style.display = mode === 'order' ? 'block' : 'none';
+    const locInput = document.getElementById('order-location');
+    if (locInput && appState.profile?.city) locInput.value = appState.profile.city;
+  }
+
   // Label next button
-  const labels = ['Continue','Continue','Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections','View Recipes','View Shopping List','Next','Done'];
+  const labels = ['Continue','Continue','Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections',"Let's Go!",'View Recipes','View Shopping List','Next','Done'];
   nextBtn.textContent = (labels[wizardStep]||'Continue')+' →';
   if (wizardStep===6) nextBtn.style.background='var(--peacock)';
   else nextBtn.style.background='var(--gold)';
@@ -1890,6 +1942,20 @@ function selectUnwell(el) {
   document.getElementById('unwell-members').style.display = isYes?'block':'none';
   if (isYes && appState.members.length) {
     document.getElementById('unwell-pills').innerHTML = appState.members.map(m=>`<div class="pill" data-val="${m.name}" onclick="togglePill(this)">${m.name}</div>`).join('');
+  }
+}
+
+function selectCookMode(el) {
+  document.getElementById('cook-card').classList.remove('active');
+  document.getElementById('order-card').classList.remove('active');
+  el.classList.add('active');
+  appState.wizardData.cookMode = el.dataset.val;
+  if (el.dataset.val === 'cook') {
+    document.getElementById('cook-mode-info').style.display = 'block';
+    document.getElementById('order-mode-info').style.display = 'none';
+  } else {
+    document.getElementById('cook-mode-info').style.display = 'none';
+    document.getElementById('order-mode-info').style.display = 'block';
   }
 }
 
@@ -1943,10 +2009,19 @@ async function wizardNext() {
     await generateMealPlan();
     return;
   }
-  if (wizardStep === 8) { goToRecipes(); return; }
-  if (wizardStep === 9) { goToShoppingList(); return; }
-  if (wizardStep === 10) { goToFeedback(); return; }
-  if (wizardStep === 11) { exitWizard(); return; }
+  if (wizardStep === 9) {
+    const mode = appState.wizardData.cookMode || 'cook';
+    if (mode === 'order') {
+      openZomato();
+      return;
+    } else {
+      goToRecipes();
+      return;
+    }
+  }
+  if (wizardStep === 10) { goToShoppingList(); return; }
+  if (wizardStep === 11) { goToFeedback(); return; }
+  if (wizardStep === 12) { exitWizard(); return; }
   wizardStep++;
   updateWizardUI();
 }
@@ -2276,8 +2351,71 @@ function updateConfirmBar() {
   document.getElementById('confirm-btn').disabled = selected < total;
 }
 
-function goToRecipes() {
+function goToCookOrder() {
   wizardStep = 9;
+  updateWizardUI();
+}
+
+function openZomato() {
+  const selected = appState.selectedMeals;
+  const plan = appState.mealPlan;
+  const cuisines = [...new Set(plan.days.map(d => d.cuisine.split(' + ')[0]))];
+  const cuisineSearch = cuisines[0] || 'Indian';
+  const location = document.getElementById('order-location')?.value || 'Dubai';
+
+  const meals = [];
+  plan.days.forEach((day, di) => {
+    ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
+      const selIdx = selected[di]?.[mealType];
+      if (selIdx !== undefined) {
+        const opt = day[mealType]?.options?.[selIdx];
+        if (opt) meals.push({ meal: mealType, menu: opt.menu_name || opt.name, cuisine: opt.cuisine || cuisineSearch });
+      }
+    });
+  });
+
+  const content = document.getElementById('wstep-9');
+  const mealLinks = meals.map(m => {
+    const query = encodeURIComponent(m.cuisine + ' restaurant ' + location + ' Dubai');
+    const zomatoUrl = 'https://www.zomato.com/dubai/restaurants?q=' + query;
+    const swiggyUrl = 'https://www.swiggy.com/search?query=' + encodeURIComponent(m.cuisine);
+    return `
+    <div style="border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:13px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">${m.meal}</div>
+        <div style="font-size:15px;font-weight:600;color:var(--navy)">${m.menu}</div>
+        <div style="font-size:12px;color:var(--gold)">${m.cuisine} cuisine</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="${zomatoUrl}" target="_blank"
+           style="background:#E23744;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px">
+          🍕 Zomato
+        </a>
+        <a href="${swiggyUrl}" target="_blank"
+           style="background:#FC8019;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px">
+          🛵 Swiggy
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="wizard-step-title">Order from nearby restaurants 🛵</div>
+    <div class="wizard-step-desc">Based on your selections - ${location}, Dubai</div>
+    <div style="margin-bottom:16px;padding:12px 16px;background:var(--gold-light);border-radius:var(--radius-sm);font-size:13px;color:var(--navy)">
+      💡 Tap Zomato or Swiggy to find restaurants serving your selected cuisine near ${location}
+    </div>
+    ${mealLinks}
+    <div style="margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:12px">
+      <button class="btn btn-outline" style="width:280px" onclick="exitWizard()">🏠 Back to Dashboard</button>
+    </div>`;
+
+  document.getElementById('wizard-nav').style.display = 'none';
+  showToast('Opening restaurant suggestions!');
+}
+
+function goToRecipes() {
+  wizardStep = 10;
   updateWizardUI();
   renderSummaryTable();
 }
@@ -2358,7 +2496,7 @@ function renderRecipes() {
 }
 
 function goToShoppingList() {
-  wizardStep = 10;
+  wizardStep = 11;
   updateWizardUI();
   renderShoppingList();
 }
@@ -2432,7 +2570,7 @@ function downloadList() {
 }
 
 function goToFeedback() {
-  wizardStep = 11;
+  wizardStep = 12;
   updateWizardUI();
   renderFeedback();
 }
