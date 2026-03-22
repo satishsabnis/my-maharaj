@@ -858,8 +858,19 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 5: Nutrition Goal -->
+    <!-- W-STEP 5: Cuisine -->
     <div class="wizard-step wizard-body" id="wstep-4" style="display:none">
+      <div class="wizard-step-title">Choose your cuisine theme 🗺️</div>
+      <div class="wizard-step-desc">Maharaj will plan the entire period around this cuisine</div>
+      <div id="wizard-cuisine-pills" class="pill-group" style="margin-bottom:24px"></div>
+      <div style="background:var(--gold-light);border-radius:var(--radius-sm);padding:14px 16px;font-size:13px;color:#795548">
+        <strong>💡 Tip:</strong> Choosing one cuisine gives you an authentic deep-dive.
+        Monday Konkani, Tuesday Konkani... all week. Maharaj will keep every dish different.
+      </div>
+    </div>
+
+    <!-- W-STEP 6: Nutrition Goal -->
+    <div class="wizard-step wizard-body" id="wstep-5" style="display:none">
       <div class="wizard-step-title">Any nutrition goal?</div>
       <div class="wizard-step-desc">Maharaj will tailor the plan accordingly (multi-select)</div>
       <div class="nutrition-grid" id="nutrition-pills">
@@ -874,8 +885,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 6: Generate -->
-    <div class="wizard-step wizard-body center" id="wstep-5" style="display:none">
+    <!-- W-STEP 7: Generate -->
+    <div class="wizard-step wizard-body center" id="wstep-6" style="display:none">
       <div style="font-family:'Playfair Display',serif;font-size:52px;font-weight:700;color:#1B3A6B;margin-bottom:8px;animation:pulse 1.4s ease-in-out infinite" id="wizard-logo-fallback">🍛</div>
       <div class="gen-title">Maharaj is cooking up your plan...</div>
       <div class="gen-subtitle" id="gen-status-text">Preparing your personalised meal plan</div>
@@ -886,8 +897,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 7: Results -->
-    <div class="wizard-step wizard-body" id="wstep-6" style="display:none">
+    <!-- W-STEP 8: Results -->
+    <div class="wizard-step wizard-body" id="wstep-7" style="display:none">
       <div class="wizard-step-title">Your Meal Plan 🍽️</div>
       <div class="wizard-step-desc" id="results-date-range">Ready to cook!</div>
       <div id="meal-results"></div>
@@ -897,15 +908,15 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 8: Recipes -->
-    <div class="wizard-step wizard-body" id="wstep-7" style="display:none">
+    <!-- W-STEP 9: Recipes -->
+    <div class="wizard-step wizard-body" id="wstep-8" style="display:none">
       <div class="wizard-step-title">Full Recipes 📖</div>
       <div class="wizard-step-desc">For your selected meals</div>
       <div id="recipe-results"></div>
     </div>
 
-    <!-- W-STEP 9: Shopping List -->
-    <div class="wizard-step wizard-body" id="wstep-8" style="display:none">
+    <!-- W-STEP 10: Shopping List -->
+    <div class="wizard-step wizard-body" id="wstep-9" style="display:none">
       <div class="wizard-step-title">Your Shopping List 🛒</div>
       <div class="wizard-step-desc" id="shop-item-count">All ingredients for your selected meals</div>
       <div class="shop-actions">
@@ -916,8 +927,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <div id="shopping-list-content"></div>
     </div>
 
-    <!-- W-STEP 10: Feedback -->
-    <div class="wizard-step wizard-body" id="wstep-9" style="display:none">
+    <!-- W-STEP 11: Feedback -->
+    <div class="wizard-step wizard-body" id="wstep-10" style="display:none">
       <div style="text-align:center;margin-bottom:32px">
         <div style="font-size:52px;margin-bottom:16px">🙏</div>
         <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--navy);margin-bottom:8px">Bon Appétit!</div>
@@ -1677,7 +1688,7 @@ function showProfileModal() { showToast('Profile settings coming soon!'); }
 // WIZARD
 // ══════════════════════════════════════════════════════════
 let wizardStep = 0;
-const WIZARD_STEPS = 10;
+const WIZARD_STEPS = 11;
 
 function exitWizard() { showScreen('home'); wizardStep = 0; }
 
@@ -1686,26 +1697,39 @@ function updateWizardUI() {
   document.querySelectorAll('.wizard-step').forEach(s=>s.style.display='none');
   // Show current
   const current = document.getElementById('wstep-'+wizardStep);
-  if (current) current.style.display = wizardStep===6||wizardStep===5?'flex':'block';
+  if (current) current.style.display = wizardStep===7||wizardStep===6?'flex':'block';
   
   // Progress
   const pct = ((wizardStep+1)/WIZARD_STEPS*100);
   document.getElementById('wizard-progress').style.width = pct+'%';
   document.getElementById('wizard-step-label').textContent = (wizardStep+1)+' of '+WIZARD_STEPS;
 
+  // Cuisine step: populate pills
+  if (wizardStep === 4) {
+    const pillContainer = document.getElementById('wizard-cuisine-pills');
+    if (pillContainer && !pillContainer.children.length) {
+      const defaultCuisines = ['Konkani','Malvani','Mangalorean','Kerala','Tamil Nadu','Goan','Vidarbha','Gujarati','North Indian','Bengali','Rajasthani'];
+      const userCuisines = appState.cuisines.map(c => c.cuisine_name);
+      const allCuisines = [...new Set([...userCuisines, ...defaultCuisines])];
+      pillContainer.innerHTML = allCuisines.map((c,i) =>
+        `<div class="pill ${i===0?'active':''}" data-val="${c}" onclick="selectPill(this,'wizard-cuisine-pills')">${c}</div>`
+      ).join('');
+    }
+  }
+
   // Nav buttons
   const nav = document.getElementById('wizard-nav');
   const backBtn = document.getElementById('wizard-back-btn');
   const nextBtn = document.getElementById('wizard-next-btn');
 
-  if (wizardStep===5) { nav.style.display='none'; return; } // generating
+  if (wizardStep===6) { nav.style.display='none'; return; } // generating
   nav.style.display='flex';
   backBtn.style.display = wizardStep===0?'none':'flex';
 
   // Label next button
-  const labels = ['Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections','View Recipes','View Shopping List','Next','Done'];
+  const labels = ['Continue','Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections','View Recipes','View Shopping List','Next','Done'];
   nextBtn.textContent = (labels[wizardStep]||'Continue')+' →';
-  if (wizardStep===4) nextBtn.style.background='var(--peacock)';
+  if (wizardStep===5) nextBtn.style.background='var(--peacock)';
   else nextBtn.style.background='var(--gold)';
 }
 
@@ -1783,17 +1807,17 @@ function getWizardDates() {
 }
 
 async function wizardNext() {
-  if (wizardStep === 4) {
+  if (wizardStep === 5) {
     // Generate
-    wizardStep = 5;
+    wizardStep = 6;
     updateWizardUI();
     await generateMealPlan();
     return;
   }
-  if (wizardStep === 6) { goToRecipes(); return; }
-  if (wizardStep === 7) { goToShoppingList(); return; }
-  if (wizardStep === 8) { goToFeedback(); return; }
-  if (wizardStep === 9) { exitWizard(); return; }
+  if (wizardStep === 7) { goToRecipes(); return; }
+  if (wizardStep === 8) { goToShoppingList(); return; }
+  if (wizardStep === 9) { goToFeedback(); return; }
+  if (wizardStep === 10) { exitWizard(); return; }
   wizardStep++;
   updateWizardUI();
 }
@@ -1899,7 +1923,7 @@ Respond ONLY with valid JSON:
   localStorage.setItem('mm_history', JSON.stringify(history.slice(0,90)));
 
   // Show results
-  wizardStep = 6;
+  wizardStep = 7;
   updateWizardUI();
   renderMealResults();
 }
@@ -1988,7 +2012,7 @@ function updateConfirmBar() {
 }
 
 function goToRecipes() {
-  wizardStep = 7;
+  wizardStep = 8;
   updateWizardUI();
   renderRecipes();
 }
@@ -2016,7 +2040,7 @@ function renderRecipes() {
 }
 
 function goToShoppingList() {
-  wizardStep = 8;
+  wizardStep = 9;
   updateWizardUI();
   renderShoppingList();
 }
@@ -2090,7 +2114,7 @@ function downloadList() {
 }
 
 function goToFeedback() {
-  wizardStep = 9;
+  wizardStep = 10;
   updateWizardUI();
   renderFeedback();
 }
