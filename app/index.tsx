@@ -43,6 +43,6 @@ const s = StyleSheet.create({
   devanagari: { fontSize: 16, color: gold, textAlign: 'center', marginTop: 8, fontWeight: '500' },
   tagSub:     { fontSize: 14, color: textSec, textAlign: 'center', marginTop: 4 },
 
-  actions: { width: '100%' },
+  actions: { maxWidth: 400, width: '100%', alignSelf: 'center', paddingHorizontal: 24 },
   legal:   { fontSize: 11, color: textSec, textAlign: 'center', marginTop: 16, lineHeight: 16 },
 });

@@ -65,7 +65,7 @@ const s = StyleSheet.create({
   },
   inputMulti: { height: undefined, minHeight: 52, paddingVertical: 12, alignItems: 'flex-start' },
   inputError: { borderColor: errorRed },
-  input:      { flex: 1, fontSize: 15, color: textColor },
+  input:      { flex: 1, fontSize: 15, color: textColor, outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent' } as never,
   inputMultiText: { textAlignVertical: 'top' },
   eyeBtn:     { padding: 6 },
   eye:        { fontSize: 16 },

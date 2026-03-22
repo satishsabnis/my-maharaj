@@ -44,18 +44,18 @@ export default function Button({ title, onPress, variant = 'primary', loading = 
 const s = StyleSheet.create({
   base: {
     height: 52,
-    borderRadius: 16,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   primary:   { backgroundColor: gold },
   secondary: { backgroundColor: navy },
   outline:   { backgroundColor: white, borderWidth: 2, borderColor: navy },
   disabled:  { opacity: 0.5 },
 
-  label:         { fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
+  label:         { fontSize: 16, fontWeight: '600', letterSpacing: 0.2 },
   labelPrimary:  { color: navy },
   labelSecondary:{ color: white },
   labelOutline:  { color: navy },

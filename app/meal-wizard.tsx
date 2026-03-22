@@ -651,9 +651,10 @@ export default function MealWizardScreen() {
   function renderGenerating() {
     return (
       <View style={s.genScreen}>
-        <Animated.View style={{ opacity: pulseAnim }}>
-          <Logo size="large" />
-        </Animated.View>
+        <Animated.Image
+          source={require('../assets/logo.png')}
+          style={{ width: 200, height: 140, resizeMode: 'contain', backgroundColor: 'transparent', opacity: pulseAnim }}
+        />
         <Text style={s.genTitle}>Maharaj is preparing your meal plan...</Text>
         <Text style={s.genSub}>
           {generatingProgress
