@@ -868,8 +868,43 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 6: Nutrition Goal -->
+    <!-- W-STEP 6: Serving Sizes -->
     <div class="wizard-step wizard-body" id="wstep-5" style="display:none">
+      <div class="wizard-step-title">How many people are eating? 👨‍👩‍👧‍👦</div>
+      <div class="wizard-step-desc">Maharaj will scale ingredient quantities accordingly</div>
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:8px">
+        <div style="background:var(--surface);border-radius:var(--radius);padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px">🌅 Breakfast</div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <button class="btn btn-outline btn-sm" onclick="changeServing('breakfast',-1)" style="width:44px;padding:0;flex-shrink:0">−</button>
+            <span style="font-size:24px;font-weight:700;color:var(--navy);min-width:36px;text-align:center" id="serving-breakfast">4</span>
+            <button class="btn btn-outline btn-sm" onclick="changeServing('breakfast',1)" style="width:44px;padding:0;flex-shrink:0">+</button>
+            <span style="font-size:14px;color:var(--text-secondary)">people</span>
+          </div>
+        </div>
+        <div style="background:var(--surface);border-radius:var(--radius);padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px">☀️ Lunch</div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <button class="btn btn-outline btn-sm" onclick="changeServing('lunch',-1)" style="width:44px;padding:0;flex-shrink:0">−</button>
+            <span style="font-size:24px;font-weight:700;color:var(--navy);min-width:36px;text-align:center" id="serving-lunch">4</span>
+            <button class="btn btn-outline btn-sm" onclick="changeServing('lunch',1)" style="width:44px;padding:0;flex-shrink:0">+</button>
+            <span style="font-size:14px;color:var(--text-secondary)">people</span>
+          </div>
+        </div>
+        <div style="background:var(--surface);border-radius:var(--radius);padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px">🌙 Dinner</div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <button class="btn btn-outline btn-sm" onclick="changeServing('dinner',-1)" style="width:44px;padding:0;flex-shrink:0">−</button>
+            <span style="font-size:24px;font-weight:700;color:var(--navy);min-width:36px;text-align:center" id="serving-dinner">4</span>
+            <button class="btn btn-outline btn-sm" onclick="changeServing('dinner',1)" style="width:44px;padding:0;flex-shrink:0">+</button>
+            <span style="font-size:14px;color:var(--text-secondary)">people</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- W-STEP 7: Nutrition Goal -->
+    <div class="wizard-step wizard-body" id="wstep-6" style="display:none">
       <div class="wizard-step-title">Any nutrition goal?</div>
       <div class="wizard-step-desc">Maharaj will tailor the plan accordingly (multi-select)</div>
       <div class="nutrition-grid" id="nutrition-pills">
@@ -884,8 +919,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 7: Generate -->
-    <div class="wizard-step wizard-body center" id="wstep-6" style="display:none">
+    <!-- W-STEP 8: Generate -->
+    <div class="wizard-step wizard-body center" id="wstep-7" style="display:none">
       <div style="font-family:'Playfair Display',serif;font-size:52px;font-weight:700;color:#1B3A6B;margin-bottom:8px;animation:pulse 1.4s ease-in-out infinite" id="wizard-logo-fallback">🍛</div>
       <div class="gen-title">Maharaj is cooking up your plan...</div>
       <div class="gen-subtitle" id="gen-status-text">Preparing your personalised meal plan</div>
@@ -896,8 +931,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 8: Results -->
-    <div class="wizard-step wizard-body" id="wstep-7" style="display:none">
+    <!-- W-STEP 9: Results -->
+    <div class="wizard-step wizard-body" id="wstep-8" style="display:none">
       <div class="wizard-step-title">Your Meal Plan 🍽️</div>
       <div class="wizard-step-desc" id="results-date-range">Ready to cook!</div>
       <div id="meal-results"></div>
@@ -907,15 +942,15 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       </div>
     </div>
 
-    <!-- W-STEP 9: Recipes -->
-    <div class="wizard-step wizard-body" id="wstep-8" style="display:none">
+    <!-- W-STEP 10: Recipes -->
+    <div class="wizard-step wizard-body" id="wstep-9" style="display:none">
       <div class="wizard-step-title">Your Selected Menu 📋</div>
       <div class="wizard-step-desc">For your selected meals</div>
       <div id="recipe-results"></div>
     </div>
 
-    <!-- W-STEP 10: Shopping List -->
-    <div class="wizard-step wizard-body" id="wstep-9" style="display:none">
+    <!-- W-STEP 11: Shopping List -->
+    <div class="wizard-step wizard-body" id="wstep-10" style="display:none">
       <div class="wizard-step-title">Your Shopping List 🛒</div>
       <div class="wizard-step-desc" id="shop-item-count">All ingredients for your selected meals</div>
       <div class="shop-actions">
@@ -926,8 +961,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <div id="shopping-list-content"></div>
     </div>
 
-    <!-- W-STEP 11: Feedback -->
-    <div class="wizard-step wizard-body" id="wstep-10" style="display:none">
+    <!-- W-STEP 12: Feedback -->
+    <div class="wizard-step wizard-body" id="wstep-11" style="display:none">
       <div style="text-align:center;margin-bottom:32px">
         <div style="font-size:52px;margin-bottom:16px">🙏</div>
         <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--navy);margin-bottom:8px">Bon Appétit!</div>
@@ -1730,7 +1765,7 @@ function showProfileModal() { showToast('Profile settings coming soon!'); }
 // WIZARD
 // ══════════════════════════════════════════════════════════
 let wizardStep = 0;
-const WIZARD_STEPS = 11;
+const WIZARD_STEPS = 12;
 
 function exitWizard() { showScreen('home'); wizardStep = 0; }
 
@@ -1740,6 +1775,7 @@ function resetWizard() {
     period: 'today', dates: [], foodType: 'veg', vegType: 'normal',
     nonVegOptions: [], breakfastPrefs: [], lunchPrefs: [], dinnerPrefs: [],
     unwellMembers: [], nutritionGoals: ['Balanced'], includeDesserts: false,
+    serving_breakfast: 4, serving_lunch: 4, serving_dinner: 4,
   };
   appState.mealPlan = null;
   appState.selectedMeals = {};
@@ -1770,12 +1806,23 @@ function updateWizardUI() {
   document.querySelectorAll('.wizard-step').forEach(s=>s.style.display='none');
   // Show current
   const current = document.getElementById('wstep-'+wizardStep);
-  if (current) current.style.display = wizardStep===7||wizardStep===6?'flex':'block';
+  if (current) current.style.display = wizardStep===8||wizardStep===7?'flex':'block';
   
   // Progress
   const pct = ((wizardStep+1)/WIZARD_STEPS*100);
   document.getElementById('wizard-progress').style.width = pct+'%';
   document.getElementById('wizard-step-label').textContent = (wizardStep+1)+' of '+WIZARD_STEPS;
+
+  // Serving sizes step: sync displayed numbers
+  if (wizardStep === 5) {
+    const d = appState.wizardData;
+    const bEl = document.getElementById('serving-breakfast');
+    const lEl = document.getElementById('serving-lunch');
+    const dEl = document.getElementById('serving-dinner');
+    if (bEl) bEl.textContent = d.serving_breakfast || 4;
+    if (lEl) lEl.textContent = d.serving_lunch || 4;
+    if (dEl) dEl.textContent = d.serving_dinner || 4;
+  }
 
   // Cuisine step: populate pills
   if (wizardStep === 4) {
@@ -1795,14 +1842,14 @@ function updateWizardUI() {
   const backBtn = document.getElementById('wizard-back-btn');
   const nextBtn = document.getElementById('wizard-next-btn');
 
-  if (wizardStep===6) { nav.style.display='none'; return; } // generating
+  if (wizardStep===7) { nav.style.display='none'; return; } // generating
   nav.style.display='flex';
   backBtn.style.display = wizardStep===0?'none':'flex';
 
   // Label next button
-  const labels = ['Continue','Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections','View Recipes','View Shopping List','Next','Done'];
+  const labels = ['Continue','Continue','Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections','View Recipes','View Shopping List','Next','Done'];
   nextBtn.textContent = (labels[wizardStep]||'Continue')+' →';
-  if (wizardStep===5) nextBtn.style.background='var(--peacock)';
+  if (wizardStep===6) nextBtn.style.background='var(--peacock)';
   else nextBtn.style.background='var(--gold)';
 }
 
@@ -1846,6 +1893,15 @@ function selectUnwell(el) {
   }
 }
 
+function changeServing(meal, delta) {
+  const key = 'serving_' + meal;
+  const current = appState.wizardData[key] || 4;
+  const next = Math.max(1, Math.min(20, current + delta));
+  appState.wizardData[key] = next;
+  const el = document.getElementById('serving-' + meal);
+  if (el) el.textContent = next;
+}
+
 function getWizardDates() {
   const p = appState.wizardData.period;
   const today = new Date();
@@ -1880,17 +1936,17 @@ function getWizardDates() {
 }
 
 async function wizardNext() {
-  if (wizardStep === 5) {
+  if (wizardStep === 6) {
     // Generate
-    wizardStep = 6;
+    wizardStep = 7;
     updateWizardUI();
     await generateMealPlan();
     return;
   }
-  if (wizardStep === 7) { goToRecipes(); return; }
-  if (wizardStep === 8) { goToShoppingList(); return; }
-  if (wizardStep === 9) { goToFeedback(); return; }
-  if (wizardStep === 10) { exitWizard(); return; }
+  if (wizardStep === 8) { goToRecipes(); return; }
+  if (wizardStep === 9) { goToShoppingList(); return; }
+  if (wizardStep === 10) { goToFeedback(); return; }
+  if (wizardStep === 11) { exitWizard(); return; }
   wizardStep++;
   updateWizardUI();
 }
@@ -1927,6 +1983,10 @@ async function generateMealPlan() {
   const selectedCuisines = Array.from(document.querySelectorAll('#wizard-cuisine-pills .pill.active')).map(p=>p.dataset.val);
   const cuisineList = selectedCuisines.length ? selectedCuisines : ['Konkani'];
 
+  const servingBreakfast = appState.wizardData.serving_breakfast || 4;
+  const servingLunch = appState.wizardData.serving_lunch || 4;
+  const servingDinner = appState.wizardData.serving_dinner || 4;
+
   const healthFlags = appState.members.map(m=>m.health_notes).filter(Boolean).join('. ');
   const vegDays = appState.profile?.veg_days || [];
 
@@ -1949,6 +2009,7 @@ SELECTED CUISINES: ${cuisineList.join(', ')}
 FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - strictly no meat, no eggs':foodPrefText}
 HEALTH CONDITIONS: ${healthFlags||'None - normal healthy family'}
 NUTRITION GOALS: ${nutritionGoals.join(', ')}
+SERVING SIZES: Breakfast for ${servingBreakfast} people, Lunch for ${servingLunch} people, Dinner for ${servingDinner} people. Scale ALL ingredient quantities to these serving sizes.
 ${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali':''}
 ${includeDesserts?'INCLUDE a traditional dessert in dinner':''}
 
@@ -1959,7 +2020,6 @@ BREAKFAST MENU must include:
 - 1 main hot dish (pohe/upma/idli/dosa/appam etc)
 - 1 accompaniment (chutney/sambar/pickle)
 - 1 drink (chai/coffee/juice)
-Example: Goan Pohe + Coconut Chutney + Ginger Chai
 
 LUNCH MENU must include:
 - 1 rice OR 2-3 rotis/chapati
@@ -1967,14 +2027,12 @@ LUNCH MENU must include:
 - 1 dry vegetable sabzi
 - 1 side dish (raita/kachumber/papad)
 - Optional: pickle
-Example: Steamed Rice + Solkadhi + Drumstick Sambar + Cabbage Thoran + Papad
 
 DINNER MENU must include:
 - 2-3 rotis OR 1 rice dish
 - 1 main curry or gravy
 - 1 dry vegetable or side
 - Optional: soup or salad
-Example: Jowar Bhakri + Chicken Xacuti + Stir-fried Beans + Cucumber Salad
 
 PROVIDE 3 COMPLETE MENU OPTIONS for each meal slot.
 Each option is a DIFFERENT complete menu - not just a different dish.
@@ -1984,7 +2042,7 @@ NUTRITION BALANCE per day:
 - Lunch: 40% of daily calories, substantial and filling
 - Dinner: 35% of daily calories, moderate and digestible
 
-Respond ONLY with this exact JSON structure:
+Respond ONLY with this exact JSON structure (generate fresh, authentic dishes — do NOT reuse any example names):
 {
   "date": "${date}",
   "day": "${dayName}",
@@ -2001,147 +2059,62 @@ Respond ONLY with this exact JSON structure:
   "breakfast": {
     "options": [
       {
-        "menu_name": "Option 1 name e.g. Goan Breakfast",
-        "cuisine": "Goan",
+        "menu_name": "MENU_NAME_HERE",
+        "cuisine": "CUISINE_NAME",
         "vegetarian": true,
-        "health_tags": ["light", "energising"],
+        "health_tags": ["TAG1", "TAG2"],
         "components": [
-          {"item": "Goan Pohe", "type": "main", "description": "Flattened rice with coconut, mustard seeds, curry leaves"},
-          {"item": "Coconut Chutney", "type": "accompaniment", "description": "Fresh ground coconut with green chilli"},
-          {"item": "Ginger Chai", "type": "drink", "description": "Spiced tea with fresh ginger"}
+          {"item": "DISH_NAME_HERE", "type": "main", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "accompaniment", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "drink", "description": "SHORT_DESCRIPTION"}
         ],
-        "ingredients": ["Poha 1.5 cups", "Fresh coconut 3 tbsp", "Green chilli 2", "Mustard seeds 1 tsp", "Curry leaves 8-10", "Ginger 1 inch"],
-        "method": ["Soak poha in water for 3 mins, drain well", "Heat oil, add mustard seeds and curry leaves", "Add poha, salt, coconut and mix gently", "Serve hot with coconut chutney and chai"],
+        "ingredients": ["INGREDIENT 1 QUANTITY", "INGREDIENT 2 QUANTITY"],
+        "method": ["Step 1", "Step 2", "Step 3"],
         "prep_night": null
       },
-      {
-        "menu_name": "Option 2 name e.g. Kerala Morning",
-        "cuisine": "Kerala",
-        "vegetarian": true,
-        "health_tags": ["light", "protein-rich"],
-        "components": [
-          {"item": "Appam", "type": "main", "description": "Lacy rice pancakes, soft center"},
-          {"item": "Vegetable Stew", "type": "accompaniment", "description": "Coconut milk based mixed vegetable curry"},
-          {"item": "Filter Coffee", "type": "drink", "description": "Strong South Indian decoction with milk"}
-        ],
-        "ingredients": ["Rice flour 1 cup", "Coconut milk 200ml", "Mixed vegetables 150g", "Cardamom 2", "Coffee powder 2 tsp"],
-        "method": ["Prepare appam batter, ferment overnight", "Make coconut milk stew with vegetables and cardamom", "Prepare filter coffee decoction", "Serve appam with stew and coffee"],
-        "prep_night": "Soak rice and grind batter, leave to ferment"
-      },
-      {
-        "menu_name": "Option 3 name",
-        "cuisine": "Mangalorean",
-        "vegetarian": true,
-        "health_tags": ["light", "high-fibre"],
-        "components": [
-          {"item": "Neer Dosa", "type": "main", "description": "Thin watery rice crepes, delicate texture"},
-          {"item": "Coconut Chutney", "type": "accompaniment", "description": "Fresh coconut with urad dal"},
-          {"item": "Herbal Tea", "type": "drink", "description": "Tulsi and ginger tea"}
-        ],
-        "ingredients": ["Rice 1.5 cups soaked", "Fresh coconut 4 tbsp", "Urad dal 1 tbsp", "Tulsi leaves 10", "Ginger 1 inch"],
-        "method": ["Grind soaked rice to thin batter with water", "Make very thin crepes on non-stick pan", "Grind coconut chutney", "Brew tulsi ginger tea"],
-        "prep_night": "Soak rice overnight"
-      }
+      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"accompaniment","description":""},{"item":"DISH_NAME_HERE","type":"drink","description":""}], "ingredients": [], "method": [], "prep_night": null },
+      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"accompaniment","description":""},{"item":"DISH_NAME_HERE","type":"drink","description":""}], "ingredients": [], "method": [], "prep_night": null }
     ]
   },
   "lunch": {
     "options": [
       {
-        "menu_name": "Option 1 - Complete Goan Lunch",
-        "cuisine": "Goan",
-        "vegetarian": false,
-        "health_tags": ["balanced", "high-protein"],
-        "components": [
-          {"item": "Steamed Rice", "type": "main", "description": "Short grain Goan rice"},
-          {"item": "Fish Curry", "type": "curry", "description": "Kokum based red Goan fish curry"},
-          {"item": "Prawn Balchao", "type": "side", "description": "Tangy spicy prawn pickle"},
-          {"item": "Kachumber Salad", "type": "salad", "description": "Cucumber tomato onion with lemon"},
-          {"item": "Papad", "type": "accompaniment", "description": "Crispy fried papad"}
-        ],
-        "ingredients": ["Rice 1.5 cups", "Fish 300g", "Kokum 4 pieces", "Coconut 1/2", "Prawns 100g", "Cucumber 1", "Tomato 2"],
-        "method": ["Cook rice", "Grind coconut masala with kokum for curry", "Cook fish in masala", "Fry papad", "Chop vegetables for salad"],
-        "prep_night": "Grind curry masala and refrigerate"
-      },
-      {
-        "menu_name": "Option 2 - Kerala Sadya Style",
-        "cuisine": "Kerala",
+        "menu_name": "MENU_NAME_HERE",
+        "cuisine": "CUISINE_NAME",
         "vegetarian": true,
-        "health_tags": ["balanced", "high-fibre"],
+        "health_tags": ["TAG1", "TAG2"],
         "components": [
-          {"item": "Matta Rice", "type": "main", "description": "Kerala red rice, nutty flavour"},
-          {"item": "Sambar", "type": "dal", "description": "Drumstick and tomato sambar"},
-          {"item": "Avial", "type": "curry", "description": "Mixed vegetables in coconut yogurt"},
-          {"item": "Pachadi", "type": "side", "description": "Pineapple or beetroot in coconut curd"},
-          {"item": "Papad", "type": "accompaniment", "description": "Kerala papad"}
+          {"item": "DISH_NAME_HERE", "type": "main", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "dal", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "curry", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "side", "description": "SHORT_DESCRIPTION"}
         ],
-        "ingredients": ["Matta rice 1.5 cups", "Toor dal 100g", "Drumstick 2", "Mixed vegetables 200g", "Coconut 1/2", "Yogurt 100ml"],
-        "method": ["Cook matta rice, takes longer than white rice", "Make toor dal sambar with drumstick", "Cook avial with coconut yogurt", "Prepare pachadi"],
-        "prep_night": "Soak matta rice for 30 mins"
+        "ingredients": ["INGREDIENT 1 QUANTITY", "INGREDIENT 2 QUANTITY"],
+        "method": ["Step 1", "Step 2", "Step 3"],
+        "prep_night": null
       },
-      {
-        "menu_name": "Option 3 - Mangalorean Thali",
-        "cuisine": "Mangalorean",
-        "vegetarian": false,
-        "health_tags": ["balanced"],
-        "components": [
-          {"item": "Rice", "type": "main", "description": "Steamed white rice"},
-          {"item": "Kori Rotti Curry", "type": "curry", "description": "Chicken curry Mangalorean style"},
-          {"item": "Batate Sukke", "type": "dry", "description": "Dry potato with coconut"},
-          {"item": "Buttermilk", "type": "drink", "description": "Spiced chaas to finish"}
-        ],
-        "ingredients": ["Rice 1.5 cups", "Chicken 300g", "Potato 2", "Fresh coconut 4 tbsp", "Buttermilk 200ml"],
-        "method": ["Cook rice", "Prepare Mangalorean masala for chicken", "Make dry potato sabzi", "Season buttermilk with cumin"],
-        "prep_night": "Marinate chicken in spices overnight"
-      }
+      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"side","description":""}], "ingredients": [], "method": [], "prep_night": null },
+      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": false, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"side","description":""}], "ingredients": [], "method": [], "prep_night": null }
     ]
   },
   "dinner": {
     "options": [
       {
-        "menu_name": "Option 1 - Goan Evening",
-        "cuisine": "Goan",
+        "menu_name": "MENU_NAME_HERE",
+        "cuisine": "CUISINE_NAME",
         "vegetarian": true,
-        "health_tags": ["moderate", "light"],
+        "health_tags": ["TAG1", "TAG2"],
         "components": [
-          {"item": "Jowar Bhakri", "type": "bread", "description": "Thick sorghum flatbread, 2 pieces"},
-          {"item": "Tendli Ambat", "type": "curry", "description": "Ivy gourd in coconut tamarind curry"},
-          {"item": "Stir Fried Spinach", "type": "dry", "description": "Palak with garlic and mustard"},
-          {"item": "Cucumber Raita", "type": "side", "description": "Cool yogurt with cucumber"}
+          {"item": "DISH_NAME_HERE", "type": "bread", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "curry", "description": "SHORT_DESCRIPTION"},
+          {"item": "DISH_NAME_HERE", "type": "dry", "description": "SHORT_DESCRIPTION"}
         ],
-        "ingredients": ["Jowar flour 1 cup", "Tendli 200g", "Coconut 3 tbsp", "Tamarind small ball", "Spinach 150g", "Cucumber 1", "Yogurt 150ml"],
-        "method": ["Make jowar bhakri dough and cook on tawa", "Grind coconut masala for tendli curry", "Stir fry spinach with garlic", "Make raita"],
-        "prep_night": "Soak tamarind, grind masala"
-      },
-      {
-        "menu_name": "Option 2 - Kerala Night",
-        "cuisine": "Kerala",
-        "vegetarian": false,
-        "health_tags": ["moderate", "protein-rich"],
-        "components": [
-          {"item": "Malabar Parotta", "type": "bread", "description": "Layered flaky wheat parotta, 3 pieces"},
-          {"item": "Kerala Chicken Roast", "type": "main", "description": "Dry roasted chicken with Kerala spices"},
-          {"item": "Olan", "type": "side", "description": "Ash gourd in coconut milk, subtle flavour"},
-          {"item": "Pickle", "type": "accompaniment", "description": "Lemon or mango pickle"}
-        ],
-        "ingredients": ["Maida 2 cups", "Chicken 250g", "Ash gourd 150g", "Coconut milk 100ml", "Kerala spices"],
-        "method": ["Prepare parotta dough, rest 30 mins", "Marinate and roast chicken dry", "Cook olan gently in coconut milk", "Serve hot"],
-        "prep_night": "Make parotta dough, marinate chicken"
-      },
-      {
-        "menu_name": "Option 3 - Light Digestive Dinner",
-        "cuisine": "Konkani",
-        "vegetarian": true,
-        "health_tags": ["light", "digestive", "low-cal"],
-        "components": [
-          {"item": "Chapati", "type": "bread", "description": "Soft whole wheat chapati, 3 pieces"},
-          {"item": "Moong Dal Khichdi", "type": "main", "description": "Comforting rice and moong dal"},
-          {"item": "Ghee", "type": "accompaniment", "description": "Pure desi ghee drizzle"},
-          {"item": "Buttermilk", "type": "drink", "description": "Spiced digestive chaas"}
-        ],
-        "ingredients": ["Wheat flour 1.5 cups", "Moong dal 100g", "Rice 100g", "Ghee 2 tsp", "Jeera 1 tsp", "Buttermilk 200ml"],
-        "method": ["Cook khichdi with dal and rice together", "Make soft chapati", "Season with ghee and jeera", "Serve with chilled buttermilk"],
+        "ingredients": ["INGREDIENT 1 QUANTITY", "INGREDIENT 2 QUANTITY"],
+        "method": ["Step 1", "Step 2", "Step 3"],
         "prep_night": null
-      }
+      },
+      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"bread","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"dry","description":""}], "ingredients": [], "method": [], "prep_night": null },
+      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": false, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"bread","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"dry","description":""}], "ingredients": [], "method": [], "prep_night": null }
     ]
   }
 }`;
@@ -2170,7 +2143,7 @@ Respond ONLY with this exact JSON structure:
   localStorage.setItem('mm_history', JSON.stringify(history.slice(0,90)));
 
   // Show results
-  wizardStep = 7;
+  wizardStep = 8;
   updateWizardUI();
   renderMealResults();
 }
@@ -2304,7 +2277,7 @@ function updateConfirmBar() {
 }
 
 function goToRecipes() {
-  wizardStep = 8;
+  wizardStep = 9;
   updateWizardUI();
   renderSummaryTable();
 }
@@ -2385,7 +2358,7 @@ function renderRecipes() {
 }
 
 function goToShoppingList() {
-  wizardStep = 9;
+  wizardStep = 10;
   updateWizardUI();
   renderShoppingList();
 }
@@ -2459,7 +2432,7 @@ function downloadList() {
 }
 
 function goToFeedback() {
-  wizardStep = 10;
+  wizardStep = 11;
   updateWizardUI();
   renderFeedback();
 }
