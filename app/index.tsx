@@ -7,18 +7,12 @@ const LogoImg = require('../assets/logo.png');
 export default function Index() {
   const router = useRouter();
 
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.85)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
   const buttonsOpacity = useRef(new Animated.Value(0)).current;
   const buttonsY = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
     Animated.sequence([
-      Animated.parallel([
-        Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.spring(logoScale, { toValue: 1, friction: 5, useNativeDriver: true }),
-      ]),
       Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.parallel([
         Animated.timing(buttonsOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
@@ -29,13 +23,20 @@ export default function Index() {
 
   return (
     <View style={s.container}>
-      <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }] }}>
-        <Image source={LogoImg} style={s.logo} resizeMode="contain" />
-      </Animated.View>
+      <Image
+        source={LogoImg}
+        style={{
+          width: 340,
+          height: 240,
+          resizeMode: 'contain',
+          backgroundColor: 'transparent',
+        }}
+      />
 
       <Animated.Text style={[s.tagline, { opacity: taglineOpacity }]}>
         मेरा महाराज · माझा महाराज
       </Animated.Text>
+      <Text style={s.subTagline}>Your personal kitchen planner · Indian regional cuisine · Dubai crafted</Text>
 
       <Animated.View style={[s.btnGroup, { opacity: buttonsOpacity, transform: [{ translateY: buttonsY }] }]}>
         <TouchableOpacity style={s.signUpBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
@@ -52,24 +53,26 @@ export default function Index() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B3A6B',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
     gap: 0,
   },
-  logo: {
-    width: 280,
-    height: 180,
-    marginBottom: 8,
-  },
   tagline: {
     fontSize: 18,
     color: '#C9A227',
     marginTop: 4,
-    marginBottom: 48,
+    marginBottom: 0,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  subTagline: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 48,
   },
   btnGroup: {
     width: '100%',
@@ -91,14 +94,14 @@ const s = StyleSheet.create({
   },
   loginBtn: {
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: '#1B3A6B',
     width: 240,
     paddingVertical: 15,
     borderRadius: 32,
     alignItems: 'center',
   },
   loginBtnText: {
-    color: '#FFFFFF',
+    color: '#1B3A6B',
     fontWeight: '700',
     fontSize: 17,
     letterSpacing: 0.3,
