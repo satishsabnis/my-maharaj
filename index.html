@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Maharaj - Your Personal Kitchen Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── RESET & BASE ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1B3A6B;
+  --navy-dark:#0F2347;
+  --navy-light:#E8EFF8;
+  --gold:#C9A227;
+  --gold-light:#FAF3DC;
+  --peacock:#1A6B3C;
+  --peacock-light:#E4F5EE;
+  --ruby:#8B1A1A;
+  --ruby-light:#FDF0F0;
+  --saffron:#FF9933;
+  --bg:#FFFFFF;
+  --surface:#F8F9FA;
+  --border:#E8EAF0;
+  --text:#1A1A2E;
+  --text-secondary:#6B7280;
+  --error:#DC2626;
+  --shadow:0 2px 12px rgba(27,58,107,0.08);
+  --shadow-lg:0 8px 32px rgba(27,58,107,0.12);
+  --radius:16px;
+  --radius-sm:10px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;animation:fadeIn 0.3s ease}
+.screen.active{display:flex;flex-direction:column}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LOGO ── */
+.logo-img{width:220px;height:150px;object-fit:contain;background:transparent;display:block}
+.logo-img.sm{width:110px;height:46px}
+.logo-img.md{width:160px;height:60px}
+.logo-pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.45;transform:scale(0.97)}}
+
+/* ── BUTTONS ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:30px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s ease;text-decoration:none;white-space:nowrap}
+.btn:disabled{opacity:0.6;cursor:not-allowed}
+.btn-primary{background:var(--gold);color:var(--navy);padding:0 32px}
+.btn-primary:hover{background:#B8911F;transform:translateY(-1px);box-shadow:0 4px 16px rgba(201,162,39,0.35)}
+.btn-secondary{background:var(--navy);color:#fff;padding:0 32px}
+.btn-secondary:hover{background:var(--navy-dark);transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--navy);border:2px solid var(--navy);padding:0 32px}
+.btn-outline:hover{background:var(--navy-light)}
+.btn-ghost{background:transparent;color:var(--text-secondary);padding:0 16px;height:40px;font-size:14px}
+.btn-ghost:hover{color:var(--navy);background:var(--surface)}
+.btn-sm{height:40px;font-size:14px;border-radius:20px;padding:0 20px}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:50%;font-size:18px}
+.btn-danger{background:var(--ruby-light);color:var(--ruby);border:none}
+.btn-danger:hover{background:#fde8e8}
+
+/* ── INPUTS ── */
+.input-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.input-group label{font-size:13px;font-weight:600;color:var(--navy)}
+.input-wrap{position:relative}
+.input{width:100%;height:52px;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);background:var(--bg);outline:none;transition:border-color 0.2s}
+.input:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(201,162,39,0.12)}
+.input.error{border-color:var(--error)}
+textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
+.input-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:18px;padding:4px}
+.error-msg{font-size:12px;color:var(--error);margin-top:4px}
+.input-hint{font-size:12px;color:var(--text-secondary);margin-top:4px}
+
+/* ── PILLS ── */
+.pill-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.pill{padding:8px 16px;border-radius:24px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--text);transition:all 0.15s;user-select:none}
+.pill:hover{border-color:var(--navy);color:var(--navy)}
+.pill.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pill.gold-active.active{background:var(--gold);color:var(--navy);border-color:var(--gold)}
+.pill.sm{padding:6px 12px;font-size:12px}
+
+/* ── CARDS ── */
+.card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card-hover{cursor:pointer;transition:all 0.2s}
+.card-hover:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--navy)}
+
+/* ── LANDING SCREEN ── */
+#screen-landing{align-items:center;justify-content:center;background:linear-gradient(135deg,#fff 0%,#F8F9FA 100%)}
+.landing-inner{width:100%;max-width:420px;padding:48px 32px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.landing-devanagari{font-family:'Noto Sans Devanagari',sans-serif;font-size:15px;color:var(--gold);letter-spacing:2px;margin-top:8px}
+.landing-tagline{font-size:14px;color:var(--text-secondary);margin-top:6px;margin-bottom:48px}
+.landing-actions{width:100%;display:flex;flex-direction:column;gap:12px}
+.landing-actions .btn{width:100%}
+.landing-footer{font-size:11px;color:var(--text-secondary);margin-top:20px;line-height:1.6}
+.landing-footer a{color:var(--navy);text-decoration:none}
+
+/* ── AUTH SCREENS ── */
+#screen-signup,#screen-login{align-items:center;justify-content:flex-start;background:#fff;padding-top:0}
+.auth-header{width:100%;max-width:480px;align-self:center;display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border)}
+.auth-back{background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-secondary);padding:4px 8px;border-radius:8px}
+.auth-back:hover{background:var(--surface)}
+.auth-title{flex:1;text-align:center;font-size:18px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif}
+.auth-body{width:100%;max-width:480px;align-self:center;padding:32px 32px;overflow-y:auto}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-form-title{font-size:22px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif;margin-bottom:6px}
+.auth-form-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
+.auth-link-row{text-align:center;font-size:14px;color:var(--text-secondary);margin-top:20px}
+.auth-link-row a{color:var(--gold);font-weight:600;cursor:pointer;text-decoration:none}
+.auth-link-row a:hover{text-decoration:underline}
+.auth-error{background:var(--ruby-light);color:var(--ruby);padding:12px 16px;border-radius:var(--radius-sm);font-size:14px;margin-bottom:16px;border:1px solid #f5c6c6}
+
+/* ── PROFILE SETUP ── */
+#screen-profile-setup{background:#fff;overflow-y:auto}
+.setup-header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);z-index:10;padding:0 24px}
+.setup-header-inner{max-width:600px;margin:0 auto;padding:16px 0}
+.setup-title{font-size:18px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif}
+.setup-subtitle{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width 0.4s ease}
+.setup-steps{display:flex;gap:8px;margin-top:10px}
+.setup-step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all 0.3s}
+.setup-step-dot.active{background:var(--gold);transform:scale(1.3)}
+.setup-step-dot.done{background:var(--peacock)}
+.setup-body{max-width:600px;margin:0 auto;padding:32px 24px}
+.setup-step{display:none}
+.setup-step.active{display:block}
+.setup-step-title{font-size:22px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif;margin-bottom:8px}
+.setup-step-desc{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
+.section-label{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;margin-top:24px}
+.member-counter{display:flex;align-items:center;gap:20px;margin:16px 0 24px}
+.counter-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--border);background:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;color:var(--navy)}
+.counter-btn:hover{border-color:var(--navy);background:var(--navy-light)}
+.counter-num{font-size:36px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif}
+.counter-label{font-size:13px;color:var(--text-secondary)}
+.member-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.member-card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.member-card-title .member-num{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center}
+.member-row{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.lipid-info{background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:#795548;margin-top:12px;display:flex;align-items:center;gap:8px}
+.setup-nav{display:flex;gap:12px;margin-top:32px;padding-bottom:32px}
+.setup-nav .btn{flex:1}
+.setup-nav .btn-primary{flex:2}
+.summary-card{background:var(--navy-light);border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.summary-row:last-child{border-bottom:none}
+.summary-label{font-size:13px;color:var(--text-secondary)}
+.summary-value{font-size:14px;font-weight:600;color:var(--navy)}
+
+/* ── HOME SCREEN ── */
+#screen-home{background:var(--surface);flex-direction:column}
+.home-header{background:#fff;border-bottom:1.5px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.home-avatar{width:42px;height:42px;border-radius:50%;background:var(--navy);color:var(--gold);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.home-logo-wrap{flex:1;display:flex;justify-content:center}
+.home-exit{background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);padding:8px 12px;border-radius:8px;transition:all 0.15s}
+.home-exit:hover{background:var(--ruby-light);color:var(--ruby)}
+.home-datebar{background:var(--navy);padding:10px 24px;text-align:center}
+.home-datebar-text{font-size:13px;color:rgba(255,255,255,0.85);letter-spacing:0.3px}
+.home-body{padding:24px;flex:1;overflow-y:auto}
+.home-greeting{margin-bottom:24px}
+.home-greeting h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--navy);font-weight:700}
+.home-greeting p{font-size:14px;color:var(--text-secondary);margin-top:4px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.dash-card{background:#fff;border-radius:var(--radius);padding:20px;border:1.5px solid var(--border);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow)}
+.dash-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.dash-card-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.dash-card-info{flex:1}
+.dash-card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.dash-card-desc{font-size:13px;color:var(--text-secondary);line-height:1.4}
+.dash-card-arrow{color:var(--border);font-size:18px;flex-shrink:0}
+.dash-card:hover .dash-card-arrow{color:var(--navy)}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,35,71,0.6);z-index:1000;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:0;animation:slideUp 0.3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-center{border-radius:24px;margin:auto;max-height:92vh}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:18px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif}
+.modal-close{background:none;border:none;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text-secondary);transition:all 0.15s}
+.modal-close:hover{background:var(--surface)}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:12px;position:sticky;bottom:0;background:#fff}
+.modal-footer .btn{flex:1}
+
+/* ── MEAL WIZARD ── */
+#screen-wizard{background:#fff;flex-direction:column}
+.wizard-header{background:#fff;border-bottom:1.5px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.wizard-title{font-size:16px;font-weight:700;color:var(--navy)}
+.wizard-step-label{font-size:13px;color:var(--text-secondary)}
+.wizard-progress{height:3px;background:var(--border)}
+.wizard-progress-fill{height:100%;background:var(--gold);transition:width 0.4s ease}
+.wizard-body{flex:1;overflow-y:auto;padding:28px 24px}
+.wizard-body.center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);text-align:center}
+.wizard-step-title{font-size:22px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif;margin-bottom:8px}
+.wizard-step-desc{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
+.wizard-nav{background:#fff;border-top:1.5px solid var(--border);padding:16px 24px;display:flex;gap:12px}
+.wizard-nav .btn{flex:1}
+.wizard-nav .btn-primary{flex:2}
+
+/* Period cards */
+.period-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.period-card{border:2px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all 0.15s}
+.period-card:hover{border-color:var(--navy)}
+.period-card.active{border-color:var(--navy);background:var(--navy);color:#fff}
+.period-card.active .period-icon{color:#fff}
+.period-card.active .period-label{color:#fff}
+.period-icon{font-size:28px;margin-bottom:8px;display:block}
+.period-label{font-size:14px;font-weight:600;color:var(--navy)}
+.period-card.active .period-label{color:#fff}
+
+/* Food type cards */
+.food-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.food-card{border:2px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:all 0.15s}
+.food-card:hover{border-color:var(--gold)}
+.food-card.active{border-color:var(--gold);background:var(--gold-light)}
+.food-icon{font-size:36px;margin-bottom:10px;display:block}
+.food-label{font-size:15px;font-weight:600;color:var(--navy)}
+
+/* Meal content section */
+.meal-section{margin-bottom:24px}
+.meal-section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.meal-section-icon{font-size:20px}
+.meal-section-title{font-size:16px;font-weight:700;color:var(--navy)}
+
+/* Nutrition goal pills */
+.nutrition-grid{display:flex;flex-wrap:wrap;gap:10px}
+
+/* Results */
+.day-section{margin-bottom:16px;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.day-header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.day-header-title{font-size:15px;font-weight:700;font-family:'Playfair Display',serif}
+.day-header-arrow{font-size:16px;transition:transform 0.2s}
+.day-header.open .day-header-arrow{transform:rotate(180deg)}
+.day-content{display:none;padding:16px}
+.day-content.open{display:block}
+.meal-slot{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.meal-slot:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.meal-slot-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.meal-slot-icon{font-size:18px}
+.meal-slot-title{font-size:14px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px}
+.option-card{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all 0.15s}
+.option-card:hover{border-color:var(--gold)}
+.option-card.selected{border-color:var(--navy);background:var(--navy-light)}
+.option-card-top{display:flex;align-items:center;gap:12px}
+.option-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.option-card.selected .option-radio{border-color:var(--navy);background:var(--navy)}
+.option-card.selected .option-radio::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff}
+.option-name{font-size:15px;font-weight:600;color:var(--navy)}
+.option-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;margin-left:32px}
+.tag{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.tag-veg{background:#E8F5E9;color:#2E7D32}
+.tag-nonveg{background:#FFEBEE;color:#C62828}
+.tag-health{background:var(--navy-light);color:var(--navy)}
+.recipe-toggle{background:none;border:none;cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;margin-top:8px;margin-left:32px;padding:0;display:flex;align-items:center;gap:4px}
+.recipe-toggle:hover{text-decoration:underline}
+.recipe-content{display:none;background:var(--surface);border-radius:var(--radius-sm);padding:14px;margin-top:10px;margin-left:32px}
+.recipe-content.open{display:block}
+.recipe-section-title{font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:12px}
+.recipe-section-title:first-child{margin-top:0}
+.recipe-list{list-style:none;padding:0}
+.recipe-list li{font-size:13px;color:var(--text-secondary);padding:4px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:6px}
+.recipe-list li::before{content:'•';color:var(--gold);flex-shrink:0;margin-top:1px}
+.recipe-list.numbered{counter-reset:steps}
+.recipe-list.numbered li::before{counter-increment:steps;content:counter(steps)'.';color:var(--navy);font-weight:600;min-width:20px}
+
+/* Confirm bar */
+.confirm-bar{background:#fff;border-top:1.5px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;bottom:0}
+.confirm-bar-text{font-size:14px;color:var(--text-secondary)}
+.confirm-bar-text strong{color:var(--navy)}
+
+/* Shopping list */
+.shop-actions{display:flex;gap:10px;margin-bottom:24px}
+.shop-actions .btn{flex:1;height:44px;font-size:14px}
+.shop-category{margin-bottom:20px}
+.shop-category-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+.shop-category-icon{font-size:18px}
+.shop-category-title{font-size:14px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px}
+.shop-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.shop-item:last-child{border-bottom:none}
+.shop-item-name{font-size:14px;font-weight:500;color:var(--text)}
+.shop-item-qty{font-size:13px;color:var(--text-secondary);font-weight:600}
+
+/* Feedback */
+.feedback-dish{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.feedback-dish:last-child{border-bottom:none}
+.feedback-dish-name{font-size:14px;font-weight:500;color:var(--navy)}
+.feedback-btns{display:flex;gap:8px}
+.feedback-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-size:20px;cursor:pointer;transition:all 0.15s}
+.feedback-btn:hover{transform:scale(1.1)}
+.feedback-btn.liked{background:#E8F5E9;border-color:#4CAF50}
+.feedback-btn.disliked{background:var(--ruby-light);border-color:var(--ruby)}
+
+/* Generation loading */
+.gen-logo{width:200px;height:140px;object-fit:contain;background:transparent;margin:0 auto 32px}
+.gen-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--navy);font-weight:700;margin-bottom:12px}
+.gen-subtitle{font-size:15px;color:var(--text-secondary);margin-bottom:32px}
+.gen-progress-text{font-size:14px;color:var(--gold);font-weight:600}
+.gen-dots{display:flex;gap:8px;justify-content:center;margin-top:24px}
+.gen-dot{width:10px;height:10px;border-radius:50%;background:var(--border);animation:dotPulse 1.4s ease-in-out infinite}
+.gen-dot:nth-child(2){animation-delay:0.2s}
+.gen-dot:nth-child(3){animation-delay:0.4s}
+@keyframes dotPulse{0%,100%{background:var(--border);transform:scale(1)}50%{background:var(--gold);transform:scale(1.3)}}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--navy);color:#fff;padding:12px 24px;border-radius:30px;font-size:14px;font-weight:500;z-index:9999;transition:transform 0.3s ease;box-shadow:var(--shadow-lg)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Confirm dialog */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(15,35,71,0.6);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.confirm-overlay.active{display:flex}
+.confirm-box{background:#fff;border-radius:var(--radius);padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:var(--shadow-lg)}
+.confirm-box h3{font-family:'Playfair Display',serif;font-size:20px;color:var(--navy);margin-bottom:10px}
+.confirm-box p{font-size:14px;color:var(--text-secondary);margin-bottom:24px}
+.confirm-box-btns{display:flex;gap:12px}
+.confirm-box-btns .btn{flex:1}
+
+/* Dietary profile modal */
+.member-list-item{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border)}
+.member-list-item:last-child{border-bottom:none}
+.member-info{flex:1}
+.member-name{font-size:15px;font-weight:700;color:var(--navy)}
+.member-meta{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.member-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.member-tag{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:var(--ruby-light);color:var(--ruby)}
+.member-actions{display:flex;gap:8px}
+
+/* Festivals */
+.festival-item{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.festival-item:last-child{border-bottom:none}
+.festival-days{min-width:56px;height:56px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.festival-days-num{font-size:20px;font-weight:700;font-family:'Playfair Display',serif}
+.festival-days-label{font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+.festival-info{flex:1}
+.festival-name{font-size:15px;font-weight:700;color:var(--navy)}
+.festival-date{font-size:13px;color:var(--text-secondary);margin-top:2px}
+
+/* Table etiquettes */
+.etiq-item{padding:16px 0;border-bottom:1px solid var(--border)}
+.etiq-item:last-child{border-bottom:none}
+.etiq-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.etiq-body{font-size:14px;color:var(--text-secondary);line-height:1.6}
+
+/* Menu history */
+.history-item{border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;cursor:pointer;transition:all 0.15s}
+.history-item:hover{border-color:var(--navy);box-shadow:var(--shadow)}
+.history-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.history-item-date{font-size:13px;font-weight:600;color:var(--navy)}
+.history-item-period{font-size:12px;color:#fff;background:var(--navy);padding:3px 10px;border-radius:12px}
+.history-item-cuisine{font-size:14px;color:var(--text-secondary)}
+.history-item-dietary{font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:4px}
+
+/* Responsive */
+@media(max-width:640px){
+  .card-grid{grid-template-columns:1fr}
+  .period-grid{grid-template-columns:1fr 1fr}
+  .food-grid{grid-template-columns:1fr 1fr}
+  .member-row{grid-template-columns:1fr}
+  .auth-body{padding:24px 20px}
+  .wizard-body{padding:24px 16px}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-secondary)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 1: LANDING
+══════════════════════════════════════════════════════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-inner">
+    <img src="https://i.imgur.com/placeholder.png" 
+         id="landing-logo"
+         class="logo-img" 
+         alt="My Maharaj"
+         onerror="this.style.display='none';document.getElementById('landing-logo-fallback').style.display='block'">
+    <div id="landing-logo-fallback" style="display:none;font-family:'Playfair Display',serif;font-size:52px;font-weight:700;color:#1B3A6B;margin-bottom:8px">My <span style="color:#C9A227;font-style:italic">Maharaj</span></div>
+    <div class="landing-devanagari">मेरा महाराज · माझा महाराज · માઇ મહારાજ</div>
+    <div class="landing-tagline">Your personal kitchen planner - Indian regional cuisine</div>
+    <div class="landing-actions">
+      <button class="btn btn-primary" onclick="showScreen('signup')">Create Account</button>
+      <button class="btn btn-outline" onclick="showScreen('login')">Sign In</button>
+    </div>
+    <div class="landing-footer">
+      By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 2: SIGN UP
+══════════════════════════════════════════════════════════ -->
+<div id="screen-signup" class="screen">
+  <div class="auth-header">
+    <button class="auth-back" onclick="showScreen('landing')">←</button>
+    <span class="auth-title">Create Account</span>
+    <span style="width:36px"></span>
+  </div>
+  <div class="auth-body">
+    <div class="auth-logo">
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#1B3A6B">My <span style="color:#C9A227;font-style:italic">Maharaj</span></div>
+    </div>
+    <div class="auth-form-title">Welcome to Maharaj 🙏</div>
+    <div class="auth-form-subtitle">Create your family's account to get started</div>
+    <div id="signup-error" class="auth-error" style="display:none"></div>
+    <div class="input-group">
+      <label>Full Name</label>
+      <input id="signup-name" class="input" type="text" placeholder="e.g. Satish Sabnis">
+    </div>
+    <div class="input-group">
+      <label>Email Address</label>
+      <input id="signup-email" class="input" type="email" placeholder="your@email.com">
+    </div>
+    <div class="input-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <input id="signup-password" class="input" type="password" placeholder="Minimum 8 characters" style="padding-right:48px">
+        <button class="input-eye" onclick="togglePassword('signup-password',this)">👁</button>
+      </div>
+    </div>
+    <div class="input-group">
+      <label>Confirm Password</label>
+      <div class="input-wrap">
+        <input id="signup-confirm" class="input" type="password" placeholder="Repeat your password" style="padding-right:48px">
+        <button class="input-eye" onclick="togglePassword('signup-confirm',this)">👁</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" id="signup-btn" onclick="doSignup()">Create Account</button>
+    <div class="auth-link-row" style="margin-top:20px">Already have an account? <a onclick="showScreen('login')">Sign In</a></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 3: LOGIN
+══════════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen">
+  <div class="auth-header">
+    <button class="auth-back" onclick="showScreen('landing')">←</button>
+    <span class="auth-title">Welcome Back</span>
+    <span style="width:36px"></span>
+  </div>
+  <div class="auth-body">
+    <div class="auth-logo">
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#1B3A6B">My <span style="color:#C9A227;font-style:italic">Maharaj</span></div>
+    </div>
+    <div class="auth-form-title">Sign in to Maharaj</div>
+    <div class="auth-form-subtitle">Welcome back! We missed you 🙏</div>
+    <div id="login-error" class="auth-error" style="display:none"></div>
+    <div class="input-group">
+      <label>Email Address</label>
+      <input id="login-email" class="input" type="email" placeholder="your@email.com">
+    </div>
+    <div class="input-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <input id="login-password" class="input" type="password" placeholder="Your password" style="padding-right:48px">
+        <button class="input-eye" onclick="togglePassword('login-password',this)">👁</button>
+      </div>
+      <div style="text-align:right;margin-top:4px"><a style="font-size:13px;color:var(--gold);cursor:pointer;font-weight:600">Forgot password?</a></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="auth-link-row" style="margin-top:20px">New here? <a onclick="showScreen('signup')">Create Account</a></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 4: PROFILE SETUP
+══════════════════════════════════════════════════════════ -->
+<div id="screen-profile-setup" class="screen">
+  <div class="setup-header">
+    <div class="setup-header-inner">
+      <div class="setup-title" id="setup-step-title">Tell us about your family</div>
+      <div class="setup-subtitle" id="setup-step-subtitle">This helps Maharaj plan meals for everyone</div>
+      <div class="progress-bar"><div class="progress-fill" id="setup-progress" style="width:25%"></div></div>
+      <div class="setup-steps">
+        <div class="setup-step-dot active" id="dot-0"></div>
+        <div class="setup-step-dot" id="dot-1"></div>
+        <div class="setup-step-dot" id="dot-2"></div>
+        <div class="setup-step-dot" id="dot-3"></div>
+      </div>
+    </div>
+  </div>
+  <div class="setup-body">
+
+    <!-- STEP 1: Family Info -->
+    <div class="setup-step active" id="step-0">
+      <div class="setup-step-title">Your Family</div>
+      <div class="setup-step-desc">One account per family. All members share this account.</div>
+      <div class="input-group">
+        <label>Family Name</label>
+        <input id="family-name" class="input" type="text" placeholder="e.g. The Sabnis Family">
+      </div>
+      <div class="input-group">
+        <label>Mobile Number</label>
+        <input id="family-mobile" class="input" type="tel" placeholder="+971 50 123 4567">
+        <div class="input-hint">Used to send grocery lists on WhatsApp</div>
+      </div>
+      <div class="section-label">Preferred Language</div>
+      <div class="pill-group" id="lang-pills">
+        <div class="pill active gold-active" data-val="en" onclick="selectPill(this,'lang-pills')">EN</div>
+        <div class="pill gold-active" data-val="hi" onclick="selectPill(this,'lang-pills')">हिंदी</div>
+        <div class="pill gold-active" data-val="mr" onclick="selectPill(this,'lang-pills')">मराठी</div>
+        <div class="pill gold-active" data-val="gu" onclick="selectPill(this,'lang-pills')">ગુજ</div>
+      </div>
+      <div class="section-label">Preferred Supermarket</div>
+      <div class="pill-group" id="store-pills">
+        <div class="pill active gold-active" data-val="all" onclick="selectPill(this,'store-pills')">All Stores</div>
+        <div class="pill gold-active" data-val="carrefour" onclick="selectPill(this,'store-pills')">Carrefour</div>
+        <div class="pill gold-active" data-val="spinneys" onclick="selectPill(this,'store-pills')">Spinneys</div>
+        <div class="pill gold-active" data-val="lulu" onclick="selectPill(this,'store-pills')">Lulu</div>
+      </div>
+      <div class="setup-nav">
+        <button class="btn btn-primary" onclick="nextStep()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Family Members -->
+    <div class="setup-step" id="step-1">
+      <div class="setup-step-title">Family Members</div>
+      <div class="setup-step-desc">Add each member so Maharaj can personalise their meals</div>
+      <div class="member-counter">
+        <button class="counter-btn" onclick="changeMemberCount(-1)">−</button>
+        <div style="text-align:center">
+          <div class="counter-num" id="member-count-display">2</div>
+          <div class="counter-label">family members</div>
+        </div>
+        <button class="counter-btn" onclick="changeMemberCount(1)">+</button>
+      </div>
+      <div id="member-cards-container"></div>
+      <div class="setup-nav">
+        <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+        <button class="btn btn-primary" onclick="nextStep()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Cuisine & Veg Days -->
+    <div class="setup-step" id="step-2">
+      <div class="setup-step-title">Your Food Preferences</div>
+      <div class="setup-step-desc">Tell Maharaj what cuisines you love</div>
+      <div class="section-label">Favourite Cuisines</div>
+      <div class="pill-group" id="cuisine-pills">
+        <div class="pill" data-val="Konkani" onclick="togglePill(this)">Konkani</div>
+        <div class="pill" data-val="Malvani" onclick="togglePill(this)">Malvani</div>
+        <div class="pill" data-val="Mangalorean" onclick="togglePill(this)">Mangalorean</div>
+        <div class="pill" data-val="Kerala" onclick="togglePill(this)">Kerala</div>
+        <div class="pill" data-val="Tamil Nadu" onclick="togglePill(this)">Tamil Nadu</div>
+        <div class="pill" data-val="Goan" onclick="togglePill(this)">Goan</div>
+        <div class="pill" data-val="Vidarbha" onclick="togglePill(this)">Vidarbha</div>
+        <div class="pill" data-val="Madhya Pradesh" onclick="togglePill(this)">Madhya Pradesh</div>
+        <div class="pill" data-val="Bangalore" onclick="togglePill(this)">Bangalore</div>
+        <div class="pill" data-val="Sindhudurg" onclick="togglePill(this)">Sindhudurg</div>
+        <div class="pill" data-val="Gujarati" onclick="togglePill(this)">Gujarati</div>
+        <div class="pill" data-val="North Indian" onclick="togglePill(this)">North Indian</div>
+        <div class="pill" data-val="Rajasthani" onclick="togglePill(this)">Rajasthani</div>
+        <div class="pill" data-val="Mughlai" onclick="togglePill(this)">Mughlai</div>
+        <div class="pill" data-val="Lucknowi" onclick="togglePill(this)">Lucknowi</div>
+        <div class="pill" data-val="Bengali" onclick="togglePill(this)">Bengali</div>
+        <div class="pill" data-val="Himachali" onclick="togglePill(this)">Himachali</div>
+      </div>
+      <div class="section-label">Vegetarian Days <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--text-secondary)">(optional)</span></div>
+      <div class="pill-group" id="vegday-pills">
+        <div class="pill" data-val="Monday" onclick="togglePill(this)">Mon</div>
+        <div class="pill" data-val="Tuesday" onclick="togglePill(this)">Tue</div>
+        <div class="pill" data-val="Wednesday" onclick="togglePill(this)">Wed</div>
+        <div class="pill" data-val="Thursday" onclick="togglePill(this)">Thu</div>
+        <div class="pill" data-val="Friday" onclick="togglePill(this)">Fri</div>
+        <div class="pill" data-val="Saturday" onclick="togglePill(this)">Sat</div>
+        <div class="pill" data-val="Sunday" onclick="togglePill(this)">Sun</div>
+      </div>
+      <div class="setup-nav">
+        <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+        <button class="btn btn-primary" onclick="nextStep()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Summary -->
+    <div class="setup-step" id="step-3">
+      <div class="setup-step-title">You are all set! 🎉</div>
+      <div class="setup-step-desc">Maharaj is ready to plan your kitchen</div>
+      <div class="summary-card" id="setup-summary"></div>
+      <div class="setup-nav">
+        <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+        <button class="btn btn-primary" onclick="saveProfile()">Start Planning with Maharaj 🍽️</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 5: HOME DASHBOARD
+══════════════════════════════════════════════════════════ -->
+<div id="screen-home" class="screen">
+  <div class="home-header">
+    <div class="home-avatar" id="home-avatar" onclick="showProfileModal()">S</div>
+    <div class="home-logo-wrap">
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#1B3A6B">My <span style="color:#C9A227;font-style:italic">Maharaj</span></div>
+    </div>
+    <button class="home-exit" onclick="confirmLogout()">Exit →</button>
+  </div>
+  <div class="home-datebar">
+    <div class="home-datebar-text" id="home-datetime">Loading...</div>
+  </div>
+  <div class="home-body">
+    <div class="home-greeting">
+      <h2 id="home-greeting-text">Namaste! 🙏</h2>
+      <p>What would you like to do today?</p>
+    </div>
+    <div class="card-grid">
+      <div class="dash-card" onclick="openModal('modal-dietary')">
+        <div class="dash-card-icon" style="background:#E8F5E9">🥗</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Dietary Profile</div>
+          <div class="dash-card-desc">Family health and food preferences</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-festivals')">
+        <div class="dash-card-icon" style="background:#FFF3E0">🪔</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Festivals & Functions</div>
+          <div class="dash-card-desc" id="next-festival-text">Loading festivals...</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-party')">
+        <div class="dash-card-icon" style="background:#FFEBEE">🎉</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Party Menu Generator</div>
+          <div class="dash-card-desc">Plan your next gathering</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-cuisine')">
+        <div class="dash-card-icon" style="background:#E3F2FD">🗺️</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Cuisine Selection</div>
+          <div class="dash-card-desc" id="cuisine-card-desc">Select your preferences</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-etiquettes')">
+        <div class="dash-card-icon" style="background:#FFF8E1">🍽️</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Table Etiquettes</div>
+          <div class="dash-card-desc">Learn Indian dining traditions</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-plating')">
+        <div class="dash-card-icon" style="background:#E8F5E9">🎨</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Traditional Plating</div>
+          <div class="dash-card-desc">Present your food beautifully</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" style="border-color:var(--gold);border-width:2px" onclick="showScreen('wizard')">
+        <div class="dash-card-icon" style="background:#FAF3DC">🍳</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title" style="color:var(--gold)">Generate Meal Plan</div>
+          <div class="dash-card-desc">Plan your meals with Maharaj AI</div>
+        </div>
+        <div class="dash-card-arrow" style="color:var(--gold)">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-history')">
+        <div class="dash-card-icon" style="background:#F3E5F5">📋</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Menu History</div>
+          <div class="dash-card-desc">Last 3 months of meal plans</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 6: MEAL WIZARD
+══════════════════════════════════════════════════════════ -->
+<div id="screen-wizard" class="screen">
+  <div class="wizard-header">
+    <button class="btn btn-ghost" onclick="exitWizard()">← Back</button>
+    <span class="wizard-title">Meal Plan Wizard</span>
+    <span class="wizard-step-label" id="wizard-step-label">1 of 6</span>
+  </div>
+  <div class="wizard-progress"><div class="wizard-progress-fill" id="wizard-progress" style="width:16%"></div></div>
+
+  <!-- Wizard steps container -->
+  <div id="wizard-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+
+    <!-- W-STEP 1: When? -->
+    <div class="wizard-step wizard-body" id="wstep-0">
+      <div class="wizard-step-title">When would you like to plan?</div>
+      <div class="wizard-step-desc">Choose a period for your meal plan</div>
+      <div class="period-grid">
+        <div class="period-card active" data-val="today" onclick="selectPeriod(this)">
+          <span class="period-icon">☀️</span>
+          <div class="period-label">Today</div>
+        </div>
+        <div class="period-card" data-val="tomorrow" onclick="selectPeriod(this)">
+          <span class="period-icon">🌅</span>
+          <div class="period-label">Tomorrow</div>
+        </div>
+        <div class="period-card" data-val="thisweek" onclick="selectPeriod(this)">
+          <span class="period-icon">📅</span>
+          <div class="period-label">This Week</div>
+        </div>
+        <div class="period-card" data-val="nextweek" onclick="selectPeriod(this)">
+          <span class="period-icon">🗓️</span>
+          <div class="period-label">Next Week</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <button class="btn btn-ghost" onclick="toggleCustomDates()" style="color:var(--gold);font-weight:600">📅 Or choose specific dates</button>
+      </div>
+      <div id="custom-dates" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="input-group">
+            <label>From Date</label>
+            <input id="date-from" class="input" type="date">
+          </div>
+          <div class="input-group">
+            <label>To Date</label>
+            <input id="date-to" class="input" type="date">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- W-STEP 2: Food Type -->
+    <div class="wizard-step wizard-body" id="wstep-1" style="display:none">
+      <div class="wizard-step-title">What type of food?</div>
+      <div class="wizard-step-desc">Choose your preference for this plan</div>
+      <div style="background:var(--surface);border-radius:var(--radius);padding:16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:600;color:var(--navy);margin-bottom:4px">🍮 Include Desserts?</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Sunday sweets · Weekday quick treats</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+          <input type="checkbox" id="include-desserts" style="opacity:0;width:0;height:0">
+          <span onclick="this.previousElementSibling.click()" style="position:absolute;inset:0;background:var(--border);border-radius:13px;transition:0.3s" id="dessert-toggle-bg"></span>
+          <span onclick="this.previousElementSibling.previousElementSibling.click()" style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:0.3s;box-shadow:0 1px 4px rgba(0,0,0,0.2)" id="dessert-toggle-knob"></span>
+        </label>
+      </div>
+      <div class="food-grid">
+        <div class="food-card active" data-val="veg" onclick="selectFood(this)">
+          <span class="food-icon">🥗</span>
+          <div class="food-label">Vegetarian</div>
+        </div>
+        <div class="food-card" data-val="nonveg" onclick="selectFood(this)">
+          <span class="food-icon">🍗</span>
+          <div class="food-label">Non-Vegetarian</div>
+        </div>
+      </div>
+      <div id="veg-sub" style="margin-top:8px">
+        <div class="food-grid">
+          <div class="food-card active" data-val="normal" onclick="selectVegType(this)">
+            <span class="food-icon">🌿</span>
+            <div class="food-label">Normal Veg</div>
+          </div>
+          <div class="food-card" data-val="fasting" onclick="selectVegType(this)">
+            <span class="food-icon">🙏</span>
+            <div class="food-label">Fasting / Upvas</div>
+          </div>
+        </div>
+      </div>
+      <div id="nonveg-sub" style="display:none;margin-top:8px">
+        <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:10px">Select non-veg options (multi-select):</div>
+        <div class="pill-group" id="nonveg-pills">
+          <div class="pill" data-val="eggs" onclick="togglePill(this)">Eggs 🥚</div>
+          <div class="pill" data-val="fish" onclick="togglePill(this)">Fish 🐟</div>
+          <div class="pill" data-val="chicken" onclick="togglePill(this)">Chicken 🍗</div>
+          <div class="pill" data-val="mutton" onclick="togglePill(this)">Mutton 🐑</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- W-STEP 3: Meal Contents -->
+    <div class="wizard-step wizard-body" id="wstep-2" style="display:none">
+      <div class="wizard-step-title">What would you like in each meal?</div>
+      <div class="wizard-step-desc">Maharaj will include these in your plan</div>
+      <div class="meal-section">
+        <div class="meal-section-header">
+          <span class="meal-section-icon">🌅</span>
+          <span class="meal-section-title">Breakfast</span>
+        </div>
+        <div class="pill-group" id="breakfast-pills">
+          <div class="pill sm" data-val="Hot dish" onclick="togglePill(this)">Hot dish</div>
+          <div class="pill sm" data-val="Bread/Paratha" onclick="togglePill(this)">Bread/Paratha</div>
+          <div class="pill sm" data-val="Eggs" onclick="togglePill(this)">Eggs</div>
+          <div class="pill sm" data-val="Fruits" onclick="togglePill(this)">Fruits</div>
+          <div class="pill sm" data-val="Juice/Smoothie" onclick="togglePill(this)">Juice/Smoothie</div>
+          <div class="pill sm" data-val="Light only" onclick="togglePill(this)">Light only</div>
+          <div class="pill sm active" data-val="Full Thali" onclick="togglePill(this)">Full Thali (Sunday)</div>
+        </div>
+      </div>
+      <div class="meal-section">
+        <div class="meal-section-header">
+          <span class="meal-section-icon">☀️</span>
+          <span class="meal-section-title">Lunch</span>
+        </div>
+        <div class="pill-group" id="lunch-pills">
+          <div class="pill sm active" data-val="Rice based" onclick="togglePill(this)">Rice based</div>
+          <div class="pill sm" data-val="Roti based" onclick="togglePill(this)">Roti based</div>
+          <div class="pill sm active" data-val="Dal" onclick="togglePill(this)">Dal</div>
+          <div class="pill sm active" data-val="Sabzi" onclick="togglePill(this)">Sabzi</div>
+          <div class="pill sm" data-val="Salad" onclick="togglePill(this)">Salad</div>
+          <div class="pill sm active" data-val="Raita" onclick="togglePill(this)">Raita</div>
+          <div class="pill sm" data-val="Papad" onclick="togglePill(this)">Papad</div>
+          <div class="pill sm" data-val="Pickle" onclick="togglePill(this)">Pickle</div>
+        </div>
+      </div>
+      <div class="meal-section">
+        <div class="meal-section-header">
+          <span class="meal-section-icon">🌙</span>
+          <span class="meal-section-title">Dinner</span>
+        </div>
+        <div class="pill-group" id="dinner-pills">
+          <div class="pill sm active" data-val="Rice based" onclick="togglePill(this)">Rice based</div>
+          <div class="pill sm active" data-val="Roti based" onclick="togglePill(this)">Roti based</div>
+          <div class="pill sm" data-val="Non-veg main" onclick="togglePill(this)">Non-veg main</div>
+          <div class="pill sm active" data-val="Veg main" onclick="togglePill(this)">Veg main</div>
+          <div class="pill sm" data-val="Soup" onclick="togglePill(this)">Soup</div>
+          <div class="pill sm" data-val="Salad" onclick="togglePill(this)">Salad</div>
+          <div class="pill sm" data-val="Dessert" onclick="togglePill(this)">Dessert</div>
+          <div class="pill sm" data-val="Light only" onclick="togglePill(this)">Light only</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- W-STEP 4: Anyone Unwell -->
+    <div class="wizard-step wizard-body" id="wstep-3" style="display:none">
+      <div class="wizard-step-title">Is anyone feeling unwell? 🤒</div>
+      <div class="wizard-step-desc">Maharaj will prepare a light recovery meal for them</div>
+      <div class="food-grid" style="margin-bottom:20px">
+        <div class="food-card active" data-val="no" onclick="selectUnwell(this)" id="unwell-no">
+          <span class="food-icon">😊</span>
+          <div class="food-label">Everyone is fine</div>
+        </div>
+        <div class="food-card" data-val="yes" onclick="selectUnwell(this)" id="unwell-yes">
+          <span class="food-icon">🤒</span>
+          <div class="food-label">Someone is unwell</div>
+        </div>
+      </div>
+      <div id="unwell-members" style="display:none">
+        <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:10px">Who is unwell? (select all that apply)</div>
+        <div class="pill-group" id="unwell-pills"></div>
+      </div>
+    </div>
+
+    <!-- W-STEP 5: Nutrition Goal -->
+    <div class="wizard-step wizard-body" id="wstep-4" style="display:none">
+      <div class="wizard-step-title">Any nutrition goal?</div>
+      <div class="wizard-step-desc">Maharaj will tailor the plan accordingly (multi-select)</div>
+      <div class="nutrition-grid" id="nutrition-pills">
+        <div class="pill active" data-val="Balanced" onclick="togglePill(this)">⚖️ Balanced</div>
+        <div class="pill" data-val="Low Calorie" onclick="togglePill(this)">🔻 Low Calorie</div>
+        <div class="pill" data-val="Keto" onclick="togglePill(this)">🥑 Keto</div>
+        <div class="pill" data-val="High Protein" onclick="togglePill(this)">💪 High Protein</div>
+        <div class="pill" data-val="Less Oil" onclick="togglePill(this)">🫙 Less Oil</div>
+        <div class="pill" data-val="High Fibre" onclick="togglePill(this)">🌾 High Fibre</div>
+        <div class="pill" data-val="Weight Loss" onclick="togglePill(this)">📉 Weight Loss</div>
+        <div class="pill" data-val="Doctor Recommended" onclick="togglePill(this)">👨‍⚕️ Doctor Recommended</div>
+      </div>
+    </div>
+
+    <!-- W-STEP 6: Generate -->
+    <div class="wizard-step wizard-body center" id="wstep-5" style="display:none">
+      <div style="font-family:'Playfair Display',serif;font-size:52px;font-weight:700;color:#1B3A6B;margin-bottom:8px;animation:pulse 1.4s ease-in-out infinite" id="wizard-logo-fallback">🍛</div>
+      <div class="gen-title">Maharaj is cooking up your plan...</div>
+      <div class="gen-subtitle" id="gen-status-text">Preparing your personalised meal plan</div>
+      <div class="gen-dots">
+        <div class="gen-dot"></div>
+        <div class="gen-dot"></div>
+        <div class="gen-dot"></div>
+      </div>
+    </div>
+
+    <!-- W-STEP 7: Results -->
+    <div class="wizard-step wizard-body" id="wstep-6" style="display:none">
+      <div class="wizard-step-title">Your Meal Plan 🍽️</div>
+      <div class="wizard-step-desc" id="results-date-range">Ready to cook!</div>
+      <div id="meal-results"></div>
+      <div class="confirm-bar" id="confirm-bar">
+        <div class="confirm-bar-text"><strong id="confirm-count">0</strong> of <strong id="confirm-total">0</strong> meals selected</div>
+        <button class="btn btn-primary btn-sm" id="confirm-btn" onclick="goToRecipes()" disabled>Confirm Selections</button>
+      </div>
+    </div>
+
+    <!-- W-STEP 8: Recipes -->
+    <div class="wizard-step wizard-body" id="wstep-7" style="display:none">
+      <div class="wizard-step-title">Full Recipes 📖</div>
+      <div class="wizard-step-desc">For your selected meals</div>
+      <div id="recipe-results"></div>
+    </div>
+
+    <!-- W-STEP 9: Shopping List -->
+    <div class="wizard-step wizard-body" id="wstep-8" style="display:none">
+      <div class="wizard-step-title">Your Shopping List 🛒</div>
+      <div class="wizard-step-desc" id="shop-item-count">All ingredients for your selected meals</div>
+      <div class="shop-actions">
+        <button class="btn btn-outline btn-sm" onclick="copyShoppingList()">📋 Copy</button>
+        <button class="btn btn-secondary btn-sm" onclick="shareWhatsApp()" style="background:#25D366;border:none">📱 WhatsApp</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadList()">📄 Download</button>
+      </div>
+      <div id="shopping-list-content"></div>
+    </div>
+
+    <!-- W-STEP 10: Feedback -->
+    <div class="wizard-step wizard-body" id="wstep-9" style="display:none">
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="font-size:52px;margin-bottom:16px">🙏</div>
+        <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--navy);margin-bottom:8px">Bon Appétit!</div>
+        <div style="font-size:15px;color:var(--text-secondary)">Come back and share how it went</div>
+      </div>
+      <div id="feedback-dishes"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:24px" onclick="submitFeedback()">Submit Feedback 🙏</button>
+    </div>
+
+  </div>
+
+  <!-- Wizard Nav (hidden during generation) -->
+  <div class="wizard-nav" id="wizard-nav">
+    <button class="btn btn-outline" id="wizard-back-btn" onclick="wizardBack()">← Back</button>
+    <button class="btn btn-primary" id="wizard-next-btn" onclick="wizardNext()">Continue →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════════ -->
+
+<!-- Dietary Profile Modal -->
+<div class="modal-overlay" id="modal-dietary" onclick="closeModalOnOverlay(event,'modal-dietary')">
+  <div class="modal modal-center" style="border-radius:24px;margin:auto;max-width:560px;width:90%;max-height:90vh">
+    <div class="modal-header">
+      <span class="modal-title">🥗 Dietary Profile</span>
+      <button class="modal-close" onclick="closeModal('modal-dietary')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="dietary-member-list">
+        <div style="text-align:center;padding:32px;color:var(--text-secondary)">
+          <div style="font-size:48px;margin-bottom:12px">👨‍👩‍👧</div>
+          <div style="font-weight:600;color:var(--navy);margin-bottom:4px">No family members yet</div>
+          <div style="font-size:14px">Add members to personalise meal plans</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="openAddMemberModal()">+ Add Family Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Member Modal -->
+<div class="modal-overlay" id="modal-add-member" onclick="closeModalOnOverlay(event,'modal-add-member')">
+  <div class="modal modal-center" style="border-radius:24px;margin:auto;max-width:520px;width:90%;max-height:90vh">
+    <div class="modal-header">
+      <span class="modal-title">Add Family Member</span>
+      <button class="modal-close" onclick="closeModal('modal-add-member')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-group">
+        <label>Name *</label>
+        <input id="m-name" class="input" placeholder="Member's name">
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+        <div class="input-group">
+          <label>Age *</label>
+          <input id="m-age" class="input" type="number" placeholder="Age" min="1" max="120">
+        </div>
+        <div></div>
+      </div>
+      <div class="section-label">Relationship</div>
+      <div class="pill-group" id="m-relation-pills">
+        <div class="pill active" data-val="Self" onclick="selectPill(this,'m-relation-pills')">Self</div>
+        <div class="pill" data-val="Spouse" onclick="selectPill(this,'m-relation-pills')">Spouse</div>
+        <div class="pill" data-val="Child" onclick="selectPill(this,'m-relation-pills')">Child</div>
+        <div class="pill" data-val="Parent" onclick="selectPill(this,'m-relation-pills')">Parent</div>
+        <div class="pill" data-val="Other" onclick="selectPill(this,'m-relation-pills')">Other</div>
+      </div>
+      <div class="section-label">Health Conditions</div>
+      <div class="pill-group" id="m-health-pills">
+        <div class="pill sm" data-val="Diabetic" onclick="togglePill(this)">Diabetic</div>
+        <div class="pill sm" data-val="BP" onclick="togglePill(this)">BP</div>
+        <div class="pill sm" data-val="PCOS" onclick="togglePill(this)">PCOS</div>
+        <div class="pill sm" data-val="Cholesterol" onclick="togglePill(this)">Cholesterol</div>
+        <div class="pill sm" data-val="Thyroid" onclick="togglePill(this)">Thyroid</div>
+        <div class="pill sm" data-val="Heart" onclick="togglePill(this)">Heart</div>
+        <div class="pill sm" data-val="Kidney" onclick="togglePill(this)">Kidney</div>
+        <div class="pill sm" data-val="Anaemia" onclick="togglePill(this)">Anaemia</div>
+        <div class="pill sm" data-val="Lactose" onclick="togglePill(this)">Lactose</div>
+        <div class="pill sm" data-val="Gluten" onclick="togglePill(this)">Gluten</div>
+      </div>
+      <div class="input-group" style="margin-top:16px">
+        <label>Medical Notes <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></label>
+        <textarea id="m-notes" class="input" rows="3" placeholder="e.g. Doctor says low salt, avoid fried food..."></textarea>
+      </div>
+      <div id="m-lipid-section" style="display:none">
+        <div class="lipid-info">
+          <span>⚠️</span>
+          <span>Lipid profile recommended for members aged 50+. Upload when available.</span>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="showToast('Lipid upload coming soon!')">📎 Upload Lipid Report (Optional)</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-member')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMember()">Save Member →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Festivals Modal -->
+<div class="modal-overlay" id="modal-festivals" onclick="closeModalOnOverlay(event,'modal-festivals')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🪔 Festivals & Functions</span>
+      <button class="modal-close" onclick="closeModal('modal-festivals')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px">Upcoming festivals in the next 6 months. Maharaj will plan special menus for these days.</div>
+      <div id="festival-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Party Menu Modal -->
+<div class="modal-overlay" id="modal-party" onclick="closeModalOnOverlay(event,'modal-party')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🎉 Party Menu Generator</span>
+      <button class="modal-close" onclick="closeModal('modal-party')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-group">
+        <label>Number of Guests</label>
+        <input id="party-guests" class="input" type="number" placeholder="e.g. 20" min="2">
+      </div>
+      <div class="input-group">
+        <label>Occasion</label>
+        <input id="party-occasion" class="input" placeholder="e.g. Birthday, Anniversary, Diwali gathering">
+      </div>
+      <div class="section-label">Food Type</div>
+      <div class="pill-group" id="party-food-pills">
+        <div class="pill active" data-val="veg" onclick="selectPill(this,'party-food-pills')">Vegetarian</div>
+        <div class="pill" data-val="nonveg" onclick="selectPill(this,'party-food-pills')">Non-Vegetarian</div>
+        <div class="pill" data-val="mixed" onclick="selectPill(this,'party-food-pills')">Mixed</div>
+      </div>
+      <div class="input-group" style="margin-top:16px">
+        <label>Budget per head (AED)</label>
+        <input id="party-budget" class="input" type="number" placeholder="e.g. 50">
+      </div>
+      <div id="party-result" style="display:none;margin-top:20px;padding:20px;background:var(--surface);border-radius:var(--radius)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="generatePartyMenu()">Generate Party Menu 🎉</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cuisine Selection Modal -->
+<div class="modal-overlay" id="modal-cuisine" onclick="closeModalOnOverlay(event,'modal-cuisine')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🗺️ Cuisine Selection</span>
+      <button class="modal-close" onclick="closeModal('modal-cuisine')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Select all cuisines you enjoy. Maharaj will rotate these in your weekly plans.</div>
+      <div class="pill-group" id="modal-cuisine-pills">
+        <div class="pill" data-val="Konkani" onclick="togglePill(this)">Konkani</div>
+        <div class="pill" data-val="Malvani" onclick="togglePill(this)">Malvani</div>
+        <div class="pill" data-val="Mangalorean" onclick="togglePill(this)">Mangalorean</div>
+        <div class="pill" data-val="Kerala" onclick="togglePill(this)">Kerala</div>
+        <div class="pill" data-val="Tamil Nadu" onclick="togglePill(this)">Tamil Nadu</div>
+        <div class="pill" data-val="Goan" onclick="togglePill(this)">Goan</div>
+        <div class="pill" data-val="Vidarbha" onclick="togglePill(this)">Vidarbha</div>
+        <div class="pill" data-val="Madhya Pradesh" onclick="togglePill(this)">Madhya Pradesh</div>
+        <div class="pill" data-val="Bangalore" onclick="togglePill(this)">Bangalore</div>
+        <div class="pill" data-val="Sindhudurg" onclick="togglePill(this)">Sindhudurg</div>
+        <div class="pill" data-val="Bengali" onclick="togglePill(this)">Bengali</div>
+        <div class="pill" data-val="Gujarati" onclick="togglePill(this)">Gujarati</div>
+        <div class="pill" data-val="North Indian" onclick="togglePill(this)">North Indian</div>
+        <div class="pill" data-val="Rajasthani" onclick="togglePill(this)">Rajasthani</div>
+        <div class="pill" data-val="Mughlai" onclick="togglePill(this)">Mughlai</div>
+        <div class="pill" data-val="Lucknowi" onclick="togglePill(this)">Lucknowi</div>
+        <div class="pill" data-val="Himachali" onclick="togglePill(this)">Himachali</div>
+        <div class="pill" data-val="Uttarakhandi" onclick="togglePill(this)">Uttarakhandi</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="saveCuisines()">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
+<!-- Table Etiquettes Modal -->
+<div class="modal-overlay" id="modal-etiquettes" onclick="closeModalOnOverlay(event,'modal-etiquettes')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🍽️ Table Etiquettes</span>
+      <button class="modal-close" onclick="closeModal('modal-etiquettes')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="etiq-item">
+        <div class="etiq-title">🙏 The Traditional Thali</div>
+        <div class="etiq-body">In Maharashtra, the thali is arranged with rice or chapati in the center. Dal is placed to the upper left, sabzi to the upper right. Pickle and papad are placed on the right edge. The meal begins with a small prayer of gratitude.</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">🤲 Eating with Hands</div>
+        <div class="etiq-body">In South Indian and Konkani tradition, eating with the right hand is considered respectful and is said to enhance the experience of food. The left hand is kept clean and used only to pour water or pass dishes.</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">🍃 The Banana Leaf Tradition</div>
+        <div class="etiq-body">In Kerala and Tamil Nadu, meals are served on banana leaves during festivals and special occasions. The leaf is placed with the tip pointing left. After eating, fold the leaf away from you to signal satisfaction.</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">👴 Serving Order</div>
+        <div class="etiq-body">Traditionally, the eldest members of the family are served first. In a formal setting, guests are served before family members. The host eats last, ensuring all guests are satisfied.</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">🥛 The Role of Curd and Buttermilk</div>
+        <div class="etiq-body">In Maharashtrian and Konkani traditions, the meal ends with curd rice or a glass of buttermilk (taak). This signals the completion of the meal and aids digestion.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Traditional Plating Modal -->
+<div class="modal-overlay" id="modal-plating" onclick="closeModalOnOverlay(event,'modal-plating')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🎨 Traditional Plating</span>
+      <button class="modal-close" onclick="closeModal('modal-plating')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="etiq-item">
+        <div class="etiq-title">🍛 Maharashtrian Thali Arrangement</div>
+        <div class="etiq-body">Center: Rice or Chapati. Top-left: Dal or Amti. Top-right: Dry Sabzi. Bottom-left: Gravy Sabzi. Bottom-right: Koshimbir (salad). Right edge: Pickle, Papad, Lemon. Top-center: Sweet dish on festival days.</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">🍃 South Indian Sadya (Banana Leaf)</div>
+        <div class="etiq-body">Top of leaf from left: Banana chips, Pappadam, Pickle, Salt, Raw Mango. Center: Rice served fresh. Around rice: Sambar, Rasam, Kootu, Avial, Thoran. End of meal: Payasam (dessert).</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">🎨 Garnishing Tips</div>
+        <div class="etiq-body">Dal: finish with a tadka of ghee, cumin and red chilli. Rice dishes: garnish with fresh coriander and a lemon wedge. Curries: a swirl of cream or coconut milk adds visual appeal. Desserts: crushed nuts and saffron strands elevate any sweet.</div>
+      </div>
+      <div class="etiq-item">
+        <div class="etiq-title">🌿 Fresh Garnishes Always Available in Dubai</div>
+        <div class="etiq-body">Carrefour and Spinneys consistently stock: fresh coriander, curry leaves, green chillies, ginger, garlic. All Lulu hypermarkets carry: fresh coconut, raw mango (seasonal), banana leaves (by request at some stores).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Menu History Modal -->
+<div class="modal-overlay" id="modal-history" onclick="closeModalOnOverlay(event,'modal-history')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">📋 Menu History</span>
+      <button class="modal-close" onclick="closeModal('modal-history')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="history-list">
+        <div style="text-align:center;padding:32px;color:var(--text-secondary)">
+          <div style="font-size:48px;margin-bottom:12px">📋</div>
+          <div style="font-weight:600;color:var(--navy);margin-bottom:4px">No meal plans yet</div>
+          <div style="font-size:14px">Generate your first plan to see history here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Logout Dialog -->
+<div class="confirm-overlay" id="confirm-logout">
+  <div class="confirm-box">
+    <h3>Logout?</h3>
+    <p>Are you sure you want to sign out of My Maharaj?</p>
+    <div class="confirm-box-btns">
+      <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" onclick="doLogout()">Yes, Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// SUPABASE INIT
+// ══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://ljgfvoyloeelnmugysr k.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZ2Z2b3lsb2VlbG5tdWd5c3JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTEyMjgsImV4cCI6MjA4OTU2NzIyOH0.AXBGCzbaDlFLkjM7wcCNWNLGi9bDG054jqqOTkqsXio';
+const CLAUDE_KEY = 'REDACTED';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════════════════════
+// APP STATE
+// ══════════════════════════════════════════════════════════
+let appState = {
+  user: null,
+  profile: null,
+  members: [],
+  cuisines: [],
+  currentWizardStep: 0,
+  totalWizardSteps: 10,
+  wizardData: {
+    period: 'today',
+    dates: [],
+    foodType: 'veg',
+    vegType: 'normal',
+    nonVegOptions: [],
+    breakfastPrefs: [],
+    lunchPrefs: [],
+    dinnerPrefs: [],
+    unwellMembers: [],
+    nutritionGoals: ['Balanced'],
+    includeDesserts: false,
+  },
+  mealPlan: null,
+  selectedMeals: {},
+  shoppingList: [],
+  memberCount: 2,
+  memberData: [],
+};
+
+// ══════════════════════════════════════════════════════════
+// SCREEN NAVIGATION
+// ══════════════════════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const s = document.getElementById('screen-' + name);
+  if (s) s.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════
+function togglePassword(id, btn) {
+  const input = document.getElementById(id);
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function doSignup() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const confirm = document.getElementById('signup-confirm').value;
+  const errEl = document.getElementById('signup-error');
+  errEl.style.display = 'none';
+
+  if (!name || !email || !password) { showErr(errEl, 'Please fill in all fields'); return; }
+  if (!email.includes('@')) { showErr(errEl, 'Please enter a valid email'); return; }
+  if (password.length < 8) { showErr(errEl, 'Password must be at least 8 characters'); return; }
+  if (password !== confirm) { showErr(errEl, 'Passwords do not match'); return; }
+
+  const btn = document.getElementById('signup-btn');
+  btn.textContent = 'Creating account...'; btn.disabled = true;
+
+  try {
+    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+    if (error) throw error;
+    appState.user = data.user;
+    showScreen('profile-setup');
+    renderMemberCards();
+  } catch (e) {
+    showErr(errEl, e.message || 'Failed to create account');
+  } finally {
+    btn.textContent = 'Create Account'; btn.disabled = false;
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!email || !password) { showErr(errEl, 'Please enter your email and password'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    appState.user = data.user;
+    await loadUserData();
+    goHome();
+  } catch (e) {
+    showErr(errEl, 'Invalid email or password. Please try again.');
+  } finally {
+    btn.textContent = 'Sign In'; btn.disabled = false;
+  }
+}
+
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+async function loadUserData() {
+  if (!appState.user) return;
+  try {
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', appState.user.id).single();
+    appState.profile = profile;
+    const { data: members } = await sb.from('family_members').select('*').eq('user_id', appState.user.id);
+    appState.members = members || [];
+    const { data: cuisines } = await sb.from('cuisine_preferences').select('*').eq('user_id', appState.user.id);
+    appState.cuisines = cuisines || [];
+  } catch(e) { console.log('Load error:', e); }
+}
+
+function goHome() {
+  showScreen('home');
+  updateDateTime();
+  setInterval(updateDateTime, 60000);
+  const name = appState.profile?.family_name || appState.user?.user_metadata?.full_name?.split(' ')[0] || 'Friend';
+  document.getElementById('home-greeting-text').textContent = `Namaste, ${name}! 🙏`;
+  document.getElementById('home-avatar').textContent = name.charAt(0).toUpperCase();
+  updateFestivalCard();
+  updateCuisineCard();
+}
+
+function confirmLogout() { document.getElementById('confirm-logout').classList.add('active'); }
+function closeConfirm() { document.getElementById('confirm-logout').classList.remove('active'); }
+async function doLogout() {
+  await sb.auth.signOut();
+  appState = { user:null, profile:null, members:[], cuisines:[], currentWizardStep:0, totalWizardSteps:10, wizardData:{period:'today',dates:[],foodType:'veg',vegType:'normal',nonVegOptions:[],breakfastPrefs:[],lunchPrefs:[],dinnerPrefs:[],unwellMembers:[],nutritionGoals:['Balanced'],includeDesserts:false}, mealPlan:null, selectedMeals:{}, shoppingList:[], memberCount:2, memberData:[] };
+  closeConfirm();
+  showScreen('landing');
+  showToast('Signed out successfully');
+}
+
+// ══════════════════════════════════════════════════════════
+// DATETIME
+// ══════════════════════════════════════════════════════════
+function updateDateTime() {
+  const now = new Date();
+  const opts = { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' };
+  document.getElementById('home-datetime').textContent = now.toLocaleDateString('en-GB', opts).replace(',', '  ·');
+}
+
+// ══════════════════════════════════════════════════════════
+// PROFILE SETUP
+// ══════════════════════════════════════════════════════════
+let setupStep = 0;
+const stepTitles = ['Tell us about your family','Who is in your family?','Your food preferences','You are all set!'];
+const stepDescs = ['One account for your whole family','Add each member for personalised meals','Select cuisines and vegetarian days','Review and start planning'];
+
+function nextStep() {
+  if (setupStep < 3) {
+    document.getElementById('step-' + setupStep).classList.remove('active');
+    setupStep++;
+    document.getElementById('step-' + setupStep).classList.add('active');
+    updateSetupProgress();
+    if (setupStep === 3) renderSummary();
+  }
+}
+function prevStep() {
+  if (setupStep > 0) {
+    document.getElementById('step-' + setupStep).classList.remove('active');
+    setupStep--;
+    document.getElementById('step-' + setupStep).classList.add('active');
+    updateSetupProgress();
+  }
+}
+function updateSetupProgress() {
+  document.getElementById('setup-step-title').textContent = stepTitles[setupStep];
+  document.getElementById('setup-step-subtitle').textContent = stepDescs[setupStep];
+  document.getElementById('setup-progress').style.width = ((setupStep+1)/4*100)+'%';
+  for(let i=0;i<4;i++){
+    const d = document.getElementById('dot-'+i);
+    d.className = 'setup-step-dot' + (i===setupStep?' active':i<setupStep?' done':'');
+  }
+}
+
+let memberCount = 2;
+function changeMemberCount(delta) {
+  memberCount = Math.max(1, Math.min(8, memberCount + delta));
+  document.getElementById('member-count-display').textContent = memberCount;
+  renderMemberCards();
+}
+function renderMemberCards() {
+  const container = document.getElementById('member-cards-container');
+  container.innerHTML = '';
+  for (let i = 0; i < memberCount; i++) {
+    container.innerHTML += `
+    <div class="member-card" id="mc-${i}">
+      <div class="member-card-title">
+        <div class="member-num">${i+1}</div>
+        Member ${i+1}
+      </div>
+      <div class="member-row">
+        <div class="input-group" style="margin-bottom:0">
+          <label>Name</label>
+          <input class="input" id="mc-name-${i}" placeholder="Full name">
+        </div>
+        <div class="input-group" style="margin-bottom:0">
+          <label>Age</label>
+          <input class="input" id="mc-age-${i}" type="number" placeholder="Age" onchange="checkLipid(${i})">
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:8px">Health Conditions</label>
+        <div class="pill-group">
+          ${['Diabetic','BP','PCOS','Cholesterol','Thyroid','Heart','Kidney','Anaemia'].map(c=>`<div class="pill sm" data-val="${c}" onclick="togglePill(this)">${c}</div>`).join('')}
+        </div>
+      </div>
+      <div class="input-group" style="margin-top:12px;margin-bottom:0">
+        <label>Medical notes <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></label>
+        <textarea class="input" id="mc-notes-${i}" rows="2" placeholder="Doctor recommendations, allergies, food preferences..."></textarea>
+      </div>
+      <div id="mc-lipid-${i}" style="display:none;margin-top:10px">
+        <div class="lipid-info">⚠️ Lipid profile recommended for members aged 50+. Upload when available.</div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;width:100%" onclick="showToast('Lipid upload feature coming soon!')">📎 Upload Lipid Report (Optional)</button>
+      </div>
+    </div>`;
+  }
+}
+function checkLipid(i) {
+  const age = parseInt(document.getElementById('mc-age-'+i)?.value || '0');
+  const lipidEl = document.getElementById('mc-lipid-'+i);
+  if (lipidEl) lipidEl.style.display = age >= 50 ? 'block' : 'none';
+}
+function renderSummary() {
+  const cuisines = Array.from(document.querySelectorAll('#cuisine-pills .pill.active')).map(p=>p.dataset.val);
+  const lang = document.querySelector('#lang-pills .pill.active')?.dataset.val || 'en';
+  const store = document.querySelector('#store-pills .pill.active')?.dataset.val || 'all';
+  const familyName = document.getElementById('family-name')?.value || 'Your Family';
+  document.getElementById('setup-summary').innerHTML = `
+    <div class="summary-row"><span class="summary-label">Family Name</span><span class="summary-value">${familyName}</span></div>
+    <div class="summary-row"><span class="summary-label">Family Members</span><span class="summary-value">${memberCount} members</span></div>
+    <div class="summary-row"><span class="summary-label">Cuisines Selected</span><span class="summary-value">${cuisines.length ? cuisines.slice(0,3).join(', ')+(cuisines.length>3?' +more':'') : 'None selected'}</span></div>
+    <div class="summary-row"><span class="summary-label">Language</span><span class="summary-value">${{en:'English',hi:'Hindi',mr:'Marathi',gu:'Gujarati'}[lang]}</span></div>
+    <div class="summary-row"><span class="summary-label">Preferred Store</span><span class="summary-value">${store==='all'?'All Stores':store.charAt(0).toUpperCase()+store.slice(1)}</span></div>
+  `;
+}
+
+async function saveProfile() {
+  if (!appState.user) return;
+  const btn = event.target;
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  try {
+    const familyName = document.getElementById('family-name')?.value || '';
+    const mobile = document.getElementById('family-mobile')?.value || '';
+    const lang = document.querySelector('#lang-pills .pill.active')?.dataset.val || 'en';
+    const store = document.querySelector('#store-pills .pill.active')?.dataset.val || 'all';
+    const vegDays = Array.from(document.querySelectorAll('#vegday-pills .pill.active')).map(p=>p.dataset.val);
+    const cuisines = Array.from(document.querySelectorAll('#cuisine-pills .pill.active')).map(p=>p.dataset.val);
+
+    await sb.from('profiles').upsert({
+      id: appState.user.id,
+      family_name: familyName,
+      mobile_number: mobile,
+      app_language: lang,
+      store_preference: store,
+      veg_days: vegDays,
+    });
+
+    // Save members
+    for (let i = 0; i < memberCount; i++) {
+      const name = document.getElementById('mc-name-'+i)?.value;
+      if (!name) continue;
+      const age = parseInt(document.getElementById('mc-age-'+i)?.value || '0');
+      const notes = document.getElementById('mc-notes-'+i)?.value || '';
+      await sb.from('family_members').insert({ user_id: appState.user.id, name, age, health_notes: notes });
+    }
+
+    // Save cuisines
+    if (cuisines.length) {
+      await sb.from('cuisine_preferences').delete().eq('user_id', appState.user.id);
+      await sb.from('cuisine_preferences').insert(cuisines.map(c => ({ user_id: appState.user.id, cuisine_name: c, is_excluded: false, weight: 5 })));
+    }
+
+    await loadUserData();
+    goHome();
+    showToast('Profile saved! Welcome to My Maharaj 🙏');
+  } catch(e) {
+    showToast('Error saving profile: ' + e.message);
+  } finally {
+    btn.textContent = 'Start Planning with Maharaj 🍽️'; btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// PILL HELPERS
+// ══════════════════════════════════════════════════════════
+function selectPill(el, groupId) {
+  document.querySelectorAll('#'+groupId+' .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+function togglePill(el) { el.classList.toggle('active'); }
+
+// ══════════════════════════════════════════════════════════
+// HOME HELPERS
+// ══════════════════════════════════════════════════════════
+function updateCuisineCard() {
+  const cuisines = appState.cuisines.map(c=>c.cuisine_name);
+  const desc = cuisines.length ? cuisines.slice(0,2).join(', ')+(cuisines.length>2?' +more':'') : 'Select your preferences';
+  document.getElementById('cuisine-card-desc').textContent = desc;
+}
+
+// ══════════════════════════════════════════════════════════
+// FESTIVALS
+// ══════════════════════════════════════════════════════════
+const FESTIVALS_2026 = [
+  { name:'Holi', date:'2026-03-14', emoji:'🎨' },
+  { name:'Gudi Padwa', date:'2026-03-20', emoji:'🪔' },
+  { name:'Ram Navami', date:'2026-03-28', emoji:'🙏' },
+  { name:'Eid al-Fitr', date:'2026-03-31', emoji:'🌙' },
+  { name:'Akshaya Tritiya', date:'2026-04-21', emoji:'✨' },
+  { name:'Eid al-Adha', date:'2026-06-07', emoji:'🌙' },
+  { name:'Ashadhi Ekadashi', date:'2026-06-26', emoji:'🙏' },
+  { name:'Raksha Bandhan', date:'2026-08-22', emoji:'🎀' },
+  { name:'Janmashtami', date:'2026-08-30', emoji:'🦚' },
+  { name:'Ganesh Chaturthi', date:'2026-09-11', emoji:'🐘' },
+  { name:'Navratri', date:'2026-09-20', emoji:'💃' },
+  { name:'Dussehra', date:'2026-09-29', emoji:'🏹' },
+  { name:'Diwali', date:'2026-10-19', emoji:'🪔' },
+  { name:'Chhath Puja', date:'2026-10-25', emoji:'🌅' },
+  { name:'Guru Nanak Jayanti', date:'2026-11-13', emoji:'🙏' },
+  { name:'Christmas', date:'2026-12-25', emoji:'⭐' },
+  { name:'New Year', date:'2027-01-01', emoji:'🎆' },
+  { name:'Makar Sankranti', date:'2027-01-14', emoji:'🪁' },
+  { name:'Maha Shivratri', date:'2027-02-17', emoji:'🔱' },
+];
+function getDaysUntil(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return Math.ceil((d-today)/(1000*60*60*24));
+}
+function updateFestivalCard() {
+  const upcoming = FESTIVALS_2026.filter(f=>getDaysUntil(f.date)>=0).sort((a,b)=>getDaysUntil(a.date)-getDaysUntil(b.date));
+  if (upcoming.length) {
+    const next = upcoming[0];
+    const days = getDaysUntil(next.date);
+    document.getElementById('next-festival-text').textContent = `${next.emoji} ${next.name} - ${days===0?'Today!':days===1?'Tomorrow':days+' days away'}`;
+  }
+}
+function renderFestivals() {
+  const upcoming = FESTIVALS_2026.filter(f=>getDaysUntil(f.date)>=0).slice(0,10);
+  document.getElementById('festival-list').innerHTML = upcoming.map(f=>{
+    const days = getDaysUntil(f.date);
+    const dateStr = new Date(f.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    return `<div class="festival-item">
+      <div class="festival-days"><div class="festival-days-num">${days}</div><div class="festival-days-label">days</div></div>
+      <div class="festival-info">
+        <div class="festival-name">${f.emoji} ${f.name}</div>
+        <div class="festival-date">${dateStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  if (id==='modal-festivals') renderFestivals();
+  if (id==='modal-dietary') renderDietaryMembers();
+  if (id==='modal-history') renderHistory();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function closeModalOnOverlay(e, id) { if (e.target.id===id) closeModal(id); }
+
+function renderDietaryMembers() {
+  const list = document.getElementById('dietary-member-list');
+  if (!appState.members.length) {
+    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary)"><div style="font-size:48px;margin-bottom:12px">👨‍👩‍👧</div><div style="font-weight:600;color:var(--navy);margin-bottom:4px">No family members yet</div><div style="font-size:14px">Add members to personalise meal plans</div></div>`;
+    return;
+  }
+  list.innerHTML = appState.members.map(m=>`
+    <div class="member-list-item">
+      <div class="member-info">
+        <div class="member-name">${m.name}</div>
+        <div class="member-meta">Age ${m.age}${m.relationship?' · '+m.relationship:''}</div>
+        ${m.health_notes?`<div class="member-tags"><span class="member-tag">${m.health_notes.slice(0,40)}${m.health_notes.length>40?'...':''}</span></div>`:''}
+      </div>
+      <div class="member-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showToast('Edit coming soon!')">Edit</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddMemberModal() { closeModal('modal-dietary'); openModal('modal-add-member'); }
+
+async function saveMember() {
+  if (!appState.user) return;
+  const name = document.getElementById('m-name').value.trim();
+  const age = parseInt(document.getElementById('m-age').value || '0');
+  if (!name) { showToast('Please enter a name'); return; }
+  const relation = document.querySelector('#m-relation-pills .pill.active')?.dataset.val || 'Other';
+  const conditions = Array.from(document.querySelectorAll('#m-health-pills .pill.active')).map(p=>p.dataset.val);
+  const notes = document.getElementById('m-notes').value.trim();
+  const healthText = [conditions.join(', '), notes].filter(Boolean).join('. ');
+  try {
+    const { data } = await sb.from('family_members').insert({ user_id:appState.user.id, name, age, relationship:relation, health_notes:healthText }).select().single();
+    appState.members.push(data);
+    closeModal('modal-add-member');
+    openModal('modal-dietary');
+    showToast(`${name} added successfully!`);
+    document.getElementById('m-name').value=''; document.getElementById('m-age').value=''; document.getElementById('m-notes').value='';
+    document.querySelectorAll('#m-relation-pills .pill').forEach(p=>p.classList.remove('active'));
+    document.querySelector('#m-relation-pills [data-val="Self"]').classList.add('active');
+    document.querySelectorAll('#m-health-pills .pill').forEach(p=>p.classList.remove('active'));
+  } catch(e) { showToast('Error: '+e.message); }
+}
+
+async function generatePartyMenu() {
+  const guests = document.getElementById('party-guests').value;
+  const occasion = document.getElementById('party-occasion').value;
+  const foodType = document.querySelector('#party-food-pills .pill.active')?.dataset.val || 'veg';
+  const budget = document.getElementById('party-budget').value;
+  if (!guests || !occasion) { showToast('Please fill in guests and occasion'); return; }
+  const btn = event.target; btn.textContent = 'Generating...'; btn.disabled = true;
+  const result = document.getElementById('party-result');
+  result.style.display = 'block';
+  result.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">🍛 Maharaj is creating your party menu...</div>';
+  try {
+    const prompt = `You are Maharaj, an expert Indian party planner. Create a party menu for ${guests} guests for a ${occasion} occasion. Food type: ${foodType}. Budget: AED ${budget || 50} per head. Include: Starters (3 options), Main Course (4 dishes), Bread/Rice, Desserts (2 options), Drinks. All ingredients available in Dubai supermarkets. Format as a clean readable menu with sections. Be specific with dish names.`;
+    const text = await callClaude(prompt, 800);
+    result.innerHTML = `<div style="font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text)">${text}</div>`;
+  } catch(e) { result.innerHTML = '<div style="color:var(--error)">Error generating menu. Please try again.</div>'; }
+  btn.textContent = 'Generate Party Menu 🎉'; btn.disabled = false;
+}
+
+async function saveCuisines() {
+  if (!appState.user) return;
+  const cuisines = Array.from(document.querySelectorAll('#modal-cuisine-pills .pill.active')).map(p=>p.dataset.val);
+  try {
+    await sb.from('cuisine_preferences').delete().eq('user_id', appState.user.id);
+    if (cuisines.length) await sb.from('cuisine_preferences').insert(cuisines.map(c=>({user_id:appState.user.id,cuisine_name:c,is_excluded:false,weight:5})));
+    appState.cuisines = cuisines.map(c=>({cuisine_name:c}));
+    updateCuisineCard();
+    closeModal('modal-cuisine');
+    showToast('Cuisine preferences saved!');
+  } catch(e) { showToast('Error: '+e.message); }
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const history = JSON.parse(localStorage.getItem('mm_history') || '[]');
+  if (!history.length) {
+    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary)"><div style="font-size:48px;margin-bottom:12px">📋</div><div style="font-weight:600;color:var(--navy);margin-bottom:4px">No meal plans yet</div><div style="font-size:14px">Generate your first plan to see history here</div></div>`;
+    return;
+  }
+  list.innerHTML = history.slice(0,20).map(h=>`
+    <div class="history-item">
+      <div class="history-item-top">
+        <span class="history-item-date">${new Date(h.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        <span class="history-item-period">${h.period}</span>
+      </div>
+      <div class="history-item-cuisine">${h.cuisine}</div>
+      <div class="history-item-dietary">${h.dietary_notes}</div>
+    </div>
+  `).join('');
+}
+
+function showProfileModal() { showToast('Profile settings coming soon!'); }
+
+// ══════════════════════════════════════════════════════════
+// WIZARD
+// ══════════════════════════════════════════════════════════
+let wizardStep = 0;
+const WIZARD_STEPS = 10;
+
+function exitWizard() { showScreen('home'); wizardStep = 0; }
+
+function updateWizardUI() {
+  // Hide all steps
+  document.querySelectorAll('.wizard-step').forEach(s=>s.style.display='none');
+  // Show current
+  const current = document.getElementById('wstep-'+wizardStep);
+  if (current) current.style.display = wizardStep===6||wizardStep===5?'flex':'block';
+  
+  // Progress
+  const pct = ((wizardStep+1)/WIZARD_STEPS*100);
+  document.getElementById('wizard-progress').style.width = pct+'%';
+  document.getElementById('wizard-step-label').textContent = (wizardStep+1)+' of '+WIZARD_STEPS;
+
+  // Nav buttons
+  const nav = document.getElementById('wizard-nav');
+  const backBtn = document.getElementById('wizard-back-btn');
+  const nextBtn = document.getElementById('wizard-next-btn');
+
+  if (wizardStep===5) { nav.style.display='none'; return; } // generating
+  nav.style.display='flex';
+  backBtn.style.display = wizardStep===0?'none':'flex';
+
+  // Label next button
+  const labels = ['Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections','View Recipes','View Shopping List','Next','Done'];
+  nextBtn.textContent = (labels[wizardStep]||'Continue')+' →';
+  if (wizardStep===4) nextBtn.style.background='var(--peacock)';
+  else nextBtn.style.background='var(--gold)';
+}
+
+function selectPeriod(el) {
+  document.querySelectorAll('.period-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  appState.wizardData.period = el.dataset.val;
+  document.getElementById('custom-dates').style.display='none';
+}
+function toggleCustomDates() {
+  const d = document.getElementById('custom-dates');
+  d.style.display = d.style.display==='none'?'block':'none';
+  if (d.style.display==='block') {
+    document.querySelectorAll('.period-card').forEach(c=>c.classList.remove('active'));
+    appState.wizardData.period = 'custom';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date-from').min = today;
+    document.getElementById('date-to').min = today;
+  }
+}
+
+function selectFood(el) {
+  document.querySelectorAll('.food-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  appState.wizardData.foodType = el.dataset.val;
+  document.getElementById('veg-sub').style.display = el.dataset.val==='veg'?'block':'none';
+  document.getElementById('nonveg-sub').style.display = el.dataset.val==='nonveg'?'block':'none';
+}
+function selectVegType(el) {
+  document.querySelectorAll('#veg-sub .food-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  appState.wizardData.vegType = el.dataset.val;
+}
+function selectUnwell(el) {
+  document.querySelectorAll('.food-card[data-val="no"],.food-card[data-val="yes"]').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const isYes = el.dataset.val==='yes';
+  document.getElementById('unwell-members').style.display = isYes?'block':'none';
+  if (isYes && appState.members.length) {
+    document.getElementById('unwell-pills').innerHTML = appState.members.map(m=>`<div class="pill" data-val="${m.name}" onclick="togglePill(this)">${m.name}</div>`).join('');
+  }
+}
+
+function getWizardDates() {
+  const p = appState.wizardData.period;
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  if (p==='today') return [fmt(today)];
+  if (p==='tomorrow') { const t=new Date(today); t.setDate(t.getDate()+1); return [fmt(t)]; }
+  if (p==='thisweek') {
+    const days = [];
+    const start = new Date(today);
+    start.setDate(start.getDate() - start.getDay()); // Sunday
+    for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(fmt(d));}
+    return days;
+  }
+  if (p==='nextweek') {
+    const days = [];
+    const start = new Date(today);
+    start.setDate(start.getDate() + (7-start.getDay())); // Next Sunday
+    for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(fmt(d));}
+    return days;
+  }
+  if (p==='custom') {
+    const from = document.getElementById('date-from').value;
+    const to = document.getElementById('date-to').value;
+    if (!from || !to) return [fmt(today)];
+    const days = [];
+    const start = new Date(from);
+    const end = new Date(to);
+    while(start<=end){days.push(fmt(start));start.setDate(start.getDate()+1);}
+    return days.slice(0,14); // max 14 days
+  }
+  return [fmt(today)];
+}
+
+async function wizardNext() {
+  if (wizardStep === 4) {
+    // Generate
+    wizardStep = 5;
+    updateWizardUI();
+    await generateMealPlan();
+    return;
+  }
+  if (wizardStep === 6) { goToRecipes(); return; }
+  if (wizardStep === 7) { goToShoppingList(); return; }
+  if (wizardStep === 8) { goToFeedback(); return; }
+  if (wizardStep === 9) { exitWizard(); return; }
+  wizardStep++;
+  updateWizardUI();
+}
+function wizardBack() {
+  if (wizardStep > 0) { wizardStep--; updateWizardUI(); }
+  else exitWizard();
+}
+
+// ══════════════════════════════════════════════════════════
+// CLAUDE API
+// ══════════════════════════════════════════════════════════
+async function callClaude(prompt, maxTokens=4000) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+async function generateMealPlan() {
+  const dates = getWizardDates();
+  const foodType = appState.wizardData.foodType;
+  const vegType = appState.wizardData.vegType;
+  const nonVegOptions = Array.from(document.querySelectorAll('#nonveg-pills .pill.active')).map(p=>p.dataset.val);
+  const nutritionGoals = Array.from(document.querySelectorAll('#nutrition-pills .pill.active')).map(p=>p.dataset.val);
+  const includeDesserts = document.getElementById('include-desserts')?.checked;
+  const cuisine = appState.cuisines.length ? appState.cuisines[Math.floor(Math.random()*appState.cuisines.length)].cuisine_name : 'Konkani';
+  
+  const healthFlags = appState.members.map(m=>m.health_notes).filter(Boolean).join('. ');
+  const vegDays = appState.profile?.veg_days || [];
+
+  const foodPrefText = foodType==='veg' ? (vegType==='fasting'?'STRICT FASTING/UPVAS: sabudana, rajgira, singhara flour, sama rice, potatoes, fruits, rock salt ONLY. No regular salt, no onion, no garlic.':'VEGETARIAN: No meat, no eggs, no fish. Onion and garlic allowed.') : `NON-VEGETARIAN: Include these options: ${nonVegOptions.join(', ')||'chicken'}. Spread non-veg across meals naturally, not every meal.`;
+
+  const allDays = [];
+  for (let i=0; i<dates.length; i++) {
+    const date = dates[i];
+    const dayName = new Date(date).toLocaleDateString('en-GB',{weekday:'long'});
+    document.getElementById('gen-status-text').textContent = `Generating meals for ${dayName}... (${i+1} of ${dates.length})`;
+
+    const isVegDay = vegDays.includes(dayName);
+    const isSunday = dayName === 'Sunday';
+
+    const prompt = `You are Maharaj, expert Indian regional cuisine chef in Dubai.
+Generate a meal plan for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
+
+CUISINE TODAY: ${cuisine}
+FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - no meat, no eggs':foodPrefText}
+HEALTH CONDITIONS: ${healthFlags||'None - normal healthy family'}
+NUTRITION GOALS: ${nutritionGoals.join(', ')}
+${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali with 6-8 items':''}
+${includeDesserts?'INCLUDE: Add one traditional dessert to dinner':''}
+
+RULES:
+1. Use REAL named Indian dishes from ${cuisine} cuisine (not generic descriptions)
+2. All ingredients available at Carrefour UAE, Spinneys, or Lulu Dubai
+3. Give EXACTLY 2 options per meal slot
+4. Each option must be a specific named dish
+5. Include prep-night instructions for dinner
+6. Add accurate health tags per dish
+
+Respond ONLY with valid JSON:
+{
+  "date":"${date}",
+  "day":"${dayName}",
+  "cuisine":"${cuisine}",
+  "breakfast":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":["low-gi"],"ingredients":["item 200g","item2 1 tsp"],"method":["step 1","step 2"],"prep_night":null},{"name":"Dish 2","vegetarian":true,"health_tags":[],"ingredients":["item 1 cup"],"method":["step 1"],"prep_night":null}]},
+  "lunch":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":[],"ingredients":["item 200g"],"method":["step 1","step 2"],"prep_night":"soak lentils overnight"},{"name":"Dish 2","vegetarian":false,"health_tags":["high-protein"],"ingredients":["chicken 300g"],"method":["step 1"],"prep_night":"marinate chicken overnight"}]},
+  "dinner":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":[],"ingredients":["item 200g"],"method":["step 1"],"prep_night":"soak rice"},{"name":"Dish 2","vegetarian":true,"health_tags":[],"ingredients":["item"],"method":["step 1"],"prep_night":null}]}${includeDesserts?`,"dessert":{"name":"Sweet Dish","ingredients":["item"],"method":["step 1"]}`:''}}`;
+
+    try {
+      const text = await callClaude(prompt, 2000);
+      const clean = text.replace(/```json|```/g,'').trim();
+      const day = JSON.parse(clean);
+      allDays.push(day);
+    } catch(e) {
+      console.error('Parse error for '+date, e);
+      allDays.push({date,day:dayName,cuisine,breakfast:{options:[{name:`${cuisine} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${cuisine} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${cuisine} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
+    }
+  }
+
+  appState.mealPlan = { days: allDays };
+
+  // Save to history
+  const history = JSON.parse(localStorage.getItem('mm_history')||'[]');
+  history.unshift({
+    created_at: new Date().toISOString(),
+    period: appState.wizardData.period,
+    cuisine,
+    dietary_notes: [foodType==='veg'?(vegType==='fasting'?'Fasting/Upvas':'Vegetarian'):'Non-vegetarian', ...nutritionGoals].join(' · ')
+  });
+  localStorage.setItem('mm_history', JSON.stringify(history.slice(0,90)));
+
+  // Show results
+  wizardStep = 6;
+  updateWizardUI();
+  renderMealResults();
+}
+
+function renderMealResults() {
+  const plan = appState.mealPlan;
+  if (!plan) return;
+  appState.selectedMeals = {};
+  const dateRange = plan.days.length===1 ? new Date(plan.days[0].date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}) : `${new Date(plan.days[0].date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})} - ${new Date(plan.days[plan.days.length-1].date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}`;
+  document.getElementById('results-date-range').textContent = dateRange;
+
+  let totalMeals = 0;
+  const html = plan.days.map((day,di)=>{
+    const mealSlots = ['breakfast','lunch','dinner'];
+    totalMeals += mealSlots.filter(m=>day[m]?.options?.length).length;
+    return `
+    <div class="day-section">
+      <div class="day-header" onclick="toggleDay(this)">
+        <span class="day-header-title">${day.day}, ${new Date(day.date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})} · ${day.cuisine}</span>
+        <span class="day-header-arrow">▾</span>
+      </div>
+      <div class="day-content ${di===0?'open':''}">
+        ${mealSlots.filter(m=>day[m]?.options?.length).map(mealType=>`
+        <div class="meal-slot">
+          <div class="meal-slot-header">
+            <span class="meal-slot-icon">${mealType==='breakfast'?'🌅':mealType==='lunch'?'☀️':'🌙'}</span>
+            <span class="meal-slot-title">${mealType}</span>
+          </div>
+          ${day[mealType].options.map((opt,oi)=>`
+          <div class="option-card" id="opt-${di}-${mealType}-${oi}" onclick="selectOption(${di},'${mealType}',${oi},this)">
+            <div class="option-card-top">
+              <div class="option-radio" id="radio-${di}-${mealType}-${oi}"></div>
+              <span class="option-name">${opt.name}</span>
+            </div>
+            <div class="option-tags">
+              <span class="tag ${opt.vegetarian?'tag-veg':'tag-nonveg'}">${opt.vegetarian?'Veg':'Non-Veg'}</span>
+              ${(opt.health_tags||[]).map(t=>`<span class="tag tag-health">${t}</span>`).join('')}
+            </div>
+            <button class="recipe-toggle" onclick="event.stopPropagation();toggleRecipe('recipe-${di}-${mealType}-${oi}',this)">▶ View Recipe</button>
+            <div class="recipe-content" id="recipe-${di}-${mealType}-${oi}">
+              ${opt.ingredients?.length?`<div class="recipe-section-title">Ingredients</div><ul class="recipe-list">${opt.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul>`:''}
+              ${opt.method?.length?`<div class="recipe-section-title">Method</div><ol class="recipe-list numbered">${opt.method.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
+              ${opt.prep_night?`<div class="recipe-section-title">Prep Night</div><ul class="recipe-list"><li>${opt.prep_night}</li></ul>`:''}
+            </div>
+          </div>`).join('')}
+          ${day.dessert&&mealType==='dinner'?`<div style="margin-top:10px;padding:12px;background:var(--gold-light);border-radius:var(--radius-sm);font-size:14px"><strong style="color:var(--navy)">🍮 Dessert:</strong> ${day.dessert.name}</div>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('meal-results').innerHTML = html;
+  document.getElementById('confirm-total').textContent = totalMeals;
+  document.getElementById('confirm-count').textContent = '0';
+  document.getElementById('confirm-btn').disabled = true;
+
+  // Open first day
+  const firstContent = document.querySelector('.day-content');
+  if (firstContent) { firstContent.classList.add('open'); document.querySelector('.day-header').classList.add('open'); }
+}
+
+function toggleDay(header) {
+  const content = header.nextElementSibling;
+  header.classList.toggle('open');
+  content.classList.toggle('open');
+}
+function toggleRecipe(id, btn) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  btn.textContent = el.classList.contains('open')?'▼ Hide Recipe':'▶ View Recipe';
+}
+function selectOption(dayIdx, mealType, optIdx, el) {
+  // Deselect others in same meal slot
+  document.querySelectorAll(`[id^="opt-${dayIdx}-${mealType}-"]`).forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  if (!appState.selectedMeals[dayIdx]) appState.selectedMeals[dayIdx] = {};
+  appState.selectedMeals[dayIdx][mealType] = optIdx;
+  updateConfirmBar();
+}
+function updateConfirmBar() {
+  let selected = 0;
+  Object.values(appState.selectedMeals).forEach(day=>{ selected += Object.keys(day).length; });
+  const total = parseInt(document.getElementById('confirm-total').textContent);
+  document.getElementById('confirm-count').textContent = selected;
+  document.getElementById('confirm-btn').disabled = selected < total;
+}
+
+function goToRecipes() {
+  wizardStep = 7;
+  updateWizardUI();
+  renderRecipes();
+}
+function renderRecipes() {
+  const plan = appState.mealPlan;
+  const selected = appState.selectedMeals;
+  let html = '';
+  plan.days.forEach((day,di)=>{
+    ['breakfast','lunch','dinner'].forEach(mealType=>{
+      if (selected[di]?.[mealType] !== undefined) {
+        const opt = day[mealType].options[selected[di][mealType]];
+        if (!opt) return;
+        html += `
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:4px;font-family:'Playfair Display',serif">${opt.name}</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">${day.day} · ${mealType.charAt(0).toUpperCase()+mealType.slice(1)} · ${day.cuisine}</div>
+          ${opt.ingredients?.length?`<div class="recipe-section-title">Ingredients</div><ul class="recipe-list" style="margin-bottom:12px">${opt.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul>`:''}
+          ${opt.method?.length?`<div class="recipe-section-title">Method</div><ol class="recipe-list numbered" style="margin-bottom:12px">${opt.method.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
+          ${opt.prep_night?`<div style="background:#FFF8E1;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#795548"><strong>🌙 Prep Night:</strong> ${opt.prep_night}</div>`:''}
+        </div>`;
+      }
+    });
+  });
+  document.getElementById('recipe-results').innerHTML = html || '<div style="color:var(--text-secondary);text-align:center;padding:32px">No meals selected</div>';
+}
+
+function goToShoppingList() {
+  wizardStep = 8;
+  updateWizardUI();
+  renderShoppingList();
+}
+function renderShoppingList() {
+  const plan = appState.mealPlan;
+  const selected = appState.selectedMeals;
+  const allIngredients = {};
+  plan.days.forEach((day,di)=>{
+    ['breakfast','lunch','dinner'].forEach(mealType=>{
+      if (selected[di]?.[mealType] !== undefined) {
+        const opt = day[mealType].options[selected[di][mealType]];
+        opt?.ingredients?.forEach(ing=>{
+          const key = ing.toLowerCase().split(' ')[0];
+          if (!allIngredients[key]) allIngredients[key] = { name: ing.split(' ').slice(0,2).join(' '), qty: ing, category: categorize(ing) };
+        });
+      }
+    });
+  });
+  appState.shoppingList = Object.values(allIngredients);
+  const byCategory = {};
+  appState.shoppingList.forEach(item=>{
+    if (!byCategory[item.category]) byCategory[item.category] = [];
+    byCategory[item.category].push(item);
+  });
+  const catIcons = { Vegetables:'🥬', Protein:'🥩', Spices:'🌶️', Dairy:'🥛', Grains:'🌾', Fruits:'🍎', Condiments:'🫙', Other:'🛒' };
+  document.getElementById('shop-item-count').textContent = `${appState.shoppingList.length} items for your selected meals`;
+  let html = '';
+  Object.entries(byCategory).forEach(([cat,items])=>{
+    html += `<div class="shop-category">
+      <div class="shop-category-header">
+        <span class="shop-category-icon">${catIcons[cat]||'🛒'}</span>
+        <span class="shop-category-title">${cat}</span>
+      </div>
+      ${items.map(item=>`<div class="shop-item"><span class="shop-item-name">${item.name}</span><span class="shop-item-qty">${item.qty.split(' ').slice(-2).join(' ')}</span></div>`).join('')}
+    </div>`;
+  });
+  document.getElementById('shopping-list-content').innerHTML = html;
+}
+function categorize(ing) {
+  const i = ing.toLowerCase();
+  if (/chicken|mutton|fish|egg|prawn|meat|lamb/.test(i)) return 'Protein';
+  if (/milk|curd|yogurt|ghee|cheese|cream|butter|paneer/.test(i)) return 'Dairy';
+  if (/masala|turmeric|cumin|coriander|pepper|chilli|garam|salt|mustard|fenugreek|cardamom|clove|cinnamon/.test(i)) return 'Spices';
+  if (/rice|flour|dal|lentil|poha|semolina|roti|atta|sabudana|bread/.test(i)) return 'Grains';
+  if (/onion|tomato|potato|carrot|bean|brinjal|okra|spinach|cabbage|cauliflower|ginger|garlic|cucumber|peas/.test(i)) return 'Vegetables';
+  if (/mango|banana|coconut|lemon|lime|fruit|apple/.test(i)) return 'Fruits';
+  if (/oil|vinegar|sauce|chutney|pickle|tamarind/.test(i)) return 'Condiments';
+  return 'Other';
+}
+function getShoppingText() {
+  const byCategory = {};
+  appState.shoppingList.forEach(item=>{ if(!byCategory[item.category])byCategory[item.category]=[]; byCategory[item.category].push(item); });
+  let text = 'MY MAHARAJ SHOPPING LIST\n'+new Date().toLocaleDateString('en-GB')+'\n\n';
+  Object.entries(byCategory).forEach(([cat,items])=>{ text+=cat.toUpperCase()+':\n'; items.forEach(i=>{ text+=`• ${i.name}: ${i.qty.split(' ').slice(-2).join(' ')}\n`; }); text+='\n'; });
+  text += '\nGenerated by My Maharaj - mymaharaj.app';
+  return text;
+}
+function copyShoppingList() {
+  navigator.clipboard.writeText(getShoppingText()).then(()=>showToast('Shopping list copied!')).catch(()=>showToast('Copy failed - please try again'));
+}
+function shareWhatsApp() {
+  const text = encodeURIComponent(getShoppingText());
+  window.open('https://wa.me/?text='+text,'_blank');
+}
+function downloadList() {
+  const blob = new Blob([getShoppingText()],{type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='MyMaharaj-Shopping-List.txt'; a.click();
+  showToast('List downloaded!');
+}
+
+function goToFeedback() {
+  wizardStep = 9;
+  updateWizardUI();
+  renderFeedback();
+}
+function renderFeedback() {
+  const plan = appState.mealPlan;
+  const selected = appState.selectedMeals;
+  let html = '';
+  plan.days.forEach((day,di)=>{
+    ['breakfast','lunch','dinner'].forEach(mealType=>{
+      if (selected[di]?.[mealType] !== undefined) {
+        const opt = day[mealType].options[selected[di][mealType]];
+        if (!opt) return;
+        const id = `fb-${di}-${mealType}`;
+        html += `<div class="feedback-dish">
+          <span class="feedback-dish-name">${opt.name}</span>
+          <div class="feedback-btns">
+            <button class="feedback-btn" id="${id}-like" onclick="rateDish('${id}','like')">👍</button>
+            <button class="feedback-btn" id="${id}-dislike" onclick="rateDish('${id}','dislike')">👎</button>
+          </div>
+        </div>`;
+      }
+    });
+  });
+  document.getElementById('feedback-dishes').innerHTML = html || '<div style="color:var(--text-secondary);text-align:center;padding:32px">No meals to rate</div>';
+}
+function rateDish(id, rating) {
+  document.getElementById(id+'-like').classList.toggle('liked', rating==='like');
+  document.getElementById(id+'-dislike').classList.toggle('disliked', rating==='dislike');
+}
+function submitFeedback() { showToast('Thank you for your feedback! 🙏'); setTimeout(()=>exitWizard(), 1500); }
+
+// ══════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // Set min date for custom date pickers
+  const today = new Date().toISOString().split('T')[0];
+  const df = document.getElementById('date-from');
+  const dt = document.getElementById('date-to');
+  if (df) df.min = today;
+  if (dt) dt.min = today;
+
+  // Check existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    appState.user = session.user;
+    await loadUserData();
+    if (appState.profile) {
+      goHome();
+    } else {
+      showScreen('profile-setup');
+      renderMemberCards();
+    }
+  }
+
+  // Dessert toggle visual
+  const dessertCb = document.getElementById('include-desserts');
+  if (dessertCb) {
+    dessertCb.addEventListener('change', function() {
+      document.getElementById('dessert-toggle-bg').style.background = this.checked ? 'var(--gold)' : 'var(--border)';
+      document.getElementById('dessert-toggle-knob').style.left = this.checked ? '25px' : '3px';
+    });
+  }
+
+  // Load logo from assets
+  const logoImg = document.getElementById('landing-logo');
+  if (logoImg) {
+    // Try to load from local path
+    logoImg.src = 'assets/logo.png';
+  }
+});
+
+// Auth state listener
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') showScreen('landing');
+});
+</script>
+</body>
+</html>
