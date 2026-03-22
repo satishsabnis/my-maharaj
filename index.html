@@ -1941,75 +1941,213 @@ async function generateMealPlan() {
     const isVegDay = vegDays.includes(dayName);
     const isSunday = dayName === 'Sunday';
 
-    const prompt = `You are Maharaj, expert Indian chef in Dubai UAE.
-Generate a meal plan for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
+    const prompt = `You are Maharaj, expert Indian chef and nutritionist in Dubai UAE.
+
+Generate a COMPLETE MENU for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
 
 SELECTED CUISINES: ${cuisineList.join(', ')}
-Mix these cuisines across the 3 meal slots for variety.
-Assign different cuisines to breakfast, lunch and dinner.
-
-FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - no meat, no eggs':foodPrefText}
+FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - strictly no meat, no eggs':foodPrefText}
 HEALTH CONDITIONS: ${healthFlags||'None - normal healthy family'}
 NUTRITION GOALS: ${nutritionGoals.join(', ')}
-${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali with 6-8 items':''}
-${includeDesserts?'INCLUDE: Add one traditional dessert option to dinner':''}
+${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali':''}
+${includeDesserts?'INCLUDE a traditional dessert in dinner':''}
 
-MEAL APPROPRIATENESS RULES - STRICTLY FOLLOW:
-BREAKFAST (must be light morning foods):
-  Correct: Pohe, Upma, Idli, Dosa, Sabudana Khichdi, Thepla, Puttu, Appam, Sheera, Shira, Paratha, Uttapam, Pesarattu, Akki Roti
-  NEVER for breakfast: Dal Makhani, Biryani, Chicken curry, heavy gravies, full rice meals
+DEFINITION OF A COMPLETE MENU:
+A menu is NOT a single dish. A menu is a full spread like a restaurant or hotel would serve.
 
-LUNCH (substantial mid-day meal):
-  Correct: Rice + Dal + Sabzi, Thali, Biryani, Pulao with curry, Roti + Sabzi + Dal
-  Include: Dal, Sabzi, Rice or Roti, optionally Raita
+BREAKFAST MENU must include:
+- 1 main hot dish (pohe/upma/idli/dosa/appam etc)
+- 1 accompaniment (chutney/sambar/pickle)
+- 1 drink (chai/coffee/juice)
+Example: Goan Pohe + Coconut Chutney + Ginger Chai
 
-DINNER (moderate evening meal, lighter than lunch):
-  Correct: Roti + Sabzi, light rice dish, Khichdi, Dal + Roti
-  NEVER for dinner: Sabudana Khichdi, breakfast items, Dhokla alone, Pohe, Upma
+LUNCH MENU must include:
+- 1 rice OR 2-3 rotis/chapati
+- 1 dal or curry
+- 1 dry vegetable sabzi
+- 1 side dish (raita/kachumber/papad)
+- Optional: pickle
+Example: Steamed Rice + Solkadhi + Drumstick Sambar + Cabbage Thoran + Papad
 
-STRICT RULES:
-1. Generate EXACTLY 3 options for EACH meal slot (breakfast, lunch, dinner)
-2. Each option must be a REAL named Indian dish - never generic descriptions
-3. Mix the selected cuisines across meals. Example if Goan and Gujarati selected:
-   Breakfast option 1: Goan dish, option 2: Gujarati dish, option 3: either
-   Lunch option 1: Gujarati dish, option 2: Goan dish, option 3: fusion or either
-   Dinner option 1: Goan dish, option 2: Gujarati dish, option 3: either
-4. All ingredients available at Carrefour UAE, Spinneys, or Lulu Dubai
-5. Include prep-night instructions for dinner options
-6. Add accurate health tags per dish
-7. Keep ingredient lists to 5-7 items maximum
-8. Keep method to 3-4 steps maximum
+DINNER MENU must include:
+- 2-3 rotis OR 1 rice dish
+- 1 main curry or gravy
+- 1 dry vegetable or side
+- Optional: soup or salad
+Example: Jowar Bhakri + Chicken Xacuti + Stir-fried Beans + Cucumber Salad
 
-CRITICAL: You MUST generate exactly 3 options for each meal.
-breakfast.options must have 3 items.
-lunch.options must have 3 items.
-dinner.options must have 3 items.
-If you generate fewer than 3 options per meal the response is invalid.
+PROVIDE 3 COMPLETE MENU OPTIONS for each meal slot.
+Each option is a DIFFERENT complete menu - not just a different dish.
 
-Respond ONLY with valid JSON - no markdown, no explanation:
+NUTRITION BALANCE per day:
+- Breakfast: 25% of daily calories, light and energising
+- Lunch: 40% of daily calories, substantial and filling
+- Dinner: 35% of daily calories, moderate and digestible
+
+Respond ONLY with this exact JSON structure:
 {
-  "date":"${date}",
-  "day":"${dayName}",
-  "cuisine":"${cuisineList.join(' + ')}",
-  "breakfast":{"options":[
-    {"name":"Real Dish Name 1","cuisine":"Goan","vegetarian":true,"health_tags":["light"],"ingredients":["item 200g","item2 1 tsp","item3","item4","item5"],"method":["step 1","step 2","step 3"],"prep_night":null},
-    {"name":"Real Dish Name 2","cuisine":"Gujarati","vegetarian":true,"health_tags":[],"ingredients":["item 1 cup","item2","item3","item4"],"method":["step 1","step 2","step 3"],"prep_night":null},
-    {"name":"Real Dish Name 3","cuisine":"Konkani","vegetarian":true,"health_tags":[],"ingredients":["item","item2","item3"],"method":["step 1","step 2"],"prep_night":null}
-  ]},
-  "lunch":{"options":[
-    {"name":"Real Dish Name 1","cuisine":"Gujarati","vegetarian":true,"health_tags":[],"ingredients":["item 200g","item2","item3","item4","item5"],"method":["step 1","step 2","step 3","step 4"],"prep_night":"soak dal overnight"},
-    {"name":"Real Dish Name 2","cuisine":"Goan","vegetarian":false,"health_tags":["high-protein"],"ingredients":["chicken 300g","item2","item3","item4"],"method":["step 1","step 2","step 3"],"prep_night":"marinate chicken"},
-    {"name":"Real Dish Name 3","cuisine":"North Indian","vegetarian":true,"health_tags":[],"ingredients":["item","item2","item3"],"method":["step 1","step 2"],"prep_night":null}
-  ]},
-  "dinner":{"options":[
-    {"name":"Real Dish Name 1","cuisine":"Goan","vegetarian":true,"health_tags":[],"ingredients":["item 200g","item2","item3","item4"],"method":["step 1","step 2","step 3"],"prep_night":"soak rice"},
-    {"name":"Real Dish Name 2","cuisine":"Gujarati","vegetarian":true,"health_tags":[],"ingredients":["item","item2","item3"],"method":["step 1","step 2"],"prep_night":null},
-    {"name":"Real Dish Name 3","cuisine":"Kerala","vegetarian":false,"health_tags":[],"ingredients":["fish 250g","item2","item3"],"method":["step 1","step 2","step 3"],"prep_night":"marinate fish"}
-  ]}${includeDesserts?`,
-  "dessert":{"name":"Sweet Dish","ingredients":["item"],"method":["step 1"]}`:''}}`;
+  "date": "${date}",
+  "day": "${dayName}",
+  "cuisine": "${cuisineList.join(' + ')}",
+  "nutrition_summary": {
+    "breakfast_cal": 350,
+    "lunch_cal": 650,
+    "dinner_cal": 550,
+    "protein_g": 45,
+    "carbs_g": 120,
+    "fat_g": 35,
+    "fibre_g": 18
+  },
+  "breakfast": {
+    "options": [
+      {
+        "menu_name": "Option 1 name e.g. Goan Breakfast",
+        "cuisine": "Goan",
+        "vegetarian": true,
+        "health_tags": ["light", "energising"],
+        "components": [
+          {"item": "Goan Pohe", "type": "main", "description": "Flattened rice with coconut, mustard seeds, curry leaves"},
+          {"item": "Coconut Chutney", "type": "accompaniment", "description": "Fresh ground coconut with green chilli"},
+          {"item": "Ginger Chai", "type": "drink", "description": "Spiced tea with fresh ginger"}
+        ],
+        "ingredients": ["Poha 1.5 cups", "Fresh coconut 3 tbsp", "Green chilli 2", "Mustard seeds 1 tsp", "Curry leaves 8-10", "Ginger 1 inch"],
+        "method": ["Soak poha in water for 3 mins, drain well", "Heat oil, add mustard seeds and curry leaves", "Add poha, salt, coconut and mix gently", "Serve hot with coconut chutney and chai"],
+        "prep_night": null
+      },
+      {
+        "menu_name": "Option 2 name e.g. Kerala Morning",
+        "cuisine": "Kerala",
+        "vegetarian": true,
+        "health_tags": ["light", "protein-rich"],
+        "components": [
+          {"item": "Appam", "type": "main", "description": "Lacy rice pancakes, soft center"},
+          {"item": "Vegetable Stew", "type": "accompaniment", "description": "Coconut milk based mixed vegetable curry"},
+          {"item": "Filter Coffee", "type": "drink", "description": "Strong South Indian decoction with milk"}
+        ],
+        "ingredients": ["Rice flour 1 cup", "Coconut milk 200ml", "Mixed vegetables 150g", "Cardamom 2", "Coffee powder 2 tsp"],
+        "method": ["Prepare appam batter, ferment overnight", "Make coconut milk stew with vegetables and cardamom", "Prepare filter coffee decoction", "Serve appam with stew and coffee"],
+        "prep_night": "Soak rice and grind batter, leave to ferment"
+      },
+      {
+        "menu_name": "Option 3 name",
+        "cuisine": "Mangalorean",
+        "vegetarian": true,
+        "health_tags": ["light", "high-fibre"],
+        "components": [
+          {"item": "Neer Dosa", "type": "main", "description": "Thin watery rice crepes, delicate texture"},
+          {"item": "Coconut Chutney", "type": "accompaniment", "description": "Fresh coconut with urad dal"},
+          {"item": "Herbal Tea", "type": "drink", "description": "Tulsi and ginger tea"}
+        ],
+        "ingredients": ["Rice 1.5 cups soaked", "Fresh coconut 4 tbsp", "Urad dal 1 tbsp", "Tulsi leaves 10", "Ginger 1 inch"],
+        "method": ["Grind soaked rice to thin batter with water", "Make very thin crepes on non-stick pan", "Grind coconut chutney", "Brew tulsi ginger tea"],
+        "prep_night": "Soak rice overnight"
+      }
+    ]
+  },
+  "lunch": {
+    "options": [
+      {
+        "menu_name": "Option 1 - Complete Goan Lunch",
+        "cuisine": "Goan",
+        "vegetarian": false,
+        "health_tags": ["balanced", "high-protein"],
+        "components": [
+          {"item": "Steamed Rice", "type": "main", "description": "Short grain Goan rice"},
+          {"item": "Fish Curry", "type": "curry", "description": "Kokum based red Goan fish curry"},
+          {"item": "Prawn Balchao", "type": "side", "description": "Tangy spicy prawn pickle"},
+          {"item": "Kachumber Salad", "type": "salad", "description": "Cucumber tomato onion with lemon"},
+          {"item": "Papad", "type": "accompaniment", "description": "Crispy fried papad"}
+        ],
+        "ingredients": ["Rice 1.5 cups", "Fish 300g", "Kokum 4 pieces", "Coconut 1/2", "Prawns 100g", "Cucumber 1", "Tomato 2"],
+        "method": ["Cook rice", "Grind coconut masala with kokum for curry", "Cook fish in masala", "Fry papad", "Chop vegetables for salad"],
+        "prep_night": "Grind curry masala and refrigerate"
+      },
+      {
+        "menu_name": "Option 2 - Kerala Sadya Style",
+        "cuisine": "Kerala",
+        "vegetarian": true,
+        "health_tags": ["balanced", "high-fibre"],
+        "components": [
+          {"item": "Matta Rice", "type": "main", "description": "Kerala red rice, nutty flavour"},
+          {"item": "Sambar", "type": "dal", "description": "Drumstick and tomato sambar"},
+          {"item": "Avial", "type": "curry", "description": "Mixed vegetables in coconut yogurt"},
+          {"item": "Pachadi", "type": "side", "description": "Pineapple or beetroot in coconut curd"},
+          {"item": "Papad", "type": "accompaniment", "description": "Kerala papad"}
+        ],
+        "ingredients": ["Matta rice 1.5 cups", "Toor dal 100g", "Drumstick 2", "Mixed vegetables 200g", "Coconut 1/2", "Yogurt 100ml"],
+        "method": ["Cook matta rice, takes longer than white rice", "Make toor dal sambar with drumstick", "Cook avial with coconut yogurt", "Prepare pachadi"],
+        "prep_night": "Soak matta rice for 30 mins"
+      },
+      {
+        "menu_name": "Option 3 - Mangalorean Thali",
+        "cuisine": "Mangalorean",
+        "vegetarian": false,
+        "health_tags": ["balanced"],
+        "components": [
+          {"item": "Rice", "type": "main", "description": "Steamed white rice"},
+          {"item": "Kori Rotti Curry", "type": "curry", "description": "Chicken curry Mangalorean style"},
+          {"item": "Batate Sukke", "type": "dry", "description": "Dry potato with coconut"},
+          {"item": "Buttermilk", "type": "drink", "description": "Spiced chaas to finish"}
+        ],
+        "ingredients": ["Rice 1.5 cups", "Chicken 300g", "Potato 2", "Fresh coconut 4 tbsp", "Buttermilk 200ml"],
+        "method": ["Cook rice", "Prepare Mangalorean masala for chicken", "Make dry potato sabzi", "Season buttermilk with cumin"],
+        "prep_night": "Marinate chicken in spices overnight"
+      }
+    ]
+  },
+  "dinner": {
+    "options": [
+      {
+        "menu_name": "Option 1 - Goan Evening",
+        "cuisine": "Goan",
+        "vegetarian": true,
+        "health_tags": ["moderate", "light"],
+        "components": [
+          {"item": "Jowar Bhakri", "type": "bread", "description": "Thick sorghum flatbread, 2 pieces"},
+          {"item": "Tendli Ambat", "type": "curry", "description": "Ivy gourd in coconut tamarind curry"},
+          {"item": "Stir Fried Spinach", "type": "dry", "description": "Palak with garlic and mustard"},
+          {"item": "Cucumber Raita", "type": "side", "description": "Cool yogurt with cucumber"}
+        ],
+        "ingredients": ["Jowar flour 1 cup", "Tendli 200g", "Coconut 3 tbsp", "Tamarind small ball", "Spinach 150g", "Cucumber 1", "Yogurt 150ml"],
+        "method": ["Make jowar bhakri dough and cook on tawa", "Grind coconut masala for tendli curry", "Stir fry spinach with garlic", "Make raita"],
+        "prep_night": "Soak tamarind, grind masala"
+      },
+      {
+        "menu_name": "Option 2 - Kerala Night",
+        "cuisine": "Kerala",
+        "vegetarian": false,
+        "health_tags": ["moderate", "protein-rich"],
+        "components": [
+          {"item": "Malabar Parotta", "type": "bread", "description": "Layered flaky wheat parotta, 3 pieces"},
+          {"item": "Kerala Chicken Roast", "type": "main", "description": "Dry roasted chicken with Kerala spices"},
+          {"item": "Olan", "type": "side", "description": "Ash gourd in coconut milk, subtle flavour"},
+          {"item": "Pickle", "type": "accompaniment", "description": "Lemon or mango pickle"}
+        ],
+        "ingredients": ["Maida 2 cups", "Chicken 250g", "Ash gourd 150g", "Coconut milk 100ml", "Kerala spices"],
+        "method": ["Prepare parotta dough, rest 30 mins", "Marinate and roast chicken dry", "Cook olan gently in coconut milk", "Serve hot"],
+        "prep_night": "Make parotta dough, marinate chicken"
+      },
+      {
+        "menu_name": "Option 3 - Light Digestive Dinner",
+        "cuisine": "Konkani",
+        "vegetarian": true,
+        "health_tags": ["light", "digestive", "low-cal"],
+        "components": [
+          {"item": "Chapati", "type": "bread", "description": "Soft whole wheat chapati, 3 pieces"},
+          {"item": "Moong Dal Khichdi", "type": "main", "description": "Comforting rice and moong dal"},
+          {"item": "Ghee", "type": "accompaniment", "description": "Pure desi ghee drizzle"},
+          {"item": "Buttermilk", "type": "drink", "description": "Spiced digestive chaas"}
+        ],
+        "ingredients": ["Wheat flour 1.5 cups", "Moong dal 100g", "Rice 100g", "Ghee 2 tsp", "Jeera 1 tsp", "Buttermilk 200ml"],
+        "method": ["Cook khichdi with dal and rice together", "Make soft chapati", "Season with ghee and jeera", "Serve with chilled buttermilk"],
+        "prep_night": null
+      }
+    ]
+  }
+}`;
 
     try {
-      const text = await callClaude(prompt, 4000);
+      const text = await callClaude(prompt, 6000);
       const clean = text.replace(/```json|```/g,'').trim();
       const day = JSON.parse(clean);
       allDays.push(day);
@@ -2075,21 +2213,43 @@ function renderMealResults() {
             ${day[mealType].options.map((opt, oi) => `
             <div class="option-card" id="opt-${di}-${mealType}-${oi}"
                  onclick="selectOption(${di},'${mealType}',${oi},this)"
-                 style="border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:all 0.15s">
-              <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-                <div class="option-radio" id="radio-${di}-${mealType}-${oi}" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center"></div>
-                <span style="font-size:15px;font-weight:600;color:var(--navy);line-height:1.3">${opt.name}</span>
+                 style="border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all 0.15s;background:#fff">
+              <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
+                <div class="option-radio" id="radio-${di}-${mealType}-${oi}"
+                     style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center"></div>
+                <div style="flex:1">
+                  <div style="font-size:16px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif">${opt.menu_name || opt.name}</div>
+                  <div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px">${opt.cuisine || ''}</div>
+                </div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+                  <span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${opt.vegetarian?'#E8F5E9':'#FFEBEE'};color:${opt.vegetarian?'#2E7D32':'#C62828'}">${opt.vegetarian?'Veg':'Non-Veg'}</span>
+                  ${(opt.health_tags||[]).slice(0,2).map(t=>`<span style="padding:3px 8px;border-radius:12px;font-size:11px;background:var(--navy-light);color:var(--navy)">${t}</span>`).join('')}
+                </div>
               </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;margin-left:30px">
-                <span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${opt.vegetarian?'#E8F5E9':'#FFEBEE'};color:${opt.vegetarian?'#2E7D32':'#C62828'}">${opt.vegetarian?'Veg':'Non-Veg'}</span>
-                ${(opt.health_tags||[]).slice(0,2).map(t=>`<span style="padding:3px 8px;border-radius:12px;font-size:11px;background:var(--navy-light);color:var(--navy)">${t}</span>`).join('')}
-              </div>
+              ${opt.components?.length ? `
+              <div style="background:var(--surface);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;margin-left:34px">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead>
+                    <tr>
+                      <th style="text-align:left;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;padding:0 8px 6px 0;border-bottom:1px solid var(--border)">Item</th>
+                      <th style="text-align:left;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;padding:0 0 6px 8px;border-bottom:1px solid var(--border)">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${opt.components.map(c=>`
+                    <tr>
+                      <td style="padding:6px 8px 6px 0;font-size:13px;font-weight:600;color:var(--navy);vertical-align:top;white-space:nowrap">${c.item}</td>
+                      <td style="padding:6px 0 6px 8px;font-size:13px;color:var(--text-secondary);vertical-align:top">${c.description}</td>
+                    </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>` : `<div style="margin-left:34px;margin-bottom:12px;font-size:14px;color:var(--text-secondary)">${opt.name || ''}</div>`}
               <button onclick="event.stopPropagation();toggleRecipe('recipe-${di}-${mealType}-${oi}',this)"
-                      style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;margin-left:30px;padding:0">▶ View Recipe</button>
+                      style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;margin-left:34px;padding:0">▶ View Recipe &amp; Ingredients</button>
               <div class="recipe-content" id="recipe-${di}-${mealType}-${oi}">
-                ${opt.ingredients?.length?`<div class="recipe-section-title">Ingredients</div><ul class="recipe-list">${opt.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul>`:''}
-                ${opt.method?.length?`<div class="recipe-section-title">Method</div><ol class="recipe-list numbered">${opt.method.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
-                ${opt.prep_night?`<div style="background:#FFF8E1;border-radius:6px;padding:8px 12px;font-size:13px;color:#795548"><strong>🌙 Prep Night:</strong> ${opt.prep_night}</div>`:''}
+                ${opt.ingredients?.length?`<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:6px">Ingredients</div><ul style="list-style:none;padding:0;margin:0 0 12px">${opt.ingredients.map(i=>`<li style="font-size:13px;color:var(--text-secondary);padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:6px"><span style="color:var(--gold)">•</span>${i}</li>`).join('')}</ul>`:''}
+                ${opt.method?.length?`<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:6px">Method</div><ol style="padding-left:18px;margin:0 0 12px">${opt.method.map(s=>`<li style="font-size:13px;color:var(--text-secondary);padding:4px 0">${s}</li>`).join('')}</ol>`:''}
+                ${opt.prep_night?`<div style="background:#FFF8E1;border-radius:6px;padding:10px 12px;font-size:13px;color:#795548;margin-top:4px"><strong>🌙 Prep Night:</strong> ${opt.prep_night}</div>`:''}
               </div>
             </div>`).join('')}
           </div>
@@ -2149,6 +2309,14 @@ function goToRecipes() {
   renderSummaryTable();
 }
 
+function getMenuSummary(day, mealType, selectedIdx) {
+  if (selectedIdx === undefined) return '-';
+  const opt = day[mealType]?.options?.[selectedIdx];
+  if (!opt) return '-';
+  if (opt.components?.length) return opt.components.map(c=>c.item).join(' + ');
+  return opt.menu_name || opt.name || '-';
+}
+
 function renderSummaryTable() {
   const plan = appState.mealPlan;
   const selected = appState.selectedMeals;
@@ -2166,9 +2334,9 @@ function renderSummaryTable() {
         <tbody>`;
   plan.days.forEach((day, di) => {
     const bg = di % 2 === 0 ? '#fff' : 'var(--surface)';
-    const breakfast = selected[di]?.breakfast !== undefined ? day.breakfast?.options[selected[di].breakfast]?.name : '-';
-    const lunch = selected[di]?.lunch !== undefined ? day.lunch?.options[selected[di].lunch]?.name : '-';
-    const dinner = selected[di]?.dinner !== undefined ? day.dinner?.options[selected[di].dinner]?.name : '-';
+    const breakfast = getMenuSummary(day, 'breakfast', selected[di]?.breakfast);
+    const lunch = getMenuSummary(day, 'lunch', selected[di]?.lunch);
+    const dinner = getMenuSummary(day, 'dinner', selected[di]?.dinner);
     html += `
       <tr style="background:${bg};border-bottom:1px solid var(--border)">
         <td style="padding:12px 16px;font-weight:600;color:var(--navy);white-space:nowrap">
@@ -2181,10 +2349,10 @@ function renderSummaryTable() {
       </tr>`;
   });
   html += `</tbody></table></div>
-    <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px;max-width:400px;margin-left:auto;margin-right:auto">
-      <button class="btn btn-primary" style="width:100%" onclick="showRecipes()">📖 View Recipes</button>
-      <button class="btn btn-secondary" style="width:100%" onclick="goToShoppingList()">🛒 Generate Shopping List</button>
-      <button class="btn btn-outline" style="width:100%" onclick="exitWizard()">🏠 Back to Dashboard</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:24px">
+      <button class="btn btn-primary" style="width:300px" onclick="showRecipes()">📖 View Recipes</button>
+      <button class="btn btn-secondary" style="width:300px" onclick="goToShoppingList()">🛒 Generate Shopping List</button>
+      <button class="btn btn-outline" style="width:300px" onclick="exitWizard()">🏠 Back to Dashboard</button>
     </div>`;
   document.getElementById('recipe-results').innerHTML = html;
 }
