@@ -137,7 +137,7 @@ export default function HomeScreen() {
         <View style={s.avatar}>
           <Text style={s.avatarText}>{initials}</Text>
         </View>
-        <Logo size="small" style={{ width: 120, height: 50 }} />
+        <Logo size="small" style={{ width: 140, height: 46 }} />
         <TouchableOpacity onPress={handleLogout} activeOpacity={0.7} style={s.exitBtn}>
           <Text style={s.exitText}>Exit</Text>
         </TouchableOpacity>
@@ -146,7 +146,6 @@ export default function HomeScreen() {
       {/* Date bar */}
       <View style={s.dateBar}>
         <Text style={s.dateText}>{dateTimeStr}</Text>
-        {firstName ? <Text style={s.greetText}>Welcome, {firstName} 🙏</Text> : null}
       </View>
 
       {/* Card grid */}
