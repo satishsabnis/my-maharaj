@@ -194,7 +194,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
 .wizard-step-label{font-size:13px;color:var(--text-secondary)}
 .wizard-progress{height:3px;background:var(--border)}
 .wizard-progress-fill{height:100%;background:var(--gold);transition:width 0.4s ease}
-.wizard-body{flex:1;overflow-y:auto;padding:28px 24px}
+.wizard-body{flex:1;overflow-y:auto;padding:28px 32px;max-width:800px;margin:0 auto;width:100%}
 .wizard-body.center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);text-align:center}
 .wizard-step-title{font-size:22px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif;margin-bottom:8px}
 .wizard-step-desc{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
@@ -616,14 +616,6 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <p>What would you like to do today?</p>
     </div>
     <div class="card-grid">
-      <div class="dash-card" onclick="openModal('modal-dietary')">
-        <div class="dash-card-icon" style="background:#E8F5E9">🥗</div>
-        <div class="dash-card-info">
-          <div class="dash-card-title">Dietary Profile</div>
-          <div class="dash-card-desc">Family health and food preferences</div>
-        </div>
-        <div class="dash-card-arrow">›</div>
-      </div>
       <div class="dash-card" onclick="openModal('modal-festivals')">
         <div class="dash-card-icon" style="background:#FFF3E0">🪔</div>
         <div class="dash-card-info">
@@ -632,11 +624,11 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
-      <div class="dash-card" onclick="openModal('modal-party')">
-        <div class="dash-card-icon" style="background:#FFEBEE">🎉</div>
+      <div class="dash-card" onclick="openDietaryModal()">
+        <div class="dash-card-icon" style="background:#E8F5E9">🥗</div>
         <div class="dash-card-info">
-          <div class="dash-card-title">Party Menu Generator</div>
-          <div class="dash-card-desc">Plan your next gathering</div>
+          <div class="dash-card-title">Dietary Profile</div>
+          <div class="dash-card-desc">Family health and food preferences</div>
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
@@ -648,11 +640,27 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
-      <div class="dash-card" onclick="openModal('modal-etiquettes')">
-        <div class="dash-card-icon" style="background:#FFF8E1">🍽️</div>
+      <div class="dash-card" style="border-color:var(--gold);border-width:2px" onclick="resetWizard();showScreen('wizard')">
+        <div class="dash-card-icon" style="background:#FAF3DC">🍳</div>
         <div class="dash-card-info">
-          <div class="dash-card-title">Table Etiquettes</div>
-          <div class="dash-card-desc">Learn Indian dining traditions</div>
+          <div class="dash-card-title" style="color:var(--gold)">Generate Meal Plan</div>
+          <div class="dash-card-desc">Plan your meals with Maharaj AI</div>
+        </div>
+        <div class="dash-card-arrow" style="color:var(--gold)">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-party')">
+        <div class="dash-card-icon" style="background:#FFEBEE">🎉</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Party Menu Generator</div>
+          <div class="dash-card-desc">Plan your next gathering</div>
+        </div>
+        <div class="dash-card-arrow">›</div>
+      </div>
+      <div class="dash-card" onclick="openModal('modal-catering')">
+        <div class="dash-card-icon" style="background:#E8EAF6">🏕️</div>
+        <div class="dash-card-info">
+          <div class="dash-card-title">Outdoor Catering</div>
+          <div class="dash-card-desc">Plan menus for events & picnics</div>
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
@@ -664,13 +672,13 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
-      <div class="dash-card" style="border-color:var(--gold);border-width:2px" onclick="resetWizard();showScreen('wizard')">
-        <div class="dash-card-icon" style="background:#FAF3DC">🍳</div>
+      <div class="dash-card" onclick="openModal('modal-etiquettes')">
+        <div class="dash-card-icon" style="background:#FFF8E1">🍽️</div>
         <div class="dash-card-info">
-          <div class="dash-card-title" style="color:var(--gold)">Generate Meal Plan</div>
-          <div class="dash-card-desc">Plan your meals with Maharaj AI</div>
+          <div class="dash-card-title">Table Etiquettes</div>
+          <div class="dash-card-desc">Learn Indian dining traditions</div>
         </div>
-        <div class="dash-card-arrow" style="color:var(--gold)">›</div>
+        <div class="dash-card-arrow">›</div>
       </div>
       <div class="dash-card" onclick="openModal('modal-history')">
         <div class="dash-card-icon" style="background:#F3E5F5">📋</div>
@@ -1275,6 +1283,21 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
   </div>
 </div>
 
+<!-- Modal: Outdoor Catering -->
+<div class="modal-overlay" id="modal-catering" onclick="closeModalOnOverlay(event,'modal-catering')">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🏕️ Outdoor Catering</span>
+      <button class="modal-close" onclick="closeModal('modal-catering')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:48px 24px">
+      <div style="font-size:52px;margin-bottom:16px">🏕️</div>
+      <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px">Outdoor Catering</div>
+      <div style="font-size:14px;color:var(--text-secondary)">Plan menus for outdoor events and picnics. Coming soon!</div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -1678,6 +1701,14 @@ function renderDietaryMembers() {
 
 function openAddMemberModal() { closeModal('modal-dietary'); openModal('modal-add-member'); }
 
+async function openDietaryModal() {
+  if (appState.user) {
+    const { data } = await sb.from('family_members').select('*').eq('user_id', appState.user.id);
+    appState.members = data || [];
+  }
+  openModal('modal-dietary');
+}
+
 async function saveMember() {
   if (!appState.user) return;
   const name = document.getElementById('m-name').value.trim();
@@ -1688,8 +1719,9 @@ async function saveMember() {
   const notes = document.getElementById('m-notes').value.trim();
   const healthText = [conditions.join(', '), notes].filter(Boolean).join('. ');
   try {
-    const { data } = await sb.from('family_members').insert({ user_id:appState.user.id, name, age, relationship:relation, health_notes:healthText }).select().single();
-    appState.members.push(data);
+    await sb.from('family_members').insert({ user_id:appState.user.id, name, age, relationship:relation, health_notes:healthText });
+    const { data: updatedMembers } = await sb.from('family_members').select('*').eq('user_id', appState.user.id);
+    appState.members = updatedMembers || [];
     closeModal('modal-add-member');
     openModal('modal-dietary');
     showToast(`${name} added successfully!`);
@@ -1837,49 +1869,71 @@ function resetWizard() {
 }
 
 function updateWizardUI() {
-  // Hide all steps
-  document.querySelectorAll('.wizard-step').forEach(s=>s.style.display='none');
-  // Show current
-  const current = document.getElementById('wstep-'+wizardStep);
-  if (current) current.style.display = wizardStep===8||wizardStep===7?'flex':'block';
-  
-  // Progress
-  const pct = ((wizardStep+1)/WIZARD_STEPS*100);
-  document.getElementById('wizard-progress').style.width = pct+'%';
-  document.getElementById('wizard-step-label').textContent = (wizardStep+1)+' of '+WIZARD_STEPS;
+  document.querySelectorAll('.wizard-step').forEach(s => { s.style.display = 'none'; });
 
-  // Serving sizes step: sync displayed numbers
-  if (wizardStep === 5) {
-    const d = appState.wizardData;
-    const bEl = document.getElementById('serving-breakfast');
-    const lEl = document.getElementById('serving-lunch');
-    const dEl = document.getElementById('serving-dinner');
-    if (bEl) bEl.textContent = d.serving_breakfast || 4;
-    if (lEl) lEl.textContent = d.serving_lunch || 4;
-    if (dEl) dEl.textContent = d.serving_dinner || 4;
+  const current = document.getElementById('wstep-' + wizardStep);
+  if (current) {
+    current.style.display = 'block';
+    current.style.width = '100%';
   }
 
-  // Cuisine step: populate pills
+  const pct = ((wizardStep + 1) / WIZARD_STEPS * 100);
+  document.getElementById('wizard-progress').style.width = pct + '%';
+  document.getElementById('wizard-step-label').textContent = (wizardStep + 1) + ' of ' + WIZARD_STEPS;
+
+  const nav = document.getElementById('wizard-nav');
+  const backBtn = document.getElementById('wizard-back-btn');
+  const nextBtn = document.getElementById('wizard-next-btn');
+
+  // Hide nav during generation step (step 7)
+  if (wizardStep === 7) { nav.style.display = 'none'; return; }
+  nav.style.display = 'flex';
+  backBtn.style.display = wizardStep === 0 ? 'none' : 'flex';
+
+  const labels = [
+    'Continue', 'Continue', 'Continue', 'Continue', 'Continue', 'Continue',
+    'Generate My Plan!', '', 'Confirm Selections', 'Next',
+    'View Recipes', 'Shopping List', 'Done'
+  ];
+  nextBtn.textContent = (labels[wizardStep] || 'Continue') + ' →';
+  nextBtn.style.background = wizardStep === 6 ? 'var(--peacock)' : 'var(--gold)';
+  nextBtn.style.color = 'var(--navy)';
+
+  // Populate cuisine pills when on step 4
   if (wizardStep === 4) {
     const pillContainer = document.getElementById('wizard-cuisine-pills');
-    if (pillContainer && !pillContainer.children.length) {
+    if (pillContainer && pillContainer.children.length === 0) {
       const defaultCuisines = ['Konkani','Malvani','Mangalorean','Kerala','Tamil Nadu','Goan','Vidarbha','Gujarati','North Indian','Bengali','Rajasthani','Mughlai','Lucknowi','Himachali'];
       const userCuisines = appState.cuisines.map(c => c.cuisine_name);
       const allCuisines = [...new Set([...userCuisines, ...defaultCuisines])];
-      pillContainer.innerHTML = allCuisines.map((c,i) =>
+      pillContainer.innerHTML = allCuisines.map((c, i) =>
         `<div class="pill ${i===0?'active':''}" data-val="${c}" onclick="togglePill(this)">${c}</div>`
       ).join('');
     }
   }
 
-  // Nav buttons
-  const nav = document.getElementById('wizard-nav');
-  const backBtn = document.getElementById('wizard-back-btn');
-  const nextBtn = document.getElementById('wizard-next-btn');
+  // Populate serving sizes when on step 5
+  if (wizardStep === 5) {
+    const b = appState.wizardData.serving_breakfast || appState.profile?.breakfast_count || 2;
+    const l = appState.wizardData.serving_lunch || appState.profile?.lunch_count || 3;
+    const d = appState.wizardData.serving_dinner || appState.profile?.dinner_count || 3;
+    const sb = document.getElementById('serving-breakfast');
+    const sl = document.getElementById('serving-lunch');
+    const sd = document.getElementById('serving-dinner');
+    if (sb) sb.textContent = b;
+    if (sl) sl.textContent = l;
+    if (sd) sd.textContent = d;
+  }
 
-  if (wizardStep===7) { nav.style.display='none'; return; } // generating
-  nav.style.display='flex';
-  backBtn.style.display = wizardStep===0?'none':'flex';
+  // Populate unwell members when on step 3
+  if (wizardStep === 3 && appState.members.length) {
+    const pills = document.getElementById('unwell-pills');
+    if (pills && pills.children.length === 0) {
+      pills.innerHTML = appState.members.map(m =>
+        `<div class="pill" data-val="${m.name}" onclick="togglePill(this)">${m.name}</div>`
+      ).join('');
+    }
+  }
 
   // Cook/Order step: sync UI to current mode
   if (wizardStep === 9) {
@@ -1897,12 +1951,6 @@ function updateWizardUI() {
     const locInput = document.getElementById('order-location');
     if (locInput && appState.profile?.city) locInput.value = appState.profile.city;
   }
-
-  // Label next button
-  const labels = ['Continue','Continue','Continue','Continue','Continue','Continue','Generate My Plan!','','Confirm Selections',"Let's Go!",'View Recipes','View Shopping List','Next','Done'];
-  nextBtn.textContent = (labels[wizardStep]||'Continue')+' →';
-  if (wizardStep===6) nextBtn.style.background='var(--peacock)';
-  else nextBtn.style.background='var(--gold)';
 }
 
 function selectPeriod(el) {
@@ -2076,126 +2124,202 @@ async function generateMealPlan() {
     const isVegDay = vegDays.includes(dayName);
     const isSunday = dayName === 'Sunday';
 
-    const prompt = `You are Maharaj, expert Indian chef and nutritionist in Dubai UAE.
+    const prompt = `You are Maharaj, expert Indian chef in Dubai UAE.
+Generate a complete restaurant-style daily menu for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
 
-Generate a COMPLETE MENU for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
-
-SELECTED CUISINES: ${cuisineList.join(', ')}
-FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - strictly no meat, no eggs':foodPrefText}
-HEALTH CONDITIONS: ${healthFlags||'None - normal healthy family'}
+CUISINES: ${cuisineList.join(' + ')}
+FOOD TYPE: ${isVegDay?'STRICTLY VEGETARIAN':foodPrefText}
+HEALTH CONDITIONS: ${healthFlags||'None'}
 NUTRITION GOALS: ${nutritionGoals.join(', ')}
-SERVING SIZES: Breakfast for ${servingBreakfast} people, Lunch for ${servingLunch} people, Dinner for ${servingDinner} people. Scale ALL ingredient quantities to these serving sizes.
-${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali':''}
-${includeDesserts?'INCLUDE a traditional dessert in dinner':''}
+SERVINGS: Breakfast ${servingBreakfast} people, Lunch ${servingLunch} people, Dinner ${servingDinner} people
+${isSunday?'SUNDAY: Full elaborate Thali for breakfast':''}
+${includeDesserts?'INCLUDE desserts in dinner':''}
 
-DEFINITION OF A COMPLETE MENU:
-A menu is NOT a single dish. A menu is a full spread like a restaurant or hotel would serve.
+Generate 3 complete menu options for EACH meal.
+Each option must be a FULL SPREAD like a thali restaurant menu.
 
-BREAKFAST MENU must include:
-- 1 main hot dish (pohe/upma/idli/dosa/appam etc)
-- 1 accompaniment (chutney/sambar/pickle)
-- 1 drink (chai/coffee/juice)
+LUNCH and DINNER must include these sections:
+- Main Course (2-3 dishes)
+- Rice (1-2 options)
+- Dal & Kadhi (1-2 options)
+- Indian Breads (2-3 options)
+- Condiments (chutney, raita, papad, pickle)
+- Dessert (1-2 items, always for Sunday, optional weekdays)
 
-LUNCH MENU must include:
-- 1 rice OR 2-3 rotis/chapati
-- 1 dal or curry
-- 1 dry vegetable sabzi
-- 1 side dish (raita/kachumber/papad)
-- Optional: pickle
+BREAKFAST must include:
+- Main hot dish (1-2 options)
+- Accompaniment (chutney/sambar/pickle)
+- Drink (chai/coffee/juice)
 
-DINNER MENU must include:
-- 2-3 rotis OR 1 rice dish
-- 1 main curry or gravy
-- 1 dry vegetable or side
-- Optional: soup or salad
+RULES:
+1. Use REAL named Indian dishes only
+2. All ingredients available at Carrefour UAE, Lulu, Spinneys Dubai
+3. Scale ingredient quantities for the serving sizes given
+4. Match dishes to health conditions: diabetic=low GI, BP=low sodium, PCOS=hormone balancing
+5. No dish should repeat across options for same meal
+6. Mix the selected cuisines naturally across the 3 options
 
-PROVIDE 3 COMPLETE MENU OPTIONS for each meal slot.
-Each option is a DIFFERENT complete menu - not just a different dish.
-
-NUTRITION BALANCE per day:
-- Breakfast: 25% of daily calories, light and energising
-- Lunch: 40% of daily calories, substantial and filling
-- Dinner: 35% of daily calories, moderate and digestible
-
-Respond ONLY with this exact JSON structure (generate fresh, authentic dishes — do NOT reuse any example names):
+Return ONLY valid JSON:
 {
   "date": "${date}",
   "day": "${dayName}",
   "cuisine": "${cuisineList.join(' + ')}",
-  "nutrition_summary": {
-    "breakfast_cal": 350,
-    "lunch_cal": 650,
-    "dinner_cal": 550,
-    "protein_g": 45,
-    "carbs_g": 120,
-    "fat_g": 35,
-    "fibre_g": 18
-  },
   "breakfast": {
     "options": [
       {
-        "menu_name": "MENU_NAME_HERE",
-        "cuisine": "CUISINE_NAME",
+        "menu_name": "Option 1 descriptive name",
+        "cuisine": "CuisineName",
         "vegetarian": true,
-        "health_tags": ["TAG1", "TAG2"],
-        "components": [
-          {"item": "DISH_NAME_HERE", "type": "main", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "accompaniment", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "drink", "description": "SHORT_DESCRIPTION"}
+        "health_tags": ["light","energising"],
+        "sections": [
+          {"heading": "Main", "items": ["Dish 1 - brief description", "Dish 2 - brief description"]},
+          {"heading": "Accompaniment", "items": ["Chutney name", "Pickle name"]},
+          {"heading": "Drink", "items": ["Chai or juice name"]}
         ],
-        "ingredients": ["INGREDIENT 1 QUANTITY", "INGREDIENT 2 QUANTITY"],
+        "ingredients": ["Item quantity for ${servingBreakfast} people", "Item2 quantity"],
         "method": ["Step 1", "Step 2", "Step 3"],
         "prep_night": null
       },
-      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"accompaniment","description":""},{"item":"DISH_NAME_HERE","type":"drink","description":""}], "ingredients": [], "method": [], "prep_night": null },
-      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"accompaniment","description":""},{"item":"DISH_NAME_HERE","type":"drink","description":""}], "ingredients": [], "method": [], "prep_night": null }
+      {
+        "menu_name": "Option 2 descriptive name",
+        "cuisine": "CuisineName",
+        "vegetarian": true,
+        "health_tags": [],
+        "sections": [
+          {"heading": "Main", "items": ["Dish name - description"]},
+          {"heading": "Accompaniment", "items": ["Item"]},
+          {"heading": "Drink", "items": ["Item"]}
+        ],
+        "ingredients": ["Item quantity"],
+        "method": ["Step 1", "Step 2"],
+        "prep_night": "what to prep night before or null"
+      },
+      {
+        "menu_name": "Option 3 descriptive name",
+        "cuisine": "CuisineName",
+        "vegetarian": true,
+        "health_tags": [],
+        "sections": [
+          {"heading": "Main", "items": ["Dish name"]},
+          {"heading": "Accompaniment", "items": ["Item"]},
+          {"heading": "Drink", "items": ["Item"]}
+        ],
+        "ingredients": ["Item quantity"],
+        "method": ["Step 1"],
+        "prep_night": null
+      }
     ]
   },
   "lunch": {
     "options": [
       {
-        "menu_name": "MENU_NAME_HERE",
-        "cuisine": "CUISINE_NAME",
+        "menu_name": "Option 1 - Full Lunch Spread",
+        "cuisine": "CuisineName",
         "vegetarian": true,
-        "health_tags": ["TAG1", "TAG2"],
-        "components": [
-          {"item": "DISH_NAME_HERE", "type": "main", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "dal", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "curry", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "side", "description": "SHORT_DESCRIPTION"}
+        "health_tags": ["balanced"],
+        "sections": [
+          {"heading": "Main Course", "items": ["Dish 1 - description", "Dish 2 - description"]},
+          {"heading": "Rice", "items": ["Rice variety - description"]},
+          {"heading": "Dal & Kadhi", "items": ["Dal name - description"]},
+          {"heading": "Indian Breads", "items": ["Bread 1", "Bread 2"]},
+          {"heading": "Condiments", "items": ["Raita", "Papad", "Pickle", "Chutney"]},
+          {"heading": "Dessert", "items": ["Sweet dish name"]}
         ],
-        "ingredients": ["INGREDIENT 1 QUANTITY", "INGREDIENT 2 QUANTITY"],
-        "method": ["Step 1", "Step 2", "Step 3"],
+        "ingredients": ["Item quantity for ${servingLunch} people"],
+        "method": ["Step 1", "Step 2"],
+        "prep_night": "prep instruction"
+      },
+      {
+        "menu_name": "Option 2",
+        "cuisine": "CuisineName",
+        "vegetarian": false,
+        "health_tags": [],
+        "sections": [
+          {"heading": "Main Course", "items": ["Non-veg dish - description", "Veg dish - description"]},
+          {"heading": "Rice", "items": ["Rice type"]},
+          {"heading": "Dal & Kadhi", "items": ["Dal name"]},
+          {"heading": "Indian Breads", "items": ["Bread type"]},
+          {"heading": "Condiments", "items": ["Raita", "Papad"]},
+          {"heading": "Dessert", "items": ["Sweet"]}
+        ],
+        "ingredients": ["Item quantity"],
+        "method": ["Step 1"],
         "prep_night": null
       },
-      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"side","description":""}], "ingredients": [], "method": [], "prep_night": null },
-      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": false, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"main","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"side","description":""}], "ingredients": [], "method": [], "prep_night": null }
+      {
+        "menu_name": "Option 3",
+        "cuisine": "CuisineName",
+        "vegetarian": true,
+        "health_tags": ["high-fibre"],
+        "sections": [
+          {"heading": "Main Course", "items": ["Dish"]},
+          {"heading": "Rice", "items": ["Rice"]},
+          {"heading": "Dal & Kadhi", "items": ["Dal"]},
+          {"heading": "Indian Breads", "items": ["Bread"]},
+          {"heading": "Condiments", "items": ["Raita","Papad"]},
+          {"heading": "Dessert", "items": ["Sweet"]}
+        ],
+        "ingredients": ["Item"],
+        "method": ["Step 1"],
+        "prep_night": null
+      }
     ]
   },
   "dinner": {
     "options": [
       {
-        "menu_name": "MENU_NAME_HERE",
-        "cuisine": "CUISINE_NAME",
+        "menu_name": "Option 1 - Evening Spread",
+        "cuisine": "CuisineName",
         "vegetarian": true,
-        "health_tags": ["TAG1", "TAG2"],
-        "components": [
-          {"item": "DISH_NAME_HERE", "type": "bread", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "curry", "description": "SHORT_DESCRIPTION"},
-          {"item": "DISH_NAME_HERE", "type": "dry", "description": "SHORT_DESCRIPTION"}
+        "health_tags": ["moderate"],
+        "sections": [
+          {"heading": "Main Course", "items": ["Dish - description"]},
+          {"heading": "Indian Breads", "items": ["Bread 1", "Bread 2"]},
+          {"heading": "Dal & Kadhi", "items": ["Dal name"]},
+          {"heading": "Side Dish", "items": ["Sabzi or salad"]},
+          {"heading": "Condiments", "items": ["Raita or pickle"]}
         ],
-        "ingredients": ["INGREDIENT 1 QUANTITY", "INGREDIENT 2 QUANTITY"],
-        "method": ["Step 1", "Step 2", "Step 3"],
+        "ingredients": ["Item quantity for ${servingDinner} people"],
+        "method": ["Step 1", "Step 2"],
+        "prep_night": "prep night instruction"
+      },
+      {
+        "menu_name": "Option 2",
+        "cuisine": "CuisineName",
+        "vegetarian": false,
+        "health_tags": [],
+        "sections": [
+          {"heading": "Main Course", "items": ["Dish"]},
+          {"heading": "Indian Breads", "items": ["Bread"]},
+          {"heading": "Dal & Kadhi", "items": ["Dal"]},
+          {"heading": "Side Dish", "items": ["Sabzi"]},
+          {"heading": "Condiments", "items": ["Condiment"]}
+        ],
+        "ingredients": ["Item"],
+        "method": ["Step 1"],
         "prep_night": null
       },
-      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": true, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"bread","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"dry","description":""}], "ingredients": [], "method": [], "prep_night": null },
-      { "menu_name": "MENU_NAME_HERE", "cuisine": "CUISINE_NAME", "vegetarian": false, "health_tags": [], "components": [{"item":"DISH_NAME_HERE","type":"bread","description":""},{"item":"DISH_NAME_HERE","type":"curry","description":""},{"item":"DISH_NAME_HERE","type":"dry","description":""}], "ingredients": [], "method": [], "prep_night": null }
+      {
+        "menu_name": "Option 3",
+        "cuisine": "CuisineName",
+        "vegetarian": true,
+        "health_tags": ["light"],
+        "sections": [
+          {"heading": "Main Course", "items": ["Light dish"]},
+          {"heading": "Indian Breads", "items": ["Bread"]},
+          {"heading": "Dal & Kadhi", "items": ["Dal"]},
+          {"heading": "Condiments", "items": ["Condiment"]}
+        ],
+        "ingredients": ["Item"],
+        "method": ["Step 1"],
+        "prep_night": null
+      }
     ]
   }
 }`;
 
     try {
-      const text = await callClaude(prompt, 6000);
+      const text = await callClaude(prompt, 8000);
       const clean = text.replace(/```json|```/g,'').trim();
       const day = JSON.parse(clean);
       allDays.push(day);
@@ -2257,47 +2381,65 @@ function renderMealResults() {
             <span style="font-size:18px">${mealType==='breakfast'?'🌅':mealType==='lunch'?'☀️':'🌙'}</span>
             <span style="font-size:14px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px">${mealType}</span>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+          <div style="display:flex;flex-direction:column;gap:0">
             ${day[mealType].options.map((opt, oi) => `
             <div class="option-card" id="opt-${di}-${mealType}-${oi}"
                  onclick="selectOption(${di},'${mealType}',${oi},this)"
-                 style="border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all 0.15s;background:#fff">
-              <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
+                 style="border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:all 0.15s;background:#fff;margin-bottom:12px">
+
+              <!-- Option Header -->
+              <div style="background:var(--navy);padding:12px 16px;display:flex;align-items:center;gap:12px">
                 <div class="option-radio" id="radio-${di}-${mealType}-${oi}"
-                     style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center"></div>
+                     style="width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent"></div>
                 <div style="flex:1">
-                  <div style="font-size:16px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif">${opt.menu_name || opt.name}</div>
-                  <div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px">${opt.cuisine || ''}</div>
+                  <div style="font-size:15px;font-weight:700;color:var(--gold);font-family:'Playfair Display',serif">${opt.menu_name || opt.name || 'Option '+(oi+1)}</div>
+                  <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">${opt.cuisine || ''}</div>
                 </div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
-                  <span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${opt.vegetarian?'#E8F5E9':'#FFEBEE'};color:${opt.vegetarian?'#2E7D32':'#C62828'}">${opt.vegetarian?'Veg':'Non-Veg'}</span>
-                  ${(opt.health_tags||[]).slice(0,2).map(t=>`<span style="padding:3px 8px;border-radius:12px;font-size:11px;background:var(--navy-light);color:var(--navy)">${t}</span>`).join('')}
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${opt.vegetarian?'#E8F5E9':'#FFEBEE'};color:${opt.vegetarian?'#2E7D32':'#C62828'}">${opt.vegetarian?'🌿 Veg':'🍗 Non-Veg'}</span>
+                  ${(opt.health_tags||[]).slice(0,2).map(t=>`<span style="padding:3px 8px;border-radius:12px;font-size:11px;background:rgba(201,162,39,0.2);color:var(--gold)">${t}</span>`).join('')}
                 </div>
               </div>
-              ${opt.components?.length ? `
-              <div style="background:var(--surface);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;margin-left:34px">
-                <table style="width:100%;border-collapse:collapse">
-                  <thead>
-                    <tr>
-                      <th style="text-align:left;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;padding:0 8px 6px 0;border-bottom:1px solid var(--border)">Item</th>
-                      <th style="text-align:left;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;padding:0 0 6px 8px;border-bottom:1px solid var(--border)">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${opt.components.map(c=>`
-                    <tr>
-                      <td style="padding:6px 8px 6px 0;font-size:13px;font-weight:600;color:var(--navy);vertical-align:top;white-space:nowrap">${c.item}</td>
-                      <td style="padding:6px 0 6px 8px;font-size:13px;color:var(--text-secondary);vertical-align:top">${c.description}</td>
-                    </tr>`).join('')}
-                  </tbody>
-                </table>
-              </div>` : `<div style="margin-left:34px;margin-bottom:12px;font-size:14px;color:var(--text-secondary)">${opt.name || ''}</div>`}
-              <button onclick="event.stopPropagation();toggleRecipe('recipe-${di}-${mealType}-${oi}',this)"
-                      style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;margin-left:34px;padding:0">▶ View Recipe &amp; Ingredients</button>
-              <div class="recipe-content" id="recipe-${di}-${mealType}-${oi}">
-                ${opt.ingredients?.length?`<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:6px">Ingredients</div><ul style="list-style:none;padding:0;margin:0 0 12px">${opt.ingredients.map(i=>`<li style="font-size:13px;color:var(--text-secondary);padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:6px"><span style="color:var(--gold)">•</span>${i}</li>`).join('')}</ul>`:''}
-                ${opt.method?.length?`<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:6px">Method</div><ol style="padding-left:18px;margin:0 0 12px">${opt.method.map(s=>`<li style="font-size:13px;color:var(--text-secondary);padding:4px 0">${s}</li>`).join('')}</ol>`:''}
-                ${opt.prep_night?`<div style="background:#FFF8E1;border-radius:6px;padding:10px 12px;font-size:13px;color:#795548;margin-top:4px"><strong>🌙 Prep Night:</strong> ${opt.prep_night}</div>`:''}
+
+              <!-- Menu Sections - Maharaja Bhog style -->
+              <div style="padding:16px">
+                ${opt.sections?.length ? `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  ${opt.sections.map(section => `
+                  <div style="background:var(--surface);border-radius:var(--radius-sm);overflow:hidden">
+                    <div style="background:var(--gold);padding:6px 12px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px">${section.heading}</div>
+                    <div style="padding:8px 12px">
+                      ${section.items.map(item => `
+                      <div style="font-size:13px;color:var(--text);padding:3px 0;display:flex;align-items:flex-start;gap:6px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--gold);flex-shrink:0;margin-top:1px">•</span>
+                        <span>${item}</span>
+                      </div>`).join('')}
+                    </div>
+                  </div>`).join('')}
+                </div>` : `
+                <div style="color:var(--text-secondary);font-size:14px;padding:8px 0">${opt.name || 'Menu details loading...'}</div>`}
+
+                <!-- Recipe Toggle -->
+                <button onclick="event.stopPropagation();toggleRecipe('recipe-${di}-${mealType}-${oi}',this)"
+                        style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;margin-top:12px;padding:0;display:flex;align-items:center;gap:4px">
+                  ▶ View Ingredients &amp; Method
+                </button>
+                <div id="recipe-${di}-${mealType}-${oi}" style="display:none;background:var(--surface);border-radius:var(--radius-sm);padding:14px;margin-top:10px">
+                  ${opt.ingredients?.length ? `
+                  <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:8px">Ingredients</div>
+                  <ul style="list-style:none;padding:0;margin:0 0 14px">
+                    ${opt.ingredients.map(i=>`<li style="font-size:13px;color:var(--text-secondary);padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:6px"><span style="color:var(--gold)">•</span>${i}</li>`).join('')}
+                  </ul>` : ''}
+                  ${opt.method?.length ? `
+                  <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:8px">Method</div>
+                  <ol style="padding-left:18px;margin:0 0 14px">
+                    ${opt.method.map(s=>`<li style="font-size:13px;color:var(--text-secondary);padding:4px 0">${s}</li>`).join('')}
+                  </ol>` : ''}
+                  ${opt.prep_night ? `
+                  <div style="background:#FFF8E1;border-radius:6px;padding:10px 12px;font-size:13px;color:#795548">
+                    <strong>🌙 Prep Night:</strong> ${opt.prep_night}
+                  </div>` : ''}
+                </div>
               </div>
             </div>`).join('')}
           </div>
@@ -2332,8 +2474,9 @@ function toggleDay(header) {
 }
 function toggleRecipe(id, btn) {
   const el = document.getElementById(id);
-  el.classList.toggle('open');
-  btn.textContent = el.classList.contains('open')?'▼ Hide Recipe':'▶ View Recipe';
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '▶ View Ingredients & Method' : '▼ Hide Ingredients & Method';
 }
 function selectOption(dayIdx, mealType, optIdx, el) {
   // Deselect others in same meal slot
