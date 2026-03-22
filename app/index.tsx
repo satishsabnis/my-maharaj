@@ -1,27 +1,25 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import AnimatedLogo from '../components/AnimatedLogo';
+
+const LogoImg = require('../assets/logo.png');
 
 export default function Index() {
   const router = useRouter();
 
-  // Staggered fade-in for tagline and buttons
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const taglineY = useRef(new Animated.Value(10)).current;
   const buttonsOpacity = useRef(new Animated.Value(0)).current;
-  const buttonsY = useRef(new Animated.Value(10)).current;
+  const buttonsY = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
-    // Logo animation takes ~800ms (spring), then stagger the rest
-    const delay = 700;
     Animated.sequence([
-      Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(taglineY, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.spring(logoScale, { toValue: 1, friction: 5, useNativeDriver: true }),
       ]),
-      Animated.delay(200),
+      Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.parallel([
         Animated.timing(buttonsOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(buttonsY, { toValue: 0, duration: 400, useNativeDriver: true }),
@@ -30,36 +28,79 @@ export default function Index() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* Animated logo — slides down with spring bounce */}
-      <AnimatedLogo animation="slideDown" width={240} height={150} />
-
-      {/* Tagline — fades in after logo */}
-      <Animated.View style={{ opacity: taglineOpacity, transform: [{ translateY: taglineY }] }}>
-        <Text style={styles.sub}>मेरा महाराज · माझा महाराज</Text>
+    <View style={s.container}>
+      <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }] }}>
+        <Image source={LogoImg} style={s.logo} resizeMode="contain" />
       </Animated.View>
 
-      {/* Buttons — fade in last */}
-      <Animated.View
-        style={[styles.btnGroup, { opacity: buttonsOpacity, transform: [{ translateY: buttonsY }] }]}
-      >
-        <TouchableOpacity style={styles.btn} onPress={() => router.push('/signup')}>
-          <Text style={styles.btnText}>Sign Up</Text>
+      <Animated.Text style={[s.tagline, { opacity: taglineOpacity }]}>
+        मेरा महाराज · माझा महाराज
+      </Animated.Text>
+
+      <Animated.View style={[s.btnGroup, { opacity: buttonsOpacity, transform: [{ translateY: buttonsY }] }]}>
+        <TouchableOpacity style={s.signUpBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
+          <Text style={s.signUpBtnText}>Sign Up</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btn2} onPress={() => router.push('/login')}>
-          <Text style={styles.btn2Text}>Log In</Text>
+        <TouchableOpacity style={s.loginBtn} onPress={() => router.push('/login')} activeOpacity={0.85}>
+          <Text style={s.loginBtnText}>Log In</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B3A6B', gap: 0 },
-  sub: { fontSize: 18, color: '#C9A227', marginTop: 12, marginBottom: 40, textAlign: 'center' },
-  btnGroup: { alignItems: 'center', gap: 16, width: '100%', paddingHorizontal: 60 },
-  btn: { backgroundColor: '#C9A227', paddingHorizontal: 40, paddingVertical: 14, borderRadius: 30, width: 220, alignItems: 'center' },
-  btnText: { color: '#1B3A6B', fontWeight: 'bold', fontSize: 18 },
-  btn2: { borderWidth: 2, borderColor: '#FFFFFF', paddingHorizontal: 40, paddingVertical: 14, borderRadius: 30, width: 220, alignItems: 'center' },
-  btn2Text: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 18 },
+const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1B3A6B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    gap: 0,
+  },
+  logo: {
+    width: 280,
+    height: 180,
+    marginBottom: 8,
+  },
+  tagline: {
+    fontSize: 18,
+    color: '#C9A227',
+    marginTop: 4,
+    marginBottom: 48,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  btnGroup: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 16,
+  },
+  signUpBtn: {
+    backgroundColor: '#C9A227',
+    width: 240,
+    paddingVertical: 16,
+    borderRadius: 32,
+    alignItems: 'center',
+  },
+  signUpBtnText: {
+    color: '#1B3A6B',
+    fontWeight: '800',
+    fontSize: 17,
+    letterSpacing: 0.3,
+  },
+  loginBtn: {
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    width: 240,
+    paddingVertical: 15,
+    borderRadius: 32,
+    alignItems: 'center',
+  },
+  loginBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 17,
+    letterSpacing: 0.3,
+  },
 });
