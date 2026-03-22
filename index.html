@@ -861,11 +861,10 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
     <!-- W-STEP 5: Cuisine -->
     <div class="wizard-step wizard-body" id="wstep-4" style="display:none">
       <div class="wizard-step-title">Choose your cuisine theme 🗺️</div>
-      <div class="wizard-step-desc">Maharaj will plan the entire period around this cuisine</div>
+      <div class="wizard-step-desc">Select one or more cuisines. Maharaj will mix them across your meals for variety.</div>
       <div id="wizard-cuisine-pills" class="pill-group" style="margin-bottom:24px"></div>
       <div style="background:var(--gold-light);border-radius:var(--radius-sm);padding:14px 16px;font-size:13px;color:#795548">
-        <strong>💡 Tip:</strong> Choosing one cuisine gives you an authentic deep-dive.
-        Monday Konkani, Tuesday Konkani... all week. Maharaj will keep every dish different.
+        <strong>💡 Tip:</strong> Select one or more cuisines. Maharaj will mix them across your meals for variety.
       </div>
     </div>
 
@@ -1782,11 +1781,11 @@ function updateWizardUI() {
   if (wizardStep === 4) {
     const pillContainer = document.getElementById('wizard-cuisine-pills');
     if (pillContainer && !pillContainer.children.length) {
-      const defaultCuisines = ['Konkani','Malvani','Mangalorean','Kerala','Tamil Nadu','Goan','Vidarbha','Gujarati','North Indian','Bengali','Rajasthani'];
+      const defaultCuisines = ['Konkani','Malvani','Mangalorean','Kerala','Tamil Nadu','Goan','Vidarbha','Gujarati','North Indian','Bengali','Rajasthani','Mughlai','Lucknowi','Himachali'];
       const userCuisines = appState.cuisines.map(c => c.cuisine_name);
       const allCuisines = [...new Set([...userCuisines, ...defaultCuisines])];
       pillContainer.innerHTML = allCuisines.map((c,i) =>
-        `<div class="pill ${i===0?'active':''}" data-val="${c}" onclick="selectPill(this,'wizard-cuisine-pills')">${c}</div>`
+        `<div class="pill ${i===0?'active':''}" data-val="${c}" onclick="togglePill(this)">${c}</div>`
       ).join('');
     }
   }
@@ -1925,9 +1924,8 @@ async function generateMealPlan() {
   const nonVegOptions = Array.from(document.querySelectorAll('#nonveg-pills .pill.active')).map(p=>p.dataset.val);
   const nutritionGoals = Array.from(document.querySelectorAll('#nutrition-pills .pill.active')).map(p=>p.dataset.val);
   const includeDesserts = document.getElementById('include-desserts')?.checked;
-  const selectedCuisine = document.querySelector('#wizard-cuisine-pills .pill.active')?.dataset.val || 'Konkani';
-  const allUserCuisines = appState.cuisines.map(c => c.cuisine_name);
-  const cuisinePool = allUserCuisines.length > 1 ? allUserCuisines : [selectedCuisine];
+  const selectedCuisines = Array.from(document.querySelectorAll('#wizard-cuisine-pills .pill.active')).map(p=>p.dataset.val);
+  const cuisineList = selectedCuisines.length ? selectedCuisines : ['Konkani'];
 
   const healthFlags = appState.members.map(m=>m.health_notes).filter(Boolean).join('. ');
   const vegDays = appState.profile?.veg_days || [];
@@ -1943,45 +1941,62 @@ async function generateMealPlan() {
     const isVegDay = vegDays.includes(dayName);
     const isSunday = dayName === 'Sunday';
 
-    const prompt = `You are Maharaj, expert Indian regional cuisine chef in Dubai.
+    const prompt = `You are Maharaj, expert Indian chef in Dubai UAE.
 Generate a meal plan for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
 
-CUISINE THEME: ${selectedCuisine} is the primary cuisine.
-For variety, breakfast can be from any of these cuisines: ${cuisinePool.join(', ')}.
-Lunch must be ${selectedCuisine} cuisine.
-Dinner can alternate between ${selectedCuisine} and ${cuisinePool[1] || selectedCuisine}.
-Each dish must be a real named Indian dish.
+SELECTED CUISINES: ${cuisineList.join(', ')}
+Mix these cuisines across the 3 meal slots for variety.
+Assign different cuisines to breakfast, lunch and dinner.
+
 FOOD PREFERENCE: ${isVegDay?'VEGETARIAN DAY - no meat, no eggs':foodPrefText}
 HEALTH CONDITIONS: ${healthFlags||'None - normal healthy family'}
 NUTRITION GOALS: ${nutritionGoals.join(', ')}
 ${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali with 6-8 items':''}
-${includeDesserts?'INCLUDE: Add one traditional dessert to dinner':''}
+${includeDesserts?'INCLUDE: Add one traditional dessert option to dinner':''}
 
-RULES:
-1. Use REAL named Indian dishes - follow the cuisine rules above strictly
-2. All ingredients available at Carrefour UAE, Spinneys, or Lulu Dubai
-3. Give EXACTLY 2 options per meal slot
-4. Each option must be a specific named dish
-5. Include prep-night instructions for dinner
+STRICT RULES:
+1. Generate EXACTLY 3 options for EACH meal slot (breakfast, lunch, dinner)
+2. Each option must be a REAL named Indian dish - never generic descriptions
+3. Mix the selected cuisines across meals. Example if Goan and Gujarati selected:
+   Breakfast option 1: Goan dish, option 2: Gujarati dish, option 3: either
+   Lunch option 1: Gujarati dish, option 2: Goan dish, option 3: fusion or either
+   Dinner option 1: Goan dish, option 2: Gujarati dish, option 3: either
+4. All ingredients available at Carrefour UAE, Spinneys, or Lulu Dubai
+5. Include prep-night instructions for dinner options
 6. Add accurate health tags per dish
+7. Keep ingredient lists to 5-7 items maximum
+8. Keep method to 3-4 steps maximum
 
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON - no markdown, no explanation:
 {
   "date":"${date}",
   "day":"${dayName}",
-  "cuisine":"${selectedCuisine}",
-  "breakfast":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":["low-gi"],"ingredients":["item 200g","item2 1 tsp"],"method":["step 1","step 2"],"prep_night":null},{"name":"Dish 2","vegetarian":true,"health_tags":[],"ingredients":["item 1 cup"],"method":["step 1"],"prep_night":null}]},
-  "lunch":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":[],"ingredients":["item 200g"],"method":["step 1","step 2"],"prep_night":"soak lentils overnight"},{"name":"Dish 2","vegetarian":false,"health_tags":["high-protein"],"ingredients":["chicken 300g"],"method":["step 1"],"prep_night":"marinate chicken overnight"}]},
-  "dinner":{"options":[{"name":"Dish Name","vegetarian":true,"health_tags":[],"ingredients":["item 200g"],"method":["step 1"],"prep_night":"soak rice"},{"name":"Dish 2","vegetarian":true,"health_tags":[],"ingredients":["item"],"method":["step 1"],"prep_night":null}]}${includeDesserts?`,"dessert":{"name":"Sweet Dish","ingredients":["item"],"method":["step 1"]}`:''}}`;
+  "cuisine":"${cuisineList.join(' + ')}",
+  "breakfast":{"options":[
+    {"name":"Real Dish Name 1","cuisine":"Goan","vegetarian":true,"health_tags":["light"],"ingredients":["item 200g","item2 1 tsp","item3","item4","item5"],"method":["step 1","step 2","step 3"],"prep_night":null},
+    {"name":"Real Dish Name 2","cuisine":"Gujarati","vegetarian":true,"health_tags":[],"ingredients":["item 1 cup","item2","item3","item4"],"method":["step 1","step 2","step 3"],"prep_night":null},
+    {"name":"Real Dish Name 3","cuisine":"Konkani","vegetarian":true,"health_tags":[],"ingredients":["item","item2","item3"],"method":["step 1","step 2"],"prep_night":null}
+  ]},
+  "lunch":{"options":[
+    {"name":"Real Dish Name 1","cuisine":"Gujarati","vegetarian":true,"health_tags":[],"ingredients":["item 200g","item2","item3","item4","item5"],"method":["step 1","step 2","step 3","step 4"],"prep_night":"soak dal overnight"},
+    {"name":"Real Dish Name 2","cuisine":"Goan","vegetarian":false,"health_tags":["high-protein"],"ingredients":["chicken 300g","item2","item3","item4"],"method":["step 1","step 2","step 3"],"prep_night":"marinate chicken"},
+    {"name":"Real Dish Name 3","cuisine":"North Indian","vegetarian":true,"health_tags":[],"ingredients":["item","item2","item3"],"method":["step 1","step 2"],"prep_night":null}
+  ]},
+  "dinner":{"options":[
+    {"name":"Real Dish Name 1","cuisine":"Goan","vegetarian":true,"health_tags":[],"ingredients":["item 200g","item2","item3","item4"],"method":["step 1","step 2","step 3"],"prep_night":"soak rice"},
+    {"name":"Real Dish Name 2","cuisine":"Gujarati","vegetarian":true,"health_tags":[],"ingredients":["item","item2","item3"],"method":["step 1","step 2"],"prep_night":null},
+    {"name":"Real Dish Name 3","cuisine":"Kerala","vegetarian":false,"health_tags":[],"ingredients":["fish 250g","item2","item3"],"method":["step 1","step 2","step 3"],"prep_night":"marinate fish"}
+  ]}${includeDesserts?`,
+  "dessert":{"name":"Sweet Dish","ingredients":["item"],"method":["step 1"]}`:''}}`;
 
     try {
-      const text = await callClaude(prompt, 2000);
+      const text = await callClaude(prompt, 3000);
       const clean = text.replace(/```json|```/g,'').trim();
       const day = JSON.parse(clean);
       allDays.push(day);
     } catch(e) {
       console.error('Parse error for '+date, e);
-      allDays.push({date,day:dayName,cuisine:selectedCuisine,breakfast:{options:[{name:`${selectedCuisine} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${selectedCuisine} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${selectedCuisine} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
+      allDays.push({date,day:dayName,cuisine:cuisineList.join(' + '),breakfast:{options:[{name:`${cuisineList[0]} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${cuisineList[0]} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${cuisineList[0]} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
     }
   }
 
@@ -1992,7 +2007,7 @@ Respond ONLY with valid JSON:
   history.unshift({
     created_at: new Date().toISOString(),
     period: appState.wizardData.period,
-    cuisine: selectedCuisine,
+    cuisine: cuisineList.join(' + '),
     dietary_notes: [foodType==='veg'?(vegType==='fasting'?'Fasting/Upvas':'Vegetarian'):'Non-vegetarian', ...nutritionGoals].join(' · ')
   });
   localStorage.setItem('mm_history', JSON.stringify(history.slice(0,90)));
