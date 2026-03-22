@@ -93,7 +93,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
 .landing-inner{width:100%;max-width:420px;padding:48px 32px;text-align:center;display:flex;flex-direction:column;align-items:center}
 .landing-devanagari{font-family:'Noto Sans Devanagari',sans-serif;font-size:15px;color:var(--gold);letter-spacing:2px;margin-top:8px}
 .landing-tagline{font-size:14px;color:var(--text-secondary);margin-top:6px;margin-bottom:48px}
-.landing-actions{max-width:400px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.landing-actions{max-width:400px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px;align-items:center}
 .landing-actions .btn{width:100%}
 .landing-footer{font-size:11px;color:var(--text-secondary);margin-top:20px;line-height:1.6}
 .landing-footer a{color:var(--navy);text-decoration:none}
@@ -909,7 +909,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
 
     <!-- W-STEP 9: Recipes -->
     <div class="wizard-step wizard-body" id="wstep-8" style="display:none">
-      <div class="wizard-step-title">Full Recipes 📖</div>
+      <div class="wizard-step-title">Your Selected Menu 📋</div>
       <div class="wizard-step-desc">For your selected meals</div>
       <div id="recipe-results"></div>
     </div>
@@ -1954,6 +1954,19 @@ NUTRITION GOALS: ${nutritionGoals.join(', ')}
 ${isSunday?'SUNDAY SPECIAL: Breakfast must be an elaborate traditional Thali with 6-8 items':''}
 ${includeDesserts?'INCLUDE: Add one traditional dessert option to dinner':''}
 
+MEAL APPROPRIATENESS RULES - STRICTLY FOLLOW:
+BREAKFAST (must be light morning foods):
+  Correct: Pohe, Upma, Idli, Dosa, Sabudana Khichdi, Thepla, Puttu, Appam, Sheera, Shira, Paratha, Uttapam, Pesarattu, Akki Roti
+  NEVER for breakfast: Dal Makhani, Biryani, Chicken curry, heavy gravies, full rice meals
+
+LUNCH (substantial mid-day meal):
+  Correct: Rice + Dal + Sabzi, Thali, Biryani, Pulao with curry, Roti + Sabzi + Dal
+  Include: Dal, Sabzi, Rice or Roti, optionally Raita
+
+DINNER (moderate evening meal, lighter than lunch):
+  Correct: Roti + Sabzi, light rice dish, Khichdi, Dal + Roti
+  NEVER for dinner: Sabudana Khichdi, breakfast items, Dhokla alone, Pohe, Upma
+
 STRICT RULES:
 1. Generate EXACTLY 3 options for EACH meal slot (breakfast, lunch, dinner)
 2. Each option must be a REAL named Indian dish - never generic descriptions
@@ -1966,6 +1979,12 @@ STRICT RULES:
 6. Add accurate health tags per dish
 7. Keep ingredient lists to 5-7 items maximum
 8. Keep method to 3-4 steps maximum
+
+CRITICAL: You MUST generate exactly 3 options for each meal.
+breakfast.options must have 3 items.
+lunch.options must have 3 items.
+dinner.options must have 3 items.
+If you generate fewer than 3 options per meal the response is invalid.
 
 Respond ONLY with valid JSON - no markdown, no explanation:
 {
@@ -1990,7 +2009,7 @@ Respond ONLY with valid JSON - no markdown, no explanation:
   "dessert":{"name":"Sweet Dish","ingredients":["item"],"method":["step 1"]}`:''}}`;
 
     try {
-      const text = await callClaude(prompt, 3000);
+      const text = await callClaude(prompt, 4000);
       const clean = text.replace(/```json|```/g,'').trim();
       const day = JSON.parse(clean);
       allDays.push(day);
@@ -2162,8 +2181,8 @@ function renderSummaryTable() {
       </tr>`;
   });
   html += `</tbody></table></div>
-    <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
-      <button class="btn btn-primary" style="width:100%" onclick="showRecipes()">📖 View Full Recipes</button>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px;max-width:400px;margin-left:auto;margin-right:auto">
+      <button class="btn btn-primary" style="width:100%" onclick="showRecipes()">📖 View Recipes</button>
       <button class="btn btn-secondary" style="width:100%" onclick="goToShoppingList()">🛒 Generate Shopping List</button>
       <button class="btn btn-outline" style="width:100%" onclick="exitWizard()">🏠 Back to Dashboard</button>
     </div>`;
