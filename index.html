@@ -640,8 +640,8 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         </div>
         <div class="dash-card-arrow">›</div>
       </div>
-      <div class="dash-card" style="border-color:var(--gold);border-width:2px" onclick="resetWizard();showScreen('wizard')">
-        <div class="dash-card-icon" style="background:#FAF3DC">🍳</div>
+      <div class="dash-card" style="border-color:var(--navy);border-width:2px" onclick="resetWizard();showScreen('wizard')">
+        <div class="dash-card-icon" style="background:var(--navy)">🍳</div>
         <div class="dash-card-info">
           <div class="dash-card-title" style="color:var(--gold)">Generate Meal Plan</div>
           <div class="dash-card-desc">Plan your meals with Maharaj AI</div>
@@ -691,7 +691,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <div class="dash-card" onclick="openPantryModal()">
         <div class="dash-card-icon" style="background:#E8F5E9">🛒</div>
         <div class="dash-card-info">
-          <div class="dash-card-title">My Pantry</div>
+          <div class="dash-card-title">My Grocery</div>
           <div class="dash-card-desc" id="pantry-card-desc">Upload grocery bills, track your stock</div>
         </div>
         <div class="dash-card-arrow">›</div>
@@ -996,6 +996,13 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         <div class="gen-dot"></div>
         <div class="gen-dot"></div>
       </div>
+      <div style="display:flex;gap:12px;margin-top:28px;justify-content:center">
+        <button id="gen-pause-btn" class="btn btn-outline btn-sm" onclick="pauseGeneration()" style="min-width:110px">⏸ Pause</button>
+        <button id="gen-stop-btn" class="btn btn-danger btn-sm" onclick="stopGeneration()" style="min-width:110px">⏹ Stop</button>
+      </div>
+      <div id="gen-paused-msg" style="display:none;margin-top:16px;color:var(--navy);font-weight:600;font-size:14px">
+        ⏸ Paused — <button onclick="resumeGeneration()" style="background:none;border:none;color:var(--gold);font-weight:700;cursor:pointer;font-size:14px">Resume</button>
+      </div>
     </div>
 
     <!-- W-STEP 10: Results -->
@@ -1183,7 +1190,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
 
 <!-- Party Menu Modal -->
 <div class="modal-overlay" id="modal-party" onclick="closeModalOnOverlay(event,'modal-party')">
-  <div class="modal" style="border-radius:24px 24px 0 0">
+  <div class="modal" style="border-radius:24px 24px 0 0;max-height:92vh;overflow-y:auto">
     <div class="modal-header">
       <span class="modal-title">🎉 Party Menu Generator</span>
       <button class="modal-close" onclick="closeModal('modal-party')">×</button>
@@ -1216,7 +1223,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
         <div class="pill active" data-val="Lassi" onclick="togglePill(this)">🥛 Lassi & Chaas</div>
         <div class="pill active" data-val="Sharbat" onclick="togglePill(this)">🌹 Sharbat & Coolers</div>
       </div>
-      <div id="party-result" style="display:none;margin-top:20px;padding:20px;background:var(--surface);border-radius:var(--radius)"></div>
+      <div id="party-result" style="display:none;margin-top:20px;padding:20px;background:var(--surface);border-radius:var(--radius);width:100%"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" onclick="generatePartyMenu()">Generate Party Menu 🎉</button>
@@ -1484,7 +1491,7 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
 <div class="modal-overlay" id="modal-pantry" onclick="closeModalOnOverlay(event,'modal-pantry')">
   <div class="modal" style="border-radius:24px 24px 0 0">
     <div class="modal-header">
-      <span class="modal-title">🛒 My Pantry</span>
+      <span class="modal-title">🛒 My Grocery</span>
       <button class="modal-close" onclick="closeModal('modal-pantry')">×</button>
     </div>
     <div class="modal-body">
@@ -1565,6 +1572,10 @@ let appState = {
   memberCount: 2,
   memberData: [],
 };
+
+let generationPaused = false;
+let generationStopped = false;
+let generationResumeCallback = null;
 
 // ══════════════════════════════════════════════════════════
 // SCREEN NAVIGATION
@@ -1879,19 +1890,26 @@ function updateFestivalCard() {
   if (upcoming.length) {
     const next = upcoming[0];
     const days = getDaysUntil(next.date);
-    document.getElementById('next-festival-text').textContent = `${next.emoji} ${next.name} - ${days===0?'Today!':days===1?'Tomorrow':days+' days away'}`;
+    const weekday = new Date(next.date).toLocaleDateString('en-GB',{weekday:'long'});
+    const dateStr = new Date(next.date).toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+    const badge = days===0?' · Today!':days===1?' · Tomorrow':'';
+    document.getElementById('next-festival-text').textContent = `${next.emoji} ${next.name} — ${weekday}, ${dateStr}${badge}`;
   }
 }
 function renderFestivals() {
   const upcoming = FESTIVALS_2026.filter(f=>getDaysUntil(f.date)>=0).slice(0,10);
   document.getElementById('festival-list').innerHTML = upcoming.map(f=>{
     const days = getDaysUntil(f.date);
+    const weekday = new Date(f.date).toLocaleDateString('en-GB',{weekday:'long'});
     const dateStr = new Date(f.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    let badge = '';
+    if (days===0) badge = `<span style="background:#C9A227;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;margin-left:8px">TODAY</span>`;
+    else if (days===1) badge = `<span style="background:#1B3A6B;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;margin-left:8px">TOMORROW</span>`;
+    else if (days<=7) badge = `<span style="background:#1A6B3C;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;margin-left:8px">THIS WEEK</span>`;
     return `<div class="festival-item">
-      <div class="festival-days"><div class="festival-days-num">${days}</div><div class="festival-days-label">days</div></div>
-      <div class="festival-info">
-        <div class="festival-name">${f.emoji} ${f.name}</div>
-        <div class="festival-date">${dateStr}</div>
+      <div class="festival-info" style="flex:1">
+        <div class="festival-name" style="display:flex;align-items:center;flex-wrap:wrap">${f.emoji} ${f.name}${badge}</div>
+        <div class="festival-date">${weekday}, ${dateStr}</div>
       </div>
     </div>`;
   }).join('');
@@ -2067,6 +2085,7 @@ async function generatePartyMenu() {
 
   const result = document.getElementById('party-result');
   result.style.display = 'block';
+  result.scrollIntoView({behavior:'smooth', block:'start'});
   result.innerHTML = `<div style="text-align:center;padding:32px">
     <div style="font-size:36px;margin-bottom:12px;animation:pulse 1s infinite">🍱</div>
     <div style="font-weight:600;color:var(--navy)">Maharaj is crafting your menu card...</div>
@@ -2639,7 +2658,32 @@ async function callClaude(prompt, maxTokens=4000) {
   return data.content[0].text;
 }
 
+function pauseGeneration() {
+  generationPaused = true;
+  document.getElementById('gen-pause-btn').style.display = 'none';
+  document.getElementById('gen-paused-msg').style.display = 'block';
+}
+function resumeGeneration() {
+  generationPaused = false;
+  document.getElementById('gen-pause-btn').style.display = '';
+  document.getElementById('gen-paused-msg').style.display = 'none';
+  if (generationResumeCallback) { generationResumeCallback(); generationResumeCallback = null; }
+}
+function stopGeneration() {
+  generationStopped = true;
+  generationPaused = false;
+  if (generationResumeCallback) { generationResumeCallback(); generationResumeCallback = null; }
+  showToast('Generation stopped');
+  goToWizardStep(7);
+}
+
 async function generateMealPlan() {
+  generationPaused = false;
+  generationStopped = false;
+  generationResumeCallback = null;
+  document.getElementById('gen-pause-btn').style.display = '';
+  document.getElementById('gen-paused-msg').style.display = 'none';
+
   const dates = getWizardDates();
   const foodType = appState.wizardData.foodType;
   const vegType = appState.wizardData.vegType;
@@ -2674,13 +2718,22 @@ async function generateMealPlan() {
     const date = dates[i];
     const dayName = new Date(date).toLocaleDateString('en-GB',{weekday:'long'});
     document.getElementById('gen-status-text').textContent = `Generating meals for ${dayName}... (${i+1} of ${dates.length})`;
-    // wizardStep is 8 (generation screen)
+
+    if (generationStopped) break;
+
+    // Wait while paused
+    if (generationPaused) {
+      await new Promise(resolve => { generationResumeCallback = resolve; });
+    }
+    if (generationStopped) break;
 
     const isVegDay = vegDays.includes(dayName);
     const isSunday = dayName === 'Sunday';
 
     const prompt = `You are Maharaj, expert Indian chef in Dubai UAE.
 Generate a complete meal plan for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
+
+⚠️ CRITICAL INSTRUCTION — DISH NAMES: Every menu_name MUST be a real, specific Indian dish name. NEVER use generic names like "Konkani Breakfast", "Maharashtrian Lunch", "Goan Dinner", "Indian Breakfast", "Regional Thali" etc. Use actual dish names like: Pohe with Kanda Batata Bhaji and Masala Chai, Sol Kadhi with Varan Bhaat and Kombdi Wade, Sabudana Khichdi with Shenga Chutney and Taak, Appam with Stew, Masala Dosa with Sambhar and Coconut Chutney, etc.
 
 CUISINES: ${cuisineList.join(' and ')}
 FOOD TYPE: ${isVegDay ? 'STRICTLY VEGETARIAN' : foodPrefText}
@@ -3502,7 +3555,7 @@ async function removePantryItem(id) {
     appState.pantryItems = appState.pantryItems.filter(i => i.id !== id);
     renderPantryItems();
     updatePantryCard();
-    showToast('Item removed from pantry');
+    showToast('Item removed from grocery');
   } catch(e) { showToast('Error: ' + e.message); }
 }
 
@@ -3513,7 +3566,7 @@ async function clearOldPantryItems() {
     appState.pantryItems = [];
     renderPantryItems();
     updatePantryCard();
-    showToast('Pantry cleared!');
+    showToast('Grocery cleared!');
   } catch(e) { showToast('Error: ' + e.message); }
 }
 </script>
