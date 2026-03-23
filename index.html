@@ -3047,12 +3047,12 @@ function openZomato() {
       <div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:12px">${m.cuisine} cuisine</div>
       <div style="display:flex;gap:10px">
         <a href="${m.zomatoUrl}" target="_blank"
-           style="flex:1;background:#E23744;color:#fff;padding:10px 16px;border-radius:24px;font-size:13px;font-weight:600;text-decoration:none;text-align:center;display:block">
-          🍕 Find on Zomato
+           style="flex:1;background:#FF6B00;color:#fff;padding:10px 16px;border-radius:24px;font-size:13px;font-weight:600;text-decoration:none;text-align:center;display:block">
+          🍕 Talabat
         </a>
         <a href="${m.swiggyUrl}" target="_blank"
            style="flex:1;background:#FC8019;color:#fff;padding:10px 16px;border-radius:24px;font-size:13px;font-weight:600;text-decoration:none;text-align:center;display:block">
-          🛵 Find on Swiggy
+          🛵 Zomato
         </a>
       </div>
     </div>`).join('')}
@@ -3312,7 +3312,7 @@ sb.auth.onAuthStateChange((event, session) => {
 // FIX 1: MEAL SELECTION
 // ══════════════════════════════════════════════════════════
 function selectMeals(type) {
-  ['all','breakfast','lunch','dinner','custom'].forEach(t => {
+  ['all','breakfast','lunch','dinner'].forEach(t => {
     const el = document.getElementById('meal-sel-'+t);
     if (el) { el.style.border = '2px solid var(--border)'; el.style.background = '#fff'; }
   });
@@ -3572,6 +3572,9 @@ async function clearOldPantryItems() {
 </script>
 </body>
 </html>
+
+
+
 
 
 
