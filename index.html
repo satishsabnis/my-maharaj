@@ -3421,7 +3421,7 @@ async function loadPantryItems() {
     appState.pantryItems = data || [];
     renderPantryItems();
     updatePantryCard();
-  } catch(e) { console.error('Pantry load error:', e); }
+  } catch(e) { console.error('Grocery load error:', e); }
 }
 
 function updatePantryCard() {
@@ -3572,5 +3572,7 @@ async function clearOldPantryItems() {
 </script>
 </body>
 </html>
+
+
 
 
