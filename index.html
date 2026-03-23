@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2457,7 +2457,7 @@ function updateWizardUI() {
   ];
   nextBtn.textContent = (labels[wizardStep] || 'Continue') + ' →';
   nextBtn.style.background = wizardStep === 7 ? 'var(--peacock)' : 'var(--gold)';
-  nextBtn.style.color = 'var(--navy)';
+  nextBtn.style.color = 'var(--navy)';nextBtn.style.color = 'var(--navy)';
 
   // Populate cuisine pills when on step 5
   if (wizardStep === 5) {
@@ -2648,7 +2648,7 @@ async function callClaude(prompt, maxTokens=4000) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model: 'claude-haiku-4-5',
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }]
     })
@@ -2829,12 +2829,13 @@ Return ONLY valid JSON. Only include keys for meals in MEALS TO GENERATE list:
 
     try {
       const text = await callClaude(prompt, 8000);
-      const clean = text.replace(/```json|```/g,'').trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const clean = jsonMatch ? jsonMatch[0] : text.replace(/```json|```/g,'').trim();
       const day = JSON.parse(clean);
       allDays.push(day);
     } catch(e) {
       console.error('Parse error for '+date, e);
-      allDays.push({date,day:dayName,cuisine:cuisineList.join(' + '),breakfast:{options:[{name:"Pohe with Coconut Chutney",vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:"Dal Rice Sabzi Thali",vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:"Roti Sabzi Dal",vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
+      allDays.push({date,day:dayName,cuisine:cuisineList.join(' + '),breakfast:{options:[{name:`${cuisineList[0]} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${cuisineList[0]} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${cuisineList[0]} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
     }
   }
 
@@ -3047,12 +3048,12 @@ function openZomato() {
       <div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:12px">${m.cuisine} cuisine</div>
       <div style="display:flex;gap:10px">
         <a href="${m.zomatoUrl}" target="_blank"
-           style="flex:1;background:#FF6B00;color:#fff;padding:10px 16px;border-radius:24px;font-size:13px;font-weight:600;text-decoration:none;text-align:center;display:block">
-          🍕 Talabat
+           style="flex:1;background:#E23744;color:#fff;padding:10px 16px;border-radius:24px;font-size:13px;font-weight:600;text-decoration:none;text-align:center;display:block">
+          🍕 Find on Zomato
         </a>
         <a href="${m.swiggyUrl}" target="_blank"
            style="flex:1;background:#FC8019;color:#fff;padding:10px 16px;border-radius:24px;font-size:13px;font-weight:600;text-decoration:none;text-align:center;display:block">
-          🛵 Zomato
+          🛵 Find on Swiggy
         </a>
       </div>
     </div>`).join('')}
@@ -3312,7 +3313,7 @@ sb.auth.onAuthStateChange((event, session) => {
 // FIX 1: MEAL SELECTION
 // ══════════════════════════════════════════════════════════
 function selectMeals(type) {
-  ['all','breakfast','lunch','dinner'].forEach(t => {
+  ['all','breakfast','lunch','dinner','custom'].forEach(t => {
     const el = document.getElementById('meal-sel-'+t);
     if (el) { el.style.border = '2px solid var(--border)'; el.style.background = '#fff'; }
   });
@@ -3482,7 +3483,7 @@ async function processPantryBill(input) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: 'claude-haiku-4-5',
         max_tokens: 2000,
         messages: [{
           role: 'user',
@@ -3572,12 +3573,6 @@ async function clearOldPantryItems() {
 </script>
 </body>
 </html>
-
-
-
-
-
-
 
 
 
