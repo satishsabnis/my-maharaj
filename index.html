@@ -1232,26 +1232,111 @@ textarea.input{height:auto;padding:14px 16px;resize:none;outline:none}
       <button class="modal-close" onclick="closeModal('modal-cuisine')">×</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Select all cuisines you enjoy. Maharaj will rotate these in your weekly plans.</div>
-      <div class="pill-group" id="modal-cuisine-pills">
-        <div class="pill" data-val="Konkani" onclick="togglePill(this)">Konkani</div>
-        <div class="pill" data-val="Malvani" onclick="togglePill(this)">Malvani</div>
-        <div class="pill" data-val="Mangalorean" onclick="togglePill(this)">Mangalorean</div>
-        <div class="pill" data-val="Kerala" onclick="togglePill(this)">Kerala</div>
-        <div class="pill" data-val="Tamil Nadu" onclick="togglePill(this)">Tamil Nadu</div>
-        <div class="pill" data-val="Goan" onclick="togglePill(this)">Goan</div>
-        <div class="pill" data-val="Vidarbha" onclick="togglePill(this)">Vidarbha</div>
-        <div class="pill" data-val="Madhya Pradesh" onclick="togglePill(this)">Madhya Pradesh</div>
-        <div class="pill" data-val="Bangalore" onclick="togglePill(this)">Bangalore</div>
-        <div class="pill" data-val="Sindhudurg" onclick="togglePill(this)">Sindhudurg</div>
-        <div class="pill" data-val="Bengali" onclick="togglePill(this)">Bengali</div>
-        <div class="pill" data-val="Gujarati" onclick="togglePill(this)">Gujarati</div>
-        <div class="pill" data-val="North Indian" onclick="togglePill(this)">North Indian</div>
-        <div class="pill" data-val="Rajasthani" onclick="togglePill(this)">Rajasthani</div>
-        <div class="pill" data-val="Mughlai" onclick="togglePill(this)">Mughlai</div>
-        <div class="pill" data-val="Lucknowi" onclick="togglePill(this)">Lucknowi</div>
-        <div class="pill" data-val="Himachali" onclick="togglePill(this)">Himachali</div>
-        <div class="pill" data-val="Uttarakhandi" onclick="togglePill(this)">Uttarakhandi</div>
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px">Select cuisines you enjoy. Maharaj will rotate these in your weekly plans.</div>
+
+      <!-- Indian Cuisines Table -->
+      <div style="margin-bottom:24px">
+        <div style="background:var(--navy);color:var(--gold);padding:10px 16px;border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;display:flex;align-items:center;justify-content:space-between">
+          <span>🇮🇳 Indian Regional Cuisines</span>
+          <button onclick="selectAllCuisines('indian')" style="background:rgba(201,162,39,0.2);border:1px solid var(--gold);color:var(--gold);padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer">Select All</button>
+        </div>
+        <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Maharashtra & Konkan Coast</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="Konkani" onclick="togglePill(this)">Konkani</div>
+            <div class="pill" data-val="Malvani" onclick="togglePill(this)">Malvani</div>
+            <div class="pill" data-val="Vidarbha" onclick="togglePill(this)">Vidarbha</div>
+            <div class="pill" data-val="Kolhapuri" onclick="togglePill(this)">Kolhapuri</div>
+            <div class="pill" data-val="Pune Brahmin" onclick="togglePill(this)">Pune Brahmin</div>
+            <div class="pill" data-val="Sindhudurg" onclick="togglePill(this)">Sindhudurg</div>
+            <div class="pill" data-val="Nagpuri" onclick="togglePill(this)">Nagpuri</div>
+            <div class="pill" data-val="Marathwada" onclick="togglePill(this)">Marathwada</div>
+            <div class="pill" data-val="Maharashtrian" onclick="togglePill(this)">Maharashtrian</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Goa & Mangalore</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="Goan" onclick="togglePill(this)">Goan</div>
+            <div class="pill" data-val="Mangalorean" onclick="togglePill(this)">Mangalorean</div>
+            <div class="pill" data-val="Udupi" onclick="togglePill(this)">Udupi</div>
+            <div class="pill" data-val="GSB" onclick="togglePill(this)">GSB Konkani</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">South India</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="Kerala" onclick="togglePill(this)">Kerala</div>
+            <div class="pill" data-val="Tamil Nadu" onclick="togglePill(this)">Tamil Nadu</div>
+            <div class="pill" data-val="Chettinad" onclick="togglePill(this)">Chettinad</div>
+            <div class="pill" data-val="Bangalore" onclick="togglePill(this)">Bangalore</div>
+            <div class="pill" data-val="Andhra Pradesh" onclick="togglePill(this)">Andhra Pradesh</div>
+            <div class="pill" data-val="Telangana" onclick="togglePill(this)">Telangana</div>
+            <div class="pill" data-val="Karnataka" onclick="togglePill(this)">Karnataka</div>
+            <div class="pill" data-val="Coorg" onclick="togglePill(this)">Coorg</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">West India</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="Gujarati" onclick="togglePill(this)">Gujarati</div>
+            <div class="pill" data-val="Kathiyawadi" onclick="togglePill(this)">Kathiyawadi</div>
+            <div class="pill" data-val="Rajasthani" onclick="togglePill(this)">Rajasthani</div>
+            <div class="pill" data-val="Marwari" onclick="togglePill(this)">Marwari</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">North India</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="North Indian" onclick="togglePill(this)">North Indian</div>
+            <div class="pill" data-val="Punjabi" onclick="togglePill(this)">Punjabi</div>
+            <div class="pill" data-val="Mughlai" onclick="togglePill(this)">Mughlai</div>
+            <div class="pill" data-val="Lucknowi" onclick="togglePill(this)">Lucknowi / Awadhi</div>
+            <div class="pill" data-val="Delhi Street Food" onclick="togglePill(this)">Delhi Street Food</div>
+            <div class="pill" data-val="Himachali" onclick="togglePill(this)">Himachali</div>
+            <div class="pill" data-val="Uttarakhandi" onclick="togglePill(this)">Uttarakhandi</div>
+            <div class="pill" data-val="Kashmiri" onclick="togglePill(this)">Kashmiri</div>
+            <div class="pill" data-val="Haryanvi" onclick="togglePill(this)">Haryanvi</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">East India & Northeast</div>
+          <div class="pill-group" style="margin-bottom:0">
+            <div class="pill" data-val="Bengali" onclick="togglePill(this)">Bengali</div>
+            <div class="pill" data-val="Odia" onclick="togglePill(this)">Odia</div>
+            <div class="pill" data-val="Bihari" onclick="togglePill(this)">Bihari</div>
+            <div class="pill" data-val="Assamese" onclick="togglePill(this)">Assamese</div>
+            <div class="pill" data-val="Manipuri" onclick="togglePill(this)">Manipuri</div>
+            <div class="pill" data-val="Madhya Pradesh" onclick="togglePill(this)">Madhya Pradesh</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- International Cuisines Table -->
+      <div style="margin-bottom:16px">
+        <div style="background:var(--peacock);color:#fff;padding:10px 16px;border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;display:flex;align-items:center;justify-content:space-between">
+          <span>🌍 International Cuisines</span>
+          <button onclick="selectAllCuisines('international')" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer">Select All</button>
+        </div>
+        <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Middle East & South Asia</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="Arabic" onclick="togglePill(this)">Arabic 🇦🇪</div>
+            <div class="pill" data-val="Pakistani" onclick="togglePill(this)">Pakistani 🇵🇰</div>
+            <div class="pill" data-val="Sri Lankan" onclick="togglePill(this)">Sri Lankan 🇱🇰</div>
+            <div class="pill" data-val="Nepali" onclick="togglePill(this)">Nepali 🇳🇵</div>
+            <div class="pill" data-val="Lebanese" onclick="togglePill(this)">Lebanese 🇱🇧</div>
+            <div class="pill" data-val="Persian" onclick="togglePill(this)">Persian 🇮🇷</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">East & Southeast Asia</div>
+          <div class="pill-group" style="margin-bottom:16px">
+            <div class="pill" data-val="Chinese" onclick="togglePill(this)">Chinese 🇨🇳</div>
+            <div class="pill" data-val="Japanese" onclick="togglePill(this)">Japanese 🇯🇵</div>
+            <div class="pill" data-val="Filipino" onclick="togglePill(this)">Filipino 🇵🇭</div>
+            <div class="pill" data-val="Thai" onclick="togglePill(this)">Thai 🇹🇭</div>
+            <div class="pill" data-val="Vietnamese" onclick="togglePill(this)">Vietnamese 🇻🇳</div>
+            <div class="pill" data-val="Korean" onclick="togglePill(this)">Korean 🇰🇷</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Europe & Americas</div>
+          <div class="pill-group" style="margin-bottom:0">
+            <div class="pill" data-val="Italian" onclick="togglePill(this)">Italian 🇮🇹</div>
+            <div class="pill" data-val="French" onclick="togglePill(this)">French 🇫🇷</div>
+            <div class="pill" data-val="Spanish" onclick="togglePill(this)">Spanish 🇪🇸</div>
+            <div class="pill" data-val="English" onclick="togglePill(this)">English 🇬🇧</div>
+            <div class="pill" data-val="Mexican" onclick="togglePill(this)">Mexican 🇲🇽</div>
+            <div class="pill" data-val="American" onclick="togglePill(this)">American 🇺🇸</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1968,71 +2053,281 @@ async function saveMember() {
 
 async function generatePartyMenu() {
   const guests = document.getElementById('party-guests').value;
-  const occasion = document.getElementById('party-occasion').value;
-  const foodType = document.querySelector('#party-food-pills .pill.active')?.dataset.val || 'veg';
+  const occasion = document.getElementById('party-occasion').value.trim();
+  const foodType = document.querySelector('#party-food-pills .pill.active')?.dataset.val || 'Vegetarian';
   const budget = document.getElementById('party-budget').value || '50';
   const drinks = Array.from(document.querySelectorAll('#party-drinks-pills .pill.active')).map(p=>p.dataset.val);
+
   if (!guests) { showToast('Please enter number of guests'); return; }
   if (!occasion) { showToast('Please enter the occasion'); return; }
+
   const btn = event.target;
-  btn.textContent = 'Generating...'; btn.disabled = true;
+  btn.textContent = 'Generating...';
+  btn.disabled = true;
+
   const result = document.getElementById('party-result');
   result.style.display = 'block';
   result.innerHTML = `<div style="text-align:center;padding:32px">
-    <div style="font-size:36px;margin-bottom:12px;animation:pulse 1s infinite">🍛</div>
-    <div style="font-weight:600;color:var(--navy)">Maharaj is planning your party menu...</div>
+    <div style="font-size:36px;margin-bottom:12px;animation:pulse 1s infinite">🍱</div>
+    <div style="font-weight:600;color:var(--navy)">Maharaj is crafting your menu card...</div>
   </div>`;
+
   try {
-    const prompt = `You are Maharaj, expert Indian party menu planner in Dubai UAE.
-
+    const prompt = `You are Maharaj, expert Indian party chef in Dubai UAE.
 Create a complete party menu for:
-- Guests: ${guests} people
 - Occasion: ${occasion}
-- Food type: ${foodType}
+- Guests: ${guests} people
+- Food: ${foodType}
 - Budget: AED ${budget} per head
+- Drinks: ${drinks.join(', ')}
 
-STARTERS / APPETIZERS (3-4 dishes):
-Each with brief description and quantity for ${guests} guests
+Return ONLY valid JSON:
+{
+  "event_name": "${occasion}",
+  "guests": ${guests},
+  "food_type": "${foodType}",
+  "date": "As per your schedule",
+  "sections": [
+    {
+      "heading": "Welcome Drinks",
+      "emoji": "🥤",
+      "items": [
+        {"name": "Kesar Chandan Sharbat", "description": "Chilled saffron sandalwood cooler", "qty_note": "Serve 200ml per guest"},
+        {"name": "Masala Chaas", "description": "Spiced buttermilk with cumin", "qty_note": "Serve 200ml per guest"}
+      ]
+    },
+    {
+      "heading": "Appetizers",
+      "emoji": "🥗",
+      "items": [
+        {"name": "Dish Name", "description": "Brief description", "qty_note": "Qty for ${guests} guests"},
+        {"name": "Dish Name 2", "description": "Brief description", "qty_note": "Qty"}
+      ]
+    },
+    {
+      "heading": "Main Course",
+      "emoji": "🍛",
+      "items": [
+        {"name": "Dish Name", "description": "Description", "qty_note": "Qty for ${guests}"},
+        {"name": "Dish Name 2", "description": "Description", "qty_note": "Qty"}
+      ]
+    },
+    {
+      "heading": "Dal & Kadhi",
+      "emoji": "🥣",
+      "items": [{"name": "Dal Name", "description": "Description", "qty_note": "Qty"}]
+    },
+    {
+      "heading": "Rice",
+      "emoji": "🍚",
+      "items": [{"name": "Rice variety", "description": "Description", "qty_note": "Qty"}]
+    },
+    {
+      "heading": "Indian Breads",
+      "emoji": "🫓",
+      "items": [
+        {"name": "Bread 1", "description": "Description", "qty_note": "Qty"},
+        {"name": "Bread 2", "description": "Description", "qty_note": "Qty"}
+      ]
+    },
+    {
+      "heading": "Condiments",
+      "emoji": "🫙",
+      "items": [{"name": "Chutney / Raita / Papad / Pickle", "description": "Assorted", "qty_note": "Assorted"}]
+    },
+    {
+      "heading": "Desserts",
+      "emoji": "🍮",
+      "items": [
+        {"name": "Sweet 1", "description": "Description", "qty_note": "Qty"},
+        {"name": "Sweet 2", "description": "Description", "qty_note": "Qty"}
+      ]
+    },
+    {
+      "heading": "Beverages",
+      "emoji": "☕",
+      "items": [
+        {"name": "Masala Tea", "description": "Ginger cardamom chai", "qty_note": "Unlimited"},
+        {"name": "Filter Coffee", "description": "South Indian decoction", "qty_note": "On request"}
+      ]
+    }
+  ],
+  "mocktail_recipes": [
+    {
+      "name": "Mocktail Name",
+      "ingredients": ["Ingredient 1 with qty", "Ingredient 2 with qty"],
+      "method": "Mix ingredients, serve chilled with ice and garnish"
+    }
+  ],
+  "cocktail_recipes": [],
+  "cost_estimate": "AED ${parseInt(budget) * parseInt(guests)} total for ${guests} guests",
+  "shopping_highlights": ["Key ingredient 1 from Carrefour", "Key ingredient 2 from Lulu"]
+}`;
 
-MAIN COURSE (4-5 dishes):
-Rice, breads, gravies, dry dishes with quantities
+    const text = await callClaude(prompt, 4000);
+    const clean = text.replace(/```json|```/g,'').trim();
+    let menuData;
+    try { menuData = JSON.parse(clean); } catch(e) { menuData = null; }
 
-ACCOMPANIMENTS:
-Raita, salads, pickles, papad
-
-DESSERTS (2-3 options):
-Traditional Indian sweets
-
-DRINKS SECTION - Include these drink types: ${drinks.join(', ')}
-For each drink type generate 2-3 specific named drinks with:
-- Drink name and description
-- Quantity needed for ${guests} guests
-- Method to prepare
-- Serve temperature
-
-ESTIMATED COST PER HEAD: AED ${budget}
-
-SHOPPING TIPS FOR DUBAI:
-Where to buy specialty ingredients in Dubai
-
-Format clearly with sections and specific dish names.
-All ingredients available at Carrefour UAE, Lulu, or Spinneys.`;
-    const text = await callClaude(prompt, 2000);
-    result.innerHTML = `
-      <div style="font-size:14px;line-height:1.9;color:var(--text);white-space:pre-wrap">${text}</div>
-      <div style="margin-top:20px;display:flex;gap:10px">
-        <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('party-result').innerText).then(()=>showToast('Menu copied!'))">📋 Copy Menu</button>
-        <button class="btn btn-secondary btn-sm" style="background:#25D366;border:none" onclick="window.open('https://wa.me/?text='+encodeURIComponent(document.getElementById('party-result').innerText),'_blank')">📱 Share on WhatsApp</button>
-      </div>`;
+    if (menuData && menuData.sections) {
+      renderPartyMenuCard(menuData, occasion, guests, foodType, budget);
+    } else {
+      result.innerHTML = `
+        <div id="party-menu-card" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden">
+          ${getPartyMenuHeader(occasion, guests, foodType)}
+          <div style="padding:20px;font-size:14px;line-height:1.9;white-space:pre-wrap;color:var(--text)">${text}</div>
+          ${getPartyMenuFooter()}
+        </div>
+        ${getPartyMenuActions()}`;
+    }
   } catch(e) {
-    result.innerHTML = `<div style="color:var(--error);padding:16px">Error: ${e.message}. Please try again.</div>`;
+    result.innerHTML = `<div style="color:var(--error);padding:16px;border:1px solid var(--error);border-radius:var(--radius-sm)">Error: ${e.message}</div>`;
   }
-  btn.textContent = 'Generate Party Menu 🎉'; btn.disabled = false;
+
+  btn.textContent = 'Generate Party Menu 🎉';
+  btn.disabled = false;
+}
+
+function getPartyMenuHeader(occasion, guests, foodType) {
+  const today = new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'});
+  return `
+    <div style="background:var(--navy);padding:24px;text-align:center">
+      <div style="font-size:13px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">My Maharaj · Dubai</div>
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">${occasion}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:8px">${today} · ${guests} Guests · ${foodType}</div>
+    </div>`;
+}
+
+function getPartyMenuFooter() {
+  return `
+    <div style="background:var(--navy);padding:12px;text-align:center">
+      <div style="font-size:11px;color:rgba(255,255,255,0.6)">Generated by My Maharaj · mymaharaj.app · Your Personal Kitchen Planner</div>
+    </div>`;
+}
+
+function getPartyMenuActions() {
+  return `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;justify-content:center">
+      <button class="btn btn-primary btn-sm" onclick="downloadPartyMenuPDF()">📄 Download PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="copyPartyMenu()">📋 Copy Menu</button>
+      <button class="btn btn-secondary btn-sm" style="background:#25D366;border:2px solid #25D366;color:#fff" onclick="sharePartyWhatsApp()">📱 WhatsApp</button>
+    </div>`;
+}
+
+function renderPartyMenuCard(menuData, occasion, guests, foodType, budget) {
+  const result = document.getElementById('party-result');
+
+  const sectionsHtml = menuData.sections.map(section => `
+    <div style="break-inside:avoid">
+      <div style="background:var(--gold);padding:8px 16px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">${section.emoji}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">${section.heading}</span>
+      </div>
+      <div style="padding:0 16px">
+        ${section.items.map(item => `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:12px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--navy)">${item.name}</div>
+            ${item.description ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${item.description}</div>` : ''}
+          </div>
+          ${item.qty_note ? `<div style="font-size:11px;color:var(--gold);font-weight:600;white-space:nowrap;flex-shrink:0">${item.qty_note}</div>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>
+    <div style="height:1px;background:var(--border)"></div>
+  `).join('');
+
+  const allRecipes = [...(menuData.mocktail_recipes||[]), ...(menuData.cocktail_recipes||[])];
+  const recipesHtml = allRecipes.length > 0 ? `
+    <div style="border-top:2px solid var(--gold)">
+      <div style="background:var(--gold);padding:8px 16px">
+        <span style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">🍹 Drink Recipes</span>
+      </div>
+      <div style="padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+        ${allRecipes.map(r => `
+        <div style="background:var(--surface);border-radius:var(--radius-sm);padding:14px">
+          <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px">${r.name}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Ingredients</div>
+          <ul style="list-style:none;padding:0;margin:0 0 8px">
+            ${(r.ingredients||[]).map(i=>`<li style="font-size:12px;color:var(--text-secondary);padding:2px 0;display:flex;gap:4px"><span style="color:var(--gold)">•</span>${i}</li>`).join('')}
+          </ul>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Method</div>
+          <div style="font-size:12px;color:var(--text-secondary)">${r.method}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  result.innerHTML = `
+    <div id="party-menu-card" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      ${getPartyMenuHeader(occasion, guests, foodType)}
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:3px solid var(--gold)">
+        ${sectionsHtml}
+      </div>
+      ${recipesHtml}
+      ${menuData.cost_estimate ? `
+      <div style="background:var(--surface);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border)">
+        <span style="font-size:13px;color:var(--text-secondary)">💰 Estimated Cost</span>
+        <span style="font-size:14px;font-weight:700;color:var(--navy)">${menuData.cost_estimate}</span>
+      </div>` : ''}
+      ${menuData.shopping_highlights?.length ? `
+      <div style="padding:12px 16px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;margin-bottom:6px">🛒 Key Shopping Items</div>
+        <div style="font-size:12px;color:var(--text-secondary)">${menuData.shopping_highlights.join(' · ')}</div>
+      </div>` : ''}
+      ${getPartyMenuFooter()}
+    </div>
+    ${getPartyMenuActions()}`;
+}
+
+async function downloadPartyMenuPDF() {
+  const card = document.getElementById('party-menu-card');
+  if (!card) { showToast('No menu to download'); return; }
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`<!DOCTYPE html><html><head>
+    <title>My Maharaj - Party Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+      body{font-family:'DM Sans',sans-serif;margin:0;padding:0}
+      *{box-sizing:border-box}
+      :root{--navy:#1B3A6B;--gold:#C9A227;--border:#E8EAF0;--surface:#F8F9FA;--text:#1A1A2E;--text-secondary:#6B7280;--peacock:#1A6B3C;--radius:16px;--radius-sm:10px}
+      @media print{body{margin:0}@page{margin:10mm}}
+    </style>
+    </head><body>${card.outerHTML}</body></html>`);
+  printWindow.document.close();
+  setTimeout(() => { printWindow.print(); }, 500);
+  showToast('Opening print dialog - Save as PDF!');
+}
+
+function copyPartyMenu() {
+  const card = document.getElementById('party-menu-card');
+  if (!card) return;
+  navigator.clipboard.writeText(card.innerText)
+    .then(() => showToast('Menu copied!'))
+    .catch(() => showToast('Copy failed'));
+}
+
+function sharePartyWhatsApp() {
+  const card = document.getElementById('party-menu-card');
+  if (!card) return;
+  const text = encodeURIComponent('🍽️ Party Menu - Generated by My Maharaj\n\n' + card.innerText);
+  window.open('https://wa.me/?text=' + text, '_blank');
+}
+
+function selectAllCuisines(type) {
+  const container = document.getElementById('modal-cuisine');
+  if (!container) return;
+  const intlList = ['Arabic','Pakistani','Sri Lankan','Nepali','Lebanese','Persian','Chinese','Japanese','Filipino','Thai','Vietnamese','Korean','Italian','French','Spanish','English','Mexican','American'];
+  container.querySelectorAll('.pill[data-val]').forEach(p => {
+    const isIntl = intlList.includes(p.dataset.val);
+    if (type === 'indian' && !isIntl) p.classList.add('active');
+    if (type === 'international' && isIntl) p.classList.add('active');
+  });
+  showToast('All ' + (type === 'indian' ? 'Indian' : 'International') + ' cuisines selected!');
 }
 
 async function saveCuisines() {
   if (!appState.user) return;
-  const cuisines = Array.from(document.querySelectorAll('#modal-cuisine-pills .pill.active')).map(p=>p.dataset.val);
+  const cuisines = Array.from(document.querySelectorAll('#modal-cuisine .pill.active')).map(p=>p.dataset.val);
   try {
     await sb.from('cuisine_preferences').delete().eq('user_id', appState.user.id);
     if (cuisines.length) await sb.from('cuisine_preferences').insert(cuisines.map(c=>({user_id:appState.user.id,cuisine_name:c,is_excluded:false,weight:5})));
@@ -2149,12 +2444,14 @@ function updateWizardUI() {
   if (wizardStep === 5) {
     const pillContainer = document.getElementById('wizard-cuisine-pills');
     if (pillContainer && pillContainer.children.length === 0) {
-      const defaultCuisines = ['Konkani','Malvani','Mangalorean','Kerala','Tamil Nadu','Goan','Vidarbha','Gujarati','North Indian','Bengali','Rajasthani','Mughlai','Lucknowi','Himachali'];
+      const indianCuisines = ['Konkani','Malvani','Maharashtrian','Vidarbha','Kolhapuri','Goan','Mangalorean','Udupi','Kerala','Tamil Nadu','Chettinad','Bangalore','Andhra Pradesh','Karnataka','Gujarati','Rajasthani','Punjabi','North Indian','Mughlai','Lucknowi','Kashmiri','Bengali','Odia','Assamese','Madhya Pradesh','Sindhudurg','Marwari','Kathiyawadi'];
+      const intlCuisines = ['Arabic','Pakistani','Sri Lankan','Chinese','Japanese','Filipino','Italian','French','Spanish','Mexican','English','Nepali','Thai','Korean','Lebanese'];
       const userCuisines = appState.cuisines.map(c => c.cuisine_name);
-      const allCuisines = [...new Set([...userCuisines, ...defaultCuisines])];
-      pillContainer.innerHTML = allCuisines.map((c, i) =>
-        `<div class="pill ${i===0?'active':''}" data-val="${c}" onclick="togglePill(this)">${c}</div>`
-      ).join('');
+      pillContainer.innerHTML = `
+        <div style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:4px;width:100%">🇮🇳 Indian</div>
+        ${indianCuisines.map(c => `<div class="pill ${userCuisines.includes(c)?'active':''}" data-val="${c}" onclick="togglePill(this)">${c}</div>`).join('')}
+        <div style="font-size:12px;font-weight:700;color:var(--peacock);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px;width:100%">🌍 International</div>
+        ${intlCuisines.map(c => `<div class="pill ${userCuisines.includes(c)?'active':''}" data-val="${c}" onclick="togglePill(this)">${c}</div>`).join('')}`;
     }
   }
 
