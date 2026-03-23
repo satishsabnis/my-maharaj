@@ -2730,7 +2730,7 @@ async function generateMealPlan() {
     const isVegDay = vegDays.includes(dayName);
     const isSunday = dayName === 'Sunday';
 
-    const prompt = `You are Maharaj, expert Indian chef in Dubai UAE.
+    const prompt = `You are Maharaj, Indian chef Dubai. Be concise.
 Generate a complete meal plan for ${dayName}, ${new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.
 
 ⚠️ CRITICAL INSTRUCTION — DISH NAMES: Every menu_name MUST be a real, specific Indian dish name. NEVER use generic names like "Konkani Breakfast", "Maharashtrian Lunch", "Goan Dinner", "Indian Breakfast", "Regional Thali" etc. Use actual dish names like: Pohe with Kanda Batata Bhaji and Masala Chai, Sol Kadhi with Varan Bhaat and Kombdi Wade, Sabudana Khichdi with Shenga Chutney and Taak, Appam with Stew, Masala Dosa with Sambhar and Coconut Chutney, etc.
@@ -2828,7 +2828,7 @@ Return ONLY valid JSON. Only include keys for meals in MEALS TO GENERATE list:
 }`;
 
     try {
-      const text = await callClaude(prompt, 8000);
+      const text = await callClaude(prompt, 3000);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const clean = jsonMatch ? jsonMatch[0] : text.replace(/```json|```/g,'').trim();
       const day = JSON.parse(clean);
