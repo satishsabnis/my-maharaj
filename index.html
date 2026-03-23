@@ -2648,7 +2648,7 @@ async function callClaude(prompt, maxTokens=4000) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5',
+      model: "claude-haiku-4-5-20251001",
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }]
     })
@@ -2834,7 +2834,7 @@ Return ONLY valid JSON. Only include keys for meals in MEALS TO GENERATE list:
       allDays.push(day);
     } catch(e) {
       console.error('Parse error for '+date, e);
-      allDays.push({date,day:dayName,cuisine:cuisineList.join(' + '),breakfast:{options:[{name:`${cuisineList[0]} Breakfast`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:`${cuisineList[0]} Lunch`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:`${cuisineList[0]} Dinner`,vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
+      allDays.push({date,day:dayName,cuisine:cuisineList.join(' + '),breakfast:{options:[{name:"Pohe with Coconut Chutney",vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Prepare as traditional'],prep_night:null}]},lunch:{options:[{name:"Dal Rice Sabzi Thali",vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Soak dal overnight'}]},dinner:{options:[{name:"Roti Sabzi Dal",vegetarian:true,health_tags:[],ingredients:['As per cuisine'],method:['Cook traditionally'],prep_night:'Prep ingredients'}]}});
     }
   }
 
@@ -3482,7 +3482,7 @@ async function processPantryBill(input) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: "claude-haiku-4-5-20251001",
         max_tokens: 2000,
         messages: [{
           role: 'user',
@@ -3572,6 +3572,9 @@ async function clearOldPantryItems() {
 </script>
 </body>
 </html>
+
+
+
 
 
 
