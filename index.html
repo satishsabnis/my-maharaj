@@ -3025,7 +3025,7 @@ function openZomato() {
         const zomatoSearch = encodeURIComponent(cuisine + ' food ' + location);
         const swiggySearch = encodeURIComponent(cuisine);
         const zomatoUrl = `https://www.zomato.com/dubai/restaurants?q=${zomatoSearch}&location=${encodeURIComponent(location)}`;
-        const swiggyUrl = `https://www.swiggy.com/search?query=${swiggySearch}&cityName=Dubai`;
+        const swiggyUrl = `https://www.talabat.com/search?query=${swiggySearch}&cityName=Dubai`;
         mealLinks.push({ mealType, dishName, cuisine, zomatoUrl, swiggyUrl });
       }
     });
@@ -3572,6 +3572,8 @@ async function clearOldPantryItems() {
 </script>
 </body>
 </html>
+
+
 
 
 
