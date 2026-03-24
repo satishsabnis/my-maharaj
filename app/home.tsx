@@ -25,15 +25,10 @@ const FESTIVALS = [
   { name: 'Christmas', date: '2026-12-25' },
 ];
 
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
 function getNextFestival(): { name: string; daysAway: number } | null {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   for (const f of FESTIVALS) {
-    const d = parseLocalDate(f.date);
+    const d = new Date(f.date);
     if (d >= today) {
       const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
       return { name: f.name, daysAway: diff };
@@ -70,6 +65,7 @@ const CARDS: CardDef[] = [
   { id: 'dietary',    icon: '🥗', title: 'Dietary Profile',     iconBg: '#E8F5E9', leftBorder: '#1A6B3C', route: '/dietary-profile',    descStatic: 'Family health and food preferences' },
   { id: 'festivals',  icon: '🪔', title: 'Festivals & Functions',iconBg: '#FFF3E0', leftBorder: '#FF9933', route: '/festivals' },
   { id: 'party',      icon: '🎉', title: 'Party Menu',           iconBg: '#FFEBEE', leftBorder: '#C62828', route: '/party-menu',         descStatic: 'Plan your next gathering' },
+  { id: 'outdoor',    icon: '🏕️', title: 'Outdoor Catering',     iconBg: '#E8F5E9', leftBorder: '#1A6B3C', route: '/outdoor-catering',   descStatic: 'Plan menus for events & picnics' },
   { id: 'cuisine',    icon: '🗺️', title: 'Cuisine Selection',    iconBg: '#E3F2FD', leftBorder: '#1565C0', route: '/cuisine-selection' },
   { id: 'etiquettes', icon: '🍽️', title: 'Table Etiquettes',     iconBg: '#FFF8E1', leftBorder: '#F9A825', route: '/table-etiquettes',   descStatic: 'Learn dining traditions' },
   { id: 'plating',    icon: '🎨', title: 'Traditional Plating',  iconBg: '#E8F5E9', leftBorder: '#2E7D32', route: '/traditional-plating',descStatic: 'Present your food beautifully' },
