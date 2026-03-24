@@ -2828,9 +2828,10 @@ Return ONLY valid JSON. Only include keys for meals in MEALS TO GENERATE list:
 }`;
 
     try {
-      const text = await callClaude(prompt, 3000);
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const clean = jsonMatch ? jsonMatch[0] : text.replace(/```json|```/g,'').trim();
+      const text = await callClaude(prompt, 4000);
+      const jsonStart = text.indexOf('{');
+      const jsonEnd = text.lastIndexOf('}');
+      const clean = (jsonStart !== -1 && jsonEnd !== -1) ? text.substring(jsonStart, jsonEnd + 1) : text;
       const day = JSON.parse(clean);
       allDays.push(day);
     } catch(e) {
