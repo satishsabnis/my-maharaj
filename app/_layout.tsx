@@ -66,6 +66,7 @@ export default function Layout() {
       <Stack.Screen name="traditional-plating" />
       <Stack.Screen name="menu-history" />
       <Stack.Screen name="meal-wizard" />
+      <Stack.Screen name="outdoor-catering" />
     </Stack>
   );
 }

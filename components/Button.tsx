@@ -34,7 +34,7 @@ export default function Button({ title, onPress, variant = 'primary', loading = 
   return (
     <TouchableOpacity style={containerStyle} onPress={onPress} disabled={isDisabled} activeOpacity={0.82}>
       {loading
-        ? <ActivityIndicator color={variant === 'primary' ? navy : gold} />
+        ? <ActivityIndicator color={variant === 'primary' ? white : gold} />
         : <Text style={textStyle}>{title}</Text>
       }
     </TouchableOpacity>
@@ -50,13 +50,13 @@ const s = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 24,
   },
-  primary:   { backgroundColor: gold },
-  secondary: { backgroundColor: navy },
+  primary:   { backgroundColor: navy },
+  secondary: { backgroundColor: gold },
   outline:   { backgroundColor: white, borderWidth: 2, borderColor: navy },
   disabled:  { opacity: 0.5 },
 
   label:         { fontSize: 16, fontWeight: '600', letterSpacing: 0.2 },
-  labelPrimary:  { color: navy },
+  labelPrimary:  { color: white },
   labelSecondary:{ color: white },
   labelOutline:  { color: navy },
   labelDisabled: {},

@@ -64,7 +64,7 @@ export const emptyHealthFlags = (): HealthFlags => ({
 async function askClaude(prompt: string): Promise<string> {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{ role: 'user', content: prompt }],
   });
   const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
@@ -246,35 +246,44 @@ export async function generateMealPlan(
   const lnPrefs  = params.lunchPrefs ?? params.mealPrefs?.lunch;
   const dnPrefs  = params.dinnerPrefs ?? params.mealPrefs?.dinner;
 
-  const days: MealPlanDay[] = [];
-  const allIngredients: string[] = [];
   const total = params.dates.length;
+  onProgress?.(0, total);
 
-  for (let i = 0; i < params.dates.length; i++) {
-    const date = params.dates[i];
-    onProgress?.(i + 1, total);
-
+  // Fire ALL meal API calls in parallel across all days (21 calls at once for 7 days)
+  // instead of sequentially day-by-day — reduces wait from ~60s to ~10s
+  const dayMeta = params.dates.map((date, i) => {
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
     const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
       ? `${foodPref}. Mix veg and non-veg naturally across the week.`
       : foodPref;
+    return { date, dayName, foodPref, lunchDinnerPref, i };
+  });
 
-    const [breakfast, lunch, dinner] = await Promise.all([
-      generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref, lang, bfPrefs, unwellNote, nutritionGoals, i),
-      generateOneMeal('lunch',     date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, lnPrefs, unwellNote, nutritionGoals, i),
-      generateOneMeal('dinner',    date, dayName, cuisine, healthInfo, lunchDinnerPref, lang, dnPrefs, unwellNote, nutritionGoals, i),
-    ]);
+  let completed = 0;
+  const dayResults = await Promise.all(
+    dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, i }) => {
+      const [breakfast, lunch, dinner] = await Promise.all([
+        generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('lunch',     date, dayName, cuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('dinner',    date, dayName, cuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i),
+      ]);
+      completed++;
+      onProgress?.(completed, total);
+      return { date, day: dayName, breakfast, lunch, dinner };
+    })
+  );
 
-    days.push({ date, day: dayName, breakfast, lunch, dinner });
-
+  const days: MealPlanDay[] = dayResults;
+  const allIngredients: string[] = [];
+  days.forEach(({ breakfast, lunch, dinner }) => {
     [breakfast, lunch, dinner].forEach((slot) =>
       slot.options.forEach((opt) =>
         opt.ingredients.forEach((ing) => allIngredients.push(ing))
       )
     );
-  }
+  });
 
   // Build grocery list
   const seen = new Set<string>();

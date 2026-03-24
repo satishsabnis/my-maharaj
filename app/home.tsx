@@ -25,10 +25,15 @@ const FESTIVALS = [
   { name: 'Christmas', date: '2026-12-25' },
 ];
 
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function getNextFestival(): { name: string; daysAway: number } | null {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   for (const f of FESTIVALS) {
-    const d = new Date(f.date);
+    const d = parseLocalDate(f.date);
     if (d >= today) {
       const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
       return { name: f.name, daysAway: diff };
