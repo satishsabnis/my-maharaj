@@ -8,21 +8,21 @@ import { navy, gold, textSec, white, border, surface, textColor } from '../theme
 // ─── Festival data ──────────────────────────────────────────────────────────
 
 const FESTIVALS = [
-  { name: 'Ugadi / Gudi Padwa', date: '2026-03-30' },
-  { name: 'Eid al-Fitr', date: '2026-03-31' },
-  { name: 'Ram Navami', date: '2026-04-05' },
-  { name: 'Baisakhi', date: '2026-04-14' },
-  { name: 'Akshaya Tritiya', date: '2026-04-21' },
-  { name: 'Eid al-Adha', date: '2026-06-07' },
-  { name: 'Guru Purnima', date: '2026-07-19' },
-  { name: 'Independence Day', date: '2026-08-15' },
-  { name: 'Raksha Bandhan', date: '2026-08-22' },
-  { name: 'Janmashtami', date: '2026-08-29' },
-  { name: 'Ganesh Chaturthi', date: '2026-09-16' },
-  { name: 'Navratri', date: '2026-10-05' },
-  { name: 'Dussehra', date: '2026-10-14' },
-  { name: 'Diwali', date: '2026-11-03' },
-  { name: 'Christmas', date: '2026-12-25' },
+  { name: 'Ugadi / Gudi Padwa', date: '2026-03-19' },
+  { name: 'Eid al-Fitr',        date: '2026-03-31' },
+  { name: 'Ram Navami',         date: '2026-03-28' },
+  { name: 'Baisakhi',           date: '2026-04-13' },
+  { name: 'Akshaya Tritiya',    date: '2026-04-28' },
+  { name: 'Eid al-Adha',        date: '2026-06-06' },
+  { name: 'Guru Purnima',       date: '2026-07-03' },
+  { name: 'Independence Day',   date: '2026-08-15' },
+  { name: 'Raksha Bandhan',     date: '2026-08-09' },
+  { name: 'Janmashtami',        date: '2026-08-16' },
+  { name: 'Ganesh Chaturthi',   date: '2026-08-25' },
+  { name: 'Navratri',           date: '2026-10-13' },
+  { name: 'Dussehra',           date: '2026-10-22' },
+  { name: 'Diwali',             date: '2026-10-30' },
+  { name: 'Christmas',          date: '2026-12-25' },
 ];
 
 function getNextFestival(): { name: string; daysAway: number } | null {

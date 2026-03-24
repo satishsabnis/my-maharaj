@@ -15,40 +15,34 @@ interface Festival {
 }
 
 const INITIAL_FESTIVALS: Festival[] = [
-  { name: 'Ugadi / Gudi Padwa', date: '2026-03-30', region: 'Maharashtra · Karnataka · Andhra Pradesh', icon: '🪔', adjustMeals: true },
-  { name: 'Eid al-Fitr', date: '2026-03-31', region: 'All', icon: '🌙', adjustMeals: false },
-  { name: 'Ram Navami', date: '2026-04-05', region: 'All India', icon: '🙏', adjustMeals: true },
-  { name: 'Baisakhi', date: '2026-04-14', region: 'Punjab · Haryana', icon: '🌾', adjustMeals: false },
-  { name: 'Akshaya Tritiya', date: '2026-04-21', region: 'All India', icon: '✨', adjustMeals: false },
-  { name: 'Eid al-Adha', date: '2026-06-07', region: 'All', icon: '🌙', adjustMeals: false },
-  { name: 'Guru Purnima', date: '2026-07-19', region: 'All India', icon: '🙏', adjustMeals: false },
-  { name: 'Independence Day', date: '2026-08-15', region: 'All India', icon: '🇮🇳', adjustMeals: false },
-  { name: 'Raksha Bandhan', date: '2026-08-22', region: 'North India', icon: '🤝', adjustMeals: true },
-  { name: 'Janmashtami', date: '2026-08-29', region: 'All India', icon: '🦚', adjustMeals: true },
-  { name: 'Ganesh Chaturthi', date: '2026-09-16', region: 'Maharashtra · Goa · Karnataka', icon: '🐘', adjustMeals: true },
-  { name: 'Navratri', date: '2026-10-05', region: 'All India (9 days)', icon: '🪔', adjustMeals: true },
-  { name: 'Dussehra', date: '2026-10-14', region: 'All India', icon: '🏹', adjustMeals: false },
-  { name: 'Diwali', date: '2026-11-03', region: 'All India', icon: '🎆', adjustMeals: true },
-  { name: 'Bhai Dooj', date: '2026-11-05', region: 'North India', icon: '🤝', adjustMeals: false },
-  { name: 'Christmas', date: '2026-12-25', region: 'All', icon: '🎄', adjustMeals: false },
+  { name: 'Ugadi / Gudi Padwa', date: '2026-03-19', region: 'Maharashtra · Karnataka · Andhra Pradesh', icon: '🪔', adjustMeals: true },
+  { name: 'Eid al-Fitr',        date: '2026-03-31', region: 'All',                                      icon: '🌙', adjustMeals: false },
+  { name: 'Ram Navami',         date: '2026-03-28', region: 'All India',                                icon: '🙏', adjustMeals: true },
+  { name: 'Baisakhi',           date: '2026-04-13', region: 'Punjab · Haryana',                         icon: '🌾', adjustMeals: false },
+  { name: 'Akshaya Tritiya',    date: '2026-04-28', region: 'All India',                                icon: '✨', adjustMeals: false },
+  { name: 'Eid al-Adha',        date: '2026-06-06', region: 'All',                                      icon: '🌙', adjustMeals: false },
+  { name: 'Guru Purnima',       date: '2026-07-03', region: 'All India',                                icon: '🙏', adjustMeals: false },
+  { name: 'Independence Day',   date: '2026-08-15', region: 'All India',                                icon: '🇮🇳', adjustMeals: false },
+  { name: 'Raksha Bandhan',     date: '2026-08-09', region: 'North India',                              icon: '🤝', adjustMeals: true },
+  { name: 'Janmashtami',        date: '2026-08-16', region: 'All India',                                icon: '🦚', adjustMeals: true },
+  { name: 'Ganesh Chaturthi',   date: '2026-08-25', region: 'Maharashtra · Goa · Karnataka',            icon: '🐘', adjustMeals: true },
+  { name: 'Navratri',           date: '2026-10-13', region: 'All India (9 days)',                       icon: '🪔', adjustMeals: true },
+  { name: 'Dussehra',           date: '2026-10-22', region: 'All India',                                icon: '🏹', adjustMeals: false },
+  { name: 'Diwali',             date: '2026-10-30', region: 'All India',                                icon: '🎆', adjustMeals: true },
+  { name: 'Bhai Dooj',          date: '2026-11-01', region: 'North India',                              icon: '🤝', adjustMeals: false },
+  { name: 'Christmas',          date: '2026-12-25', region: 'All',                                      icon: '🎄', adjustMeals: false },
 ];
 
 const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// Parse YYYY-MM-DD as LOCAL date (not UTC) to prevent 1-day shift on web/Vercel
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
 function formatFestivalDate(dateStr: string): string {
-  const d = parseLocalDate(dateStr);
+  const d = new Date(dateStr);
   return `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = parseLocalDate(dateStr);
+  const d = new Date(dateStr);
   return Math.ceil((d.getTime() - today.getTime()) / 86400000);
 }
 
@@ -60,8 +54,8 @@ export default function FestivalsScreen() {
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const upcoming = festivals.filter((f) => parseLocalDate(f.date) >= today);
-  const past = festivals.filter((f) => parseLocalDate(f.date) < today);
+  const upcoming = festivals.filter((f) => new Date(f.date) >= today);
+  const past = festivals.filter((f) => new Date(f.date) < today);
 
   function FestivalCard({ f, idx, showPast }: { f: Festival; idx: number; showPast: boolean }) {
     const days = daysUntil(f.date);
