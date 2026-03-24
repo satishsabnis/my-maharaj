@@ -35,14 +35,20 @@ const INITIAL_FESTIVALS: Festival[] = [
 
 const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Parse YYYY-MM-DD as LOCAL date (not UTC) to prevent 1-day shift on web/Vercel
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function formatFestivalDate(dateStr: string): string {
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   return `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   return Math.ceil((d.getTime() - today.getTime()) / 86400000);
 }
 
@@ -54,8 +60,8 @@ export default function FestivalsScreen() {
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const upcoming = festivals.filter((f) => new Date(f.date) >= today);
-  const past = festivals.filter((f) => new Date(f.date) < today);
+  const upcoming = festivals.filter((f) => parseLocalDate(f.date) >= today);
+  const past = festivals.filter((f) => parseLocalDate(f.date) < today);
 
   function FestivalCard({ f, idx, showPast }: { f: Festival; idx: number; showPast: boolean }) {
     const days = daysUntil(f.date);
