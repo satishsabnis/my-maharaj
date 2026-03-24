@@ -1,11 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import {
+  Alert, Platform, SafeAreaView, ScrollView, StyleSheet,
+  Text, TouchableOpacity, useWindowDimensions, View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
-import { navy, gold, textSec, white, border, surface, textColor } from '../theme/colors';
 
-// ─── Festival data ──────────────────────────────────────────────────────────
+// ─── Blue Flute Design System ─────────────────────────────────────────────────
+
+const BF = {
+  navy:      '#1B3A5C',
+  teal:      '#1A6B5C',
+  mint:      '#7ED8A4',
+  mintLight: '#E8F8F0',
+  skyLight:  '#E8F4FA',
+  white:     '#FFFFFF',
+  offWhite:  '#F7FDFB',
+  text:      '#1B3A5C',
+  textSec:   '#5A7A8A',
+  border:    '#D4EDE5',
+  gold:      '#C9A227',
+};
+
+// ─── Festival data ─────────────────────────────────────────────────────────────
 
 const FESTIVALS = [
   { name: 'Ugadi / Gudi Padwa', date: '2026-03-19' },
@@ -25,10 +43,15 @@ const FESTIVALS = [
   { name: 'Christmas',          date: '2026-12-25' },
 ];
 
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function getNextFestival(): { name: string; daysAway: number } | null {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   for (const f of FESTIVALS) {
-    const d = new Date(f.date);
+    const d = parseLocalDate(f.date);
     if (d >= today) {
       const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
       return { name: f.name, daysAway: diff };
@@ -37,9 +60,9 @@ function getNextFestival(): { name: string; daysAway: number } | null {
   return null;
 }
 
-// ─── DateTime ───────────────────────────────────────────────────────────────
+// ─── DateTime ─────────────────────────────────────────────────────────────────
 
-const WDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const WDAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function formatDateTime(d: Date): string {
@@ -54,35 +77,36 @@ function formatDateTime(d: Date): string {
   return `${day}, ${date} ${month} ${year}  ·  ${h}:${m} ${ap}`;
 }
 
-// ─── Card data ───────────────────────────────────────────────────────────────
+// ─── Cards — ordered: Festivals, Meal Plan, Party, Outdoor, then rest ─────────
 
 interface CardDef {
   id: string; icon: string; title: string;
-  iconBg: string; leftBorder: string; route: string; descStatic?: string;
+  iconBg: string; accent: string; route: string;
+  descStatic?: string; featured?: boolean;
 }
 
 const CARDS: CardDef[] = [
-  { id: 'dietary',    icon: '🥗', title: 'Dietary Profile',     iconBg: '#E8F5E9', leftBorder: '#1A6B3C', route: '/dietary-profile',    descStatic: 'Family health and food preferences' },
-  { id: 'festivals',  icon: '🪔', title: 'Festivals & Functions',iconBg: '#FFF3E0', leftBorder: '#FF9933', route: '/festivals' },
-  { id: 'party',      icon: '🎉', title: 'Party Menu',           iconBg: '#FFEBEE', leftBorder: '#C62828', route: '/party-menu',         descStatic: 'Plan your next gathering' },
-  { id: 'outdoor',    icon: '🏕️', title: 'Outdoor Catering',     iconBg: '#E8F5E9', leftBorder: '#1A6B3C', route: '/outdoor-catering',   descStatic: 'Plan menus for events & picnics' },
-  { id: 'cuisine',    icon: '🗺️', title: 'Cuisine Selection',    iconBg: '#E3F2FD', leftBorder: '#1565C0', route: '/cuisine-selection' },
-  { id: 'etiquettes', icon: '🍽️', title: 'Table Etiquettes',     iconBg: '#FFF8E1', leftBorder: '#F9A825', route: '/table-etiquettes',   descStatic: 'Learn dining traditions' },
-  { id: 'plating',    icon: '🎨', title: 'Traditional Plating',  iconBg: '#E8F5E9', leftBorder: '#2E7D32', route: '/traditional-plating',descStatic: 'Present your food beautifully' },
-  { id: 'mealplan',   icon: '🍳', title: 'Generate Meal Plan',   iconBg: '#E3F2FD', leftBorder: '#1B3A6B', route: '/meal-wizard',        descStatic: 'Plan your meals with AI' },
-  { id: 'history',    icon: '📋', title: 'Menu History',         iconBg: '#F3E5F5', leftBorder: '#6A1B9A', route: '/menu-history',       descStatic: 'Last 3 months of plans' },
+  { id: 'festivals',  icon: '🪔', title: 'Festivals & Functions', iconBg: '#FFF3E0', accent: BF.gold,    route: '/festivals',           featured: true },
+  { id: 'mealplan',   icon: '🍳', title: 'Generate Meal Plan',    iconBg: BF.mintLight, accent: BF.teal, route: '/meal-wizard',         descStatic: 'Plan your meals with Maharaj AI', featured: true },
+  { id: 'party',      icon: '🎉', title: 'Party Menu',            iconBg: '#FFEBEE', accent: '#C62828',  route: '/party-menu',          descStatic: 'Plan your next gathering' },
+  { id: 'outdoor',    icon: '🏕️', title: 'Outdoor Catering',      iconBg: BF.mintLight, accent: BF.teal, route: '/outdoor-catering',    descStatic: 'Events, picnics & BBQs' },
+  { id: 'dietary',    icon: '🥗', title: 'Dietary Profile',       iconBg: '#E8F5E9', accent: '#2E7D32',  route: '/dietary-profile',     descStatic: 'Family health & food preferences' },
+  { id: 'cuisine',    icon: '🗺️', title: 'Cuisine Selection',     iconBg: BF.skyLight,  accent: BF.navy, route: '/cuisine-selection' },
+  { id: 'history',    icon: '📋', title: 'Menu History',          iconBg: '#F3E5F5', accent: '#6A1B9A',  route: '/menu-history',        descStatic: 'Last 3 months of meal plans' },
+  { id: 'etiquettes', icon: '🍽️', title: 'Table Etiquettes',      iconBg: '#FFF8E1', accent: '#F9A825',  route: '/table-etiquettes',    descStatic: 'Indian dining traditions' },
+  { id: 'plating',    icon: '🎨', title: 'Traditional Plating',   iconBg: '#E8F5E9', accent: '#2E7D32',  route: '/traditional-plating', descStatic: 'Present your food beautifully' },
 ];
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
 
-  const [firstName, setFirstName]     = useState('');
-  const [initials, setInitials]       = useState('?');
+  const [firstName,      setFirstName]      = useState('');
+  const [initials,       setInitials]       = useState('?');
   const [activeCuisines, setActiveCuisines] = useState<string[]>([]);
-  const [dateTimeStr, setDateTimeStr] = useState(formatDateTime(new Date()));
+  const [dateTimeStr,    setDateTimeStr]    = useState(formatDateTime(new Date()));
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -95,11 +119,10 @@ export default function HomeScreen() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const name: string = user.user_metadata?.full_name ?? user.email ?? '';
+      const name  = (user.user_metadata?.full_name ?? user.email ?? '') as string;
       const first = name.split(' ')[0];
       setFirstName(first);
       setInitials(first ? first.charAt(0).toUpperCase() : (user.email?.charAt(0).toUpperCase() ?? '?'));
-
       const { data } = await supabase.from('cuisine_preferences')
         .select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false);
       if (data) setActiveCuisines(data.map((r: { cuisine_name: string }) => r.cuisine_name));
@@ -111,35 +134,40 @@ export default function HomeScreen() {
     const nf = getNextFestival();
     if (card.id === 'festivals') {
       if (!nf) return 'No upcoming festivals';
-      return nf.daysAway === 0 ? `${nf.name} — Today! 🎉` : `${nf.name} — ${nf.daysAway} day${nf.daysAway === 1 ? '' : 's'} away`;
+      if (nf.daysAway === 0) return `${nf.name} — Today! 🎉`;
+      if (nf.daysAway === 1) return `${nf.name} — Tomorrow!`;
+      return `${nf.name} — ${nf.daysAway} days away`;
     }
     if (card.id === 'cuisine') {
       return activeCuisines.length > 0
-        ? `Currently: ${activeCuisines.slice(0, 2).join(', ')}${activeCuisines.length > 2 ? ` +${activeCuisines.length - 2}` : ''}`
-        : 'No cuisines selected';
+        ? `${activeCuisines.slice(0, 2).join(', ')}${activeCuisines.length > 2 ? ` +${activeCuisines.length - 2}` : ''}`
+        : 'Select your cuisines';
     }
     return card.descStatic ?? '';
   }
 
   async function handleLogout() {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+    Alert.alert('Logout', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Yes, Logout', style: 'destructive', onPress: async () => {
+      { text: 'Logout', style: 'destructive', onPress: async () => {
         await supabase.auth.signOut();
         router.replace('/');
       }},
     ]);
   }
 
+  const nf = getNextFestival();
+
   return (
     <SafeAreaView style={s.safe}>
+
       {/* Header */}
       <View style={s.header}>
         <View style={s.avatar}>
           <Text style={s.avatarText}>{initials}</Text>
         </View>
-        <Logo size="small" style={{ width: 140, height: 46 }} />
-        <TouchableOpacity onPress={handleLogout} activeOpacity={0.7} style={s.exitBtn}>
+        <Logo size="small" style={{ width: 130, height: 44 }} />
+        <TouchableOpacity onPress={handleLogout} style={s.exitBtn}>
           <Text style={s.exitText}>Exit</Text>
         </TouchableOpacity>
       </View>
@@ -147,74 +175,140 @@ export default function HomeScreen() {
       {/* Date bar */}
       <View style={s.dateBar}>
         <Text style={s.dateText}>{dateTimeStr}</Text>
+        {firstName ? <Text style={s.greetText}>Namaste, {firstName} 🙏</Text> : null}
       </View>
 
-      {/* Card grid */}
-      <ScrollView
-        contentContainerStyle={[s.grid, isWide && s.gridWide]}
-        showsVerticalScrollIndicator={false}
-      >
-        {CARDS.map((card) => (
-          <TouchableOpacity
-            key={card.id}
-            style={[s.card, isWide && s.cardWide, { borderLeftColor: card.leftBorder }]}
-            onPress={() => router.push(card.route as never)}
-            activeOpacity={0.85}
-          >
-            <View style={[s.iconCircle, { backgroundColor: card.iconBg }]}>
-              <Text style={s.iconEmoji}>{card.icon}</Text>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* AI Brain banner */}
+        <TouchableOpacity
+          style={s.aiBanner}
+          onPress={() => router.push('/meal-wizard' as never)}
+          activeOpacity={0.88}
+        >
+          <View style={s.aiBannerLeft}>
+            <Text style={s.aiBannerEmoji}>🧠</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.aiBannerTitle}>Maharaj AI is ready</Text>
+              <Text style={s.aiBannerSub} numberOfLines={2}>
+                {nf && nf.daysAway <= 7
+                  ? `${nf.name} in ${nf.daysAway} day${nf.daysAway === 1 ? '' : 's'} — plan a special menu!`
+                  : 'Tap to generate your personalised weekly meal plan'}
+              </Text>
             </View>
-            <View style={s.cardBody}>
-              <Text style={s.cardTitle}>{card.title}</Text>
-              <Text style={s.cardDesc} numberOfLines={2}>{getDesc(card)}</Text>
-            </View>
-            <Text style={s.chevron}>›</Text>
-          </TouchableOpacity>
-        ))}
-        <View style={{ height: 32 }} />
+          </View>
+          <Text style={s.aiBannerArrow}>›</Text>
+        </TouchableOpacity>
+
+        {/* Cards */}
+        <View style={[s.grid, isWide && s.gridWide]}>
+          {CARDS.map((card) => (
+            <TouchableOpacity
+              key={card.id}
+              style={[
+                s.card,
+                isWide && s.cardWide,
+                { borderLeftColor: card.accent },
+                card.featured && s.cardFeatured,
+              ]}
+              onPress={() => router.push(card.route as never)}
+              activeOpacity={0.85}
+            >
+              <View style={[s.iconCircle, { backgroundColor: card.iconBg }]}>
+                <Text style={s.iconEmoji}>{card.icon}</Text>
+              </View>
+              <View style={s.cardBody}>
+                <Text style={[s.cardTitle, card.featured && { color: card.accent }]}>
+                  {card.title}
+                </Text>
+                <Text style={s.cardDesc} numberOfLines={2}>{getDesc(card)}</Text>
+              </View>
+              <Text style={[s.chevron, { color: card.accent }]}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Footer */}
+        <View style={s.footer}>
+          <View style={s.footerDivider} />
+          <Text style={s.footerText}>Powered by Blue Flute Consulting</Text>
+          <Text style={s.footerSub}>bluefluteconsulting.com</Text>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: white },
+  safe: { flex: 1, backgroundColor: BF.offWhite },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     height: 64, paddingHorizontal: 16,
-    backgroundColor: white, borderBottomWidth: 1, borderBottomColor: border,
+    backgroundColor: BF.white,
+    borderBottomWidth: 1, borderBottomColor: BF.border,
     paddingTop: Platform.OS === 'web' ? 12 : 0,
   },
-  avatar:     { width: 40, height: 40, borderRadius: 20, backgroundColor: navy, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: gold, fontSize: 16, fontWeight: '800' },
+  avatar:     { width: 40, height: 40, borderRadius: 20, backgroundColor: BF.navy, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: BF.mint, fontSize: 16, fontWeight: '800' },
   exitBtn:    { paddingHorizontal: 8, paddingVertical: 6 },
-  exitText:   { fontSize: 14, color: navy, fontWeight: '600' },
+  exitText:   { fontSize: 14, color: BF.navy, fontWeight: '600' },
 
-  dateBar:   { backgroundColor: surface, paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
-  dateText:  { fontSize: 13, color: navy, fontWeight: '600' },
-  greetText: { fontSize: 13, color: textSec },
+  dateBar: {
+    backgroundColor: BF.white, paddingVertical: 10, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: BF.border,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  dateText:  { fontSize: 13, color: BF.navy, fontWeight: '600' },
+  greetText: { fontSize: 13, color: BF.textSec },
 
-  grid:     { paddingHorizontal: 16, paddingTop: 16, maxWidth: 900, width: '100%', alignSelf: 'center' },
-  gridWide: { flexDirection: 'row', flexWrap: 'wrap', gap: 0 },
+  scroll: {
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32,
+    maxWidth: 960, width: '100%', alignSelf: 'center',
+  },
+
+  // AI Banner
+  aiBanner: {
+    backgroundColor: BF.navy, borderRadius: 16, padding: 16, marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    shadowColor: BF.navy, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 12, elevation: 5,
+  },
+  aiBannerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  aiBannerEmoji: { fontSize: 28 },
+  aiBannerTitle: { fontSize: 15, fontWeight: '800', color: BF.white, marginBottom: 3 },
+  aiBannerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.72)', lineHeight: 17 },
+  aiBannerArrow: { fontSize: 28, color: BF.mint, fontWeight: '300', paddingLeft: 8 },
+
+  // Grid
+  grid:     { gap: 10 },
+  gridWide: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 
   card: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: white, borderRadius: 16, marginBottom: 12,
-    padding: 16, borderWidth: 1, borderColor: border,
+    backgroundColor: BF.white, borderRadius: 16,
+    padding: 14, borderWidth: 1, borderColor: BF.border,
     borderLeftWidth: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-    gap: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+    gap: 12,
   },
-  cardWide: { width: '48.5%', marginHorizontal: '0.75%' },
+  cardWide:     { width: 'calc(50% - 5px)' as unknown as number },
+  cardFeatured: { backgroundColor: '#FAFFFE' },
 
-  iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  iconCircle: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   iconEmoji:  { fontSize: 22 },
+  cardBody:   { flex: 1 },
+  cardTitle:  { fontSize: 14, fontWeight: '700', color: BF.navy, marginBottom: 2 },
+  cardDesc:   { fontSize: 12, color: BF.textSec, lineHeight: 17 },
+  chevron:    { fontSize: 22, fontWeight: '300' },
 
-  cardBody:  { flex: 1 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: navy, marginBottom: 3 },
-  cardDesc:  { fontSize: 13, color: textSec, lineHeight: 18 },
-  chevron:   { fontSize: 22, color: '#CBD5E1', fontWeight: '300' },
+  // Footer
+  footer:       { alignItems: 'center', paddingVertical: 24, marginTop: 8 },
+  footerDivider:{ height: 1, backgroundColor: BF.border, width: '100%', marginBottom: 16 },
+  footerText:   { fontSize: 12, color: BF.textSec, fontWeight: '600', letterSpacing: 0.3 },
+  footerSub:    { fontSize: 11, color: BF.mint, marginTop: 3, fontWeight: '500' },
 });
