@@ -106,7 +106,7 @@ export default function MealWizardScreen() {
 
   // Selection
   const [selections,      setSelections]      = useState<Record<number, Record<MealSlotKey, number>>>({});
-  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
+  const [expandedDays, setExpandedDays] = useState({ 0: true });`n  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
 
   // Post-selection
   const [recipeDishes, setRecipeDishes] = useState<string[]>([]);
@@ -712,7 +712,7 @@ export default function MealWizardScreen() {
         )}
 
         {generatedPlan.map((day, dayIdx) => {
-          const [expanded, setExpanded] = useState(dayIdx === 0);
+          const expanded = expandedDays[dayIdx] ?? false; const setExpanded = (fn) => setExpandedDays((prev) => ({ ...prev, [dayIdx]: fn(prev[dayIdx] ?? false) }));
           return (
             <View key={day.date} style={s.dayCard}>
               <TouchableOpacity style={s.dayCardHeader} onPress={() => setExpanded((v) => !v)} activeOpacity={0.8}>
