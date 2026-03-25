@@ -106,9 +106,11 @@ export default function DietaryProfileScreen() {
         health_notes: formToNotes(form) || null,
       };
       if (editId) {
-        await supabase.from('family_members').update(payload).eq('id', editId);
+        const { error: updateErr } = await supabase.from('family_members').update(payload).eq('id', editId);
+        if (updateErr) throw new Error(updateErr.message);
       } else {
-        await supabase.from('family_members').insert(payload);
+        const { error: insertErr } = await supabase.from('family_members').insert(payload);
+        if (insertErr) throw new Error(insertErr.message);
       }
       setModalOpen(false);
       await load();
