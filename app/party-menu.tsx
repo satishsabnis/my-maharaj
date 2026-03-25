@@ -225,3 +225,4 @@ const s = StyleSheet.create({
   shoppingItem: { backgroundColor: lightGray, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   shoppingItemText: { fontSize: 13, color: darkGray },
 });
+             
