@@ -143,7 +143,12 @@ export default function MealWizardScreen() {
   // ── Generation ────────────────────────────────────────────────────────────
 
   const runGeneration = useCallback(async () => {
-    if (!selectedFrom || !selectedTo || !foodPref) return;
+    if (!selectedFrom || !selectedTo) return;
+    if (!foodPref) {
+      setError('Please select a food preference before generating.');
+      setStep('generating-error');
+      return;
+    }
     setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -187,7 +192,7 @@ export default function MealWizardScreen() {
 
       const unwellNames = familyMembers.filter((m) => unwellIds.includes(m.id)).map((m) => m.name);
 
-      setGeneratingProgress(null);
+      setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
         userId: user.id,
         dates:  getDates(selectedFrom, selectedTo),
