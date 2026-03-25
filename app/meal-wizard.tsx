@@ -106,7 +106,8 @@ export default function MealWizardScreen() {
 
   // Selection
   const [selections,      setSelections]      = useState<Record<number, Record<MealSlotKey, number>>>({});
-  const [expandedDays, setExpandedDays] = useState({ 0: true });`n  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
+  const [expandedDays, setExpandedDays] = useState({ 0: true });`n  const [expandedDays, setExpandedDays] = useState({ 0: true });
+  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
 
   // Post-selection
   const [recipeDishes, setRecipeDishes] = useState<string[]>([]);
@@ -1204,3 +1205,4 @@ const s = StyleSheet.create({
   skipLinkText: { fontSize: 13, color: textSec },
 
 });
+
