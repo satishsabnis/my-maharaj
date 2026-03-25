@@ -1,10 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic({
-  apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
-  dangerouslyAllowBrowser: true,
-});
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface MealOption {
@@ -59,15 +52,21 @@ export const emptyHealthFlags = (): HealthFlags => ({
   lactoseIntolerant: false, glutenIntolerant: false,
 });
 
-// ─── Core API call ────────────────────────────────────────────────────────────
+// ─── Core API call — uses /api/claude proxy (works on Vercel, no browser key needed) ──
 
 async function askClaude(prompt: string): Promise<string> {
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
+  const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+  const res = await fetch(`${base}/api/claude`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    }),
   });
-  const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
+  const data = await res.json();
+  const text = data?.content?.[0]?.text ?? '{}';
   return text.replace(/```json|```/g, '').trim();
 }
 

@@ -4,16 +4,26 @@ import {
   ScrollView, ActivityIndicator, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import Anthropic from '@anthropic-ai/sdk';
 import { navy, gold, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
 const OCCASIONS = ['Birthday', 'Anniversary', 'Festival', 'Get-together', 'Dinner Party', 'Baby Shower', 'Wedding', 'Office Party'];
 const FOOD_TYPES = ['Vegetarian', 'Non-Vegetarian', 'Mixed'];
 
-const anthropic = new Anthropic({
-  apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
-  dangerouslyAllowBrowser: true,
-});
+async function callClaude(prompt: string): Promise<string> {
+  const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+  const res = await fetch(`${base}/api/claude`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  const text = data?.content?.[0]?.text ?? '';
+  return text.replace(/```json|```/g, '').trim();
+}
 
 interface PartyMenu {
   starters: { name: string; description: string }[];
@@ -62,14 +72,8 @@ Respond with ONLY valid JSON:
 Include 3-5 items per section.`;
 
     try {
-      const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const text = message.content[0].type === 'text' ? message.content[0].text : '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      setMenu(JSON.parse(clean) as PartyMenu);
+      const text = await callClaude(prompt);
+      setMenu(JSON.parse(text) as PartyMenu);
       setStep('result');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate menu.');
