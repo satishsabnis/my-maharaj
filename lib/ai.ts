@@ -296,4 +296,40 @@ export async function generateMealPlan(
   });
 
   return { days, grocery_list };
+               }leted = 0;
+  const dayResults = await Promise.all(
+    dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, i }) => {
+      const [breakfast, lunch, dinner] = await Promise.all([
+        generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('lunch',     date, dayName, cuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('dinner',    date, dayName, cuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i),
+      ]);
+      completed++;
+      onProgress?.(completed, total);
+      return { date, day: dayName, breakfast, lunch, dinner };
+    })
+  );
+
+  const days: MealPlanDay[] = dayResults;
+  const allIngredients: string[] = [];
+  days.forEach(({ breakfast, lunch, dinner }) => {
+    [breakfast, lunch, dinner].forEach((slot) =>
+      slot.options.forEach((opt) =>
+        opt.ingredients.forEach((ing) => allIngredients.push(ing))
+      )
+    );
+  });
+
+  // Build grocery list
+  const seen = new Set<string>();
+  const grocery_list: GroceryItem[] = [];
+  allIngredients.forEach((ing) => {
+    const key = ing.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      grocery_list.push({ name: ing, qty: '', category: 'general' });
+    }
+  });
+
+  return { days, grocery_list };
 }
