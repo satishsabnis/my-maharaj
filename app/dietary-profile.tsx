@@ -12,19 +12,16 @@ interface Member {
   id: string;
   name: string;
   age: number;
-  relationship: string | null;
   health_notes: string | null;
 }
 
 interface MemberForm {
   name: string;
   age: string;
-  relationship: string;
   healthConditions: string[];
   notes: string;
 }
 
-const RELS         = ['Self', 'Spouse', 'Child', 'Parent', 'Other'];
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
 function formToNotes(form: MemberForm): string {
@@ -32,7 +29,7 @@ function formToNotes(form: MemberForm): string {
 }
 
 function emptyForm(): MemberForm {
-  return { name: '', age: '', relationship: 'Self', healthConditions: [], notes: '' };
+  return { name: '', age: '', healthConditions: [], notes: '' };
 }
 
 function memberToForm(m: Member): MemberForm {
@@ -41,7 +38,6 @@ function memberToForm(m: Member): MemberForm {
   const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
   return {
     name: m.name, age: String(m.age || ''),
-    relationship: m.relationship ?? 'Self',
     healthConditions: conds, notes: others,
   };
 }
@@ -61,7 +57,7 @@ export default function DietaryProfileScreen() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data } = await supabase.from('family_members').select('id, name, age, relationship, health_notes').eq('user_id', user.id);
+    const { data } = await supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id);
     setMembers((data as Member[]) ?? []);
     setLoading(false);
   }, []);
@@ -102,7 +98,6 @@ export default function DietaryProfileScreen() {
         user_id: user.id,
         name: form.name.trim(),
         age: parseInt(form.age, 10) || 0,
-        relationship: form.relationship,
         health_notes: formToNotes(form) || null,
       };
       if (editId) {
@@ -179,8 +174,6 @@ export default function DietaryProfileScreen() {
                     <Text style={s.memberName}>{m.name}</Text>
                     <View style={s.metaRow}>
                       {m.age > 0 && <Text style={s.metaText}>{m.age} yrs</Text>}
-                      {m.relationship && <Text style={s.metaDot}>·</Text>}
-                      {m.relationship && <Text style={s.metaText}>{m.relationship}</Text>}
                     </View>
                   </View>
                   <TouchableOpacity onPress={() => openEdit(m)} style={s.editBtn} activeOpacity={0.7}>
@@ -233,13 +226,6 @@ export default function DietaryProfileScreen() {
                 <View style={{ flex: 2, marginRight: 10 }}>
                   <Input label="Age" value={form.age} onChangeText={(v) => setForm((prev) => ({ ...prev, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
-              </View>
-
-              <Text style={s.sectionLabel}>RELATIONSHIP</Text>
-              <View style={s.pillRow}>
-                {RELS.map((r) => (
-                  <Pill key={r} label={r} active={form.relationship === r} onPress={() => setForm((prev) => ({ ...prev, relationship: r }))} />
-                ))}
               </View>
 
               <Text style={s.sectionLabel}>HEALTH CONDITIONS</Text>

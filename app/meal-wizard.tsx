@@ -106,7 +106,7 @@ export default function MealWizardScreen() {
 
   // Selection
   const [selections,      setSelections]      = useState<Record<number, Record<MealSlotKey, number>>>({});
-  const [expandedDays, setExpandedDays] = useState({ 0: true });`n  const [expandedDays, setExpandedDays] = useState({ 0: true });
+  const [expandedDays,    setExpandedDays]    = useState<Record<number, boolean>>({ 0: true });
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
 
   // Post-selection
