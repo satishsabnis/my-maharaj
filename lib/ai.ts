@@ -273,7 +273,7 @@ export async function generateMealPlan(
 
   let completed = 0;
   const dayResults = await Promise.all(
-    dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, i }) => {
+    dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
       const [breakfast, lunch, dinner] = await Promise.all([
         generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext),
         generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext),
