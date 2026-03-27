@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import ScreenWrapper from '../components/ScreenWrapper';
 import { supabase } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import Button from '../components/Button';
@@ -10,7 +11,7 @@ import { navy, gold, peacock, textSec, errorRed, white, border, surface, textCol
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
-  | 'period' | 'food-pref' | 'meal-prefs' | 'unwell' | 'nutrition'
+  | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'nutrition'
   | 'generating' | 'generating-error' | 'selection'
   | 'cook-or-order' | 'recipes' | 'grocery' | 'feedback';
 
@@ -63,7 +64,7 @@ const CAT_ORDER: GroceryCat[] = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pa
 
 // ─── Wizard progress ──────────────────────────────────────────────────────────
 
-const USER_STEPS: WizardStep[] = ['period','food-pref','meal-prefs','unwell','nutrition'];
+const USER_STEPS: WizardStep[] = ['period','food-pref','guest-cuisine','meal-prefs','unwell','nutrition'];
 function stepNum(step: WizardStep): number { return USER_STEPS.indexOf(step) + 1; }
 function totalUserSteps(): number { return USER_STEPS.length; }
 
@@ -85,6 +86,12 @@ export default function MealWizardScreen() {
   const [vegType,  setVegType]    = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
+
+  // Guest cuisine
+  const [hasGuests,        setHasGuests]        = useState(false);
+  const [guestCuisine,     setGuestCuisine]     = useState('');
+  const [guestDays,        setGuestDays]        = useState(2);
+  const [savedCuisines,    setSavedCuisines]    = useState<string[]>([]);
 
   // Step 3
   const [bfPrefs, setBfPrefs]   = useState<string[]>([]);
@@ -121,8 +128,12 @@ export default function MealWizardScreen() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('family_members').select('id, name, age').eq('user_id', user.id);
-      setFamilyMembers((data as DBMember[]) ?? []);
+      const [{ data: members }, { data: cuisines }] = await Promise.all([
+        supabase.from('family_members').select('id, name, age').eq('user_id', user.id),
+        supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
+      ]);
+      setFamilyMembers((members as DBMember[]) ?? []);
+      setSavedCuisines((cuisines ?? []).map((c: any) => c.cuisine_name));
     }
     void load();
   }, []);
@@ -179,11 +190,14 @@ export default function MealWizardScreen() {
         if (notes.includes('gluten'))   hf.glutenIntolerant = true;
       });
 
-      const { data: cuisineData } = await supabase
-        .from('cuisine_preferences').select('cuisine_name')
-        .eq('user_id', user.id).eq('is_excluded', false);
-      const cuisines = (cuisineData ?? []).map((r: { cuisine_name: string }) => r.cuisine_name);
-      const cuisine  = cuisines.length > 0 ? cuisines[Math.floor(Math.random() * cuisines.length)] : 'Konkani';
+      // Build cuisine rotation - guest cuisine gets priority for specified days
+      const baseCuisines = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
+      const dates = getDates(selectedFrom, selectedTo);
+      const cuisinePerDay = dates.map((_, i) => {
+        if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
+        return baseCuisines[i % baseCuisines.length];
+      });
+      const cuisine = cuisinePerDay[0]; // used for single-day; multi-day uses per-day logic
 
       const since = toYMD(addDays(new Date(), -14));
       const { data: historyData } = await supabase
@@ -207,6 +221,7 @@ export default function MealWizardScreen() {
         language:  profile?.app_language   ?? 'en',
         cuisine,
         dishHistory,
+        cuisinePerDay: cuisinePerDay,
         foodPrefs: {
           type:          foodPref,
           vegType:       vegType ?? undefined,
@@ -372,7 +387,8 @@ export default function MealWizardScreen() {
     setError('');
     const backMap: Partial<Record<WizardStep, WizardStep>> = {
       'food-pref': 'period',
-      'meal-prefs': 'food-pref',
+      'guest-cuisine': 'food-pref',
+      'meal-prefs': 'guest-cuisine',
       'unwell': 'meal-prefs',
       'nutrition': 'unwell',
       'selection': 'nutrition',
@@ -816,6 +832,85 @@ export default function MealWizardScreen() {
     );
   }
 
+  function renderGuestCuisine() {
+    const ALL_CUISINES = ['Andhra','Assamese','Bengali','Bihari','Chettinad','Chinese','Continental','French','Goan','Greek','Gujarati','Hyderabadi','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Mediterranean','Mexican','Moroccan','Odia','Punjabi','Rajasthani','South Indian','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
+    return (
+      <View>
+        <Text style={s.stepTitle}>Any guests joining?</Text>
+        <Text style={s.stepSub}>Add a special cuisine for your guests this time</Text>
+
+        <View style={s.foodCards}>
+          <TouchableOpacity
+            style={[s.foodCard, !hasGuests && s.foodCardActive]}
+            onPress={() => { setHasGuests(false); setGuestCuisine(''); }} activeOpacity={0.8}>
+            <Text style={s.foodCardIcon}>👨‍👩‍👧</Text>
+            <Text style={[s.foodCardLabel, !hasGuests && s.foodCardLabelActive]}>Just my family</Text>
+            <Text style={[s.foodCardSub, !hasGuests && {color:'rgba(255,255,255,0.8)'}]}>Use saved cuisines</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.foodCard, hasGuests && s.foodCardActive]}
+            onPress={() => setHasGuests(true)} activeOpacity={0.8}>
+            <Text style={s.foodCardIcon}>🎊</Text>
+            <Text style={[s.foodCardLabel, hasGuests && s.foodCardLabelActive]}>We have guests</Text>
+            <Text style={[s.foodCardSub, hasGuests && {color:'rgba(255,255,255,0.8)'}]}>Add a special cuisine</Text>
+          </TouchableOpacity>
+        </View>
+
+        {hasGuests && (
+          <View>
+            <Text style={s.sectionLabel}>GUEST CUISINE</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:12}}>
+              <View style={{flexDirection:'row', gap:8, paddingVertical:4}}>
+                {ALL_CUISINES.map((c) => (
+                  <TouchableOpacity key={c}
+                    style={[s.chipSm, guestCuisine === c && s.chipSmActive]}
+                    onPress={() => setGuestCuisine(c)}>
+                    <Text style={[s.chipSmTxt, guestCuisine === c && s.chipSmTxtActive]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text style={s.sectionLabel}>FOR HOW MANY DAYS?</Text>
+            <View style={{flexDirection:'row', gap:8, flexWrap:'wrap', marginBottom:8}}>
+              {[1,2,3,4,5,7].map((d) => (
+                <TouchableOpacity key={d}
+                  style={[s.chipSm, guestDays === d && s.chipSmActive]}
+                  onPress={() => setGuestDays(d)}>
+                  <Text style={[s.chipSmTxt, guestDays === d && s.chipSmTxtActive]}>{d} day{d > 1 ? 's' : ''}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {guestCuisine ? (
+              <View style={{backgroundColor:'rgba(201,162,39,0.1)', borderRadius:12, padding:12, borderWidth:1, borderColor:'rgba(201,162,39,0.3)'}}>
+                <Text style={{fontSize:13, color:'#78350F', fontWeight:'600'}}>
+                  {guestCuisine} cuisine for first {guestDays} day{guestDays > 1 ? 's' : ''}, then your saved cuisines
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {savedCuisines.length > 0 && (
+          <View style={{marginTop:16, backgroundColor:'rgba(27,58,92,0.06)', borderRadius:12, padding:12}}>
+            <Text style={{fontSize:12, color:'#1B3A5C', fontWeight:'600', marginBottom:4}}>Your saved cuisines:</Text>
+            <Text style={{fontSize:12, color:'#5A7A8A'}}>{savedCuisines.join(', ')}</Text>
+          </View>
+        )}
+
+        <View style={s.btnRow}>
+          <View style={{ flex:1, marginRight:12 }}>
+            <Button title="← Back" onPress={goBack} variant="outline" />
+          </View>
+          <View style={{ flex:2 }}>
+            <Button title="Continue →" onPress={() => advance('meal-prefs')} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   function renderCookOrOrder() {
     return (
       <View style={{ alignItems: 'center', paddingVertical: 24 }}>
@@ -1046,6 +1141,7 @@ export default function MealWizardScreen() {
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
+    'guest-cuisine':    renderGuestCuisine,
     'cook-or-order':    renderCookOrOrder,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
@@ -1057,6 +1153,7 @@ export default function MealWizardScreen() {
   const isFullScreen = ['generating','generating-error'].includes(step);
 
   return (
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       {/* Header */}
       {!isFullScreen && (
@@ -1065,10 +1162,15 @@ export default function MealWizardScreen() {
             <Text style={s.headerBackText}>←</Text>
           </TouchableOpacity>
           <Text style={s.headerTitle}>Meal Plan Wizard</Text>
-          {isUserStep && (
-            <Text style={s.headerStep}>{currentNum} of {totalUserSteps()}</Text>
-          )}
-          {!isUserStep && <View style={{ width: 50 }} />}
+          <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+            {isUserStep && (
+              <Text style={s.headerStep}>{currentNum} of {totalUserSteps()}</Text>
+            )}
+            <Image source={require('../assets/blueflute-logo.png')} style={{width:64,height:24}} resizeMode="contain" />
+            <TouchableOpacity onPress={() => router.push('/home' as never)} style={{padding:4}}>
+              <Text style={{fontSize:18}}>🏠</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -1085,6 +1187,7 @@ export default function MealWizardScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
@@ -1100,7 +1203,7 @@ const chip = StyleSheet.create({
 // ─── Main styles ─────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: white },
+  safe:   { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: Platform.OS === 'web' ? 16 : 10, paddingBottom: 14,
@@ -1125,6 +1228,12 @@ const s = StyleSheet.create({
 
   pillRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   btnRow:   { flexDirection: 'row', marginTop: 28 },
+
+  chipSm:        { paddingHorizontal:12, paddingVertical:7, borderRadius:16, borderWidth:1.5, borderColor:'#D4EDE5', backgroundColor:'rgba(255,255,255,0.9)' },
+  chipSmActive:  { backgroundColor:'#1B3A5C', borderColor:'#1B3A5C' },
+  chipSmTxt:     { fontSize:12, color:'#1B3A5C', fontWeight:'500' },
+  chipSmTxtActive:{ color:'#FFFFFF', fontWeight:'600' },
+  foodCardSub:   { fontSize:11, color:'#5A7A8A', marginTop:2 },
 
   cookOrderCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
