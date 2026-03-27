@@ -23,9 +23,6 @@ interface MemberForm {
 }
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
-// ─── Cuisines ─────────────────────────────────────────────────────────────────
-const INDIAN_CUISINES = ['Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi','Kashmiri','Konkani','Maharashtrian','Malabar','Manipuri','Marwari','Meghalayan','Naga','Odia','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','Udupi'].sort();
-const INTERNATIONAL_CUISINES = ['American','Arabian','Chinese','Continental','Ethiopian','French','Greek','Indonesian','Italian','Japanese','Korean','Lebanese','Mediterranean','Mexican','Moroccan','Persian','Spanish','Thai','Turkish','Vietnamese'].sort();
 
 // â”€â”€â”€ Cuisines (alphabetical) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -424,4 +421,5 @@ const s = StyleSheet.create({
 
   formError: { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
 });
+
 
