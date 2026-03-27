@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -6,7 +6,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import { navy, gold, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Member {
   id: string;
@@ -23,20 +23,6 @@ interface MemberForm {
 }
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
-
-// â”€â”€â”€ Cuisines (alphabetical) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-const INDIAN_CUISINES = [
-  'Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi',
-  'Kashmiri','Konkani','Maharashtrian','Malabar','Manipuri','Marwari','Meghalayan',
-  'Naga','Odia','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','Udupi',
-].sort();
-
-const INTERNATIONAL_CUISINES = [
-  'American','Arabian','Chinese','Continental','Ethiopian','French','Greek',
-  'Indonesian','Italian','Japanese','Korean','Lebanese','Mediterranean',
-  'Mexican','Moroccan','Persian','Spanish','Thai','Turkish','Vietnamese',
-].sort();
 
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
@@ -56,7 +42,7 @@ function memberToForm(m: Member): MemberForm {
   };
 }
 
-// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DietaryProfileScreen() {
   const [members, setMembers]       = useState<Member[]>([]);
@@ -65,20 +51,14 @@ export default function DietaryProfileScreen() {
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState<string | null>(null);
   const [form, setForm]             = useState<MemberForm>(emptyForm());
-  const [formError, setFormError]   = useState('');  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [cuisineSaving, setCuisineSaving] = useState(false);
-
+  const [formError, setFormError]   = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const [{ data: membersData }, { data: cuisineData }] = await Promise.all([
-      supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id),
-      supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
-    ]);
-    setMembers((membersData as Member[]) ?? []);
-    setSelectedCuisines((cuisineData ?? []).map((c: any) => c.cuisine_name));
+    const { data } = await supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id);
+    setMembers((data as Member[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -105,31 +85,6 @@ export default function DietaryProfileScreen() {
         ? prev.healthConditions.filter((c) => c !== cond)
         : [...prev.healthConditions, cond],
     }));
-  }
-
-  function toggleCuisine(cuisine: string) {
-    setSelectedCuisines((prev) =>
-      prev.includes(cuisine) ? prev.filter((c) => c !== cuisine) : [...prev, cuisine]
-    );
-  }
-
-  async function saveCuisines() {
-    setCuisineSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      // Delete existing and re-insert selected
-      await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
-      if (selectedCuisines.length > 0) {
-        await supabase.from('cuisine_preferences').insert(
-          selectedCuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
-        );
-      }
-    } catch (e) {
-      console.error('Cuisine save error:', e);
-    } finally {
-      setCuisineSaving(false);
-    }
   }
 
   async function saveMember() {
@@ -174,7 +129,7 @@ export default function DietaryProfileScreen() {
     );
   }
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
     Diabetic:    { bg: '#FEF2F2', fg: '#DC2626' },
@@ -193,7 +148,7 @@ export default function DietaryProfileScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>â†</Text>
+          <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Dietary Profile</Text>
         <View style={{ width: 40 }} />
@@ -204,7 +159,7 @@ export default function DietaryProfileScreen() {
           <Text style={s.loadingText}>Loading...</Text>
         ) : members.length === 0 ? (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦</Text>
+            <Text style={s.emptyIcon}>👨‍👩‍👧‍👦</Text>
             <Text style={s.emptyTitle}>No family members yet</Text>
             <Text style={s.emptySub}>Add your family members to personalise meal plans</Text>
           </View>
@@ -251,51 +206,6 @@ export default function DietaryProfileScreen() {
         <View style={s.addWrap}>
           <Button title="+ Add Family Member" onPress={openAdd} />
         </View>
-
-        {/* â”€â”€ Cuisine Preferences â”€â”€ */}
-        <View style={s.cuisineSection}>
-          <Text style={s.cuisineSectionTitle}>ðŸ½ï¸ Cuisine Preferences</Text>
-          <Text style={s.cuisineSectionSub}>Select cuisines you enjoy â€” these guide your meal plans</Text>
-
-          <Text style={s.cuisineGroupLabel}>INDIAN CUISINES</Text>
-          <View style={s.pillRow}>
-            {INDIAN_CUISINES.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[ps.pill, selectedCuisines.includes(c) && ps.pillActive]}
-                onPress={() => toggleCuisine(c)}
-                activeOpacity={0.75}
-              >
-                <Text style={[ps.pillText, selectedCuisines.includes(c) && ps.pillTextActive]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={[s.cuisineGroupLabel, { marginTop: 16 }]}>INTERNATIONAL CUISINES</Text>
-          <View style={s.pillRow}>
-            {INTERNATIONAL_CUISINES.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[ps.pill, selectedCuisines.includes(c) && ps.pillActive]}
-                onPress={() => toggleCuisine(c)}
-                activeOpacity={0.75}
-              >
-                <Text style={[ps.pillText, selectedCuisines.includes(c) && ps.pillTextActive]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={{ marginTop: 16 }}>
-            <Button
-              title={cuisineSaving ? 'Saving...' : 'âœ“ Save Cuisine Preferences'}
-              onPress={() => void saveCuisines()}
-              loading={cuisineSaving}
-            />
-          </View>
-          {selectedCuisines.length > 0 && (
-            <Text style={s.cuisineCount}>{selectedCuisines.length} cuisine{selectedCuisines.length > 1 ? 's' : ''} selected</Text>
-          )}
-        </View>
       </ScrollView>
 
       {/* Modal */}
@@ -305,7 +215,7 @@ export default function DietaryProfileScreen() {
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{editId ? 'Edit Member' : 'Add Member'}</Text>
               <TouchableOpacity onPress={() => setModalOpen(false)} style={s.modalClose}>
-                <Text style={s.modalCloseText}>âœ•</Text>
+                <Text style={s.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -329,7 +239,7 @@ export default function DietaryProfileScreen() {
                 placeholder="e.g. Low salt, no fried food, doctor says..." multiline numberOfLines={3} />
 
               <TouchableOpacity style={s.lipidBtn} activeOpacity={0.8}>
-                <Text style={s.lipidBtnText}>ðŸ“„ Lipid Report â€” OPTIONAL</Text>
+                <Text style={s.lipidBtnText}>📄 Lipid Report — OPTIONAL</Text>
               </TouchableOpacity>
 
               {formError ? <Text style={s.formError}>{formError}</Text> : null}
@@ -346,7 +256,7 @@ export default function DietaryProfileScreen() {
   );
 }
 
-// â”€â”€â”€ Pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Pill ─────────────────────────────────────────────────────────────────────
 
 const ps = StyleSheet.create({
   pill:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: white },
@@ -355,7 +265,7 @@ const ps = StyleSheet.create({
   pillTextActive:{ color: white, fontWeight: '600' },
 });
 
-// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: white },
@@ -368,7 +278,7 @@ const s = StyleSheet.create({
   backArrow:   { fontSize: 22, color: navy },
   headerTitle: { fontSize: 18, fontWeight: '700', color: navy },
 
-  scroll:      { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48, maxWidth: 700, width: '100%', alignSelf: 'center' },
+  scroll:      { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
   loadingText: { textAlign: 'center', color: textSec, marginTop: 40 },
 
   emptyState: { alignItems: 'center', paddingVertical: 60 },
@@ -394,12 +304,6 @@ const s = StyleSheet.create({
 
   addWrap: { marginTop: 8, marginBottom: 16 },
 
-  cuisineSection:      { backgroundColor: white, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 32 },
-  cuisineSectionTitle: { fontSize: 16, fontWeight: '700', color: navy, marginBottom: 4 },
-  cuisineSectionSub:   { fontSize: 13, color: textSec, marginBottom: 16, lineHeight: 18 },
-  cuisineGroupLabel:   { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
-  cuisineCount:        { fontSize: 12, color: successGreen, fontWeight: '600', textAlign: 'center', marginTop: 10 },
-
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalSheet:   { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
@@ -418,6 +322,3 @@ const s = StyleSheet.create({
 
   formError: { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
 });
-
-
-
