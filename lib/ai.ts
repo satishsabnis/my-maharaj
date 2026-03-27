@@ -205,6 +205,7 @@ export async function generateMealPlan(
     tiffinRestrictions?: string;
     includeDessert?: boolean;
     vegDays?: string[];
+    cuisinePerDay?: string[];
     breakfastPrefs?: string[];
     lunchPrefs?: string[];
     dinnerPrefs?: string[];
@@ -254,6 +255,7 @@ export async function generateMealPlan(
 
   // Fire ALL meal API calls in parallel across all days (21 calls at once for 7 days)
   // instead of sequentially day-by-day — reduces wait from ~60s to ~10s
+  const cuisinePerDay = params.cuisinePerDay;
   const dayMeta = params.dates.map((date, i) => {
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
@@ -261,16 +263,17 @@ export async function generateMealPlan(
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
       ? `${foodPref}. Mix veg and non-veg naturally across the week.`
       : foodPref;
-    return { date, dayName, foodPref, lunchDinnerPref, i };
+    const dayCuisine = cuisinePerDay && cuisinePerDay[i] ? cuisinePerDay[i] : cuisine;
+    return { date, dayName, foodPref, lunchDinnerPref, dayCuisine, i };
   });
 
   let completed = 0;
   const dayResults = await Promise.all(
     dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, i }) => {
       const [breakfast, lunch, dinner] = await Promise.all([
-        generateOneMeal('breakfast', date, dayName, cuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i),
-        generateOneMeal('lunch',     date, dayName, cuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i),
-        generateOneMeal('dinner',    date, dayName, cuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i),
       ]);
       completed++;
       onProgress?.(completed, total);
