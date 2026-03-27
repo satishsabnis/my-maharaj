@@ -110,6 +110,7 @@ function fallbackSlot(mealType: string, idx: number): MealSlot {
     options: [
       { name: pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
       { name: pick[1] ?? pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
+      { name: pick[2] ?? pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
     ],
   };
 }
@@ -142,7 +143,7 @@ async function generateOneMeal(
 
   const prompt = `You are Maharaj, a professional Indian chef in Dubai specialising in authentic regional Indian cooking.
 
-Generate exactly 2 real, named ${mealType} options for ${day} ${date}.
+Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr}${nonVegCritical}
@@ -150,12 +151,15 @@ ${prefsNote} ${unwellStr} ${nutritionStr}${nonVegCritical}
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
+- ALL 3 options must be COMPLETELY DIFFERENT dishes from each other
+- The ${mealType} options must be DIFFERENT from what would be served at other meals today
+- For fasting: breakfast dishes (sabudana khichdi, fruit bowl, rajgira paratha) must differ from lunch (sama rice, vrat ki sabzi, kuttu paratha) and dinner (sabudana vada, makhana kheer, singhare ki puri)
 - Include 5-8 real ingredients with quantities (e.g. "Flattened rice 200g", "Onion 1 medium")
 - Include 4-6 clear cooking steps
 - Tags: vegetarian/non-vegetarian, plus relevant health tags
 
 Reply ONLY with this JSON (no other text, no markdown):
-{"options":[{"name":"Real Dish Name","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
+{"options":[{"name":"Real Dish Name 1","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
 
   try {
     const text = await askClaude(prompt);
