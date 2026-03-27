@@ -96,7 +96,7 @@ Include 3-5 items per section.`;
   }
 
   return (
-    <ScreenWrapper title="Outdoor Catering" onBack={() => step === "result" ? setStep("form") : router.back()}>
+    <ScreenWrapper title="Outdoor Catering" onBack={() => step === 'result' ? setStep('form') : router.back()}>
 
       {step === 'form' ? (
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -154,6 +154,9 @@ Include 3-5 items per section.`;
             <TouchableOpacity style={[s.generateBtn, loading && { opacity: 0.6 }]} onPress={generateMenu} disabled={loading} activeOpacity={0.85}>
               {loading ? <ActivityIndicator color={white} /> : <Text style={s.generateBtnText}>🏕️ Generate Outdoor Menu</Text>}
             </TouchableOpacity>
+            <TouchableOpacity style={{alignItems:'center', paddingVertical:12}} onPress={() => router.push('/home' as never)}>
+              <Text style={{fontSize:13, color:'#5A7A8A'}}>✕ Cancel</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
@@ -164,6 +167,14 @@ Include 3-5 items per section.`;
               <Text style={s.resultTitle}>{eventType} Menu</Text>
               <Text style={s.resultMeta}>{guests} guests · {foodType} · {setup} · AED {budget}/head</Text>
               <Text style={s.resultMeta}>☀️ {weather}</Text>
+            </View>
+            <View style={{flexDirection:'row', gap:10, marginBottom:12}}>
+              <TouchableOpacity style={{flex:1, backgroundColor:'#1A6B3C', borderRadius:12, paddingVertical:14, alignItems:'center', justifyContent:'center'}} onPress={generateMenu} disabled={loading}>
+                {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={{color:white, fontWeight:'700', fontSize:14}}>🔄 Regenerate</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={{flex:1, borderWidth:1.5, borderColor:'rgba(26,107,60,0.3)', borderRadius:12, paddingVertical:14, alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+                <Text style={{color:'#1A6B3C', fontWeight:'700', fontSize:14}}>✕ Done</Text>
+              </TouchableOpacity>
             </View>
             {menu && (
               <>
@@ -204,7 +215,7 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 const s = StyleSheet.create({
-  safe:            { flex: 1, backgroundColor: '#F4F6FB' },
+  safe:            { flex: 1, backgroundColor: 'transparent' },
   header:          { backgroundColor: HEADER_COLOR, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 14, paddingBottom: 16 },
   backText:        { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '500', width: 80 },
   headerTitle:     { fontSize: 17, fontWeight: '800', color: white },
@@ -226,7 +237,7 @@ const s = StyleSheet.create({
   resultHeader:    { backgroundColor: HEADER_COLOR, borderRadius: 14, padding: 20, marginBottom: 16 },
   resultTitle:     { fontSize: 22, fontWeight: '800', color: white },
   resultMeta:      { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
-  menuSection:     { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 14, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
+  menuSection:     { backgroundColor: white, borderRadius: 14, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   menuSectionTitle:{ fontSize: 15, fontWeight: '700', color: navy, marginBottom: 12 },
   menuItem:        { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   menuItemName:    { fontSize: 14, fontWeight: '600', color: '#1F2937' },
