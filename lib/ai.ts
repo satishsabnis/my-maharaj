@@ -278,22 +278,30 @@ export async function generateMealPlan(
   });
 
   let completed = 0;
-  const dayResults = await Promise.all(
-    dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
-      // Pass all known dish history for no-repeat across week
-      const weekHistory = [...(params.dishHistory ?? [])].slice(0, 30);
-      const [breakfast, lunch, dinner] = await Promise.all([
-        generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
-        generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
-        generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
-      ]);
-      completed++;
-      onProgress?.(completed, total);
-      return { date, day: dayName, breakfast, lunch, dinner };
-    })
-  );
+  const weekHistory = [...(params.dishHistory ?? [])].slice(0, 30);
+  
+  // Process in batches of 2 days to prevent mobile browser connection limits
+  const BATCH_SIZE = 2;
+  const dayResults: MealPlanDay[] = [];
+  
+  for (let batchStart = 0; batchStart < dayMeta.length; batchStart += BATCH_SIZE) {
+    const batch = dayMeta.slice(batchStart, batchStart + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
+        const [breakfast, lunch, dinner] = await Promise.all([
+          generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
+          generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
+          generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
+        ]);
+        completed++;
+        onProgress?.(completed, total);
+        return { date, day: dayName, breakfast, lunch, dinner };
+      })
+    );
+    dayResults.push(...batchResults);
+  }
 
-  const days: MealPlanDay[] = dayResults;
+  const days: MealPlanDay[] = dayResults;  // batched results
   const allIngredients: string[] = [];
   days.forEach(({ breakfast, lunch, dinner }) => {
     [breakfast, lunch, dinner].forEach((slot) =>
