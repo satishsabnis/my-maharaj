@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+﻿import React, { useCallback, useEffect, useState } from 'react';
+import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { navy, gold, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { navy, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,19 @@ interface MemberForm {
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
+const INDIAN_CUISINES = [
+  'Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati',
+  'Hyderabadi','Kashmiri','Konkani','Maharashtrian','Malabar','Manipuri',
+  'Marwari','Meghalayan','Naga','Odia','Punjabi','Rajasthani','Sindhi',
+  'South Indian','Tamil','Telugu','Udupi',
+].sort();
+
+const INTERNATIONAL_CUISINES = [
+  'American','Arabian','Chinese','Continental','Ethiopian','French','Greek',
+  'Indonesian','Italian','Japanese','Korean','Lebanese','Mediterranean',
+  'Mexican','Moroccan','Persian','Spanish','Thai','Turkish','Vietnamese',
+].sort();
+
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
 }
@@ -33,50 +47,42 @@ function emptyForm(): MemberForm {
 }
 
 function memberToForm(m: Member): MemberForm {
-  const notes  = m.health_notes ?? '';
-  const conds  = HEALTH_PILLS.filter((p) => notes.toLowerCase().includes(p.toLowerCase()));
+  const notes = m.health_notes ?? '';
+  const conds = HEALTH_PILLS.filter((p) => notes.toLowerCase().includes(p.toLowerCase()));
   const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
-  return {
-    name: m.name, age: String(m.age || ''),
-    healthConditions: conds, notes: others,
-  };
+  return { name: m.name, age: String(m.age || ''), healthConditions: conds, notes: others };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DietaryProfileScreen() {
-  const [members, setMembers]       = useState<Member[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
-  const [modalOpen, setModalOpen]   = useState(false);
-  const [editId, setEditId]         = useState<string | null>(null);
-  const [form, setForm]             = useState<MemberForm>(emptyForm());
-  const [formError, setFormError]   = useState('');
+  const [members,          setMembers]          = useState<Member[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [saving,           setSaving]           = useState(false);
+  const [modalOpen,        setModalOpen]        = useState(false);
+  const [editId,           setEditId]           = useState<string | null>(null);
+  const [form,             setForm]             = useState<MemberForm>(emptyForm());
+  const [formError,        setFormError]        = useState('');
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [cuisineSaving,    setCuisineSaving]    = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data } = await supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id);
-    setMembers((data as Member[]) ?? []);
+    const [{ data: membersData }, { data: cuisineData }] = await Promise.all([
+      supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id),
+      supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
+    ]);
+    setMembers((membersData as Member[]) ?? []);
+    setSelectedCuisines((cuisineData ?? []).map((c: any) => c.cuisine_name));
     setLoading(false);
   }, []);
 
   useEffect(() => { void load(); }, []);
 
-  function openAdd() {
-    setEditId(null);
-    setForm(emptyForm());
-    setFormError('');
-    setModalOpen(true);
-  }
-
-  function openEdit(m: Member) {
-    setEditId(m.id);
-    setForm(memberToForm(m));
-    setFormError('');
-    setModalOpen(true);
-  }
+  function openAdd() { setEditId(null); setForm(emptyForm()); setFormError(''); setModalOpen(true); }
+  function openEdit(m: Member) { setEditId(m.id); setForm(memberToForm(m)); setFormError(''); setModalOpen(true); }
 
   function toggleHealth(cond: string) {
     setForm((prev) => ({
@@ -87,33 +93,44 @@ export default function DietaryProfileScreen() {
     }));
   }
 
+  function toggleCuisine(cuisine: string) {
+    setSelectedCuisines((prev) =>
+      prev.includes(cuisine) ? prev.filter((c) => c !== cuisine) : [...prev, cuisine]
+    );
+  }
+
   async function saveMember() {
     if (!form.name.trim()) { setFormError('Name is required'); return; }
-    setSaving(true);
-    setFormError('');
+    setSaving(true); setFormError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      const payload = {
-        user_id: user.id,
-        name: form.name.trim(),
-        age: parseInt(form.age, 10) || 0,
-        health_notes: formToNotes(form) || null,
-      };
+      const payload = { user_id: user.id, name: form.name.trim(), age: parseInt(form.age, 10) || 0, health_notes: formToNotes(form) || null };
       if (editId) {
-        const { error: updateErr } = await supabase.from('family_members').update(payload).eq('id', editId);
-        if (updateErr) throw new Error(updateErr.message);
+        const { error: e } = await supabase.from('family_members').update(payload).eq('id', editId);
+        if (e) throw new Error(e.message);
       } else {
-        const { error: insertErr } = await supabase.from('family_members').insert(payload);
-        if (insertErr) throw new Error(insertErr.message);
+        const { error: e } = await supabase.from('family_members').insert(payload);
+        if (e) throw new Error(e.message);
       }
-      setModalOpen(false);
-      await load();
+      setModalOpen(false); await load();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Save failed. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+      setFormError(e instanceof Error ? e.message : 'Save failed.');
+    } finally { setSaving(false); }
+  }
+
+  async function saveCuisines() {
+    setCuisineSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
+      if (selectedCuisines.length > 0) {
+        await supabase.from('cuisine_preferences').insert(
+          selectedCuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
+        );
+      }
+    } catch (e) { console.error(e); } finally { setCuisineSaving(false); }
   }
 
   async function deleteMember(id: string) {
@@ -121,40 +138,19 @@ export default function DietaryProfileScreen() {
     await load();
   }
 
-  function Pill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-    return (
-      <TouchableOpacity style={[ps.pill, active && ps.pillActive]} onPress={onPress} activeOpacity={0.75}>
-        <Text style={[ps.pillText, active && ps.pillTextActive]}>{label}</Text>
-      </TouchableOpacity>
-    );
-  }
-
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
-    Diabetic:    { bg: '#FEF2F2', fg: '#DC2626' },
-    BP:          { bg: '#FFF7ED', fg: '#C2410C' },
-    PCOS:        { bg: '#FDF4FF', fg: '#7E22CE' },
-    Cholesterol: { bg: '#FFF1F2', fg: '#BE123C' },
-    Thyroid:     { bg: '#ECFDF5', fg: '#059669' },
-    Heart:       { bg: '#FEF2F2', fg: '#DC2626' },
-    Kidney:      { bg: '#EFF6FF', fg: '#1D4ED8' },
-    Anaemia:     { bg: '#FFF7ED', fg: '#B45309' },
-    Lactose:     { bg: '#F0FDF4', fg: '#166534' },
-    Gluten:      { bg: '#FFFBEB', fg: '#92400E' },
+    Diabetic: { bg: '#FEF2F2', fg: '#DC2626' }, BP: { bg: '#FFF7ED', fg: '#C2410C' },
+    PCOS: { bg: '#FDF4FF', fg: '#7E22CE' }, Cholesterol: { bg: '#FFF1F2', fg: '#BE123C' },
+    Thyroid: { bg: '#ECFDF5', fg: '#059669' }, Heart: { bg: '#FEF2F2', fg: '#DC2626' },
+    Kidney: { bg: '#EFF6FF', fg: '#1D4ED8' }, Anaemia: { bg: '#FFF7ED', fg: '#B45309' },
+    Lactose: { bg: '#F0FDF4', fg: '#166534' }, Gluten: { bg: '#FFFBEB', fg: '#92400E' },
   };
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Dietary Profile</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+    <ScreenWrapper title="Dietary Profile">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* Family Members */}
         {loading ? (
           <Text style={s.loadingText}>Loading...</Text>
         ) : members.length === 0 ? (
@@ -163,87 +159,105 @@ export default function DietaryProfileScreen() {
             <Text style={s.emptyTitle}>No family members yet</Text>
             <Text style={s.emptySub}>Add your family members to personalise meal plans</Text>
           </View>
-        ) : (
-          members.map((m) => {
-            const pills = HEALTH_PILLS.filter((p) => (m.health_notes ?? '').toLowerCase().includes(p.toLowerCase()));
-            const otherNotes = pills.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), m.health_notes ?? '').replace(/^,+|,+$/g, '').trim();
-            return (
-              <View key={m.id} style={s.card}>
-                <View style={s.cardHeader}>
-                  <View style={s.memberInfo}>
-                    <Text style={s.memberName}>{m.name}</Text>
-                    <View style={s.metaRow}>
-                      {m.age > 0 && <Text style={s.metaText}>{m.age} yrs</Text>}
-                    </View>
-                  </View>
-                  <TouchableOpacity onPress={() => openEdit(m)} style={s.editBtn} activeOpacity={0.7}>
-                    <Text style={s.editBtnText}>Edit</Text>
-                  </TouchableOpacity>
+        ) : members.map((m) => {
+          const pills = HEALTH_PILLS.filter((p) => (m.health_notes ?? '').toLowerCase().includes(p.toLowerCase()));
+          const otherNotes = pills.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), m.health_notes ?? '').replace(/^,+|,+$/g, '').trim();
+          return (
+            <View key={m.id} style={s.card}>
+              <View style={s.cardHeader}>
+                <View style={s.memberInfo}>
+                  <Text style={s.memberName}>{m.name}</Text>
+                  {m.age > 0 && <Text style={s.metaText}>{m.age} yrs</Text>}
                 </View>
-
-                {pills.length > 0 && (
-                  <View style={s.pillWrap}>
-                    {pills.map((p) => (
-                      <View key={p} style={[s.healthPill, { backgroundColor: HEALTH_COLORS[p]?.bg ?? '#F3F4F6' }]}>
-                        <Text style={[s.healthPillText, { color: HEALTH_COLORS[p]?.fg ?? '#374151' }]}>{p}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {otherNotes ? (
-                  <Text style={s.notesText}>{otherNotes}</Text>
-                ) : null}
-
-                <TouchableOpacity onPress={() => deleteMember(m.id)} style={s.deleteBtn} activeOpacity={0.7}>
-                  <Text style={s.deleteBtnText}>Remove member</Text>
+                <TouchableOpacity onPress={() => openEdit(m)} style={s.editBtn}>
+                  <Text style={s.editBtnText}>Edit</Text>
                 </TouchableOpacity>
               </View>
-            );
-          })
-        )}
+              {pills.length > 0 && (
+                <View style={s.pillWrap}>
+                  {pills.map((p) => (
+                    <View key={p} style={[s.healthPill, { backgroundColor: HEALTH_COLORS[p]?.bg ?? '#F3F4F6' }]}>
+                      <Text style={[s.healthPillText, { color: HEALTH_COLORS[p]?.fg ?? '#374151' }]}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {otherNotes ? <Text style={s.notesText}>{otherNotes}</Text> : null}
+              <TouchableOpacity onPress={() => deleteMember(m.id)} style={s.deleteBtn}>
+                <Text style={s.deleteBtnText}>Remove member</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
 
         <View style={s.addWrap}>
           <Button title="+ Add Family Member" onPress={openAdd} />
         </View>
+
+        {/* Cuisine Preferences */}
+        <View style={s.cuisineSection}>
+          <Text style={s.cuisineTitle}>🍽️  Cuisine Preferences</Text>
+          <Text style={s.cuisineSub}>Select cuisines to guide your meal plans</Text>
+
+          <Text style={s.groupLabel}>INDIAN CUISINES</Text>
+          <View style={s.pillRow}>
+            {INDIAN_CUISINES.map((c) => (
+              <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}
+                style={[s.cuisinePill, selectedCuisines.includes(c) && s.cuisinePillActive]}>
+                <Text style={[s.cuisinePillTxt, selectedCuisines.includes(c) && s.cuisinePillTxtActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[s.groupLabel, { marginTop: 16 }]}>INTERNATIONAL CUISINES</Text>
+          <View style={s.pillRow}>
+            {INTERNATIONAL_CUISINES.map((c) => (
+              <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}
+                style={[s.cuisinePill, selectedCuisines.includes(c) && s.cuisinePillActive]}>
+                <Text style={[s.cuisinePillTxt, selectedCuisines.includes(c) && s.cuisinePillTxtActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {selectedCuisines.length > 0 && (
+            <Text style={s.cuisineCount}>{selectedCuisines.length} cuisine{selectedCuisines.length > 1 ? 's' : ''} selected</Text>
+          )}
+          <View style={{ marginTop: 16 }}>
+            <Button title={cuisineSaving ? 'Saving...' : '✓ Save Cuisine Preferences'} onPress={() => void saveCuisines()} loading={cuisineSaving} />
+          </View>
+        </View>
+
       </ScrollView>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       <Modal visible={modalOpen} animationType="slide" transparent>
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{editId ? 'Edit Member' : 'Add Member'}</Text>
               <TouchableOpacity onPress={() => setModalOpen(false)} style={s.modalClose}>
-                <Text style={s.modalCloseText}>✕</Text>
+                <Text style={s.modalCloseTxt}>✕</Text>
               </TouchableOpacity>
             </View>
-
             <ScrollView contentContainerStyle={s.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Input label="Name *" value={form.name} onChangeText={(v) => setForm((prev) => ({ ...prev, name: v }))} placeholder="Full name" />
-
-              <View style={s.twoCol}>
+              <Input label="Name *" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Full name" />
+              <View style={{ flexDirection: 'row' }}>
                 <View style={{ flex: 2, marginRight: 10 }}>
-                  <Input label="Age" value={form.age} onChangeText={(v) => setForm((prev) => ({ ...prev, age: v }))} placeholder="Age" keyboardType="numeric" />
+                  <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
               </View>
-
               <Text style={s.sectionLabel}>HEALTH CONDITIONS</Text>
               <View style={s.pillRow}>
                 {HEALTH_PILLS.map((cond) => (
-                  <Pill key={cond} label={cond} active={form.healthConditions.includes(cond)} onPress={() => toggleHealth(cond)} />
+                  <TouchableOpacity key={cond} onPress={() => toggleHealth(cond)} activeOpacity={0.75}
+                    style={[s.cuisinePill, form.healthConditions.includes(cond) && s.cuisinePillActive]}>
+                    <Text style={[s.cuisinePillTxt, form.healthConditions.includes(cond) && s.cuisinePillTxtActive]}>{cond}</Text>
+                  </TouchableOpacity>
                 ))}
               </View>
-
-              <Input label="Medical Notes (optional)" value={form.notes} onChangeText={(v) => setForm((prev) => ({ ...prev, notes: v }))}
-                placeholder="e.g. Low salt, no fried food, doctor says..." multiline numberOfLines={3} />
-
-              <TouchableOpacity style={s.lipidBtn} activeOpacity={0.8}>
-                <Text style={s.lipidBtnText}>📄 Lipid Report — OPTIONAL</Text>
-              </TouchableOpacity>
-
+              <Input label="Medical Notes (optional)" value={form.notes} onChangeText={(v) => setForm((p) => ({ ...p, notes: v }))}
+                placeholder="e.g. Low salt, no fried food..." multiline numberOfLines={3} />
               {formError ? <Text style={s.formError}>{formError}</Text> : null}
-
               <View style={{ marginTop: 16, gap: 10 }}>
                 <Button title="Save Member" onPress={() => void saveMember()} loading={saving} />
                 <Button title="Cancel" onPress={() => setModalOpen(false)} variant="outline" />
@@ -252,73 +266,48 @@ export default function DietaryProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
-// ─── Pill ─────────────────────────────────────────────────────────────────────
-
-const ps = StyleSheet.create({
-  pill:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: white },
-  pillActive:    { backgroundColor: navy, borderColor: navy },
-  pillText:      { fontSize: 13, color: navy, fontWeight: '500' },
-  pillTextActive:{ color: white, fontWeight: '600' },
-});
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: white },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: border,
-  },
-  backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backArrow:   { fontSize: 22, color: navy },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: navy },
-
-  scroll:      { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
+  scroll:      { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
   loadingText: { textAlign: 'center', color: textSec, marginTop: 40 },
-
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyIcon:  { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: navy, marginBottom: 8 },
-  emptySub:   { fontSize: 14, color: textSec, textAlign: 'center' },
-
-  card:       { backgroundColor: white, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  memberInfo: { flex: 1 },
-  memberName: { fontSize: 16, fontWeight: '700', color: navy },
-  metaRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  metaText:   { fontSize: 13, color: textSec },
-  metaDot:    { fontSize: 13, color: textSec },
-  editBtn:    { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: border },
-  editBtnText:{ fontSize: 13, color: navy, fontWeight: '600' },
-  pillWrap:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  healthPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  emptyState:  { alignItems: 'center', paddingVertical: 60 },
+  emptyIcon:   { fontSize: 56, marginBottom: 16 },
+  emptyTitle:  { fontSize: 18, fontWeight: '700', color: navy, marginBottom: 8 },
+  emptySub:    { fontSize: 14, color: textSec, textAlign: 'center' },
+  card:        { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 14 },
+  cardHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  memberInfo:  { flex: 1 },
+  memberName:  { fontSize: 16, fontWeight: '700', color: navy },
+  metaText:    { fontSize: 13, color: textSec, marginTop: 2 },
+  editBtn:     { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: border },
+  editBtnText: { fontSize: 13, color: navy, fontWeight: '600' },
+  pillWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  healthPill:  { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   healthPillText: { fontSize: 12, fontWeight: '600' },
-  notesText:  { fontSize: 13, color: textSec, fontStyle: 'italic', marginTop: 4 },
-  deleteBtn:  { marginTop: 10, alignSelf: 'flex-end' },
+  notesText:   { fontSize: 13, color: textSec, fontStyle: 'italic', marginTop: 4 },
+  deleteBtn:   { marginTop: 10, alignSelf: 'flex-end' },
   deleteBtnText: { fontSize: 12, color: errorRed, fontWeight: '500' },
-
-  addWrap: { marginTop: 8, marginBottom: 16 },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalSheet:   { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
-  modalHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: border },
-  modalTitle:   { fontSize: 18, fontWeight: '700', color: navy },
-  modalClose:   { width: 32, height: 32, borderRadius: 16, backgroundColor: surface, alignItems: 'center', justifyContent: 'center' },
-  modalCloseText:{ fontSize: 14, color: textSec, fontWeight: '600' },
-  modalScroll:  { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
-
-  twoCol:      { flexDirection: 'row' },
-  sectionLabel:{ fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
-  pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-
-  lipidBtn:    { borderWidth: 1.5, borderColor: border, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center', borderStyle: 'dashed', marginTop: 8 },
-  lipidBtnText:{ fontSize: 13, color: textSec, fontWeight: '500' },
-
-  formError: { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
+  addWrap:     { marginTop: 8, marginBottom: 24 },
+  cuisineSection:  { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 16 },
+  cuisineTitle:    { fontSize: 16, fontWeight: '700', color: navy, marginBottom: 4 },
+  cuisineSub:      { fontSize: 13, color: textSec, marginBottom: 16, lineHeight: 18 },
+  groupLabel:      { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
+  cuisineCount:    { fontSize: 12, color: successGreen, fontWeight: '600', textAlign: 'center', marginTop: 10 },
+  pillRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  cuisinePill:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: 'rgba(255,255,255,0.9)' },
+  cuisinePillActive:{ backgroundColor: navy, borderColor: navy },
+  cuisinePillTxt:  { fontSize: 13, color: navy, fontWeight: '500' },
+  cuisinePillTxtActive: { color: white, fontWeight: '600' },
+  sectionLabel:    { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
+  formError:       { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
+  modalOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet:      { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: border },
+  modalTitle:      { fontSize: 18, fontWeight: '700', color: navy },
+  modalClose:      { width: 32, height: 32, borderRadius: 16, backgroundColor: surface, alignItems: 'center', justifyContent: 'center' },
+  modalCloseTxt:   { fontSize: 14, color: textSec, fontWeight: '600' },
+  modalScroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
 });
