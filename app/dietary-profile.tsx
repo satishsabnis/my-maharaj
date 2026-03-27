@@ -24,6 +24,20 @@ interface MemberForm {
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
+// ─── Cuisines (alphabetical) ──────────────────────────────────────────────────
+
+const INDIAN_CUISINES = [
+  'Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi',
+  'Kashmiri','Konkani','Maharashtrian','Malabar','Manipuri','Marwari','Meghalayan',
+  'Naga','Odia','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','Udupi',
+].sort();
+
+const INTERNATIONAL_CUISINES = [
+  'American','Arabian','Chinese','Continental','Ethiopian','French','Greek',
+  'Indonesian','Italian','Japanese','Korean','Lebanese','Mediterranean',
+  'Mexican','Moroccan','Persian','Spanish','Thai','Turkish','Vietnamese',
+].sort();
+
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
 }
@@ -53,12 +67,20 @@ export default function DietaryProfileScreen() {
   const [form, setForm]             = useState<MemberForm>(emptyForm());
   const [formError, setFormError]   = useState('');
 
+  // Cuisine preferences
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [cuisineSaving,    setCuisineSaving]    = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data } = await supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id);
-    setMembers((data as Member[]) ?? []);
+    const [{ data: membersData }, { data: cuisineData }] = await Promise.all([
+      supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id),
+      supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
+    ]);
+    setMembers((membersData as Member[]) ?? []);
+    setSelectedCuisines((cuisineData ?? []).map((c: any) => c.cuisine_name));
     setLoading(false);
   }, []);
 
@@ -85,6 +107,31 @@ export default function DietaryProfileScreen() {
         ? prev.healthConditions.filter((c) => c !== cond)
         : [...prev.healthConditions, cond],
     }));
+  }
+
+  function toggleCuisine(cuisine: string) {
+    setSelectedCuisines((prev) =>
+      prev.includes(cuisine) ? prev.filter((c) => c !== cuisine) : [...prev, cuisine]
+    );
+  }
+
+  async function saveCuisines() {
+    setCuisineSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Delete existing and re-insert selected
+      await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
+      if (selectedCuisines.length > 0) {
+        await supabase.from('cuisine_preferences').insert(
+          selectedCuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
+        );
+      }
+    } catch (e) {
+      console.error('Cuisine save error:', e);
+    } finally {
+      setCuisineSaving(false);
+    }
   }
 
   async function saveMember() {
@@ -206,6 +253,51 @@ export default function DietaryProfileScreen() {
         <View style={s.addWrap}>
           <Button title="+ Add Family Member" onPress={openAdd} />
         </View>
+
+        {/* ── Cuisine Preferences ── */}
+        <View style={s.cuisineSection}>
+          <Text style={s.cuisineSectionTitle}>🍽️ Cuisine Preferences</Text>
+          <Text style={s.cuisineSectionSub}>Select cuisines you enjoy — these guide your meal plans</Text>
+
+          <Text style={s.cuisineGroupLabel}>INDIAN CUISINES</Text>
+          <View style={s.pillRow}>
+            {INDIAN_CUISINES.map((c) => (
+              <TouchableOpacity
+                key={c}
+                style={[ps.pill, selectedCuisines.includes(c) && ps.pillActive]}
+                onPress={() => toggleCuisine(c)}
+                activeOpacity={0.75}
+              >
+                <Text style={[ps.pillText, selectedCuisines.includes(c) && ps.pillTextActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[s.cuisineGroupLabel, { marginTop: 16 }]}>INTERNATIONAL CUISINES</Text>
+          <View style={s.pillRow}>
+            {INTERNATIONAL_CUISINES.map((c) => (
+              <TouchableOpacity
+                key={c}
+                style={[ps.pill, selectedCuisines.includes(c) && ps.pillActive]}
+                onPress={() => toggleCuisine(c)}
+                activeOpacity={0.75}
+              >
+                <Text style={[ps.pillText, selectedCuisines.includes(c) && ps.pillTextActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ marginTop: 16 }}>
+            <Button
+              title={cuisineSaving ? 'Saving...' : '✓ Save Cuisine Preferences'}
+              onPress={() => void saveCuisines()}
+              loading={cuisineSaving}
+            />
+          </View>
+          {selectedCuisines.length > 0 && (
+            <Text style={s.cuisineCount}>{selectedCuisines.length} cuisine{selectedCuisines.length > 1 ? 's' : ''} selected</Text>
+          )}
+        </View>
       </ScrollView>
 
       {/* Modal */}
@@ -303,6 +395,12 @@ const s = StyleSheet.create({
   deleteBtnText: { fontSize: 12, color: errorRed, fontWeight: '500' },
 
   addWrap: { marginTop: 8, marginBottom: 16 },
+
+  cuisineSection:      { backgroundColor: white, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 32 },
+  cuisineSectionTitle: { fontSize: 16, fontWeight: '700', color: navy, marginBottom: 4 },
+  cuisineSectionSub:   { fontSize: 13, color: textSec, marginBottom: 16, lineHeight: 18 },
+  cuisineGroupLabel:   { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
+  cuisineCount:        { fontSize: 12, color: successGreen, fontWeight: '600', textAlign: 'center', marginTop: 10 },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
