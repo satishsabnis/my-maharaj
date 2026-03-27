@@ -1,64 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import ScreenWrapper from '../components/ScreenWrapper';
 import { supabase } from '../lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
-
-// ─── Festival data (Indian + International 2026) ─────────────────────────────
-
-const FESTIVALS_2026 = [
-  // Indian
-  { name: 'Ram Navami',        date: '2026-03-26', type: 'indian',   sattvic: true  },
-  { name: 'Baisakhi',          date: '2026-04-13', type: 'indian',   sattvic: false },
-  { name: 'Akshaya Tritiya',   date: '2026-04-19', type: 'indian',   sattvic: true  },
-  { name: 'Eid al-Adha',       date: '2026-05-27', type: 'global',   sattvic: false },
-  { name: 'Guru Purnima',      date: '2026-07-19', type: 'indian',   sattvic: true  },
-  { name: 'Independence Day',  date: '2026-08-15', type: 'indian',   sattvic: false },
-  { name: 'Raksha Bandhan',    date: '2026-08-28', type: 'indian',   sattvic: true  },
-  { name: 'Janmashtami',       date: '2026-09-04', type: 'indian',   sattvic: true  },
-  { name: 'Ganesh Chaturthi',  date: '2026-09-14', type: 'indian',   sattvic: true  },
-  { name: 'Navratri Start',    date: '2026-10-11', type: 'indian',   sattvic: true  },
-  { name: 'Dussehra',          date: '2026-10-20', type: 'indian',   sattvic: false },
-  { name: 'Diwali',            date: '2026-11-08', type: 'indian',   sattvic: false },
-  { name: 'Bhai Dooj',         date: '2026-11-11', type: 'indian',   sattvic: false },
-  { name: 'Christmas',         date: '2026-12-25', type: 'global',   sattvic: false },
-  { name: 'New Year',          date: '2027-01-01', type: 'global',   sattvic: false },
-  // International
-  { name: 'Easter',            date: '2026-04-05', type: 'global',   sattvic: false },
-  { name: 'Eid al-Fitr',       date: '2026-03-31', type: 'global',   sattvic: false },
-  { name: 'Hanukkah',          date: '2026-12-14', type: 'global',   sattvic: false },
-  { name: 'Thanksgiving',      date: '2026-11-26', type: 'global',   sattvic: false },
-];
-
-function parseLocalDate(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function getUpcomingFestivals(fromDate: Date, toDate: Date): typeof FESTIVALS_2026 {
-  const start = new Date(fromDate); start.setHours(0,0,0,0);
-  const end   = new Date(toDate);   end.setHours(23,59,59,999);
-  // extend window by 3 days before and after
-  const windowStart = new Date(start); windowStart.setDate(windowStart.getDate() - 3);
-  const windowEnd   = new Date(end);   windowEnd.setDate(windowEnd.getDate() + 3);
-  return FESTIVALS_2026.filter((f) => {
-    const d = parseLocalDate(f.date);
-    return d >= windowStart && d <= windowEnd;
-  });
-}
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
-  | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'nutrition'
+  | 'period' | 'food-pref' | 'meal-prefs' | 'unwell' | 'nutrition'
   | 'generating' | 'generating-error' | 'selection'
-  | 'cook-or-order' | 'recipes' | 'grocery' | 'feedback';
+  | 'recipes' | 'grocery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner';
 
@@ -109,7 +63,7 @@ const CAT_ORDER: GroceryCat[] = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pa
 
 // ─── Wizard progress ──────────────────────────────────────────────────────────
 
-const USER_STEPS: WizardStep[] = ['period','food-pref','guest-cuisine','meal-prefs','unwell','nutrition'];
+const USER_STEPS: WizardStep[] = ['period','food-pref','meal-prefs','unwell','nutrition'];
 function stepNum(step: WizardStep): number { return USER_STEPS.indexOf(step) + 1; }
 function totalUserSteps(): number { return USER_STEPS.length; }
 
@@ -126,28 +80,14 @@ export default function MealWizardScreen() {
   const [pickerTo,   setPickerTo]   = useState(addDays(startOfDay(new Date()), 1));
   const [showCustom, setShowCustom] = useState(false);
 
+  // Meal slots selection
+  const [selectedSlots, setSelectedSlots] = useState<string[]>(['breakfast','lunch','dinner']);
+
   // Step 2
-  const [foodPref, setFoodPref]   = useState<'veg' | 'nonveg' | null>(null);
+  const [foodPref, setFoodPref]   = useState<'veg' | 'nonveg' | 'mixed' | null>(null);
   const [vegType,  setVegType]    = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
-
-  // Last plan cooked check
-  const [showCookedModal,  setShowCookedModal]  = useState(false);
-  const [lastPlanDishes,   setLastPlanDishes]   = useState<string[]>([]);
-
-  // Guest cuisine revert
-  const [showRevertModal,  setShowRevertModal]  = useState(false);
-  const [revertInfo,       setRevertInfo]       = useState<{cuisine:string;savedCuisines:string[]}>({cuisine:'',savedCuisines:[]});
-
-  // Festivals
-  const [upcomingFestivals, setUpcomingFestivals] = useState<typeof FESTIVALS_2026>([]);
-
-  // Guest cuisine
-  const [hasGuests,        setHasGuests]        = useState(false);
-  const [guestCuisine,     setGuestCuisine]     = useState('');
-  const [guestDays,        setGuestDays]        = useState(2);
-  const [savedCuisines,    setSavedCuisines]    = useState<string[]>([]);
 
   // Step 3
   const [bfPrefs, setBfPrefs]   = useState<string[]>([]);
@@ -184,34 +124,8 @@ export default function MealWizardScreen() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [{ data: members }, { data: cuisines }] = await Promise.all([
-        supabase.from('family_members').select('id, name, age').eq('user_id', user.id),
-        supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
-      ]);
-      setFamilyMembers((members as DBMember[]) ?? []);
-      const saved = (cuisines ?? []).map((c: any) => c.cuisine_name);
-      setSavedCuisines(saved);
-
-      // Check if a guest cuisine period has expired
-      try {
-        const stored = await AsyncStorage.getItem('guest_cuisine');
-        if (stored) {
-          const { cuisine, expiryDate } = JSON.parse(stored) as { cuisine: string; expiryDate: string };
-          const expiry = new Date(expiryDate);
-          const today  = new Date(); today.setHours(0,0,0,0);
-          if (expiry <= today) {
-            // Guest period expired — ask user to confirm revert
-            setRevertInfo({ cuisine, savedCuisines: saved });
-            setShowRevertModal(true);
-          } else {
-            // Still active — pre-fill guest cuisine
-            const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
-            setHasGuests(true);
-            setGuestCuisine(cuisine);
-            setGuestDays(daysLeft);
-          }
-        }
-      } catch (e) { console.error('Guest cuisine check:', e); }
+      const { data } = await supabase.from('family_members').select('id, name, age').eq('user_id', user.id);
+      setFamilyMembers((data as DBMember[]) ?? []);
     }
     void load();
   }, []);
@@ -268,14 +182,11 @@ export default function MealWizardScreen() {
         if (notes.includes('gluten'))   hf.glutenIntolerant = true;
       });
 
-      // Build cuisine rotation - guest cuisine gets priority for specified days
-      const baseCuisines = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
-      const dates = getDates(selectedFrom, selectedTo);
-      const cuisinePerDay = dates.map((_, i) => {
-        if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
-        return baseCuisines[i % baseCuisines.length];
-      });
-      const cuisine = cuisinePerDay[0]; // used for single-day; multi-day uses per-day logic
+      const { data: cuisineData } = await supabase
+        .from('cuisine_preferences').select('cuisine_name')
+        .eq('user_id', user.id).eq('is_excluded', false);
+      const cuisines = (cuisineData ?? []).map((r: { cuisine_name: string }) => r.cuisine_name);
+      const cuisine  = cuisines.length > 0 ? cuisines[Math.floor(Math.random() * cuisines.length)] : 'Konkani';
 
       const since = toYMD(addDays(new Date(), -14));
       const { data: historyData } = await supabase
@@ -299,7 +210,6 @@ export default function MealWizardScreen() {
         language:  profile?.app_language   ?? 'en',
         cuisine,
         dishHistory,
-        cuisinePerDay: cuisinePerDay,
         foodPrefs: {
           type:          foodPref,
           vegType:       vegType ?? undefined,
@@ -307,9 +217,6 @@ export default function MealWizardScreen() {
         },
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: nutritionGoals.length > 0 ? nutritionGoals.join(', ') : undefined,
-        festivalContext: upcomingFestivals.length > 0
-          ? upcomingFestivals.map(f => `${f.name}${f.sattvic ? ' (sattvic/fasting)' : ''}`).join(', ')
-          : undefined,
         vegDays:        profile?.veg_days ?? [],
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
         lunchPrefs:     lnPrefs.length > 0 ? lnPrefs : undefined,
@@ -322,16 +229,6 @@ export default function MealWizardScreen() {
       setGeneratedPlan(plan.days);
       setSelections(defaultSel);
       setStep('selection');
-      // Save dish names for next-time cooked check
-      try {
-        const dishes: string[] = [];
-        plan.days.forEach(d => {
-          if (d.breakfast?.options?.[0]?.name) dishes.push(d.breakfast.options[0].name);
-          if (d.lunch?.options?.[0]?.name)     dishes.push(d.lunch.options[0].name);
-          if (d.dinner?.options?.[0]?.name)    dishes.push(d.dinner.options[0].name);
-        });
-        await AsyncStorage.setItem('last_meal_plan_dishes', JSON.stringify(dishes));
-      } catch (e) { console.error('Save dishes:', e); }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
       setStep('generating-error');
@@ -472,26 +369,17 @@ export default function MealWizardScreen() {
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
-  function advance(next: WizardStep) {
-    setError('');
-    // Detect festivals when moving past period step
-    if (next === 'food-pref' && selectedFrom && selectedTo) {
-      setUpcomingFestivals(getUpcomingFestivals(selectedFrom, selectedTo));
-    }
-    setStep(next);
-  }
+  function advance(next: WizardStep) { setError(''); setStep(next); }
 
   function goBack() {
     setError('');
     const backMap: Partial<Record<WizardStep, WizardStep>> = {
       'food-pref': 'period',
-      'guest-cuisine': 'food-pref',
-      'meal-prefs': 'guest-cuisine',
+      'meal-prefs': 'food-pref',
       'unwell': 'meal-prefs',
       'nutrition': 'unwell',
       'selection': 'nutrition',
-      'cook-or-order': 'selection',
-      'recipes': 'cook-or-order',
+      'recipes': 'selection',
       'grocery': 'recipes',
       'feedback': 'grocery',
     };
@@ -531,6 +419,14 @@ export default function MealWizardScreen() {
 
   // ── Render steps ──────────────────────────────────────────────────────────
 
+  function CancelToHome() {
+    return (
+      <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.cancelHomeBtn}>
+        <Text style={s.cancelHomeTxt}>✕ Cancel — Back to Home</Text>
+      </TouchableOpacity>
+    );
+  }
+
   function renderPeriod() {
     const today = startOfDay(new Date());
     const cards = [
@@ -553,6 +449,7 @@ export default function MealWizardScreen() {
         <TouchableOpacity onPress={() => setShowCustom((v) => !v)} activeOpacity={0.7} style={s.customLink}>
           <Text style={s.customLinkText}>Or choose specific dates ›</Text>
         </TouchableOpacity>
+        <CancelToHome />
         {showCustom && (
           <View style={s.customCard}>
             <Text style={s.customCardTitle}>Select Date Range</Text>
@@ -612,6 +509,30 @@ export default function MealWizardScreen() {
           </TouchableOpacity>
         </View>
 
+
+        {/* Meal slot selector */}
+        <View style={{marginTop:20}}>
+          <Text style={s.sectionLabel}>WHICH MEALS TO PLAN?</Text>
+          <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
+            {[
+              {key:'breakfast', icon:'🌅', label:'Breakfast'},
+              {key:'lunch',     icon:'☀️', label:'Lunch'},
+              {key:'dinner',    icon:'🌙', label:'Dinner'},
+              {key:'snack',     icon:'🫖', label:'Evening Snack'},
+            ].map(({key, icon, label}) => (
+              <TouchableOpacity
+                key={key}
+                style={[s.chipSm, selectedSlots.includes(key) && s.chipSmActive]}
+                onPress={() => setSelectedSlots(prev =>
+                  prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
+                )}
+              >
+                <Text style={[s.chipSmTxt, selectedSlots.includes(key) && s.chipSmTxtActive]}>{icon} {label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {foodPref === 'veg' && (
           <View style={s.foodCards}>
             <TouchableOpacity style={[s.foodCard, vegType === 'normal' && s.foodCardActive]}
@@ -649,6 +570,7 @@ export default function MealWizardScreen() {
             <Button title="Continue →" onPress={() => {
               if (!foodPref) { setError('Please select a food preference'); return; }
               if (foodPref === 'nonveg' && nonVegOpts.length === 0) { setError('Please select at least one non-veg option'); return; }
+              if (selectedSlots.length === 0) { setError('Please select at least one meal slot'); return; }
               advance('meal-prefs');
             }} />
           </View>
@@ -658,9 +580,9 @@ export default function MealWizardScreen() {
   }
 
   function renderMealPrefs() {
-    const BF_OPTS = ['Hot dish (pohe/upma/idli)','Bread/Paratha','Eggs','Fruits','Juice/Smoothie','Light only'];
-    const LN_OPTS = ['Rice based','Roti based','Dal','Sabzi','Salad','Raita','Papad','Pickle','Full Thali'];
-    const DN_OPTS = ['Rice based','Roti based','Non-veg main','Veg main','Soup','Salad','Dessert','Light only','Full Thali'];
+    const BF_OPTS = ['Hot dish (pohe/upma/idli)','Bread/Paratha','Eggs','Fruits','Juice/Smoothie','Light only','Full Thali'];
+    const LN_OPTS = ['Rice based','Roti based','Dal','Sabzi','Salad','Raita','Papad','Pickle'];
+    const DN_OPTS = ['Rice based','Roti based','Non-veg main','Veg main','Soup','Salad','Dessert','Light only'];
 
     function toggle(list: string[], set: React.Dispatch<React.SetStateAction<string[]>>, item: string) {
       set((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]);
@@ -668,6 +590,7 @@ export default function MealWizardScreen() {
 
     return (
       <View>
+        <CancelToHome />
         <Text style={s.stepTitle}>What would you like in each meal?</Text>
         <Text style={s.stepSub}>Select all that apply for each meal</Text>
 
@@ -701,6 +624,7 @@ export default function MealWizardScreen() {
   function renderUnwell() {
     return (
       <View>
+        <CancelToHome />
         <Text style={s.stepTitle}>Is anyone feeling unwell?</Text>
 
         <View style={s.foodCards}>
@@ -743,29 +667,12 @@ export default function MealWizardScreen() {
   }
 
   function renderNutrition() {
-    const GOALS = [
-      'Balanced','Blood Sugar Control','Bone Health','Detox','Digestive Health',
-      'Doctor Recommended','Energy Boost','Heart Health','High Fibre','High Protein',
-      'Immunity Boost','Keto','Kid Friendly','Less Oil','Less Spice','Low Calorie',
-      'Low Carb','Low Sodium','Mental Clarity','Muscle Gain','Post-illness Recovery',
-      'Pregnancy Safe','Sattvic / Fasting','Senior Friendly','Skin Health','Weight Loss',
-    ];
+    const GOALS = ['Balanced','Low Calorie','Keto','High Protein','Less Oil','High Fibre','Weight Loss','Doctor Recommended'];
     return (
       <View>
+        <CancelToHome />
         <Text style={s.stepTitle}>Any nutrition goal?</Text>
         <Text style={s.stepSub}>Select all that apply</Text>
-
-        {upcomingFestivals.length > 0 && (
-          <View style={s.festBanner}>
-            <Text style={s.festBannerIcon}>🪔</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={s.festBannerTitle}>Festival meals included!</Text>
-              <Text style={s.festBannerSub}>
-                {upcomingFestivals.map(f => f.name).join(' · ')} — Maharaj will add appropriate festival dishes
-              </Text>
-            </View>
-          </View>
-        )}
         <View style={s.pillRow}>
           {GOALS.map((g) => (
             <Chip key={g} label={g} active={nutritionGoals.includes(g)}
@@ -932,155 +839,12 @@ export default function MealWizardScreen() {
         {/* Floating bottom bar */}
         <View style={s.floatBar}>
           <Text style={s.floatCount}>{selectedCount()} of {total} meals selected</Text>
-          <View style={{flexDirection:'row', gap:10}}>
-            <TouchableOpacity
-              style={s.regenBtn}
-              onPress={() => {
-                setGeneratedPlan(null);
-                setSelections({});
-                setExpandedDays({0: true});
-                setGeneratingProgress(null);
-                setStep('generating');
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={s.regenBtnTxt}>🔄 Regenerate</Text>
-            </TouchableOpacity>
-            <Button
-              title="Confirm ✓"
-              onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
-              disabled={!allSelected()}
-            />
-          </View>
+          <Button
+            title="Confirm Selections ✓"
+            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('recipes'); }}
+            disabled={!allSelected()}
+          />
         </View>
-      </View>
-    );
-  }
-
-  function renderGuestCuisine() {
-    const ALL_CUISINES = ['Andhra','Assamese','Bengali','Bihari','Chettinad','Chinese','Continental','French','Goan','Greek','Gujarati','Hyderabadi','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Mediterranean','Mexican','Moroccan','Odia','Punjabi','Rajasthani','South Indian','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
-    return (
-      <View>
-        <Text style={s.stepTitle}>Any guests joining?</Text>
-        <Text style={s.stepSub}>Add a special cuisine for your guests this time</Text>
-
-        <View style={s.foodCards}>
-          <TouchableOpacity
-            style={[s.foodCard, !hasGuests && s.foodCardActive]}
-            onPress={() => { setHasGuests(false); setGuestCuisine(''); }} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>👨‍👩‍👧</Text>
-            <Text style={[s.foodCardLabel, !hasGuests && s.foodCardLabelActive]}>Just my family</Text>
-            <Text style={[s.foodCardSub, !hasGuests && {color:'rgba(255,255,255,0.8)'}]}>Use saved cuisines</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.foodCard, hasGuests && s.foodCardActive]}
-            onPress={() => setHasGuests(true)} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>🎊</Text>
-            <Text style={[s.foodCardLabel, hasGuests && s.foodCardLabelActive]}>We have guests</Text>
-            <Text style={[s.foodCardSub, hasGuests && {color:'rgba(255,255,255,0.8)'}]}>Add a special cuisine</Text>
-          </TouchableOpacity>
-        </View>
-
-        {hasGuests && (
-          <View>
-            <Text style={s.sectionLabel}>GUEST CUISINE</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:12}}>
-              <View style={{flexDirection:'row', gap:8, paddingVertical:4}}>
-                {ALL_CUISINES.map((c) => (
-                  <TouchableOpacity key={c}
-                    style={[s.chipSm, guestCuisine === c && s.chipSmActive]}
-                    onPress={() => setGuestCuisine(c)}>
-                    <Text style={[s.chipSmTxt, guestCuisine === c && s.chipSmTxtActive]}>{c}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            <Text style={s.sectionLabel}>FOR HOW MANY DAYS?</Text>
-            <View style={{flexDirection:'row', gap:8, flexWrap:'wrap', marginBottom:8}}>
-              {[1,2,3,4,5,7].map((d) => (
-                <TouchableOpacity key={d}
-                  style={[s.chipSm, guestDays === d && s.chipSmActive]}
-                  onPress={() => setGuestDays(d)}>
-                  <Text style={[s.chipSmTxt, guestDays === d && s.chipSmTxtActive]}>{d} day{d > 1 ? 's' : ''}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {guestCuisine ? (
-              <View style={{backgroundColor:'rgba(201,162,39,0.1)', borderRadius:12, padding:12, borderWidth:1, borderColor:'rgba(201,162,39,0.3)'}}>
-                <Text style={{fontSize:13, color:'#78350F', fontWeight:'600'}}>
-                  {guestCuisine} cuisine for first {guestDays} day{guestDays > 1 ? 's' : ''}, then your saved cuisines
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        {savedCuisines.length > 0 && (
-          <View style={{marginTop:16, backgroundColor:'rgba(27,58,92,0.06)', borderRadius:12, padding:12}}>
-            <Text style={{fontSize:12, color:'#1B3A5C', fontWeight:'600', marginBottom:4}}>Your saved cuisines:</Text>
-            <Text style={{fontSize:12, color:'#5A7A8A'}}>{savedCuisines.join(', ')}</Text>
-          </View>
-        )}
-
-        <View style={s.btnRow}>
-          <View style={{ flex:1, marginRight:12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex:2 }}>
-            <Button title="Continue →" onPress={async () => {
-                if (hasGuests && guestCuisine) {
-                  // Save guest cuisine expiry to AsyncStorage
-                  const expiry = new Date();
-                  expiry.setDate(expiry.getDate() + guestDays);
-                  await AsyncStorage.setItem('guest_cuisine', JSON.stringify({ cuisine: guestCuisine, expiryDate: expiry.toISOString() }));
-                } else {
-                  await AsyncStorage.removeItem('guest_cuisine');
-                }
-                advance('meal-prefs');
-              }} />
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  function renderCookOrOrder() {
-    return (
-      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-        <Text style={s.stepTitle}>Your meal plan is ready! 🎉</Text>
-        <Text style={s.stepSub}>What would you like to do?</Text>
-
-        <TouchableOpacity
-          style={[s.cookOrderCard, { borderColor: peacock }]}
-          onPress={() => advance('recipes')}
-          activeOpacity={0.85}
-        >
-          <Text style={s.cookOrderIcon}>👨‍🍳</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.cookOrderTitle, { color: peacock }]}>Cook at Home</Text>
-            <Text style={s.cookOrderDesc}>View recipes, cooking instructions and grocery list</Text>
-          </View>
-          <Text style={s.cookOrderArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[s.cookOrderCard, { borderColor: gold, marginTop: 12 }]}
-          onPress={() => router.push('/order-out' as never)}
-          activeOpacity={0.85}
-        >
-          <Text style={s.cookOrderIcon}>🛵</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.cookOrderTitle, { color: '#B45309' }]}>Order Out</Text>
-            <Text style={s.cookOrderDesc}>Open Talabat, Careem, Noon Food or Keeta</Text>
-          </View>
-          <Text style={s.cookOrderArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[s.btnRow, { marginTop: 24, width: '100%' }]} onPress={() => advance('recipes')}>
-          <Text style={{ color: textSec, fontSize: 13, textAlign: 'center' }}>Skip — just show me the grocery list →</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -1276,8 +1040,6 @@ export default function MealWizardScreen() {
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
-    'guest-cuisine':    renderGuestCuisine,
-    'cook-or-order':    renderCookOrOrder,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
     'feedback':         renderFeedback,
@@ -1288,7 +1050,6 @@ export default function MealWizardScreen() {
   const isFullScreen = ['generating','generating-error'].includes(step);
 
   return (
-    <ImageBackground source={require('../assets/background.png')} style={{flex:1}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       {/* Header */}
       {!isFullScreen && (
@@ -1297,15 +1058,10 @@ export default function MealWizardScreen() {
             <Text style={s.headerBackText}>←</Text>
           </TouchableOpacity>
           <Text style={s.headerTitle}>Meal Plan Wizard</Text>
-          <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
-            {isUserStep && (
-              <Text style={s.headerStep}>{currentNum} of {totalUserSteps()}</Text>
-            )}
-            <Image source={require('../assets/blueflute-logo.png')} style={{width:64,height:24}} resizeMode="contain" />
-            <TouchableOpacity onPress={() => router.push('/home' as never)} style={{padding:4}}>
-              <Text style={{fontSize:18}}>🏠</Text>
-            </TouchableOpacity>
-          </View>
+          {isUserStep && (
+            <Text style={s.headerStep}>{currentNum} of {totalUserSteps()}</Text>
+          )}
+          {!isUserStep && <View style={{ width: 50 }} />}
         </View>
       )}
 
@@ -1321,74 +1077,7 @@ export default function MealWizardScreen() {
           {STEP_RENDER[step]?.()}
         </View>
       </ScrollView>
-
-      {/* Last Plan Cooked Modal */}
-      {showCookedModal && (
-        <View style={s.revertOverlay}>
-          <View style={s.revertBox}>
-            <Text style={s.revertTitle}>Did you cook your last plan?</Text>
-            <Text style={s.revertSub}>
-              Your last meal plan had {lastPlanDishes.length} dishes.{'\n'}
-              Were they cooked? This helps Maharaj adjust your fridge inventory.
-            </Text>
-            <View style={s.revertBtns}>
-              <TouchableOpacity style={s.revertBtnYes} onPress={async () => {
-                // Deduct from fridge inventory
-                try {
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (user) {
-                    await supabase.rpc('deduct_fridge_for_dishes', { p_user_id: user.id, p_dishes: lastPlanDishes });
-                  }
-                } catch (e) { console.error('Fridge deduct:', e); }
-                await AsyncStorage.removeItem('last_meal_plan_dishes');
-                setShowCookedModal(false);
-              }}>
-                <Text style={s.revertBtnYesTxt}>✓ Yes — update my fridge</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.revertBtnKeep} onPress={async () => {
-                await AsyncStorage.removeItem('last_meal_plan_dishes');
-                setShowCookedModal(false);
-              }}>
-                <Text style={s.revertBtnKeepTxt}>No — skip this time</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Guest Cuisine Revert Modal */}
-      {showRevertModal && (
-        <View style={s.revertOverlay}>
-          <View style={s.revertBox}>
-            <Text style={s.revertTitle}>Guest visit has ended</Text>
-            <Text style={s.revertSub}>
-              Your {revertInfo.cuisine} cuisine guest period is over.{'\n'}
-              Revert to your saved cuisines?
-            </Text>
-            {revertInfo.savedCuisines.length > 0 && (
-              <Text style={s.revertCuisines}>Saved: {revertInfo.savedCuisines.join(', ')}</Text>
-            )}
-            <View style={s.revertBtns}>
-              <TouchableOpacity style={s.revertBtnYes} onPress={async () => {
-                await AsyncStorage.removeItem('guest_cuisine');
-                setHasGuests(false); setGuestCuisine(''); setShowRevertModal(false);
-              }}>
-                <Text style={s.revertBtnYesTxt}>✓ Yes, revert to saved cuisines</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.revertBtnKeep} onPress={async () => {
-                const expiry = new Date();
-                expiry.setDate(expiry.getDate() + guestDays);
-                await AsyncStorage.setItem('guest_cuisine', JSON.stringify({ cuisine: revertInfo.cuisine, expiryDate: expiry.toISOString() }));
-                setHasGuests(true); setGuestCuisine(revertInfo.cuisine); setShowRevertModal(false);
-              }}>
-                <Text style={s.revertBtnKeepTxt}>Keep {revertInfo.cuisine} for {guestDays} more days</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
-    </ImageBackground>
   );
 }
 
@@ -1404,7 +1093,7 @@ const chip = StyleSheet.create({
 // ─── Main styles ─────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: 'transparent' },
+  safe:   { flex: 1, backgroundColor: white },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: Platform.OS === 'web' ? 16 : 10, paddingBottom: 14,
@@ -1429,46 +1118,6 @@ const s = StyleSheet.create({
 
   pillRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   btnRow:   { flexDirection: 'row', marginTop: 28 },
-
-  revertOverlay:   { position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.5)', zIndex:999, alignItems:'center', justifyContent:'center' },
-  revertBox:       { backgroundColor:'#FFFFFF', borderRadius:20, padding:24, width:320, shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.15, shadowRadius:20, elevation:10 },
-  revertTitle:     { fontSize:18, fontWeight:'800', color:'#1B3A5C', marginBottom:8 },
-  revertSub:       { fontSize:14, color:'#5A7A8A', lineHeight:22, marginBottom:12 },
-  revertCuisines:  { fontSize:12, color:'#1A6B5C', fontWeight:'600', marginBottom:16, fontStyle:'italic' },
-  revertBtns:      { gap:10 },
-  revertBtnYes:    { backgroundColor:'#1B3A5C', borderRadius:12, paddingVertical:14, alignItems:'center' },
-  revertBtnYesTxt: { color:'#FFFFFF', fontWeight:'700', fontSize:14 },
-  revertBtnKeep:   { borderWidth:1.5, borderColor:'#D4EDE5', borderRadius:12, paddingVertical:14, alignItems:'center' },
-  revertBtnKeepTxt:{ color:'#1B3A5C', fontWeight:'600', fontSize:14 },
-
-  cuisineBanner:      { flexDirection:'row', alignItems:'center', gap:10, backgroundColor:'rgba(26,107,92,0.1)', borderRadius:12, padding:12, marginBottom:16, borderWidth:1, borderColor:'rgba(26,107,92,0.25)' },
-  cuisineBannerIcon:  { fontSize:20 },
-  cuisineBannerTitle: { fontSize:12, fontWeight:'700', color:'#1A6B5C', marginBottom:2 },
-  cuisineBannerSub:   { fontSize:12, color:'#1A6B5C' },
-  cuisineBannerEdit:  { fontSize:12, color:'#1B3A5C', fontWeight:'700', textDecorationLine:'underline' },
-
-  festBanner:      { flexDirection:'row', alignItems:'flex-start', gap:12, backgroundColor:'rgba(201,162,39,0.12)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(201,162,39,0.4)' },
-  festBannerIcon:  { fontSize:24 },
-  festBannerTitle: { fontSize:14, fontWeight:'700', color:'#78350F', marginBottom:2 },
-  festBannerSub:   { fontSize:12, color:'#92400E', lineHeight:18 },
-
-  chipSm:        { paddingHorizontal:12, paddingVertical:7, borderRadius:16, borderWidth:1.5, borderColor:'#D4EDE5', backgroundColor:'rgba(255,255,255,0.9)' },
-  chipSmActive:  { backgroundColor:'#1B3A5C', borderColor:'#1B3A5C' },
-  chipSmTxt:     { fontSize:12, color:'#1B3A5C', fontWeight:'500' },
-  chipSmTxtActive:{ color:'#FFFFFF', fontWeight:'600' },
-  foodCardSub:   { fontSize:11, color:'#5A7A8A', marginTop:2 },
-
-  cookOrderCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    width: '100%', backgroundColor: white, borderRadius: 18,
-    borderWidth: 2, padding: 18,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-  },
-  cookOrderIcon:  { fontSize: 36 },
-  cookOrderTitle: { fontSize: 17, fontWeight: '800', marginBottom: 4 },
-  cookOrderDesc:  { fontSize: 13, color: textSec, lineHeight: 18 },
-  cookOrderArrow: { fontSize: 26, color: textSec },
   errorText:{ fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 12 },
   inlineError: { fontSize: 12, color: errorRed, marginTop: 4, marginLeft: 2 },
 
@@ -1549,9 +1198,6 @@ const s = StyleSheet.create({
   inlineRecipe: { paddingHorizontal: 12, paddingBottom: 12, backgroundColor: white, borderTopWidth: 1, borderTopColor: border },
   recipeSection:{ fontSize: 12, fontWeight: '700', color: navy, marginTop: 10, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
   recipeItem:   { fontSize: 13, color: textSec, lineHeight: 20, marginBottom: 2 },
-
-  regenBtn:   { paddingHorizontal:16, paddingVertical:12, borderRadius:12, borderWidth:1.5, borderColor:'rgba(27,58,92,0.3)', backgroundColor:'rgba(255,255,255,0.9)', justifyContent:'center', alignItems:'center' },
-  regenBtnTxt:{ fontSize:14, fontWeight:'700', color:'#1B3A5C' },
 
   floatBar:   { backgroundColor: surface, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginTop: 8, marginBottom: 16, gap: 12 },
   floatCount: { fontSize: 14, color: textSec, textAlign: 'center', fontWeight: '600' },
