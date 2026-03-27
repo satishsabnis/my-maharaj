@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
 const EVENT_TYPES  = ['Picnic', 'Corporate Outing', 'Beach Party', 'Garden Party', 'Sports Day', 'School Trip', 'Family Reunion', 'Camping'];
@@ -95,14 +96,7 @@ Include 3-5 items per section.`;
   }
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => step === 'result' ? setStep('form') : router.back()}>
-          <Text style={s.backText}>← {step === 'result' ? 'New Menu' : 'Back'}</Text>
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Outdoor Catering</Text>
-        <View style={{ width: 80 }} />
-      </View>
+    <ScreenWrapper title="Outdoor Catering" onBack={() => step === "result" ? setStep("form") : router.back()}>
 
       {step === 'form' ? (
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -201,7 +195,7 @@ Include 3-5 items per section.`;
           </View>
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -232,7 +226,7 @@ const s = StyleSheet.create({
   resultHeader:    { backgroundColor: HEADER_COLOR, borderRadius: 14, padding: 20, marginBottom: 16 },
   resultTitle:     { fontSize: 22, fontWeight: '800', color: white },
   resultMeta:      { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
-  menuSection:     { backgroundColor: white, borderRadius: 14, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
+  menuSection:     { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 14, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   menuSectionTitle:{ fontSize: 15, fontWeight: '700', color: navy, marginBottom: 12 },
   menuItem:        { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   menuItemName:    { fontSize: 14, fontWeight: '600', color: '#1F2937' },

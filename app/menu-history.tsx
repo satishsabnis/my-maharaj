@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import ScreenWrapper from '../components/ScreenWrapper';
 import { supabase } from '../lib/supabase';
 import { navy, textSec, white, border, surface, gold, textColor } from '../theme/colors';
 
@@ -73,14 +74,7 @@ export default function MenuHistoryScreen() {
   }
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Menu History</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <ScreenWrapper title="Menu History">
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {loading ? (
@@ -137,7 +131,7 @@ export default function MenuHistoryScreen() {
           })
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -163,7 +157,7 @@ const s = StyleSheet.create({
   ctaBtn:     { backgroundColor: gold, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
   ctaBtnText: { color: navy, fontWeight: '700', fontSize: 15 },
 
-  card:        { backgroundColor: white, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
+  card:        { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
   cardHeader:  { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   cardLeft:    { flex: 1 },
   cardPeriod:  { fontSize: 15, fontWeight: '700', color: navy, marginBottom: 6 },
