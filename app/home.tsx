@@ -55,15 +55,14 @@ function formatDateTime(d: Date): string {
 
 const CARDS = [
   { id:'festivals',  icon:'🪔', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
-  { id:'dietary',    icon:'🥗', title:'Dietary Profile',    desc:'Health & cuisines',         route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
+  { id:'family',     icon:'👨‍👩‍👧', title:'Family Profile',     desc:'Health, cuisines & lab',    route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
   { id:'mealplan',   icon:'🍳', title:'Generate Meal Plan', desc:'AI-powered weekly plan',    route:'/meal-wizard',         accent:'#1B3A5C', iconBg:'#E3F2FD' },
   { id:'party',      icon:'🎉', title:'Party Menu',         desc:'Plan your gathering',       route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
   { id:'outdoor',    icon:'🏕️', title:'Outdoor Catering',   desc:'Events & picnics',          route:'/outdoor-catering',    accent:'#1A6B5C', iconBg:'#E8F5E9' },
-  { id:'history',    icon:'📋', title:'Menu History',       desc:'Past meal plans',           route:'/menu-history',        accent:'#6A1B9A', iconBg:'#F3E5F5' },
   { id:'etiquettes', icon:'🍽️', title:'Table Etiquettes',   desc:'Dining traditions',         route:'/table-etiquettes',    accent:'#C9A227', iconBg:'#FFF8E1' },
   { id:'plating',    icon:'🎨', title:'Traditional Plating',desc:'Present food beautifully',  route:'/traditional-plating', accent:'#2E7D32', iconBg:'#E8F5E9' },
   { id:'fridge',     icon:'🧊', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
-  { id:'labreport',  icon:'🧪', title:'Lab Report',         desc:'Upload & analyse results',  route:'/lab-report',          accent:'#7C3AED', iconBg:'#F5F3FF' },
+  { id:'history',    icon:'📋', title:'Menu History',       desc:'Past meal plans',           route:'/menu-history',        accent:'#6A1B9A', iconBg:'#F3E5F5' },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────

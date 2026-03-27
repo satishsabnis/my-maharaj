@@ -126,11 +126,11 @@ Include 3-5 items in each section. Beverages must always be included with 3+ opt
             </View>
 
             <View style={s.actionRow}>
+              <TouchableOpacity style={s.doneBtn} onPress={() => router.push('/home' as never)}>
+                <Text style={s.doneBtnTxt}>✕ Cancel</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>🔄 Regenerate</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={s.doneBtn} onPress={() => router.push('/home' as never)}>
-                <Text style={s.doneBtnTxt}>✕ Done</Text>
               </TouchableOpacity>
             </View>
 

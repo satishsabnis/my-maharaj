@@ -169,11 +169,11 @@ Include 3-5 items per section.`;
               <Text style={s.resultMeta}>☀️ {weather}</Text>
             </View>
             <View style={{flexDirection:'row', gap:10, marginBottom:12}}>
+              <TouchableOpacity style={{flex:1, borderWidth:1.5, borderColor:'rgba(26,107,60,0.3)', borderRadius:12, paddingVertical:14, alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+                <Text style={{color:'#1A6B3C', fontWeight:'700', fontSize:14}}>✕ Cancel</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={{flex:1, backgroundColor:'#1A6B3C', borderRadius:12, paddingVertical:14, alignItems:'center', justifyContent:'center'}} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={{color:white, fontWeight:'700', fontSize:14}}>🔄 Regenerate</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={{flex:1, borderWidth:1.5, borderColor:'rgba(26,107,60,0.3)', borderRadius:12, paddingVertical:14, alignItems:'center'}} onPress={() => router.push('/home' as never)}>
-                <Text style={{color:'#1A6B3C', fontWeight:'700', fontSize:14}}>✕ Done</Text>
               </TouchableOpacity>
             </View>
             {menu && (

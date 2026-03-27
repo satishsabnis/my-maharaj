@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { SkeletonList } from '../components/Skeleton';
 import { navy, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,11 +14,13 @@ interface Member {
   name: string;
   age: number;
   health_notes: string | null;
+  nationality: string | null;
 }
 
 interface MemberForm {
   name: string;
   age: string;
+  nationality: string;
   healthConditions: string[];
   notes: string;
 }
@@ -44,7 +45,7 @@ function formToNotes(form: MemberForm): string {
 }
 
 function emptyForm(): MemberForm {
-  return { name: '', age: '', healthConditions: [], notes: '' };
+  return { name: '', age: '', nationality: '', healthConditions: [], notes: '' };
 }
 
 function memberToForm(m: Member): MemberForm {
@@ -148,12 +149,12 @@ export default function DietaryProfileScreen() {
   };
 
   return (
-    <ScreenWrapper title="Dietary Profile">
+    <ScreenWrapper title="Family Profile">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Family Members */}
         {loading ? (
-          <SkeletonList count={3} />
+          <Text style={s.loadingText}>Loading...</Text>
         ) : members.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>👨‍👩‍👧‍👦</Text>
@@ -194,6 +195,20 @@ export default function DietaryProfileScreen() {
         <View style={s.addWrap}>
           <Button title="+ Add Family Member" onPress={openAdd} />
         </View>
+
+        {/* Lab Report Link */}
+        <TouchableOpacity
+          style={s.labReportLink}
+          onPress={() => router.push('/lab-report' as never)}
+          activeOpacity={0.85}
+        >
+          <Text style={s.labReportIcon}>🧪</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.labReportTitle}>Lab Report Analysis</Text>
+            <Text style={s.labReportSub}>Upload blood test results — Maharaj updates dietary recommendations automatically</Text>
+          </View>
+          <Text style={{ fontSize: 22, color: '#7C3AED', fontWeight: '300' }}>›</Text>
+        </TouchableOpacity>
 
         {/* Cuisine Preferences */}
         <View style={s.cuisineSection}>
@@ -244,7 +259,10 @@ export default function DietaryProfileScreen() {
               <Input label="Name *" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Full name" />
               <View style={{ flexDirection: 'row' }}>
                 <View style={{ flex: 2, marginRight: 10 }}>
-                  <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
+                  <Input label="Nationality" value={form.nationality}
+            onChangeText={v => setForm(p => ({ ...p, nationality: v }))}
+            placeholder="e.g. Indian, Pakistani, Filipino..." />
+          <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
               </View>
               <Text style={s.sectionLabel}>HEALTH CONDITIONS</Text>
@@ -274,6 +292,10 @@ export default function DietaryProfileScreen() {
 const s = StyleSheet.create({
   scroll:      { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
   loadingText: { textAlign: 'center', color: textSec, marginTop: 40 },
+  labReportLink:  { flexDirection:'row', alignItems:'center', gap:12, backgroundColor:'rgba(124,58,237,0.08)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(124,58,237,0.2)' },
+  labReportIcon:  { fontSize:24 },
+  labReportTitle: { fontSize:14, fontWeight:'700', color:'#7C3AED', marginBottom:2 },
+  labReportSub:   { fontSize:12, color:'#6D28D9', lineHeight:18 },
   emptyState:  { alignItems: 'center', paddingVertical: 60 },
   emptyIcon:   { fontSize: 56, marginBottom: 16 },
   emptyTitle:  { fontSize: 18, fontWeight: '700', color: navy, marginBottom: 8 },
