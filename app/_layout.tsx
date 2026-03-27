@@ -5,6 +5,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { white } from '../theme/colors';
+import { LanguageProvider } from '../lib/translations';
 
 // ─── Fix browser back button exiting the app on web ──────────────────────────
 
@@ -75,6 +76,7 @@ export default function Layout() {
   }
 
   return (
+    <LanguageProvider>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="signup" />
