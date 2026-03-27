@@ -3,6 +3,7 @@ import { Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, Scro
 import { router } from 'expo-router';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
@@ -131,6 +132,10 @@ export default function MealWizardScreen() {
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
 
+  // Guest cuisine revert
+  const [showRevertModal,  setShowRevertModal]  = useState(false);
+  const [revertInfo,       setRevertInfo]       = useState<{cuisine:string;savedCuisines:string[]}>({cuisine:'',savedCuisines:[]});
+
   // Festivals
   const [upcomingFestivals, setUpcomingFestivals] = useState<typeof FESTIVALS_2026>([]);
 
@@ -180,7 +185,29 @@ export default function MealWizardScreen() {
         supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
       ]);
       setFamilyMembers((members as DBMember[]) ?? []);
-      setSavedCuisines((cuisines ?? []).map((c: any) => c.cuisine_name));
+      const saved = (cuisines ?? []).map((c: any) => c.cuisine_name);
+      setSavedCuisines(saved);
+
+      // Check if a guest cuisine period has expired
+      try {
+        const stored = await AsyncStorage.getItem('guest_cuisine');
+        if (stored) {
+          const { cuisine, expiryDate } = JSON.parse(stored) as { cuisine: string; expiryDate: string };
+          const expiry = new Date(expiryDate);
+          const today  = new Date(); today.setHours(0,0,0,0);
+          if (expiry <= today) {
+            // Guest period expired — ask user to confirm revert
+            setRevertInfo({ cuisine, savedCuisines: saved });
+            setShowRevertModal(true);
+          } else {
+            // Still active — pre-fill guest cuisine
+            const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
+            setHasGuests(true);
+            setGuestCuisine(cuisine);
+            setGuestDays(daysLeft);
+          }
+        }
+      } catch (e) { console.error('Guest cuisine check:', e); }
     }
     void load();
   }, []);
@@ -973,7 +1000,17 @@ export default function MealWizardScreen() {
             <Button title="← Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex:2 }}>
-            <Button title="Continue →" onPress={() => advance('meal-prefs')} />
+            <Button title="Continue →" onPress={async () => {
+                if (hasGuests && guestCuisine) {
+                  // Save guest cuisine expiry to AsyncStorage
+                  const expiry = new Date();
+                  expiry.setDate(expiry.getDate() + guestDays);
+                  await AsyncStorage.setItem('guest_cuisine', JSON.stringify({ cuisine: guestCuisine, expiryDate: expiry.toISOString() }));
+                } else {
+                  await AsyncStorage.removeItem('guest_cuisine');
+                }
+                advance('meal-prefs');
+              }} />
           </View>
         </View>
       </View>
@@ -1255,6 +1292,38 @@ export default function MealWizardScreen() {
           {STEP_RENDER[step]?.()}
         </View>
       </ScrollView>
+
+      {/* Guest Cuisine Revert Modal */}
+      {showRevertModal && (
+        <View style={s.revertOverlay}>
+          <View style={s.revertBox}>
+            <Text style={s.revertTitle}>Guest visit has ended</Text>
+            <Text style={s.revertSub}>
+              Your {revertInfo.cuisine} cuisine guest period is over.{'\n'}
+              Revert to your saved cuisines?
+            </Text>
+            {revertInfo.savedCuisines.length > 0 && (
+              <Text style={s.revertCuisines}>Saved: {revertInfo.savedCuisines.join(', ')}</Text>
+            )}
+            <View style={s.revertBtns}>
+              <TouchableOpacity style={s.revertBtnYes} onPress={async () => {
+                await AsyncStorage.removeItem('guest_cuisine');
+                setHasGuests(false); setGuestCuisine(''); setShowRevertModal(false);
+              }}>
+                <Text style={s.revertBtnYesTxt}>✓ Yes, revert to saved cuisines</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.revertBtnKeep} onPress={async () => {
+                const expiry = new Date();
+                expiry.setDate(expiry.getDate() + guestDays);
+                await AsyncStorage.setItem('guest_cuisine', JSON.stringify({ cuisine: revertInfo.cuisine, expiryDate: expiry.toISOString() }));
+                setHasGuests(true); setGuestCuisine(revertInfo.cuisine); setShowRevertModal(false);
+              }}>
+                <Text style={s.revertBtnKeepTxt}>Keep {revertInfo.cuisine} for {guestDays} more days</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
     </ImageBackground>
   );
@@ -1297,6 +1366,17 @@ const s = StyleSheet.create({
 
   pillRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   btnRow:   { flexDirection: 'row', marginTop: 28 },
+
+  revertOverlay:   { position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.5)', zIndex:999, alignItems:'center', justifyContent:'center' },
+  revertBox:       { backgroundColor:'#FFFFFF', borderRadius:20, padding:24, width:320, shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.15, shadowRadius:20, elevation:10 },
+  revertTitle:     { fontSize:18, fontWeight:'800', color:'#1B3A5C', marginBottom:8 },
+  revertSub:       { fontSize:14, color:'#5A7A8A', lineHeight:22, marginBottom:12 },
+  revertCuisines:  { fontSize:12, color:'#1A6B5C', fontWeight:'600', marginBottom:16, fontStyle:'italic' },
+  revertBtns:      { gap:10 },
+  revertBtnYes:    { backgroundColor:'#1B3A5C', borderRadius:12, paddingVertical:14, alignItems:'center' },
+  revertBtnYesTxt: { color:'#FFFFFF', fontWeight:'700', fontSize:14 },
+  revertBtnKeep:   { borderWidth:1.5, borderColor:'#D4EDE5', borderRadius:12, paddingVertical:14, alignItems:'center' },
+  revertBtnKeepTxt:{ color:'#1B3A5C', fontWeight:'600', fontSize:14 },
 
   festBanner:      { flexDirection:'row', alignItems:'flex-start', gap:12, backgroundColor:'rgba(201,162,39,0.12)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(201,162,39,0.4)' },
   festBannerIcon:  { fontSize:24 },
