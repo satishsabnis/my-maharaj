@@ -12,7 +12,7 @@ import { navy, gold, peacock, textSec, errorRed, white, border, surface, textCol
 type WizardStep =
   | 'period' | 'food-pref' | 'meal-prefs' | 'unwell' | 'nutrition'
   | 'generating' | 'generating-error' | 'selection'
-  | 'recipes' | 'grocery' | 'feedback';
+  | 'cook-or-order' | 'recipes' | 'grocery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner';
 
@@ -376,7 +376,8 @@ export default function MealWizardScreen() {
       'unwell': 'meal-prefs',
       'nutrition': 'unwell',
       'selection': 'nutrition',
-      'recipes': 'selection',
+      'cook-or-order': 'selection',
+      'recipes': 'cook-or-order',
       'grocery': 'recipes',
       'feedback': 'grocery',
     };
@@ -543,9 +544,9 @@ export default function MealWizardScreen() {
   }
 
   function renderMealPrefs() {
-    const BF_OPTS = ['Hot dish (pohe/upma/idli)','Bread/Paratha','Eggs','Fruits','Juice/Smoothie','Light only','Full Thali'];
-    const LN_OPTS = ['Rice based','Roti based','Dal','Sabzi','Salad','Raita','Papad','Pickle'];
-    const DN_OPTS = ['Rice based','Roti based','Non-veg main','Veg main','Soup','Salad','Dessert','Light only'];
+    const BF_OPTS = ['Hot dish (pohe/upma/idli)','Bread/Paratha','Eggs','Fruits','Juice/Smoothie','Light only'];
+    const LN_OPTS = ['Rice based','Roti based','Dal','Sabzi','Salad','Raita','Papad','Pickle','Full Thali'];
+    const DN_OPTS = ['Rice based','Roti based','Non-veg main','Veg main','Soup','Salad','Dessert','Light only','Full Thali'];
 
     function toggle(list: string[], set: React.Dispatch<React.SetStateAction<string[]>>, item: string) {
       set((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]);
@@ -628,7 +629,13 @@ export default function MealWizardScreen() {
   }
 
   function renderNutrition() {
-    const GOALS = ['Balanced','Low Calorie','Keto','High Protein','Less Oil','High Fibre','Weight Loss','Doctor Recommended'];
+    const GOALS = [
+      'Balanced','Blood Sugar Control','Bone Health','Detox','Digestive Health',
+      'Doctor Recommended','Energy Boost','Heart Health','High Fibre','High Protein',
+      'Immunity Boost','Keto','Kid Friendly','Less Oil','Less Spice','Low Calorie',
+      'Low Carb','Low Sodium','Mental Clarity','Muscle Gain','Post-illness Recovery',
+      'Pregnancy Safe','Sattvic / Fasting','Senior Friendly','Skin Health','Weight Loss',
+    ];
     return (
       <View>
         <Text style={s.stepTitle}>Any nutrition goal?</Text>
@@ -801,10 +808,49 @@ export default function MealWizardScreen() {
           <Text style={s.floatCount}>{selectedCount()} of {total} meals selected</Text>
           <Button
             title="Confirm Selections ✓"
-            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('recipes'); }}
+            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
             disabled={!allSelected()}
           />
         </View>
+      </View>
+    );
+  }
+
+  function renderCookOrOrder() {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+        <Text style={s.stepTitle}>Your meal plan is ready! 🎉</Text>
+        <Text style={s.stepSub}>What would you like to do?</Text>
+
+        <TouchableOpacity
+          style={[s.cookOrderCard, { borderColor: peacock }]}
+          onPress={() => advance('recipes')}
+          activeOpacity={0.85}
+        >
+          <Text style={s.cookOrderIcon}>👨‍🍳</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.cookOrderTitle, { color: peacock }]}>Cook at Home</Text>
+            <Text style={s.cookOrderDesc}>View recipes, cooking instructions and grocery list</Text>
+          </View>
+          <Text style={s.cookOrderArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.cookOrderCard, { borderColor: gold, marginTop: 12 }]}
+          onPress={() => router.push('/order-out' as never)}
+          activeOpacity={0.85}
+        >
+          <Text style={s.cookOrderIcon}>🛵</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.cookOrderTitle, { color: '#B45309' }]}>Order Out</Text>
+            <Text style={s.cookOrderDesc}>Open Talabat, Careem, Noon Food or Keeta</Text>
+          </View>
+          <Text style={s.cookOrderArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[s.btnRow, { marginTop: 24, width: '100%' }]} onPress={() => advance('recipes')}>
+          <Text style={{ color: textSec, fontSize: 13, textAlign: 'center' }}>Skip — just show me the grocery list →</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -1000,6 +1046,7 @@ export default function MealWizardScreen() {
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
+    'cook-or-order':    renderCookOrOrder,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
     'feedback':         renderFeedback,
@@ -1078,6 +1125,18 @@ const s = StyleSheet.create({
 
   pillRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   btnRow:   { flexDirection: 'row', marginTop: 28 },
+
+  cookOrderCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    width: '100%', backgroundColor: white, borderRadius: 18,
+    borderWidth: 2, padding: 18,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  cookOrderIcon:  { fontSize: 36 },
+  cookOrderTitle: { fontSize: 17, fontWeight: '800', marginBottom: 4 },
+  cookOrderDesc:  { fontSize: 13, color: textSec, lineHeight: 18 },
+  cookOrderArrow: { fontSize: 26, color: textSec },
   errorText:{ fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 12 },
   inlineError: { fontSize: 12, color: errorRed, marginTop: 4, marginLeft: 2 },
 
