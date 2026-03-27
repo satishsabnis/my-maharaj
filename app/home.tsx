@@ -6,6 +6,7 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { navy, gold, white, textSec, border, mint } from '../theme/colors';
+import { useLang } from '../lib/translations';
 
 // ─── Festival data (verified 2026 dates) ─────────────────────────────────────
 
@@ -57,7 +58,7 @@ function formatDateTime(d: Date): string {
 // ─── Card definitions ─────────────────────────────────────────────────────────
 
 const CARDS = [
-  { id:'festivals',  icon:'🪔', title:'Festivals',          route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
+  { id:'festivals',  icon:'🪔', titleKey:'festivals' as const,        route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
   { id:'dietary',    icon:'🥗', title:'Dietary Profile',    route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
   { id:'mealplan',   icon:'🍳', title:'Generate Meal Plan', route:'/meal-wizard',         accent:'#1B3A5C', iconBg:'#E3F2FD' },
   { id:'party',      icon:'🎉', title:'Party Menu',         route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
@@ -70,6 +71,7 @@ const CARDS = [
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  const { t, lang, toggleEnglish, isEnglish } = useLang();
   const { width } = useWindowDimensions();
   const isWide    = width >= 768;
   // On wide screens 4-col, on narrow 2-col
@@ -110,19 +112,19 @@ export default function HomeScreen() {
   function getCardDesc(id: string): string {
     if (id === 'festivals') {
       const nf = getNextFestival();
-      if (!nf) return 'All festivals';
+      if (!nf) return t.upcomingCelebrations;
       if (nf.daysAway === 0) return 'Today! 🎉';
-      if (nf.daysAway === 1) return `${nf.name} tomorrow`;
-      return `${nf.name} in ${nf.daysAway}d`;
+      if (nf.daysAway === 1) return nf.name + ' tomorrow';
+      return nf.name + ' in ' + nf.daysAway + 'd';
     }
     const descs: Record<string, string> = {
-      dietary:    'Health & cuisines',
-      mealplan:   'AI-powered weekly plan',
-      party:      'Plan your gathering',
-      outdoor:    'Events & picnics',
-      history:    'Past meal plans',
-      etiquettes: 'Dining traditions',
-      plating:    'Present food beautifully',
+      dietary:    t.healthAndCuisines,
+      mealplan:   t.aiPoweredWeeklyPlan,
+      party:      t.planYourGathering,
+      outdoor:    t.eventsAndPicnics,
+      history:    t.pastMealPlans,
+      etiquettes: t.diningTraditions,
+      plating:    t.presentFoodBeautifully,
     };
     return descs[id] ?? '';
   }
@@ -166,13 +168,19 @@ export default function HomeScreen() {
           />
 
           <View style={s.headerRight}>
+            {lang !== 'en' && (
+              <TouchableOpacity onPress={toggleEnglish}
+                style={[s.langBtn, isEnglish && s.langBtnActive]}>
+                <Text style={[s.langBtnTxt, isEnglish && s.langBtnTxtActive]}>EN</Text>
+              </TouchableOpacity>
+            )}
             <Image
               source={require('../assets/blueflute-logo.png')}
               style={s.bfLogo}
               resizeMode="contain"
             />
             <TouchableOpacity onPress={() => setShowExit(true)} style={s.exitBtn}>
-              <Text style={s.exitTxt}>Exit</Text>
+              <Text style={s.exitTxt}>{t.exit}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -180,7 +188,7 @@ export default function HomeScreen() {
         {/* ── Date bar ── */}
         <View style={s.dateBar}>
           <Text style={s.dateTxt}>{dateTimeStr}</Text>
-          {firstName ? <Text style={s.greetTxt}>Namaste, {firstName} 🙏</Text> : null}
+          {firstName ? <Text style={s.greetTxt}>{t.namaste}, {firstName} 🙏</Text> : null}
         </View>
 
         {/* ── Card grid ── */}
@@ -200,7 +208,7 @@ export default function HomeScreen() {
                   <Text style={s.iconEmoji}>{card.icon}</Text>
                 </View>
                 <Text style={[s.cardTitle, { color: card.accent }]} numberOfLines={2}>
-                  {card.title}
+                  {(t as any)[card.id] ?? card.id}
                 </Text>
                 <Text style={s.cardDesc} numberOfLines={2}>{getCardDesc(card.id)}</Text>
                 <View style={[s.accentBar, { backgroundColor: card.accent }]} />
@@ -228,7 +236,7 @@ export default function HomeScreen() {
           activeOpacity={0.88}
         >
           <Text style={s.fabIcon}>🧠</Text>
-          <Text style={s.fabLabel}>Ask Maharaj AI</Text>
+          <Text style={s.fabLabel}>{t.askMaharajAI}</Text>
           <Text style={s.fabMic}>🎙️</Text>
         </TouchableOpacity>
 
@@ -273,7 +281,11 @@ const s = StyleSheet.create({
   avatarTxt: { color:gold, fontSize:15, fontWeight:'800' },
   mmLogo:    { width:120, height:40 },
   headerRight:{ flexDirection:'row', alignItems:'center', gap:8 },
-  bfLogo:    { width:72, height:28 },
+  bfLogo:    { width:110, height:42 },
+  langBtn:        { paddingHorizontal:8, paddingVertical:4, borderRadius:8, borderWidth:1.5, borderColor:'rgba(27,58,92,0.3)', backgroundColor:'rgba(255,255,255,0.8)' },
+  langBtnActive:  { backgroundColor:'#1B3A5C', borderColor:'#1B3A5C' },
+  langBtnTxt:     { fontSize:11, fontWeight:'700', color:'#1B3A5C' },
+  langBtnTxtActive: { color:'#FFFFFF' },
   exitBtn:   { paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1.5, borderColor:'rgba(27,58,92,0.25)' },
   exitTxt:   { fontSize:13, color:navy, fontWeight:'600' },
 
@@ -332,6 +344,6 @@ const s = StyleSheet.create({
     elevation:8,
   },
   fabIcon:  { fontSize:20 },
-  fabLabel: { flex:1, fontSize:15, fontWeight:'800', color:white, textAlign:'center' },
+  fabLabel: { flex:1, fontSize:15, fontWeight:'800', color:white, textAlign:'center', textAlignVertical:'center' },
   fabMic:   { fontSize:20 },
 });
