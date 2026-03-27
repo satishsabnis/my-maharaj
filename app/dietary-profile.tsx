@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -6,7 +6,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import { navy, gold, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface Member {
   id: string;
@@ -23,8 +23,11 @@ interface MemberForm {
 }
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
+// ─── Cuisines ─────────────────────────────────────────────────────────────────
+const INDIAN_CUISINES = ['Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi','Kashmiri','Konkani','Maharashtrian','Malabar','Manipuri','Marwari','Meghalayan','Naga','Odia','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','Udupi'].sort();
+const INTERNATIONAL_CUISINES = ['American','Arabian','Chinese','Continental','Ethiopian','French','Greek','Indonesian','Italian','Japanese','Korean','Lebanese','Mediterranean','Mexican','Moroccan','Persian','Spanish','Thai','Turkish','Vietnamese'].sort();
 
-// ─── Cuisines (alphabetical) ──────────────────────────────────────────────────
+// â”€â”€â”€ Cuisines (alphabetical) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const INDIAN_CUISINES = [
   'Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi',
@@ -56,7 +59,7 @@ function memberToForm(m: Member): MemberForm {
   };
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function DietaryProfileScreen() {
   const [members, setMembers]       = useState<Member[]>([]);
@@ -65,7 +68,8 @@ export default function DietaryProfileScreen() {
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState<string | null>(null);
   const [form, setForm]             = useState<MemberForm>(emptyForm());
-  const [formError, setFormError]   = useState('');
+  const [formError, setFormError]   = useState('');  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [cuisineSaving, setCuisineSaving] = useState(false);
 
   // Cuisine preferences
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
@@ -176,7 +180,7 @@ export default function DietaryProfileScreen() {
     );
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
     Diabetic:    { bg: '#FEF2F2', fg: '#DC2626' },
@@ -195,7 +199,7 @@ export default function DietaryProfileScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>←</Text>
+          <Text style={s.backArrow}>â†</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Dietary Profile</Text>
         <View style={{ width: 40 }} />
@@ -206,7 +210,7 @@ export default function DietaryProfileScreen() {
           <Text style={s.loadingText}>Loading...</Text>
         ) : members.length === 0 ? (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>👨‍👩‍👧‍👦</Text>
+            <Text style={s.emptyIcon}>ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦</Text>
             <Text style={s.emptyTitle}>No family members yet</Text>
             <Text style={s.emptySub}>Add your family members to personalise meal plans</Text>
           </View>
@@ -254,10 +258,10 @@ export default function DietaryProfileScreen() {
           <Button title="+ Add Family Member" onPress={openAdd} />
         </View>
 
-        {/* ── Cuisine Preferences ── */}
+        {/* â”€â”€ Cuisine Preferences â”€â”€ */}
         <View style={s.cuisineSection}>
-          <Text style={s.cuisineSectionTitle}>🍽️ Cuisine Preferences</Text>
-          <Text style={s.cuisineSectionSub}>Select cuisines you enjoy — these guide your meal plans</Text>
+          <Text style={s.cuisineSectionTitle}>ðŸ½ï¸ Cuisine Preferences</Text>
+          <Text style={s.cuisineSectionSub}>Select cuisines you enjoy â€” these guide your meal plans</Text>
 
           <Text style={s.cuisineGroupLabel}>INDIAN CUISINES</Text>
           <View style={s.pillRow}>
@@ -289,7 +293,7 @@ export default function DietaryProfileScreen() {
 
           <View style={{ marginTop: 16 }}>
             <Button
-              title={cuisineSaving ? 'Saving...' : '✓ Save Cuisine Preferences'}
+              title={cuisineSaving ? 'Saving...' : 'âœ“ Save Cuisine Preferences'}
               onPress={() => void saveCuisines()}
               loading={cuisineSaving}
             />
@@ -307,7 +311,7 @@ export default function DietaryProfileScreen() {
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{editId ? 'Edit Member' : 'Add Member'}</Text>
               <TouchableOpacity onPress={() => setModalOpen(false)} style={s.modalClose}>
-                <Text style={s.modalCloseText}>✕</Text>
+                <Text style={s.modalCloseText}>âœ•</Text>
               </TouchableOpacity>
             </View>
 
@@ -331,7 +335,7 @@ export default function DietaryProfileScreen() {
                 placeholder="e.g. Low salt, no fried food, doctor says..." multiline numberOfLines={3} />
 
               <TouchableOpacity style={s.lipidBtn} activeOpacity={0.8}>
-                <Text style={s.lipidBtnText}>📄 Lipid Report — OPTIONAL</Text>
+                <Text style={s.lipidBtnText}>ðŸ“„ Lipid Report â€” OPTIONAL</Text>
               </TouchableOpacity>
 
               {formError ? <Text style={s.formError}>{formError}</Text> : null}
@@ -348,7 +352,7 @@ export default function DietaryProfileScreen() {
   );
 }
 
-// ─── Pill ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ps = StyleSheet.create({
   pill:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: white },
@@ -357,7 +361,7 @@ const ps = StyleSheet.create({
   pillTextActive:{ color: white, fontWeight: '600' },
 });
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: white },
@@ -420,3 +424,4 @@ const s = StyleSheet.create({
 
   formError: { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
 });
+
