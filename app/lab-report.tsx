@@ -86,8 +86,32 @@ export default function LabReportScreen() {
   const [saved,         setSaved]         = useState(false);
   const [error,         setError]         = useState('');
   const [memberName,    setMemberName]    = useState('');
+  const [showManual,    setShowManual]    = useState(false);
+  const [manualMarkers, setManualMarkers] = useState<Array<{name:string;value:string;unit:string;normal_range:string;test_date:string}>>([
+    {name:'',value:'',unit:'',normal_range:'',test_date:new Date().toISOString().split('T')[0]}
+  ]);
 
   // ── Scan report ───────────────────────────────────────────────────────────
+
+  function analyseManualMarkers() {
+    const valid = manualMarkers.filter(m => m.name.trim() && m.value.trim());
+    if (!valid.length) { setError('Please fill in at least one test marker.'); return; }
+    const markers = valid.map(m => {
+      const val = parseFloat(m.value);
+      const [low, high] = m.normal_range.split('-').map(v => parseFloat(v.trim()));
+      let status: 'high' | 'low' | 'normal' = 'normal';
+      if (!isNaN(low) && !isNaN(high)) {
+        if (val > high) status = 'high';
+        else if (val < low) status = 'low';
+      }
+      const condition = Object.entries({HbA1c:'Diabetic','Blood Glucose':'Diabetic','Total Cholesterol':'Cholesterol','LDL':'Cholesterol','TSH':'Thyroid','Hemoglobin':'Anaemia','Creatinine':'Kidney','Testosterone':'PCOS'})
+        .find(([k]) => m.name.toLowerCase().includes(k.toLowerCase()))?.[1] ?? null;
+      return { name: m.name, value: m.value, unit: m.unit, normal_range: m.normal_range, status, dietary_impact: '', recommendation: '', health_condition: condition };
+    });
+    setResult({ patient_name: memberName || null, report_date: valid[0].test_date, markers, summary: `Manual entry: ${valid.length} markers recorded.`, dietary_notes: [] });
+    setShowManual(false);
+    if (markers.some(m => m.status !== 'normal')) setShowConfirm(true);
+  }
 
   async function scanWithCamera() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -346,6 +370,47 @@ Respond ONLY with JSON, no markdown.`;
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Manual entry modal */}
+      <Modal visible={showManual} animationType="slide" transparent onRequestClose={() => setShowManual(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Enter Lab Results Manually</Text>
+            <ScrollView style={{maxHeight:400}} showsVerticalScrollIndicator={false}>
+              {manualMarkers.map((m, i) => (
+                <View key={i} style={{backgroundColor:'#F9FAFB',borderRadius:12,padding:12,marginBottom:10}}>
+                  <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:6}}>Test {i+1}</Text>
+                  <View style={{flexDirection:'row',gap:8,marginBottom:6}}>
+                    <View style={{flex:2}}>
+                      <Input label="Test Name" value={m.name} onChangeText={v=>setManualMarkers(p=>p.map((x,j)=>j===i?{...x,name:v}:x))} placeholder="e.g. HbA1c" />
+                    </View>
+                    <View style={{flex:1}}>
+                      <Input label="Value" value={m.value} onChangeText={v=>setManualMarkers(p=>p.map((x,j)=>j===i?{...x,value:v}:x))} keyboardType="numeric" placeholder="7.2" />
+                    </View>
+                  </View>
+                  <View style={{flexDirection:'row',gap:8}}>
+                    <View style={{flex:1}}>
+                      <Input label="Unit" value={m.unit} onChangeText={v=>setManualMarkers(p=>p.map((x,j)=>j===i?{...x,unit:v}:x))} placeholder="%" />
+                    </View>
+                    <View style={{flex:2}}>
+                      <Input label="Normal Range" value={m.normal_range} onChangeText={v=>setManualMarkers(p=>p.map((x,j)=>j===i?{...x,normal_range:v}:x))} placeholder="4.0-5.6" />
+                    </View>
+                  </View>
+                  <Input label="Test Date" value={m.test_date} onChangeText={v=>setManualMarkers(p=>p.map((x,j)=>j===i?{...x,test_date:v}:x))} placeholder="YYYY-MM-DD" />
+                </View>
+              ))}
+              <TouchableOpacity style={{alignItems:'center',paddingVertical:10}} onPress={()=>setManualMarkers(p=>[...p,{name:'',value:'',unit:'',normal_range:'',test_date:new Date().toISOString().split('T')[0]}])}>
+                <Text style={{fontSize:13,color:navy,fontWeight:'600'}}>+ Add Another Test</Text>
+              </TouchableOpacity>
+            </ScrollView>
+            <Input label="Family Member Name (optional)" value={memberName} onChangeText={setMemberName} placeholder="e.g. Satish" />
+            <View style={{gap:10,marginTop:12}}>
+              <Button title="Analyse Results" onPress={analyseManualMarkers} />
+              <Button title="Cancel" onPress={()=>setShowManual(false)} variant="outline" />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Confirm save modal */}
       <Modal visible={showConfirm} animationType="slide" transparent onRequestClose={() => setShowConfirm(false)}>

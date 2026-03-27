@@ -53,15 +53,17 @@ function formatDateTime(d: Date): string {
 
 // ─── Card definitions ─────────────────────────────────────────────────────────
 
+// Special card - full width
+const HERO_CARD = { id:'mealplan', icon:'🍳', title:'Generate Meal Plan', desc:'AI-powered weekly plan for your family', route:'/meal-wizard', accent:'#1B3A5C', iconBg:'#E3F2FD' };
+
 const CARDS = [
   { id:'festivals',  icon:'🪔', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
-  { id:'family',     icon:'👨‍👩‍👧', title:'Family Profile',     desc:'Health, cuisines & lab',    route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
-  { id:'mealplan',   icon:'🍳', title:'Generate Meal Plan', desc:'AI-powered weekly plan',    route:'/meal-wizard',         accent:'#1B3A5C', iconBg:'#E3F2FD' },
+  { id:'family',     icon:'👨‍👩‍👧', title:'Family Profile',    desc:'Health, cuisines & lab',    route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
   { id:'party',      icon:'🎉', title:'Party Menu',         desc:'Plan your gathering',       route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
   { id:'outdoor',    icon:'🏕️', title:'Outdoor Catering',   desc:'Events & picnics',          route:'/outdoor-catering',    accent:'#1A6B5C', iconBg:'#E8F5E9' },
+  { id:'fridge',     icon:'🧊', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
   { id:'etiquettes', icon:'🍽️', title:'Table Etiquettes',   desc:'Dining traditions',         route:'/table-etiquettes',    accent:'#C9A227', iconBg:'#FFF8E1' },
   { id:'plating',    icon:'🎨', title:'Traditional Plating',desc:'Present food beautifully',  route:'/traditional-plating', accent:'#2E7D32', iconBg:'#E8F5E9' },
-  { id:'fridge',     icon:'🧊', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
   { id:'history',    icon:'📋', title:'Menu History',       desc:'Past meal plans',           route:'/menu-history',        accent:'#6A1B9A', iconBg:'#F3E5F5' },
 ];
 
@@ -175,6 +177,22 @@ export default function HomeScreen() {
           contentContainerStyle={[s.scroll, { paddingBottom: 110 }]}
           showsVerticalScrollIndicator={false}
         >
+          {/* Hero card - Generate Meal Plan - full width, stands out */}
+          <TouchableOpacity
+            style={s.heroCard}
+            onPress={() => router.push(HERO_CARD.route as never)}
+            activeOpacity={0.88}
+          >
+            <View style={s.heroCardLeft}>
+              <Text style={s.heroCardIcon}>{HERO_CARD.icon}</Text>
+              <View>
+                <Text style={s.heroCardTitle}>{HERO_CARD.title}</Text>
+                <Text style={s.heroCardDesc}>{HERO_CARD.desc}</Text>
+              </View>
+            </View>
+            <Text style={s.heroCardArrow}>›</Text>
+          </TouchableOpacity>
+
           <View style={[s.grid, { gap }]}>
             {CARDS.map((card) => (
               <TouchableOpacity
@@ -246,7 +264,7 @@ const s = StyleSheet.create({
   },
   avatar:    { width:38, height:38, borderRadius:19, backgroundColor:navy, alignItems:'center', justifyContent:'center' },
   avatarTxt: { color:gold, fontSize:15, fontWeight:'800' },
-  mmLogo:    { width:140, height:50 },
+  mmLogo:    { width:180, height:62 },
   headerRight:{ flexDirection:'row', alignItems:'center', gap:8 },
   bfLogo:    { width:130, height:44 },
   exitBtn:   { paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1.5, borderColor:'rgba(27,58,92,0.25)' },
@@ -262,6 +280,13 @@ const s = StyleSheet.create({
   greetTxt: { fontSize:12, color:'#1A6B5C', fontWeight:'500' },
 
   scroll: { padding:16 },
+  heroCard:      { backgroundColor:'#1B3A5C', borderRadius:20, padding:20, marginBottom:16, flexDirection:'row', alignItems:'center', justifyContent:'space-between', shadowColor:'#1B3A5C', shadowOffset:{width:0,height:6}, shadowOpacity:0.4, shadowRadius:16, elevation:8 },
+  heroCardLeft:  { flexDirection:'row', alignItems:'center', gap:16, flex:1 },
+  heroCardIcon:  { fontSize:36 },
+  heroCardTitle: { fontSize:17, fontWeight:'800', color:'#FFFFFF', marginBottom:4 },
+  heroCardDesc:  { fontSize:12, color:'rgba(255,255,255,0.75)', lineHeight:18 },
+  heroCardArrow: { fontSize:28, color:'rgba(255,255,255,0.6)', fontWeight:'300' },
+
   grid:   { flexDirection:'row', flexWrap:'wrap' },
 
   card: {

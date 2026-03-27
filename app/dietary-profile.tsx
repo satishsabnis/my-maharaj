@@ -21,9 +21,27 @@ interface MemberForm {
   name: string;
   age: string;
   nationality: string;
+  nativeLanguage: string;
   healthConditions: string[];
   notes: string;
 }
+
+const NATIONALITIES = [
+  'Afghan','Australian','Bangladeshi','British','Canadian','Chinese','Dutch',
+  'Egyptian','Ethiopian','Filipino','French','German','Greek','Indian','Indonesian',
+  'Iranian','Iraqi','Italian','Japanese','Jordanian','Korean','Kuwaiti','Lebanese',
+  'Malaysian','Maldivian','Mexican','Moroccan','Nepali','Nigerian','Omani','Pakistani',
+  'Palestinian','Qatari','Russian','Saudi','Singaporean','South African','Spanish',
+  'Sri Lankan','Sudanese','Syrian','Thai','Turkish','UAE National','Ugandan',
+  'Ukrainian','American','Vietnamese','Yemeni','Zimbabwean',
+].sort();
+
+const LANGUAGES = [
+  'Arabic','Bengali','Chinese','Dutch','English','Filipino','French','German',
+  'Gujarati','Hindi','Indonesian','Italian','Japanese','Kannada','Korean',
+  'Malayalam','Marathi','Nepali','Odia','Pashto','Persian','Punjabi','Russian',
+  'Sinhala','Spanish','Swahili','Tamil','Telugu','Thai','Turkish','Urdu','Vietnamese',
+].sort();
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
@@ -45,7 +63,7 @@ function formToNotes(form: MemberForm): string {
 }
 
 function emptyForm(): MemberForm {
-  return { name: '', age: '', nationality: '', healthConditions: [], notes: '' };
+  return { name: '', age: '', nationality: '', nativeLanguage: '', healthConditions: [], notes: '' };
 }
 
 function memberToForm(m: Member): MemberForm {
@@ -64,6 +82,8 @@ export default function DietaryProfileScreen() {
   const [modalOpen,        setModalOpen]        = useState(false);
   const [editId,           setEditId]           = useState<string | null>(null);
   const [form,             setForm]             = useState<MemberForm>(emptyForm());
+  const [natSuggestions,   setNatSuggestions]   = useState<string[]>([]);
+  const [langSuggestions,  setLangSuggestions]  = useState<string[]>([]);
   const [formError,        setFormError]        = useState('');
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSaving,    setCuisineSaving]    = useState(false);
@@ -193,7 +213,14 @@ export default function DietaryProfileScreen() {
         })}
 
         <View style={s.addWrap}>
-          <Button title="+ Add Family Member" onPress={openAdd} />
+          <View style={{flexDirection:'row',gap:12}}>
+          <View style={{flex:2}}>
+            <Button title="+ Add Family Member" onPress={openAdd} />
+          </View>
+          <View style={{flex:1}}>
+            <Button title="Done" onPress={() => router.push('/home' as never)} variant="outline" />
+          </View>
+        </View>
         </View>
 
         {/* Lab Report Link */}
@@ -260,8 +287,35 @@ export default function DietaryProfileScreen() {
               <View style={{ flexDirection: 'row' }}>
                 <View style={{ flex: 2, marginRight: 10 }}>
                   <Input label="Nationality" value={form.nationality}
-            onChangeText={v => setForm(p => ({ ...p, nationality: v }))}
+            onChangeText={v => {
+              setForm(p => ({ ...p, nationality: v }));
+              setNatSuggestions(v.length > 0 ? NATIONALITIES.filter(n => n.toLowerCase().startsWith(v.toLowerCase())).slice(0,5) : []);
+            }}
             placeholder="e.g. Indian, Pakistani, Filipino..." />
+          {natSuggestions.length > 0 && (
+            <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',marginBottom:8}}>
+              {natSuggestions.map(n => (
+                <TouchableOpacity key={n} style={{paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setForm(p=>({...p,nationality:n})); setNatSuggestions([]); }}>
+                  <Text style={{fontSize:14,color:navy}}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          <Input label="Native Language" value={form.nativeLanguage}
+            onChangeText={v => {
+              setForm(p => ({ ...p, nativeLanguage: v }));
+              setLangSuggestions(v.length > 0 ? LANGUAGES.filter(l => l.toLowerCase().startsWith(v.toLowerCase())).slice(0,5) : []);
+            }}
+            placeholder="e.g. Hindi, Urdu, Tamil..." />
+          {langSuggestions.length > 0 && (
+            <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',marginBottom:8}}>
+              {langSuggestions.map(l => (
+                <TouchableOpacity key={l} style={{paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setForm(p=>({...p,nativeLanguage:l})); setLangSuggestions([]); }}>
+                  <Text style={{fontSize:14,color:navy}}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
               </View>
