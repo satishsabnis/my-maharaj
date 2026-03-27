@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet,
   ScrollView, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, gold, white, midGray } from '../theme/colors';
 
 interface EtiquetteSection {
@@ -70,12 +71,7 @@ export default function TableEtiquettesScreen() {
   const [expanded, setExpanded] = useState<number | null>(0);
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>← Back</Text></TouchableOpacity>
-        <Text style={s.headerTitle}>Table Etiquettes</Text>
-        <View style={{ width: 60 }} />
-      </View>
+    <ScreenWrapper title="Table Etiquettes">
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.intro}>Learn the art of Indian dining — from setting a thali to honoring your guests.</Text>
@@ -100,7 +96,7 @@ export default function TableEtiquettesScreen() {
         ))}
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -111,7 +107,7 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: white },
   scroll: { padding: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
   intro: { fontSize: 14, color: '#5C4B1E', lineHeight: 22, marginBottom: 20, fontStyle: 'italic' },
-  section: { backgroundColor: white, borderRadius: 14, marginBottom: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
+  section: { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 14, marginBottom: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
   sectionIcon: { fontSize: 24, width: 32, textAlign: 'center' },
   sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: navy },

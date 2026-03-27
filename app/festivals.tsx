@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet,
   ScrollView, Switch, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, gold, white, midGray, lightGray } from '../theme/colors';
 
 interface Festival {
@@ -97,12 +98,7 @@ export default function FestivalsScreen() {
   }
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>← Back</Text></TouchableOpacity>
-        <Text style={s.headerTitle}>Festivals & Functions</Text>
-        <View style={{ width: 60 }} />
-      </View>
+    <ScreenWrapper title="Festivals & Functions">
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {upcoming.length > 0 && (
@@ -123,7 +119,7 @@ export default function FestivalsScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -134,7 +130,7 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: white },
   scroll: { padding: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
   sectionHeader: { fontSize: 12, fontWeight: '700', color: midGray, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
-  festCard: { backgroundColor: white, borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
+  festCard: { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   festCardPast: { opacity: 0.5 },
   festIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
   festIcon: { fontSize: 24 },
