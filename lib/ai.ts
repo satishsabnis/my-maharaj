@@ -130,12 +130,17 @@ async function generateOneMeal(
   nutritionGoals?: string,
   dayIdx = 0,
   festivalContext?: string,
+  weekDishHistory?: string[],
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
   const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}.` : '';
   const unwellStr = unwellNote ? `Gentle recovery meals for: ${unwellNote}.` : '';
   const nutritionStr = nutritionGoals ? `Nutrition goal: ${nutritionGoals}.` : '';
+  const historyStr = weekDishHistory && weekDishHistory.length > 0
+    ? 'NEVER use these dishes already served this week: ' + weekDishHistory.slice(0, 20).join(', ') + '. Suggest completely different dishes.'
+    : '';
+
   const festivalStr = festivalContext ? `FESTIVAL CONTEXT: ${festivalContext} is being celebrated. Include at least one traditionally appropriate festival dish option. For sattvic/fasting festivals, ensure options follow fasting rules (no onion, no garlic, use kuttu/sabudana/rajgira/sama rice).` : '';
 
   const nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
@@ -148,12 +153,13 @@ async function generateOneMeal(
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
-${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr}${nonVegCritical}
+${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}
 
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
 - ALL 3 options must be COMPLETELY DIFFERENT dishes from each other
+- NEVER repeat any dish that appears in the history list above
 - The ${mealType} options must be DIFFERENT from what would be served at other meals today
 - For fasting: breakfast dishes (sabudana khichdi, fruit bowl, rajgira paratha) must differ from lunch (sama rice, vrat ki sabzi, kuttu paratha) and dinner (sabudana vada, makhana kheer, singhare ki puri)
 - Include 5-8 real ingredients with quantities (e.g. "Flattened rice 200g", "Onion 1 medium")
@@ -274,10 +280,12 @@ export async function generateMealPlan(
   let completed = 0;
   const dayResults = await Promise.all(
     dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
+      // Pass all known dish history for no-repeat across week
+      const weekHistory = [...(params.dishHistory ?? [])].slice(0, 30);
       const [breakfast, lunch, dinner] = await Promise.all([
-        generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext),
-        generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext),
-        generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext),
+        generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
+        generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
+        generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
       ]);
       completed++;
       onProgress?.(completed, total);

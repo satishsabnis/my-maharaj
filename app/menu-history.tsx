@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import { SkeletonList } from '../components/Skeleton';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { supabase } from '../lib/supabase';
 import { navy, textSec, white, border, surface, gold, textColor } from '../theme/colors';
@@ -78,7 +79,7 @@ export default function MenuHistoryScreen() {
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <Text style={s.loadingText}>Loading your meal history...</Text>
+          <SkeletonList count={4} />
         ) : records.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>📋</Text>

@@ -1426,6 +1426,12 @@ const s = StyleSheet.create({
   revertBtnKeep:   { borderWidth:1.5, borderColor:'#D4EDE5', borderRadius:12, paddingVertical:14, alignItems:'center' },
   revertBtnKeepTxt:{ color:'#1B3A5C', fontWeight:'600', fontSize:14 },
 
+  cuisineBanner:      { flexDirection:'row', alignItems:'center', gap:10, backgroundColor:'rgba(26,107,92,0.1)', borderRadius:12, padding:12, marginBottom:16, borderWidth:1, borderColor:'rgba(26,107,92,0.25)' },
+  cuisineBannerIcon:  { fontSize:20 },
+  cuisineBannerTitle: { fontSize:12, fontWeight:'700', color:'#1A6B5C', marginBottom:2 },
+  cuisineBannerSub:   { fontSize:12, color:'#1A6B5C' },
+  cuisineBannerEdit:  { fontSize:12, color:'#1B3A5C', fontWeight:'700', textDecorationLine:'underline' },
+
   festBanner:      { flexDirection:'row', alignItems:'flex-start', gap:12, backgroundColor:'rgba(201,162,39,0.12)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(201,162,39,0.4)' },
   festBannerIcon:  { fontSize:24 },
   festBannerTitle: { fontSize:14, fontWeight:'700', color:'#78350F', marginBottom:2 },

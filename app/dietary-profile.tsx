@@ -1,10 +1,11 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { SkeletonList } from '../components/Skeleton';
 import { navy, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ export default function DietaryProfileScreen() {
 
         {/* Family Members */}
         {loading ? (
-          <Text style={s.loadingText}>Loading...</Text>
+          <SkeletonList count={3} />
         ) : members.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>👨‍👩‍👧‍👦</Text>
