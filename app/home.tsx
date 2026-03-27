@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import {
   ImageBackground, Platform, SafeAreaView, ScrollView,
   StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, Image,
@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 
-// ─── Festival data ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Festival data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const FESTIVALS = [
   { name: 'Ram Navami',       date: '2026-03-26' },
@@ -36,7 +36,7 @@ function getNextFestival() {
   return null;
 }
 
-// ─── DateTime ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ DateTime â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const WDAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -46,25 +46,25 @@ function formatDateTime(d: Date): string {
   const m = String(d.getMinutes()).padStart(2, '0');
   const ap = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  return `${WDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}  ·  ${h}:${m} ${ap}`;
+  return `${WDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}  Â·  ${h}:${m} ${ap}`;
 }
 
-// ─── Card definitions ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Card definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CARDS = [
-  { id:'festivals',  icon:'🪔', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
-  { id:'dietary',    icon:'🥗', title:'Dietary Profile',    desc:'Health & cuisines',         route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
-  { id:'mealplan',   icon:'🍳', title:'Generate Meal Plan', desc:'AI-powered weekly plan',    route:'/meal-wizard',         accent:'#1B3A5C', iconBg:'#E3F2FD' },
-  { id:'party',      icon:'🎉', title:'Party Menu',         desc:'Plan your gathering',       route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
-  { id:'outdoor',    icon:'🏕️', title:'Outdoor Catering',   desc:'Events & picnics',          route:'/outdoor-catering',    accent:'#1A6B5C', iconBg:'#E8F5E9' },
-  { id:'history',    icon:'📋', title:'Menu History',       desc:'Past meal plans',           route:'/menu-history',        accent:'#6A1B9A', iconBg:'#F3E5F5' },
-  { id:'etiquettes', icon:'🍽️', title:'Table Etiquettes',   desc:'Dining traditions',         route:'/table-etiquettes',    accent:'#C9A227', iconBg:'#FFF8E1' },
-  { id:'plating',    icon:'🎨', title:'Traditional Plating',desc:'Present food beautifully',  route:'/traditional-plating', accent:'#2E7D32', iconBg:'#E8F5E9' },
-  { id:'fridge',     icon:'🧊', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
-  { id:'labreport',  icon:'🧪', title:'Lab Report',         desc:'Upload & analyse results',  route:'/lab-report',          accent:'#7C3AED', iconBg:'#F5F3FF' },
+  { id:'festivals',  icon:'ðŸª”', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
+  { id:'dietary',    icon:'ðŸ¥—', title:'Dietary Profile',    desc:'Health & cuisines',         route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
+  { id:'mealplan',   icon:'ðŸ³', title:'Generate Meal Plan', desc:'AI-powered weekly plan',    route:'/meal-wizard',         accent:'#1B3A5C', iconBg:'#E3F2FD' },
+  { id:'party',      icon:'ðŸŽ‰', title:'Party Menu',         desc:'Plan your gathering',       route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
+  { id:'outdoor',    icon:'ðŸ•ï¸', title:'Outdoor Catering',   desc:'Events & picnics',          route:'/outdoor-catering',    accent:'#1A6B5C', iconBg:'#E8F5E9' },
+  { id:'history',    icon:'ðŸ“‹', title:'Menu History',       desc:'Past meal plans',           route:'/menu-history',        accent:'#6A1B9A', iconBg:'#F3E5F5' },
+  { id:'etiquettes', icon:'ðŸ½ï¸', title:'Table Etiquettes',   desc:'Dining traditions',         route:'/table-etiquettes',    accent:'#C9A227', iconBg:'#FFF8E1' },
+  { id:'plating',    icon:'ðŸŽ¨', title:'Traditional Plating',desc:'Present food beautifully',  route:'/traditional-plating', accent:'#2E7D32', iconBg:'#E8F5E9' },
+  { id:'fridge',     icon:'ðŸ§Š', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
+  { id:'labreport',  icon:'ðŸ§ª', title:'Lab Report',         desc:'Upload & analyse results',  route:'/lab-report',          accent:'#7C3AED', iconBg:'#F5F3FF' },
 ];
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
@@ -106,7 +106,7 @@ export default function HomeScreen() {
     if (id === 'festivals') {
       const nf = getNextFestival();
       if (!nf) return 'All festivals';
-      if (nf.daysAway === 0) return 'Today! 🎉';
+      if (nf.daysAway === 0) return 'Today! ðŸŽ‰';
       if (nf.daysAway === 1) return nf.name + ' tomorrow';
       return nf.name + ' in ' + nf.daysAway + 'd';
     }
@@ -166,7 +166,7 @@ export default function HomeScreen() {
         {/* Date bar */}
         <View style={s.dateBar}>
           <Text style={s.dateTxt}>{dateTimeStr}</Text>
-          {firstName ? <Text style={s.greetTxt}>Namaste, {firstName} 🙏</Text> : null}
+          {firstName ? <Text style={s.greetTxt}>Namaste, {firstName} ðŸ™</Text> : null}
         </View>
 
         {/* Card grid */}
@@ -215,9 +215,9 @@ export default function HomeScreen() {
           onPress={() => router.push('/ask-maharaj' as never)}
           activeOpacity={0.88}
         >
-          <Text style={s.fabIcon}>🧠</Text>
+          <Text style={s.fabIcon}>ðŸ§ </Text>
           <Text style={s.fabLabel}>Ask Maharaj AI</Text>
-          <Text style={s.fabMic}>🎙️</Text>
+          <Text style={s.fabMic}>ðŸŽ™ï¸</Text>
         </TouchableOpacity>
 
       </SafeAreaView>
@@ -225,7 +225,7 @@ export default function HomeScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const s = StyleSheet.create({
   bg:   { flex: 1 },
@@ -300,3 +300,4 @@ const s = StyleSheet.create({
   fabLabel: { flex:1, fontSize:15, fontWeight:'800', color:white, textAlign:'center' },
   fabMic:   { fontSize:20 },
 });
+
