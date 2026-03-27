@@ -129,12 +129,14 @@ async function generateOneMeal(
   unwellNote?: string,
   nutritionGoals?: string,
   dayIdx = 0,
+  festivalContext?: string,
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
   const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}.` : '';
   const unwellStr = unwellNote ? `Gentle recovery meals for: ${unwellNote}.` : '';
   const nutritionStr = nutritionGoals ? `Nutrition goal: ${nutritionGoals}.` : '';
+  const festivalStr = festivalContext ? `FESTIVAL CONTEXT: ${festivalContext} is being celebrated. Include at least one traditionally appropriate festival dish option. For sattvic/fasting festivals, ensure options follow fasting rules (no onion, no garlic, use kuttu/sabudana/rajgira/sama rice).` : '';
 
   const nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
     ['chicken','fish','egg','mutton'].some((w) => foodNote.toLowerCase().includes(w))
@@ -146,7 +148,7 @@ async function generateOneMeal(
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
-${prefsNote} ${unwellStr} ${nutritionStr}${nonVegCritical}
+${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr}${nonVegCritical}
 
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
@@ -206,6 +208,7 @@ export async function generateMealPlan(
     includeDessert?: boolean;
     vegDays?: string[];
     cuisinePerDay?: string[];
+    festivalContext?: string;
     breakfastPrefs?: string[];
     lunchPrefs?: string[];
     dinnerPrefs?: string[];
@@ -243,6 +246,7 @@ export async function generateMealPlan(
     ? params.unwellMembers.join(', ')
     : undefined;
 
+  const festivalContext = params.festivalContext;
   const nutritionGoals = params.nutritionFocus
     || (params.mealPrefs ? undefined : undefined);
 
@@ -271,9 +275,9 @@ export async function generateMealPlan(
   const dayResults = await Promise.all(
     dayMeta.map(async ({ date, dayName, foodPref, lunchDinnerPref, i }) => {
       const [breakfast, lunch, dinner] = await Promise.all([
-        generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i),
-        generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i),
-        generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i),
+        generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext),
+        generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext),
+        generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext),
       ]);
       completed++;
       onProgress?.(completed, total);

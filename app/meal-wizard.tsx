@@ -8,6 +8,50 @@ import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
+
+// ─── Festival data (Indian + International 2026) ─────────────────────────────
+
+const FESTIVALS_2026 = [
+  // Indian
+  { name: 'Ram Navami',        date: '2026-03-26', type: 'indian',   sattvic: true  },
+  { name: 'Baisakhi',          date: '2026-04-13', type: 'indian',   sattvic: false },
+  { name: 'Akshaya Tritiya',   date: '2026-04-19', type: 'indian',   sattvic: true  },
+  { name: 'Eid al-Adha',       date: '2026-05-27', type: 'global',   sattvic: false },
+  { name: 'Guru Purnima',      date: '2026-07-19', type: 'indian',   sattvic: true  },
+  { name: 'Independence Day',  date: '2026-08-15', type: 'indian',   sattvic: false },
+  { name: 'Raksha Bandhan',    date: '2026-08-28', type: 'indian',   sattvic: true  },
+  { name: 'Janmashtami',       date: '2026-09-04', type: 'indian',   sattvic: true  },
+  { name: 'Ganesh Chaturthi',  date: '2026-09-14', type: 'indian',   sattvic: true  },
+  { name: 'Navratri Start',    date: '2026-10-11', type: 'indian',   sattvic: true  },
+  { name: 'Dussehra',          date: '2026-10-20', type: 'indian',   sattvic: false },
+  { name: 'Diwali',            date: '2026-11-08', type: 'indian',   sattvic: false },
+  { name: 'Bhai Dooj',         date: '2026-11-11', type: 'indian',   sattvic: false },
+  { name: 'Christmas',         date: '2026-12-25', type: 'global',   sattvic: false },
+  { name: 'New Year',          date: '2027-01-01', type: 'global',   sattvic: false },
+  // International
+  { name: 'Easter',            date: '2026-04-05', type: 'global',   sattvic: false },
+  { name: 'Eid al-Fitr',       date: '2026-03-31', type: 'global',   sattvic: false },
+  { name: 'Hanukkah',          date: '2026-12-14', type: 'global',   sattvic: false },
+  { name: 'Thanksgiving',      date: '2026-11-26', type: 'global',   sattvic: false },
+];
+
+function parseLocalDate(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function getUpcomingFestivals(fromDate: Date, toDate: Date): typeof FESTIVALS_2026 {
+  const start = new Date(fromDate); start.setHours(0,0,0,0);
+  const end   = new Date(toDate);   end.setHours(23,59,59,999);
+  // extend window by 3 days before and after
+  const windowStart = new Date(start); windowStart.setDate(windowStart.getDate() - 3);
+  const windowEnd   = new Date(end);   windowEnd.setDate(windowEnd.getDate() + 3);
+  return FESTIVALS_2026.filter((f) => {
+    const d = parseLocalDate(f.date);
+    return d >= windowStart && d <= windowEnd;
+  });
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
@@ -86,6 +130,9 @@ export default function MealWizardScreen() {
   const [vegType,  setVegType]    = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
+
+  // Festivals
+  const [upcomingFestivals, setUpcomingFestivals] = useState<typeof FESTIVALS_2026>([]);
 
   // Guest cuisine
   const [hasGuests,        setHasGuests]        = useState(false);
@@ -229,6 +276,9 @@ export default function MealWizardScreen() {
         },
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: nutritionGoals.length > 0 ? nutritionGoals.join(', ') : undefined,
+        festivalContext: upcomingFestivals.length > 0
+          ? upcomingFestivals.map(f => `${f.name}${f.sattvic ? ' (sattvic/fasting)' : ''}`).join(', ')
+          : undefined,
         vegDays:        profile?.veg_days ?? [],
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
         lunchPrefs:     lnPrefs.length > 0 ? lnPrefs : undefined,
@@ -381,7 +431,14 @@ export default function MealWizardScreen() {
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
-  function advance(next: WizardStep) { setError(''); setStep(next); }
+  function advance(next: WizardStep) {
+    setError('');
+    // Detect festivals when moving past period step
+    if (next === 'food-pref' && selectedFrom && selectedTo) {
+      setUpcomingFestivals(getUpcomingFestivals(selectedFrom, selectedTo));
+    }
+    setStep(next);
+  }
 
   function goBack() {
     setError('');
@@ -656,6 +713,18 @@ export default function MealWizardScreen() {
       <View>
         <Text style={s.stepTitle}>Any nutrition goal?</Text>
         <Text style={s.stepSub}>Select all that apply</Text>
+
+        {upcomingFestivals.length > 0 && (
+          <View style={s.festBanner}>
+            <Text style={s.festBannerIcon}>🪔</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.festBannerTitle}>Festival meals included!</Text>
+              <Text style={s.festBannerSub}>
+                {upcomingFestivals.map(f => f.name).join(' · ')} — Maharaj will add appropriate festival dishes
+              </Text>
+            </View>
+          </View>
+        )}
         <View style={s.pillRow}>
           {GOALS.map((g) => (
             <Chip key={g} label={g} active={nutritionGoals.includes(g)}
@@ -1228,6 +1297,11 @@ const s = StyleSheet.create({
 
   pillRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   btnRow:   { flexDirection: 'row', marginTop: 28 },
+
+  festBanner:      { flexDirection:'row', alignItems:'flex-start', gap:12, backgroundColor:'rgba(201,162,39,0.12)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(201,162,39,0.4)' },
+  festBannerIcon:  { fontSize:24 },
+  festBannerTitle: { fontSize:14, fontWeight:'700', color:'#78350F', marginBottom:2 },
+  festBannerSub:   { fontSize:12, color:'#92400E', lineHeight:18 },
 
   chipSm:        { paddingHorizontal:12, paddingVertical:7, borderRadius:16, borderWidth:1.5, borderColor:'#D4EDE5', backgroundColor:'rgba(255,255,255,0.9)' },
   chipSmActive:  { backgroundColor:'#1B3A5C', borderColor:'#1B3A5C' },
