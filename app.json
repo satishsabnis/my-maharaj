@@ -25,7 +25,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single",
+      "output": "static",
       "favicon": "./assets/favicon.png"
     },
     "scheme": "my-maharaj",
@@ -35,3 +35,4 @@
     ]
   }
 }
+
