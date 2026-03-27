@@ -95,6 +95,9 @@ export default function Layout() {
       <Stack.Screen name="ask-maharaj" />
       <Stack.Screen name="order-out" />
       <Stack.Screen name="language-select" />
+      <Stack.Screen name="my-fridge" />
+      <Stack.Screen name="lab-report" />
     </Stack>
+    </LanguageProvider>
   );
 }

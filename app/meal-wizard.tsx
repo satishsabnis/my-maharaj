@@ -132,6 +132,10 @@ export default function MealWizardScreen() {
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
 
+  // Last plan cooked check
+  const [showCookedModal,  setShowCookedModal]  = useState(false);
+  const [lastPlanDishes,   setLastPlanDishes]   = useState<string[]>([]);
+
   // Guest cuisine revert
   const [showRevertModal,  setShowRevertModal]  = useState(false);
   const [revertInfo,       setRevertInfo]       = useState<{cuisine:string;savedCuisines:string[]}>({cuisine:'',savedCuisines:[]});
@@ -318,6 +322,16 @@ export default function MealWizardScreen() {
       setGeneratedPlan(plan.days);
       setSelections(defaultSel);
       setStep('selection');
+      // Save dish names for next-time cooked check
+      try {
+        const dishes: string[] = [];
+        plan.days.forEach(d => {
+          if (d.breakfast?.options?.[0]?.name) dishes.push(d.breakfast.options[0].name);
+          if (d.lunch?.options?.[0]?.name)     dishes.push(d.lunch.options[0].name);
+          if (d.dinner?.options?.[0]?.name)    dishes.push(d.dinner.options[0].name);
+        });
+        await AsyncStorage.setItem('last_meal_plan_dishes', JSON.stringify(dishes));
+      } catch (e) { console.error('Save dishes:', e); }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
       setStep('generating-error');
@@ -1292,6 +1306,40 @@ export default function MealWizardScreen() {
           {STEP_RENDER[step]?.()}
         </View>
       </ScrollView>
+
+      {/* Last Plan Cooked Modal */}
+      {showCookedModal && (
+        <View style={s.revertOverlay}>
+          <View style={s.revertBox}>
+            <Text style={s.revertTitle}>Did you cook your last plan?</Text>
+            <Text style={s.revertSub}>
+              Your last meal plan had {lastPlanDishes.length} dishes.{'\n'}
+              Were they cooked? This helps Maharaj adjust your fridge inventory.
+            </Text>
+            <View style={s.revertBtns}>
+              <TouchableOpacity style={s.revertBtnYes} onPress={async () => {
+                // Deduct from fridge inventory
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    await supabase.rpc('deduct_fridge_for_dishes', { p_user_id: user.id, p_dishes: lastPlanDishes });
+                  }
+                } catch (e) { console.error('Fridge deduct:', e); }
+                await AsyncStorage.removeItem('last_meal_plan_dishes');
+                setShowCookedModal(false);
+              }}>
+                <Text style={s.revertBtnYesTxt}>✓ Yes — update my fridge</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.revertBtnKeep} onPress={async () => {
+                await AsyncStorage.removeItem('last_meal_plan_dishes');
+                setShowCookedModal(false);
+              }}>
+                <Text style={s.revertBtnKeepTxt}>No — skip this time</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Guest Cuisine Revert Modal */}
       {showRevertModal && (

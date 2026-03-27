@@ -125,6 +125,8 @@ export default function HomeScreen() {
       history:    t.pastMealPlans,
       etiquettes: t.diningTraditions,
       plating:    t.presentFoodBeautifully,
+      fridge:     'My Fridge',
+      labreport:  'Lab Report',
     };
     return descs[id] ?? '';
   }
