@@ -6,7 +6,7 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { navy, gold, white, textSec, border, mint } from '../theme/colors';
-import { useLang } from '../lib/translations';
+import { useLang } from '../lib/LanguageProvider';
 
 // ─── Festival data (verified 2026 dates) ─────────────────────────────────────
 
