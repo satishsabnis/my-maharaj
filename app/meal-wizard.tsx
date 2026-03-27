@@ -932,11 +932,26 @@ export default function MealWizardScreen() {
         {/* Floating bottom bar */}
         <View style={s.floatBar}>
           <Text style={s.floatCount}>{selectedCount()} of {total} meals selected</Text>
-          <Button
-            title="Confirm Selections ✓"
-            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
-            disabled={!allSelected()}
-          />
+          <View style={{flexDirection:'row', gap:10}}>
+            <TouchableOpacity
+              style={s.regenBtn}
+              onPress={() => {
+                setGeneratedPlan(null);
+                setSelections({});
+                setExpandedDays({0: true});
+                setGeneratingProgress(null);
+                setStep('generating');
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={s.regenBtnTxt}>🔄 Regenerate</Text>
+            </TouchableOpacity>
+            <Button
+              title="Confirm ✓"
+              onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
+              disabled={!allSelected()}
+            />
+          </View>
         </View>
       </View>
     );
@@ -1534,6 +1549,9 @@ const s = StyleSheet.create({
   inlineRecipe: { paddingHorizontal: 12, paddingBottom: 12, backgroundColor: white, borderTopWidth: 1, borderTopColor: border },
   recipeSection:{ fontSize: 12, fontWeight: '700', color: navy, marginTop: 10, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
   recipeItem:   { fontSize: 13, color: textSec, lineHeight: 20, marginBottom: 2 },
+
+  regenBtn:   { paddingHorizontal:16, paddingVertical:12, borderRadius:12, borderWidth:1.5, borderColor:'rgba(27,58,92,0.3)', backgroundColor:'rgba(255,255,255,0.9)', justifyContent:'center', alignItems:'center' },
+  regenBtnTxt:{ fontSize:14, fontWeight:'700', color:'#1B3A5C' },
 
   floatBar:   { backgroundColor: surface, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginTop: 8, marginBottom: 16, gap: 12 },
   floatCount: { fontSize: 14, color: textSec, textAlign: 'center', fontWeight: '600' },
