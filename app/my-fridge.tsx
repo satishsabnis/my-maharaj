@@ -61,6 +61,8 @@ export default function MyFridgeScreen() {
   const [storeName,    setStoreName]    = useState('');
   const [error,        setError]        = useState('');
   const [success,      setSuccess]      = useState('');
+  const [showManual,   setShowManual]   = useState(false);
+  const [manualItem,   setManualItem]   = useState({ item_name:'', quantity:'', unit:'', store:'', buy_date: new Date().toISOString().split('T')[0] });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +80,25 @@ export default function MyFridgeScreen() {
   useEffect(() => { void load(); }, []);
 
   // ── Scan bill ─────────────────────────────────────────────────────────────
+
+  async function saveManualItem() {
+    if (!manualItem.item_name.trim()) { setError('Please enter an item name.'); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: existing } = await supabase.from('fridge_inventory').select('id, quantity')
+      .eq('user_id', user.id).eq('item_name', manualItem.item_name).maybeSingle();
+    if (existing) {
+      const newQty = (parseFloat(existing.quantity ?? '0') || 0) + (parseFloat(manualItem.quantity) || 0);
+      await supabase.from('fridge_inventory').update({ quantity: String(newQty), unit: manualItem.unit, store: manualItem.store, buy_date: manualItem.buy_date, updated_at: new Date().toISOString() }).eq('id', existing.id);
+    } else {
+      await supabase.from('fridge_inventory').insert({ user_id: user.id, ...manualItem });
+    }
+    setManualItem({ item_name:'', quantity:'', unit:'', store:'', buy_date: new Date().toISOString().split('T')[0] });
+    setShowManual(false);
+    setSuccess('Item added to fridge!');
+    setTimeout(() => setSuccess(''), 3000);
+    await load();
+  }
 
   async function scanWithCamera() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -281,6 +302,30 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Manual entry modal */}
+      <Modal visible={showManual} animationType="slide" transparent onRequestClose={() => setShowManual(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Add Item Manually</Text>
+            <Input label="Item Name" value={manualItem.item_name} onChangeText={v => setManualItem(p => ({...p, item_name: v}))} placeholder="e.g. Basmati Rice" />
+            <View style={{flexDirection:'row', gap:10}}>
+              <View style={{flex:1}}>
+                <Input label="Quantity" value={manualItem.quantity} onChangeText={v => setManualItem(p => ({...p, quantity: v}))} keyboardType="numeric" placeholder="2" />
+              </View>
+              <View style={{flex:1}}>
+                <Input label="Unit" value={manualItem.unit} onChangeText={v => setManualItem(p => ({...p, unit: v}))} placeholder="kg, L, pcs..." />
+              </View>
+            </View>
+            <Input label="Store" value={manualItem.store} onChangeText={v => setManualItem(p => ({...p, store: v}))} placeholder="Carrefour, Spinneys..." />
+            <Input label="Buy Date" value={manualItem.buy_date} onChangeText={v => setManualItem(p => ({...p, buy_date: v}))} placeholder="YYYY-MM-DD" />
+            <View style={{gap:10, marginTop:16}}>
+              <Button title="Add to Fridge" onPress={saveManualItem} />
+              <Button title="Cancel" onPress={() => setShowManual(false)} variant="outline" />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Scan result modal */}
       <Modal visible={showScanModal} animationType="slide" transparent onRequestClose={() => setShowScanModal(false)}>

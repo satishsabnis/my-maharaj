@@ -158,6 +158,8 @@ ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCr
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
+- Full Thali is NEVER appropriate for Breakfast — only for Lunch or Dinner
+- For breakfast, suggest light dishes: pohe, upma, idli, dosa, thepla, paratha, eggs, fruits, smoothies
 - ALL 3 options must be COMPLETELY DIFFERENT dishes from each other
 - NEVER repeat any dish that appears in the history list above
 - The ${mealType} options must be DIFFERENT from what would be served at other meals today
