@@ -208,7 +208,7 @@ export default function MealWizardScreen() {
         cuisine,
         dishHistory,
         foodPrefs: {
-          type:          effectiveFoodPref,
+          type:          foodPref,
           vegType:       vegType ?? undefined,
           nonVegOptions: nonVegOpts.length > 0 ? nonVegOpts : undefined,
         },
@@ -234,7 +234,7 @@ export default function MealWizardScreen() {
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
-  }, [step, runGeneration]);
+  }, [step]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -281,11 +281,11 @@ export default function MealWizardScreen() {
   function buildGroceryText(): string {
     const grocery = buildGrocery();
     const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const lines = ['MY MAHARAJ SHOPPING LIST', 'Date: ' + today, ''];
+    const lines = ['MY MAHARAJ SHOPPING LIST', `Date: ${today}`, ''];
     CAT_ORDER.forEach((cat) => {
       const items = grocery[cat];
       if (!items?.length) return;
-      lines.push(CAT_ICONS[cat] + ' ' + cat.toUpperCase() + ':');
+      lines.push(`${CAT_ICONS[cat]} ${cat.toUpperCase()}:`);
       items.forEach((it) => lines.push(`  - ${it.name}`));
       lines.push('');
     });
@@ -319,7 +319,7 @@ export default function MealWizardScreen() {
       supabase.from('menu_history').insert({
         user_id: user.id,
         period_start: toYMD(selectedFrom), period_end: toYMD(selectedTo),
-        cuisine: 'Various', food_pref: effectiveFoodPref,
+        cuisine: 'Various', food_pref: foodPref ?? 'veg',
         menu_json: { days: generatedPlan.map((day, i) => ({
           date: day.date, day: day.day,
           breakfast: getOpt(i, 'breakfast'),
