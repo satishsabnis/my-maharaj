@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -110,10 +110,10 @@ Include 3-5 items in each section. Beverages must always be included with 3+ opt
             {error ? <Text style={s.error}>{error}</Text> : null}
 
             <TouchableOpacity style={[s.genBtn, loading && { opacity: 0.6 }]} onPress={generateMenu} disabled={loading}>
-              {loading ? <ActivityIndicator color={white} /> : <Text style={s.genBtnTxt}>🎉 Generate Party Menu</Text>}
+              {loading ? <ActivityIndicator color={white} /> : <Text style={s.genBtnTxt}>ðŸŽ‰ Generate Party Menu</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.cancelLink} onPress={() => router.push('/home' as never)}>
-              <Text style={s.cancelLinkTxt}>✕ Cancel</Text>
+              <Text style={s.cancelLinkTxt}>âœ• Cancel</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -122,32 +122,32 @@ Include 3-5 items in each section. Beverages must always be included with 3+ opt
           <View style={s.container}>
             <View style={s.resultHeader}>
               <Text style={s.resultTitle}>{occasion} Menu</Text>
-              <Text style={s.resultMeta}>{guests} guests · {foodType} · AED {budget} total</Text>
+              <Text style={s.resultMeta}>{guests} guests Â· {foodType} Â· AED {budget} total</Text>
             </View>
 
             <View style={s.actionRow}>
               <TouchableOpacity style={s.doneBtn} onPress={() => router.push('/home' as never)}>
-                <Text style={s.doneBtnTxt}>✕ Cancel</Text>
+                <Text style={s.doneBtnTxt}>âœ• Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
-                {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>🔄 Regenerate</Text>}
+                {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>ðŸ”„ Regenerate</Text>}
               </TouchableOpacity>
             </View>
 
             {menu && <>
-              <Section title="Starters"   icon="🍢" items={menu.starters}    />
-              <Section title="Main Course" icon="🍛" items={menu.main_course} />
-              <Section title="Desserts"    icon="🍮" items={menu.desserts}    />
+              <Section title="Starters"   icon="ðŸ¢" items={menu.starters}    />
+              <Section title="Main Course" icon="ðŸ›" items={menu.main_course} />
+              <Section title="Desserts"    icon="ðŸ®" items={menu.desserts}    />
               <Section title="Beverages"   icon="🥤" items={menu.beverages}   />
               {menu.serving_tips?.length > 0 && (
                 <View style={s.section}>
-                  <Text style={s.sectionTitle}>💡 Serving Tips</Text>
-                  {menu.serving_tips.map((t, i) => <Text key={i} style={s.tipTxt}>• {t}</Text>)}
+                  <Text style={s.sectionTitle}>ðŸ’¡ Serving Tips</Text>
+                  {menu.serving_tips.map((t, i) => <Text key={i} style={s.tipTxt}>â€¢ {t}</Text>)}
                 </View>
               )}
               {menu.shopping_list?.length > 0 && (
                 <View style={s.section}>
-                  <Text style={s.sectionTitle}>🛒 Shopping List</Text>
+                  <Text style={s.sectionTitle}>ðŸ›’ Shopping List</Text>
                   <View style={s.shopGrid}>
                     {menu.shopping_list.map((item, i) => (
                       <View key={i} style={s.shopChip}><Text style={s.shopChipTxt}>{item}</Text></View>
@@ -200,3 +200,5 @@ const s = StyleSheet.create({
   shopChip:    { backgroundColor: lightGray, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   shopChipTxt: { fontSize: 13, color: darkGray },
 });
+
+
