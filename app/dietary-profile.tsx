@@ -68,9 +68,6 @@ export default function DietaryProfileScreen() {
   const [formError, setFormError]   = useState('');  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSaving, setCuisineSaving] = useState(false);
 
-  // Cuisine preferences
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [cuisineSaving,    setCuisineSaving]    = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
