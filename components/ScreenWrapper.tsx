@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
-import { useLang } from "../lib/translations";
+import { useLang } from "../lib/LanguageProvider";
 
 interface Props {
   title?: string;

@@ -817,82 +817,8 @@ const TRANSLATIONS: Record<string, Translations> = {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
+export { en };
+
 export function getTranslations(langCode: string): Translations {
   return TRANSLATIONS[langCode] ?? TRANSLATIONS['en'];
 }
-
-// ─── Language Context ─────────────────────────────────────────────────────────
-
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from './supabase';
-
-interface LangContextType {
-  lang: string;
-  t: Translations;
-  setLang: (code: string) => void;
-  isEnglish: boolean;
-  toggleEnglish: () => void;
-}
-
-const LangContext = createContext<LangContextType>({
-  lang: 'en',
-  t: en,
-  setLang: () => {},
-  isEnglish: true,
-  toggleEnglish: () => {},
-});
-
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang,        setLangState]  = useState('en');
-  const [prevLang,    setPrevLang]   = useState('en');
-  const [isEnglish,   setIsEnglish]  = useState(true);
-
-  useEffect(() => {
-    async function loadLang() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase.from('profiles')
-          .select('app_language').eq('id', user.id).maybeSingle();
-        const saved = data?.app_language ?? 'en';
-        setLangState(saved);
-        setPrevLang(saved);
-        setIsEnglish(saved === 'en');
-      } catch (e) { console.error(e); }
-    }
-    void loadLang();
-  }, []);
-
-  function setLang(code: string) {
-    setLangState(code);
-    setPrevLang(code);
-    setIsEnglish(code === 'en');
-  }
-
-  function toggleEnglish() {
-    if (isEnglish && prevLang !== 'en') {
-      // Switch back to preferred language
-      setLangState(prevLang);
-      setIsEnglish(false);
-    } else {
-      // Switch to English
-      setPrevLang(lang);
-      setLangState('en');
-      setIsEnglish(true);
-    }
-  }
-
-  const t = getTranslations(lang);
-
-  return (
-    <LangContext.Provider value={{ lang, t, setLang, isEnglish, toggleEnglish }}>
-      {children}
-    </LangContext.Provider>
-  );
-}
-
-export function useLang() {
-  return useContext(LangContext);
-}
-
-export default TRANSLATIONS;
