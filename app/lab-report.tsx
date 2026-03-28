@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator, Modal, Platform, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
+import Input from '../components/Input';
 import { navy, gold, white, textSec, border, errorRed, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -113,59 +112,29 @@ export default function LabReportScreen() {
     if (markers.some(m => m.status !== 'normal')) setShowConfirm(true);
   }
 
-  async function scanWithCamera() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { setError('Camera permission required.'); return; }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.9, base64: true });
-    if (!res.canceled && res.assets[0]) {
-      await processReport(res.assets[0].base64 ?? '', 'image');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function handleFileUpload() {
+    if (Platform.OS === 'web') {
+      fileInputRef.current?.click();
+    } else {
+      setError('File upload is only supported on web.');
     }
   }
 
-  async function uploadFile() {
+  async function onFileSelected(e: any) {
+    const file = e?.target?.files?.[0];
+    if (!file) return;
     try {
-      const res = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'],
-        copyToCacheDirectory: true,
-      });
-      if (!res.canceled && res.assets[0]) {
-        // For PDF we send as document, for image as base64
-        const asset = res.assets[0];
-        if (asset.mimeType?.includes('pdf')) {
-          await processReportPDF(asset.uri);
-        } else {
-          // Convert image file to base64
-          const response = await fetch(asset.uri);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            const base64 = (reader.result as string).split(',')[1];
-            await processReport(base64, 'image');
-          };
-          reader.readAsDataURL(blob);
-        }
-      }
-    } catch (e) {
-      setError('Could not open file. Please try again.');
-    }
-  }
-
-  async function processReportPDF(uri: string) {
-    setScanning(true); setError('');
-    try {
-      // Fetch file as base64
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      await processReport(base64, 'pdf');
-    } catch (e) {
-      setError('Could not read PDF. Please try uploading an image instead.');
-      setScanning(false);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        const type = file.type?.includes('pdf') ? 'pdf' : 'image';
+        await processReport(base64, type);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setError('Could not read file. Please try again.');
     }
   }
 
@@ -283,15 +252,22 @@ Respond ONLY with JSON, no markdown.`;
     <ScreenWrapper title="Lab Report">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Upload buttons */}
+        {/* Upload button + hidden file input */}
+        {Platform.OS === 'web' && (
+          <input
+            ref={fileInputRef as any}
+            type="file"
+            accept="image/*,application/pdf"
+            style={{ display: 'none' }}
+            onChange={onFileSelected}
+          />
+        )}
         <View style={s.actionRow}>
-          <TouchableOpacity style={s.scanBtn} onPress={scanWithCamera} disabled={scanning} activeOpacity={0.85}>
-            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnIcon}></Text>}
-            <Text style={s.scanBtnTxt}>Scan Report</Text>
+          <TouchableOpacity style={s.scanBtn} onPress={handleFileUpload} disabled={scanning} activeOpacity={0.85}>
+            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnTxt}>Upload PDF / Image</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={uploadFile} disabled={scanning} activeOpacity={0.85}>
-            <Text style={s.scanBtnIcon}></Text>
-            <Text style={[s.scanBtnTxt, { color: navy }]}>Upload PDF/Image</Text>
+          <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={() => setShowManual(true)} disabled={scanning} activeOpacity={0.85}>
+            <Text style={[s.scanBtnTxt, { color: navy }]}>Enter Manually</Text>
           </TouchableOpacity>
         </View>
 

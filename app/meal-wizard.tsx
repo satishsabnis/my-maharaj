@@ -889,18 +889,20 @@ export default function MealWizardScreen() {
         {/* Floating bottom bar */}
         <View style={s.floatBar}>
           <Text style={s.floatCount}>{selectedCount()} of {total} meals selected</Text>
-          <View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}>
-            <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:10,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>router.push('/home' as never)}>
-              <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>✕ Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:10,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
-              <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
-            </TouchableOpacity>
+          <View style={{gap:8,marginTop:8}}>
             <Button
-              title="Confirm ✓"
+              title="Confirm"
               onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
               disabled={!allSelected()}
             />
+            <View style={{flexDirection:'row',gap:8}}>
+              <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
+                <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
+                <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
