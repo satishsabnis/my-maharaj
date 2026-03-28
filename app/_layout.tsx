@@ -45,24 +45,16 @@ export default function Layout() {
   useEffect(() => {
     if (loading) return;
     const currentRoute = segments[0] as string | undefined;
-    const onAuthScreen =
-      currentRoute === undefined ||
-      currentRoute === 'index' ||
-      currentRoute === 'login' ||
-      currentRoute === 'signup';
+    const isSplash = currentRoute === undefined || currentRoute === 'index';
+    const onAuthScreen = isSplash || currentRoute === 'login' || currentRoute === 'signup';
+    const onLangScreen = currentRoute === 'language-select';
 
-    if (!session && !onAuthScreen) {
-      router.replace('/');
-    } else if (session && onAuthScreen) {
-      // Check if language has been set — if not, show language select first
-      const langKey = 'maharaj_lang_set';
-      const langSet = typeof window !== 'undefined' ? window.localStorage?.getItem(langKey) : null;
-      if (!langSet) {
-        if (typeof window !== 'undefined') window.localStorage?.setItem(langKey, 'true');
-        router.replace('/language-select');
-      } else {
-        router.replace('/home');
-      }
+    // Let splash screen handle its own navigation
+    if (isSplash) return;
+
+    // Protect authenticated routes
+    if (!session && !onAuthScreen && !onLangScreen) {
+      router.replace('/login');
     }
   }, [session, loading]);
 

@@ -1,48 +1,68 @@
-import React from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Logo from '../components/Logo';
-import Button from '../components/Button';
-import { gold, textSec, white } from '../theme/colors';
+import { supabase } from '../lib/supabase';
+import { navy, white } from '../theme/colors';
 
-export default function LandingScreen() {
+export default function SplashScreen() {
   const router = useRouter();
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [navigated, setNavigated] = useState(false);
+
+  useEffect(() => {
+    // Fade in (1s), hold (4s), fade out (1s)
+    Animated.sequence([
+      Animated.timing(opacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      Animated.delay(4000),
+      Animated.timing(opacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
+    ]).start(async () => {
+      if (navigated) return;
+      setNavigated(true);
+
+      // Check auth state
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        // Not logged in — go to landing/login
+        router.replace('/login');
+        return;
+      }
+
+      // Logged in — check first launch
+      const isFirstLaunch = typeof window !== 'undefined'
+        ? !window.localStorage?.getItem('maharaj_lang_set')
+        : false;
+
+      if (isFirstLaunch) {
+        router.replace('/language-select');
+      } else {
+        router.replace('/home');
+      }
+    });
+  }, []);
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.content}>
-        {/* Logo */}
-        <View style={s.logoWrap}>
-          <Logo size="large" />
-          <Text style={s.devanagari}>मेरा महाराज · माझा महाराज · માઇ મહારાજ</Text>
-          <Text style={s.tagSub}>Your personal kitchen planner</Text>
-        </View>
-
-        {/* Spacer */}
-        <View style={{ flex: 1 }} />
-
-        {/* Actions */}
-        <View style={s.actions}>
-          <Button title="Create Account" onPress={() => router.push('/signup')} variant="primary" />
-          <View style={{ height: 12 }} />
-          <Button title="Sign In" onPress={() => router.push('/login')} variant="outline" />
-          <Text style={s.legal}>
-            By continuing you agree to our Terms and Privacy Policy
-          </Text>
-        </View>
+      <View style={s.container}>
+        <Animated.View style={[s.content, { opacity }]}>
+          <Image
+            source={require('../assets/logo.png')}
+            style={s.logo}
+            resizeMode="contain"
+          />
+          <Text style={s.title}>My Maharaj</Text>
+          <Text style={s.subtitle}>Your personal kitchen planner</Text>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: white },
-  content: { flex: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 32 },
-
-  logoWrap:   { alignItems: 'center', marginTop: 0 },
-  devanagari: { fontSize: 16, color: gold, textAlign: 'center', marginTop: 8, fontWeight: '500' },
-  tagSub:     { fontSize: 14, color: textSec, textAlign: 'center', marginTop: 4 },
-
-  actions: { maxWidth: 400, width: '100%', alignSelf: 'center', paddingHorizontal: 24 },
-  legal:   { fontSize: 11, color: textSec, textAlign: 'center', marginTop: 16, lineHeight: 16 },
+  safe:      { flex: 1, backgroundColor: white },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content:   { alignItems: 'center' },
+  logo:      { width: 240, height: 100, marginBottom: 16 },
+  title:     { fontSize: 28, fontWeight: '800', color: navy, marginBottom: 4 },
+  subtitle:  { fontSize: 14, color: '#5A7A8A', fontWeight: '500' },
 });
