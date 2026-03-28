@@ -47,9 +47,10 @@ export default function PartyMenuScreen() {
       const text = await callClaude(`You are Maharaj, expert Indian chef. Generate a party menu:
 - Occasion: ${occasion}, Guests: ${g}, Food: ${foodType}, Total Budget: AED ${b}
 - ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
-Respond ONLY with valid JSON (no markdown):
-{"starters":[{"name":"...","description":"..."}],"main_course":[{"name":"...","description":"..."}],"desserts":[{"name":"...","description":"..."}],"beverages":[{"name":"...","description":"..."}],"serving_tips":["..."],"shopping_list":["..."]}
-Include 3-5 items per section. ALWAYS include beverages with at least 3 drink options.`);
+Respond ONLY with this exact JSON structure - no other text, no markdown:
+{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"serving_tips":["string"],"shopping_list":["string"]}
+Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include welcome drinks, mocktails, juices and water options. The key MUST be "beverages" not "drinks".
+CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.`);
       const parsed = JSON.parse(text) as PartyMenu;
       console.log('[PartyMenu] API response:', JSON.stringify(parsed));
       setMenu(parsed);

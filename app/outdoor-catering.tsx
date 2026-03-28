@@ -58,9 +58,10 @@ Generate an outdoor catering menu for:
 - Budget: AED ${b} per head (Total: AED ${g * b})
 - ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
 Focus on food that travels well, stays fresh outdoors and suits the weather.
-Respond ONLY with valid JSON (no markdown):
-{"starters":[{"name":"...","description":"..."}],"main_course":[{"name":"...","description":"..."}],"desserts":[{"name":"...","description":"..."}],"beverages":[{"name":"...","description":"..."}],"packing_tips":["..."],"shopping_list":["..."]}
-Include 3-5 items per section. Beverages must always have at least 3 options including water and fresh juices.`;
+Respond ONLY with this exact JSON structure - no other text, no markdown:
+{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":["string"]}
+Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include water, fresh juices and refreshing drinks. The key MUST be "beverages" not "drinks".
+CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.`;
       const parsed = JSON.parse(await callClaude(prompt)) as OutdoorMenu;
       console.log('[OutdoorCatering] API response:', JSON.stringify(parsed));
       setMenu(parsed);
