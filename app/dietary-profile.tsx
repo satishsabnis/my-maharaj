@@ -285,7 +285,7 @@ export default function DietaryProfileScreen() {
             <ScrollView contentContainerStyle={s.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <Input label="Name *" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Full name" />
               <View style={{ flexDirection: 'row' }}>
-                <View style={{ flex: 2, marginRight: 10 }}>
+                <View style={{ flex: 2, marginRight: 10, zIndex: 10 }}>
                   <Input label="Nationality" value={form.nationality}
             onChangeText={v => {
               setForm(p => ({ ...p, nationality: v }));
@@ -293,7 +293,7 @@ export default function DietaryProfileScreen() {
             }}
             placeholder="e.g. Indian, Pakistani, Filipino..." />
           {natSuggestions.length > 0 && (
-            <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',marginBottom:8}}>
+            <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',position:'absolute',top:'100%',left:0,right:0,zIndex:10,elevation:10,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.1,shadowRadius:4}}>
               {natSuggestions.map(n => (
                 <TouchableOpacity key={n} style={{paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setForm(p=>({...p,nationality:n})); setNatSuggestions([]); }}>
                   <Text style={{fontSize:14,color:navy}}>{n}</Text>
