@@ -280,31 +280,31 @@ Respond ONLY with JSON, no markdown.`;
   const abnormalMarkers = result?.markers.filter(m => m.status !== 'normal') ?? [];
 
   return (
-    <ScreenWrapper title="🧪 Lab Report">
+    <ScreenWrapper title="Lab Report">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Upload buttons */}
         <View style={s.actionRow}>
           <TouchableOpacity style={s.scanBtn} onPress={scanWithCamera} disabled={scanning} activeOpacity={0.85}>
-            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnIcon}>📷</Text>}
+            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnIcon}></Text>}
             <Text style={s.scanBtnTxt}>Scan Report</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={uploadFile} disabled={scanning} activeOpacity={0.85}>
-            <Text style={s.scanBtnIcon}>📄</Text>
+            <Text style={s.scanBtnIcon}></Text>
             <Text style={[s.scanBtnTxt, { color: navy }]}>Upload PDF/Image</Text>
           </TouchableOpacity>
         </View>
 
         {/* Disclaimer */}
         <View style={s.disclaimer}>
-          <Text style={s.disclaimerTxt}>⚕️ For informational purposes only. Always consult your doctor before making dietary changes based on lab results.</Text>
+          <Text style={s.disclaimerTxt}>For informational purposes only. Always consult your doctor before making dietary changes based on lab results.</Text>
         </View>
 
         {error ? <Text style={s.errorTxt}>{error}</Text> : null}
 
         {saved && (
           <View style={s.savedBanner}>
-            <Text style={s.savedTxt}>✅ Lab results saved to Dietary Profile — meal plans will now factor these in.</Text>
+            <Text style={s.savedTxt}>Lab results saved to Dietary Profile — meal plans will now factor these in.</Text>
           </View>
         )}
 
@@ -326,12 +326,12 @@ Respond ONLY with JSON, no markdown.`;
 
             {abnormalMarkers.length === 0 ? (
               <View style={s.allNormalBox}>
-                <Text style={s.allNormalIcon}>✅</Text>
+                <Text style={s.allNormalIcon}></Text>
                 <Text style={s.allNormalTxt}>All markers are within normal range! Keep up your healthy habits.</Text>
               </View>
             ) : (
               <>
-                <Text style={s.sectionTitle}>⚠️ Out of Range Markers ({abnormalMarkers.length})</Text>
+                <Text style={s.sectionTitle}>Out of Range Markers ({abnormalMarkers.length})</Text>
                 {abnormalMarkers.map((m, i) => (
                   <View key={i} style={[s.markerCard, m.status === 'high' ? s.markerHigh : s.markerLow]}>
                     <View style={s.markerHeader}>
@@ -341,8 +341,8 @@ Respond ONLY with JSON, no markdown.`;
                       </View>
                     </View>
                     <Text style={s.markerRange}>Normal: {m.normal_range}</Text>
-                    <Text style={s.markerImpact}>🍽️ {m.dietary_impact}</Text>
-                    <Text style={s.markerRec}>💡 {m.recommendation}</Text>
+                    <Text style={s.markerImpact}>{m.dietary_impact}</Text>
+                    <Text style={s.markerRec}>{m.recommendation}</Text>
                     {m.health_condition && (
                       <View style={s.conditionTag}>
                         <Text style={s.conditionTagTxt}>→ Added to profile: {m.health_condition}</Text>
@@ -353,7 +353,7 @@ Respond ONLY with JSON, no markdown.`;
 
                 {result.dietary_notes.length > 0 && (
                   <View style={s.dietaryNotesBox}>
-                    <Text style={s.dietaryNotesTitle}>🥗 Dietary Recommendations</Text>
+                    <Text style={s.dietaryNotesTitle}>Dietary Recommendations</Text>
                     {result.dietary_notes.map((n, i) => (
                       <Text key={i} style={s.dietaryNote}>• {n}</Text>
                     ))}

@@ -12,7 +12,7 @@ export default function MealPlanWizardScreen() {
         <View style={{ width: 60 }} />
       </View>
       <View style={s.center}>
-        <Text style={s.icon}>🍳</Text>
+        <Text style={s.icon}></Text>
         <Text style={s.title}>Meal Plan Wizard</Text>
         <Text style={s.desc}>The full meal plan wizard is coming in the next sprint. It will include period selection, food preferences, AI generation with Gemini, and more.</Text>
         <TouchableOpacity style={s.btn} onPress={() => router.back()}>

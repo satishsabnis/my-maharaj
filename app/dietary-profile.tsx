@@ -177,7 +177,7 @@ export default function DietaryProfileScreen() {
           <Text style={s.loadingText}>Loading...</Text>
         ) : members.length === 0 ? (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>👨‍👩‍👧‍👦</Text>
+            <Text style={s.emptyIcon}></Text>
             <Text style={s.emptyTitle}>No family members yet</Text>
             <Text style={s.emptySub}>Add your family members to personalise meal plans</Text>
           </View>
@@ -229,7 +229,7 @@ export default function DietaryProfileScreen() {
           onPress={() => router.push('/lab-report' as never)}
           activeOpacity={0.85}
         >
-          <Text style={s.labReportIcon}>🧪</Text>
+          <Text style={s.labReportIcon}></Text>
           <View style={{ flex: 1 }}>
             <Text style={s.labReportTitle}>Lab Report Analysis</Text>
             <Text style={s.labReportSub}>Upload blood test results — Maharaj updates dietary recommendations automatically</Text>
@@ -239,7 +239,7 @@ export default function DietaryProfileScreen() {
 
         {/* Cuisine Preferences */}
         <View style={s.cuisineSection}>
-          <Text style={s.cuisineTitle}>🍽️  Cuisine Preferences</Text>
+          <Text style={s.cuisineTitle}>Cuisine Preferences</Text>
           <Text style={s.cuisineSub}>Select cuisines to guide your meal plans</Text>
 
           <Text style={s.groupLabel}>INDIAN CUISINES</Text>

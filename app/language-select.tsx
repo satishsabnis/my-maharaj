@@ -115,7 +115,7 @@ export default function LanguageSelectScreen() {
             style={[s.engToggle, selected === 'en' && s.engToggleActive]}
             onPress={() => setSelected('en')}
           >
-            <Text style={[s.engToggleTxt, selected === 'en' && s.engToggleTxtActive]}>🇬🇧 English</Text>
+            <Text style={[s.engToggleTxt, selected === 'en' && s.engToggleTxtActive]}>English</Text>
           </TouchableOpacity>
         </View>
 
@@ -125,7 +125,7 @@ export default function LanguageSelectScreen() {
           <Text style={s.subtitle}>Choose your preferred language · अपनी भाषा चुनें</Text>
 
           {/* Indian Languages */}
-          <Text style={s.groupLabel}>🇮🇳  Indian Languages</Text>
+          <Text style={s.groupLabel}>Indian Languages</Text>
           <View style={s.grid}>
             {INDIAN_LANGUAGES.map((l) => (
               <LangPill key={l.code} {...l} />
@@ -133,7 +133,7 @@ export default function LanguageSelectScreen() {
           </View>
 
           {/* International Languages */}
-          <Text style={[s.groupLabel, { marginTop: 20 }]}>🌍  International Languages</Text>
+          <Text style={[s.groupLabel, { marginTop: 20 }]}>International Languages</Text>
           <View style={s.grid}>
             {INTERNATIONAL_LANGUAGES.map((l) => (
               <LangPill key={l.code} {...l} />

@@ -237,24 +237,24 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <ScreenWrapper title="🧊 My Fridge">
+    <ScreenWrapper title="My Fridge">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Action buttons */}
         <View style={s.actionRow}>
           <TouchableOpacity style={s.scanBtn} onPress={scanWithCamera} disabled={scanning} activeOpacity={0.85}>
-            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnIcon}>📷</Text>}
+            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnIcon}></Text>}
             <Text style={s.scanBtnTxt}>Scan Bill (Camera)</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={scanFromGallery} disabled={scanning} activeOpacity={0.85}>
-            <Text style={s.scanBtnIcon}>🖼️</Text>
+            <Text style={s.scanBtnIcon}></Text>
             <Text style={[s.scanBtnTxt, { color: navy }]}>Upload Bill</Text>
           </TouchableOpacity>
         </View>
 
         {/* Smart fridge note */}
         <View style={s.smartFridgeBanner}>
-          <Text style={s.smartFridgeIcon}>🔌</Text>
+          <Text style={s.smartFridgeIcon}></Text>
           <Text style={s.smartFridgeTxt}>Smart fridge integration coming soon — auto-sync with Samsung Family Hub & LG ThinQ</Text>
         </View>
 
@@ -266,7 +266,7 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
           <ActivityIndicator color={navy} style={{ marginTop: 40 }} />
         ) : items.length === 0 ? (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>🧊</Text>
+            <Text style={s.emptyIcon}></Text>
             <Text style={s.emptyTitle}>Your fridge is empty</Text>
             <Text style={s.emptySub}>Scan a grocery bill to start tracking your inventory</Text>
           </View>
@@ -331,7 +331,7 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
       <Modal visible={showScanModal} animationType="slide" transparent onRequestClose={() => setShowScanModal(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>📋 Bill Scanned — {scanResult.length} items found</Text>
+            <Text style={s.modalTitle}>Bill Scanned — {scanResult.length} items found</Text>
 
             <Input
               label="Store Name"

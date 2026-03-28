@@ -16,7 +16,7 @@ interface PlatingSection {
 const PLATING: PlatingSection[] = [
   {
     title: 'Regional Thali Arrangements',
-    icon: '🗺️',
+    icon: '',
     items: [
       { heading: 'Maharashtra Thali', content: 'Large steel thali with 6-8 katories. Start with varan-bhaat (dal-rice) in center. Arrange katories clockwise: sabzi, amti, koshimbir, loni (butter), pickle, papad. Place poli/bhakri separately on left. Serve sheera or shrikhand as sweet on the right side.' },
       { heading: 'Gujarati Thali', content: 'Items served simultaneously — dal, kadhi, shaak (vegetable), rice, roti, farsan (snacks). Use a compartmentalized thali if available. Sweet dish (basundi or shiro) placed at top-right. Buttermilk served in a tall glass alongside.' },
@@ -26,7 +26,7 @@ const PLATING: PlatingSection[] = [
   },
   {
     title: 'Plating Individual Dishes',
-    icon: '🎨',
+    icon: '',
     items: [
       { heading: 'Biryani', content: 'Serve in a deep bowl or layered in a copper vessel (deg). Garnish with fried onions, mint leaves and saffron milk drizzled on top. Place lemon wedges and raita in separate small bowls beside it.' },
       { heading: 'Dal', content: 'Pour dal in a katori or small bowl. Add a tempering (tadka) of ghee, cumin, dried red chili and curry leaves on top just before serving — the sizzle adds aroma and visual appeal.' },
@@ -36,7 +36,7 @@ const PLATING: PlatingSection[] = [
   },
   {
     title: 'Garnishing Tips',
-    icon: '✨',
+    icon: '',
     items: [
       { heading: 'Fresh Herbs', content: 'Coriander (hara dhania) is the universal garnish. Tear leaves roughly — do not chop too fine or they lose their visual presence. Mint leaves suit raita and drinks. Curry leaves are for South Indian dishes only.' },
       { heading: 'Tempering (Tadka)', content: 'A final tempering of mustard seeds, curry leaves and dried chili in hot ghee brings a dish alive visually and aromatically. Pour sizzling directly on dal, kadhi or rice at the table for theater.' },
@@ -46,7 +46,7 @@ const PLATING: PlatingSection[] = [
   },
   {
     title: 'Presentation for Guests',
-    icon: '🤝',
+    icon: '',
     items: [
       { heading: 'Warm Always', content: 'Indian food must be served hot. Pre-warm steel thalis by briefly rinsing with hot water. Serve dal and curries from hot pots. Rotis should come directly off the tawa to the plate.' },
       { heading: 'The First Serving', content: 'The first serving to a guest should be generous but not overloaded. Leave room for second helpings — it signals confidence that you will offer more.' },

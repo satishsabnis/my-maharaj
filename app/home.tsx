@@ -54,7 +54,7 @@ function formatDateTime(d: Date): string {
 // ─── Card definitions ─────────────────────────────────────────────────────────
 
 // Special card - full width
-const HERO_CARD = { id:'mealplan', icon:'🍳', title:'Generate Meal Plan', desc:'AI-powered weekly plan for your family', route:'/meal-wizard', accent:'#1B3A5C', iconBg:'#E3F2FD' };
+const HERO_CARD = { id:'mealplan', icon:'🍳', title:'Generate Meal Plan', desc:'Smart weekly meal planning for your family', route:'/meal-wizard', accent:'#1B3A5C', iconBg:'#E3F2FD' };
 
 const CARDS = [
   { id:'festivals',  icon:'🪔', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
