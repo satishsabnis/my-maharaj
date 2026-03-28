@@ -50,7 +50,9 @@ export default function PartyMenuScreen() {
 Respond ONLY with valid JSON (no markdown):
 {"starters":[{"name":"...","description":"..."}],"main_course":[{"name":"...","description":"..."}],"desserts":[{"name":"...","description":"..."}],"beverages":[{"name":"...","description":"..."}],"serving_tips":["..."],"shopping_list":["..."]}
 Include 3-5 items per section. ALWAYS include beverages with at least 3 drink options.`);
-      setMenu(JSON.parse(text) as PartyMenu);
+      const parsed = JSON.parse(text) as PartyMenu;
+      console.log('[PartyMenu] API response:', JSON.stringify(parsed));
+      setMenu(parsed);
       setStep('result');
     } catch { setError('Failed to generate. Please try again.'); }
     finally { setLoading(false); }
@@ -123,7 +125,10 @@ Include 3-5 items per section. ALWAYS include beverages with at least 3 drink op
               <Section title="Starters"    items={menu.starters}    />
               <Section title="Main Course"  items={menu.main_course} />
               <Section title="Desserts"     items={menu.desserts}    />
-              <Section title="Beverages"    items={menu.beverages ?? (menu as any).drinks}   />
+              <Section title="Beverages"    items={menu.beverages ?? (menu as any).drinks ?? []}   />
+              {!menu.beverages?.length && !(menu as any).drinks?.length && (
+                <View style={s.section}><Text style={s.sectionTitle}>Beverages</Text><Text style={{fontSize:13,color:'#5A7A8A',padding:8}}>No beverages returned — try regenerating.</Text></View>
+              )}
               {menu.serving_tips?.length > 0 && (
                 <View style={s.section}>
                   <Text style={s.sectionTitle}>Serving Tips</Text>
