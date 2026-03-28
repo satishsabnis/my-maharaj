@@ -15,23 +15,23 @@ interface Festival {
 // ─── Verified 2026 dates (cross-referenced DrikPanchang, TimeAndDate, IslamicFinder) ──
 const INITIAL_FESTIVALS: Festival[] = [
   // PAST (as of March 27, 2026)
-  { name: 'Eid al-Fitr',        date: '2026-03-20', region: 'All',                              icon: '🌙', adjustMeals: false },
-  { name: 'Ram Navami',         date: '2026-03-26', region: 'All India',                         icon: '🙏', adjustMeals: true,  sattvic: true  },
+  { name: 'Eid al-Fitr',        date: '2026-03-20', region: 'All',                              icon: '', adjustMeals: false },
+  { name: 'Ram Navami',         date: '2026-03-26', region: 'All India',                         icon: '', adjustMeals: true,  sattvic: true  },
   // UPCOMING
-  { name: 'Baisakhi',          date: '2026-04-14', region: 'Punjab · Haryana',                  icon: '🌾', adjustMeals: false },
-  { name: 'Akshaya Tritiya',   date: '2026-04-19', region: 'All India',                         icon: '✨', adjustMeals: false },
-  { name: 'Eid al-Adha',       date: '2026-05-27', region: 'All',                              icon: '🌙', adjustMeals: false },
-  { name: 'Guru Purnima',      date: '2026-07-29', region: 'All India',                         icon: '🙏', adjustMeals: false, sattvic: true  },
-  { name: 'Independence Day',  date: '2026-08-15', region: 'All India',                         icon: '🇮🇳', adjustMeals: false },
-  { name: 'Raksha Bandhan',    date: '2026-08-28', region: 'North India',                       icon: '🤝', adjustMeals: true,  sattvic: true  },
-  { name: 'Janmashtami',       date: '2026-09-04', region: 'All India',                         icon: '🦚', adjustMeals: true,  sattvic: true  },
-  { name: 'Ganesh Chaturthi',  date: '2026-09-14', region: 'Maharashtra · Goa · Karnataka',    icon: '🐘', adjustMeals: true,  sattvic: true  },
-  { name: 'Navratri',          date: '2026-10-11', region: 'All India (9 days)',                icon: '🪔', adjustMeals: true,  sattvic: true  },
-  { name: 'Dussehra',          date: '2026-10-20', region: 'All India',                         icon: '🏹', adjustMeals: false },
-  { name: 'Diwali',            date: '2026-11-08', region: 'All India',                         icon: '🎆', adjustMeals: true  },
-  { name: 'Bhai Dooj',         date: '2026-11-10', region: 'North India',                       icon: '🤝', adjustMeals: false },
-  { name: 'Christmas',         date: '2026-12-25', region: 'All',                              icon: '🎄', adjustMeals: false },
-  { name: 'New Year',          date: '2027-01-01', region: 'All',                              icon: '🎊', adjustMeals: false },
+  { name: 'Baisakhi',          date: '2026-04-14', region: 'Punjab · Haryana',                  icon: '', adjustMeals: false },
+  { name: 'Akshaya Tritiya',   date: '2026-04-19', region: 'All India',                         icon: '', adjustMeals: false },
+  { name: 'Eid al-Adha',       date: '2026-05-27', region: 'All',                              icon: '', adjustMeals: false },
+  { name: 'Guru Purnima',      date: '2026-07-29', region: 'All India',                         icon: '', adjustMeals: false, sattvic: true  },
+  { name: 'Independence Day',  date: '2026-08-15', region: 'All India',                         icon: '', adjustMeals: false },
+  { name: 'Raksha Bandhan',    date: '2026-08-28', region: 'North India',                       icon: '', adjustMeals: true,  sattvic: true  },
+  { name: 'Janmashtami',       date: '2026-09-04', region: 'All India',                         icon: '', adjustMeals: true,  sattvic: true  },
+  { name: 'Ganesh Chaturthi',  date: '2026-09-14', region: 'Maharashtra · Goa · Karnataka',    icon: '', adjustMeals: true,  sattvic: true  },
+  { name: 'Navratri',          date: '2026-10-11', region: 'All India (9 days)',                icon: '', adjustMeals: true,  sattvic: true  },
+  { name: 'Dussehra',          date: '2026-10-20', region: 'All India',                         icon: '', adjustMeals: false },
+  { name: 'Diwali',            date: '2026-11-08', region: 'All India',                         icon: '', adjustMeals: true  },
+  { name: 'Bhai Dooj',         date: '2026-11-10', region: 'North India',                       icon: '', adjustMeals: false },
+  { name: 'Christmas',         date: '2026-12-25', region: 'All',                              icon: '', adjustMeals: false },
+  { name: 'New Year',          date: '2027-01-01', region: 'All',                              icon: '', adjustMeals: false },
 ];
 
 const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -82,10 +82,10 @@ export default function FestivalsScreen() {
           <Text style={s.region}>{f.region}</Text>
           {f.sattvic && !isPast && (
             <View style={s.sattvicTag}>
-              <Text style={s.sattvicTxt}>🌿 Sattvic / fasting meals</Text>
+              <Text style={s.sattvicTxt}>Sattvic / fasting meals</Text>
             </View>
           )}
-          {isToday && <View style={s.todayBadge}><Text style={s.todayBadgeTxt}>Today! 🎉</Text></View>}
+          {isToday && <View style={s.todayBadge}><Text style={s.todayBadgeTxt}>Today!</Text></View>}
           {isSoon  && <View style={s.soonBadge}><Text style={s.soonBadgeTxt}>In {days} day{days === 1 ? '' : 's'}</Text></View>}
         </View>
         {!isPast && (

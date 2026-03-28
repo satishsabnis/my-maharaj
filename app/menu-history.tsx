@@ -82,7 +82,7 @@ export default function MenuHistoryScreen() {
           <SkeletonList count={4} />
         ) : records.length === 0 ? (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>📋</Text>
+            <Text style={s.emptyIcon}></Text>
             <Text style={s.emptyTitle}>No meal plans yet</Text>
             <Text style={s.emptySub}>Generate your first plan to see it here</Text>
             <TouchableOpacity style={s.ctaBtn} onPress={() => router.push('/meal-wizard')} activeOpacity={0.85}>
@@ -119,9 +119,9 @@ export default function MenuHistoryScreen() {
                       <View key={idx} style={[s.dayRow, idx < days.length - 1 && s.dayRowBorder]}>
                         <Text style={s.dayName}>{day.day}</Text>
                         <View style={s.mealsCol}>
-                          {day.breakfast && <Text style={s.mealText}>🌅 {day.breakfast.name}</Text>}
-                          {day.lunch     && <Text style={s.mealText}>☀️ {day.lunch.name}</Text>}
-                          {day.dinner    && <Text style={s.mealText}>🌙 {day.dinner.name}</Text>}
+                          {day.breakfast && <Text style={s.mealText}>{day.breakfast.name}</Text>}
+                          {day.lunch     && <Text style={s.mealText}>{day.lunch.name}</Text>}
+                          {day.dinner    && <Text style={s.mealText}>{day.dinner.name}</Text>}
                         </View>
                       </View>
                     ))}

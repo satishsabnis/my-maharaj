@@ -56,7 +56,7 @@ export default function LoginScreen() {
 
         <View style={s.form}>
           <Text style={s.formTitle}>Sign in to Maharaj</Text>
-          <Text style={s.formSub}>Welcome back! We missed you 🙏</Text>
+          <Text style={s.formSub}>Welcome back! We missed you</Text>
 
           <Input label="Email Address" value={email} onChangeText={setEmail}
             placeholder="you@example.com" keyboardType="email-address"

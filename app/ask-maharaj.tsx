@@ -189,7 +189,7 @@ Always track health conditions from the profile when suggesting food. Never repe
             <Text style={s.headerSub}>Your Wise Nutrition Mentor</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
-            <Text style={s.homeTxt}>🏠</Text>
+            <Text style={s.homeTxt}>Home</Text>
           </TouchableOpacity>
         </View>
 
@@ -257,7 +257,7 @@ Always track health conditions from the profile when suggesting food. Never repe
               style={[s.voiceBtn, listening && s.voiceBtnActive]}
               onPress={startVoice}
             >
-              <Text style={s.voiceIcon}>{listening ? '🔴' : '🎙️'}</Text>
+              <Text style={s.voiceIcon}>{listening ? 'Stop' : 'Mic'}</Text>
             </TouchableOpacity>
             <TextInput
               style={s.input}
@@ -300,7 +300,7 @@ Always track health conditions from the profile when suggesting food. Never repe
                   <View key={i} style={s.mealCard}>
                     <View style={s.mealSlotBadge}>
                       <Text style={s.mealSlotTxt}>
-                        {meal.slot === 'Breakfast' ? '🌅' : meal.slot === 'Lunch' ? '☀️' : '🌙'} {meal.slot}
+                        {meal.slot}
                       </Text>
                     </View>
                     <Text style={s.mealName}>{meal.name}</Text>
@@ -310,7 +310,7 @@ Always track health conditions from the profile when suggesting food. Never repe
 
                 {mealResult?.tips && mealResult.tips.length > 0 && (
                   <View style={s.tipsCard}>
-                    <Text style={s.tipsTitle}>💡 Maharaj's Tips</Text>
+                    <Text style={s.tipsTitle}>Maharaj's Tips</Text>
                     {mealResult.tips.map((tip, i) => (
                       <Text key={i} style={s.tipTxt}>• {tip}</Text>
                     ))}
@@ -319,10 +319,10 @@ Always track health conditions from the profile when suggesting food. Never repe
 
                 <View style={{flexDirection:'row',gap:10,marginTop:8,marginBottom:8}}>
                   <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setScreenMode('chat')}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>✕ Close</Text>
+                    <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Close</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={{flex:1,backgroundColor:'#1B3A5C',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={async()=>{setScreenMode('chat');setMealResult(null);}}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:'white'}}>🔄 New Question</Text>
+                    <Text style={{fontSize:13,fontWeight:'600',color:'white'}}>New Question</Text>
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity

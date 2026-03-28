@@ -13,45 +13,45 @@ const LOCALES: Record<string, {
   apps: { name: string; icon: string; url: string; color: string; available: boolean }[];
 }> = {
   UAE: {
-    flag:'🇦🇪', name:'UAE', currency:'AED',
+    flag:'', name:'UAE', currency:'AED',
     apps: [
-      { name:'Talabat',  icon:'🛵', url:'https://www.talabat.com',  color:'#FF6B35', available:true },
-      { name:'Careem',   icon:'🚗', url:'https://www.careem.com/en-ae/food/',   color:'#1DBF73', available:true },
-      { name:'Noon Food',icon:'🟡', url:'https://www.noon.com/uae-en/food/',    color:'#FEEE00', available:true },
-      { name:'Keeta',    icon:'🟠', url:'https://www.keeta.com',    color:'#FF4500', available:true },
+      { name:'Talabat',  icon:'', url:'https://www.talabat.com',  color:'#FF6B35', available:true },
+      { name:'Careem',   icon:'', url:'https://www.careem.com/en-ae/food/',   color:'#1DBF73', available:true },
+      { name:'Noon Food',icon:'', url:'https://www.noon.com/uae-en/food/',    color:'#FEEE00', available:true },
+      { name:'Keeta',    icon:'', url:'https://www.keeta.com',    color:'#FF4500', available:true },
     ],
   },
   IN: {
-    flag:'🇮🇳', name:'India', currency:'INR',
+    flag:'', name:'India', currency:'INR',
     apps: [
-      { name:'Swiggy',   icon:'🟠', url:'https://www.swiggy.com',   color:'#FC8019', available:true },
-      { name:'Zomato',   icon:'🔴', url:'https://www.zomato.com',   color:'#E23744', available:true },
-      { name:'Blinkit',  icon:'🟡', url:'https://www.blinkit.com',  color:'#0C831F', available:true },
-      { name:'Zepto',    icon:'🟣', url:'https://www.zeptonow.com', color:'#8B5CF6', available:true },
+      { name:'Swiggy',   icon:'', url:'https://www.swiggy.com',   color:'#FC8019', available:true },
+      { name:'Zomato',   icon:'', url:'https://www.zomato.com',   color:'#E23744', available:true },
+      { name:'Blinkit',  icon:'', url:'https://www.blinkit.com',  color:'#0C831F', available:true },
+      { name:'Zepto',    icon:'', url:'https://www.zeptonow.com', color:'#8B5CF6', available:true },
     ],
   },
   UK: {
-    flag:'🇬🇧', name:'UK', currency:'GBP',
+    flag:'', name:'UK', currency:'GBP',
     apps: [
-      { name:'Deliveroo', icon:'🩵', url:'https://deliveroo.co.uk',  color:'#00CCBC', available:true },
-      { name:'Just Eat',  icon:'🟠', url:'https://www.just-eat.co.uk',color:'#FF8000', available:true },
-      { name:'Uber Eats', icon:'⬛', url:'https://www.ubereats.com/gb',color:'#06C167', available:true },
+      { name:'Deliveroo', icon:'', url:'https://deliveroo.co.uk',  color:'#00CCBC', available:true },
+      { name:'Just Eat',  icon:'', url:'https://www.just-eat.co.uk',color:'#FF8000', available:true },
+      { name:'Uber Eats', icon:'', url:'https://www.ubereats.com/gb',color:'#06C167', available:true },
     ],
   },
   US: {
-    flag:'🇺🇸', name:'USA', currency:'USD',
+    flag:'', name:'USA', currency:'USD',
     apps: [
-      { name:'DoorDash',  icon:'🔴', url:'https://www.doordash.com', color:'#FF3008', available:true },
-      { name:'Uber Eats', icon:'⬛', url:'https://www.ubereats.com', color:'#06C167', available:true },
-      { name:'Grubhub',   icon:'🟠', url:'https://www.grubhub.com',  color:'#F63440', available:true },
+      { name:'DoorDash',  icon:'', url:'https://www.doordash.com', color:'#FF3008', available:true },
+      { name:'Uber Eats', icon:'', url:'https://www.ubereats.com', color:'#06C167', available:true },
+      { name:'Grubhub',   icon:'', url:'https://www.grubhub.com',  color:'#F63440', available:true },
     ],
   },
   CA: {
-    flag:'🇨🇦', name:'Canada', currency:'CAD',
+    flag:'', name:'Canada', currency:'CAD',
     apps: [
-      { name:'SkipTheDishes', icon:'🟡', url:'https://www.skipthedishes.com', color:'#FFB800', available:true },
-      { name:'Uber Eats',     icon:'⬛', url:'https://www.ubereats.com/ca',   color:'#06C167', available:true },
-      { name:'DoorDash',      icon:'🔴', url:'https://www.doordash.com',      color:'#FF3008', available:true },
+      { name:'SkipTheDishes', icon:'', url:'https://www.skipthedishes.com', color:'#FFB800', available:true },
+      { name:'Uber Eats',     icon:'', url:'https://www.ubereats.com/ca',   color:'#06C167', available:true },
+      { name:'DoorDash',      icon:'', url:'https://www.doordash.com',      color:'#FF3008', available:true },
     ],
   },
 };
@@ -94,7 +94,7 @@ export default function OrderOutScreen({ mealName }: Props) {
           </TouchableOpacity>
           <Text style={s.headerTitle}>Order Out</Text>
           <TouchableOpacity onPress={() => router.push('/home' as never)}>
-            <Text style={s.homeTxt}>🏠</Text>
+            <Text style={s.homeTxt}></Text>
           </TouchableOpacity>
         </View>
 
@@ -103,7 +103,7 @@ export default function OrderOutScreen({ mealName }: Props) {
           {/* Dish context */}
           {mealName && (
             <View style={s.dishBanner}>
-              <Text style={s.dishEmoji}>🍽️</Text>
+              <Text style={s.dishEmoji}></Text>
               <View>
                 <Text style={s.dishLabel}>Ordering for</Text>
                 <Text style={s.dishName}>{mealName}</Text>
@@ -123,7 +123,7 @@ export default function OrderOutScreen({ mealName }: Props) {
 
           {/* Note */}
           <View style={s.noteBanner}>
-            <Text style={s.noteIcon}>🔌</Text>
+            <Text style={s.noteIcon}></Text>
             <Text style={s.noteTxt}>
               API integration with delivery partners coming after Pre-Seed funding.
               Tapping below opens the app/website to complete your order.
@@ -155,7 +155,7 @@ export default function OrderOutScreen({ mealName }: Props) {
             style={s.cookBtn}
             onPress={() => router.back()}
           >
-            <Text style={s.cookIcon}>👨‍🍳</Text>
+            <Text style={s.cookIcon}></Text>
             <Text style={s.cookTxt}>Cook at Home Instead</Text>
           </TouchableOpacity>
 

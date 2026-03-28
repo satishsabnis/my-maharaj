@@ -52,11 +52,11 @@ Include 3-5 items per section. ALWAYS include beverages with at least 3 drink op
     finally { setLoading(false); }
   }
 
-  function Section({ title, icon, items }: { title: string; icon: string; items?: Item[] }) {
+  function Section({ title, items }: { title: string; items?: Item[] }) {
     if (!items?.length) return null;
     return (
       <View style={s.section}>
-        <Text style={s.sectionTitle}>{icon} {title}</Text>
+        <Text style={s.sectionTitle}>{title}</Text>
         {items.map((item, i) => (
           <View key={i} style={[s.item, i === items.length - 1 && { borderBottomWidth: 0 }]}>
             <Text style={s.itemName}>{item.name}</Text>
@@ -96,7 +96,7 @@ Include 3-5 items per section. ALWAYS include beverages with at least 3 drink op
               {loading ? <ActivityIndicator color={white} /> : <Text style={s.genBtnTxt}>Generate Party Menu</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.cancelLink} onPress={() => router.push('/home' as never)}>
-              <Text style={s.cancelLinkTxt}>✕ Cancel</Text>
+              <Text style={s.cancelLinkTxt}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -109,17 +109,17 @@ Include 3-5 items per section. ALWAYS include beverages with at least 3 drink op
             </View>
             <View style={s.actionRow}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => router.push('/home' as never)}>
-                <Text style={s.cancelBtnTxt}>✕ Cancel</Text>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>Regenerate</Text>}
               </TouchableOpacity>
             </View>
             {menu && <>
-              <Section title="Starters"    icon="🍢" items={menu.starters}    />
-              <Section title="Main Course"  icon="🍛" items={menu.main_course} />
-              <Section title="Desserts"     icon="🍮" items={menu.desserts}    />
-              <Section title="Beverages"    icon="🥤" items={menu.beverages}   />
+              <Section title="Starters"    items={menu.starters}    />
+              <Section title="Main Course"  items={menu.main_course} />
+              <Section title="Desserts"     items={menu.desserts}    />
+              <Section title="Beverages"    items={menu.beverages}   />
               {menu.serving_tips?.length > 0 && (
                 <View style={s.section}>
                   <Text style={s.sectionTitle}>Serving Tips</Text>

@@ -49,7 +49,7 @@ const sw = StyleSheet.create({
   header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: Platform.OS === "web" ? 14 : 8, paddingBottom: 12, backgroundColor: "rgba(255,255,255,0.85)", borderBottomWidth: 1, borderBottomColor: "rgba(27,58,92,0.1)" },
   backBtn:      { paddingRight: 8, minWidth: 60 },
   backTxt:      { fontSize: 15, color: "#1B3A5C", fontWeight: "600" },
-  maharajLogo:  { flex: 1, height: 48, maxWidth: 160 },
+  maharajLogo:  { flex: 1, height: 60, maxWidth: 220 },
   headerRight:  { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "flex-end" },
   langToggle:       { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.3)", backgroundColor: "rgba(255,255,255,0.8)" },
   langToggleActive: { backgroundColor: "#1B3A5C", borderColor: "#1B3A5C" },

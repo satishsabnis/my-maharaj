@@ -262,7 +262,7 @@ export default function ProfileSetupScreen() {
 
               {isOlder && (
                 <View style={s.lipidHintBox}>
-                  <Text style={s.lipidHintText}>💛 Lipid profile recommended for age 50+</Text>
+                  <Text style={s.lipidHintText}>Lipid profile recommended for age 50+</Text>
                   <TouchableOpacity style={s.lipidBtn} activeOpacity={0.8}>
                     <Text style={s.lipidBtnText}>Upload Lipid Report (Optional)</Text>
                   </TouchableOpacity>
@@ -307,17 +307,17 @@ export default function ProfileSetupScreen() {
     const langMap: Record<string, string> = { en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati' };
     return (
       <View>
-        <Text style={s.stepTitle}>You are all set! 🎉</Text>
+        <Text style={s.stepTitle}>You are all set!</Text>
         <Text style={s.stepSub}>Here is a summary of your profile</Text>
 
         <View style={s.summaryCard}>
-          <SummaryRow icon="👨‍👩‍👧‍👦" label="Family Name" value={familyName || '—'} />
-          <SummaryRow icon="👥" label="Members" value={`${members.filter((m) => m.name.trim()).length} member${members.length > 1 ? 's' : ''}`} />
-          <SummaryRow icon="🍛" label="Cuisines" value={cuisines.length > 0 ? `${cuisines.length} selected` : 'Not selected'} />
-          <SummaryRow icon="🌐" label="Language" value={langMap[language] || language} />
-          <SummaryRow icon="🛒" label="Supermarket" value={store} />
+          <SummaryRow icon="" label="Family Name" value={familyName || '—'} />
+          <SummaryRow icon="" label="Members" value={`${members.filter((m) => m.name.trim()).length} member${members.length > 1 ? 's' : ''}`} />
+          <SummaryRow icon="" label="Cuisines" value={cuisines.length > 0 ? `${cuisines.length} selected` : 'Not selected'} />
+          <SummaryRow icon="" label="Language" value={langMap[language] || language} />
+          <SummaryRow icon="" label="Supermarket" value={store} />
           {vegDays.length > 0 && (
-            <SummaryRow icon="🥗" label="Veg Days" value={vegDays.map((d) => d.slice(0, 3)).join(', ')} />
+            <SummaryRow icon="" label="Veg Days" value={vegDays.map((d) => d.slice(0, 3)).join(', ')} />
           )}
         </View>
       </View>

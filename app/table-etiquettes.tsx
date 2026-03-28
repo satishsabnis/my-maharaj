@@ -16,7 +16,7 @@ interface EtiquetteSection {
 const ETIQUETTES: EtiquetteSection[] = [
   {
     title: 'Setting a Traditional Thali',
-    icon: '🍽️',
+    icon: '',
     items: [
       { heading: 'Plate Position', content: 'The thali (round plate) is placed at the center. Small katories (bowls) are arranged in a semicircle at the top — dal, sabzi, raita from left to right.' },
       { heading: 'Rice & Roti', content: 'Rice is placed on the right side of the plate; rotis or puri are on the left or brought separately in a basket.' },
@@ -26,7 +26,7 @@ const ETIQUETTES: EtiquetteSection[] = [
   },
   {
     title: 'Guest Serving Customs',
-    icon: '🤝',
+    icon: '',
     items: [
       { heading: 'Atithi Devo Bhava', content: 'The guest is God — always serve guests first before family members eat. Keep refilling without being asked.' },
       { heading: 'Insisting on More', content: 'It is tradition to insist guests eat more ("thoda aur lo!"). Guests often decline twice before accepting — this is normal hospitality.' },
@@ -36,7 +36,7 @@ const ETIQUETTES: EtiquetteSection[] = [
   },
   {
     title: 'Eating Customs',
-    icon: '🙏',
+    icon: '',
     items: [
       { heading: 'Before Eating', content: 'Many families say a brief prayer or gratitude before eating. Wash hands thoroughly before and after the meal.' },
       { heading: 'Eating with Hands', content: 'Eating with fingers (right hand only) is traditional and considered more connected to the food. Mix rice and dal with fingers — it is not considered rude.' },
@@ -46,7 +46,7 @@ const ETIQUETTES: EtiquetteSection[] = [
   },
   {
     title: 'Festival Meal Customs',
-    icon: '🪔',
+    icon: '',
     items: [
       { heading: 'Diwali', content: 'Sweets (mithai) are exchanged and served first as an offering. Fasting foods (sabudana, fruits) are served on Dhanteras. Full feast on Diwali day.' },
       { heading: 'Ganesh Chaturthi', content: 'Modak (sweet dumpling) is offered first to Ganesh idol before serving guests. No non-vegetarian food on the first day.' },
@@ -57,7 +57,7 @@ const ETIQUETTES: EtiquetteSection[] = [
   },
   {
     title: 'Regional Dining Differences',
-    icon: '🗺️',
+    icon: '',
     items: [
       { heading: 'South India', content: 'Meals are served on banana leaves. Food is eaten sitting cross-legged on the floor (traditionally). Rice is the center; items arranged around it.' },
       { heading: 'Maharashtra', content: 'Thali service is elaborate for guests. Amti (dal), bhaaji, bhakri/poli, kosimbir (salad) and sheera (sweet) are typical components.' },

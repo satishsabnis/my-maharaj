@@ -58,7 +58,7 @@ function categorise(name: string): GroceryCat {
   if (SPICE_KW.some((k) => n.includes(k)))   return 'Spices';
   return 'Pantry';
 }
-const CAT_ICONS: Record<GroceryCat, string> = { Vegetables: '🥬', Protein: '🥩', Spices: '🌶️', Dairy: '🥛', Pantry: '🌾' };
+const CAT_ICONS: Record<GroceryCat, string> = { Vegetables: '', Protein: '', Spices: '', Dairy: '', Pantry: '' };
 const CAT_ORDER: GroceryCat[] = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pantry'];
 
 // ─── Wizard progress ──────────────────────────────────────────────────────────
@@ -90,6 +90,7 @@ export default function MealWizardScreen() {
   const [bfPrefs, setBfPrefs]   = useState<string[]>([]);
   const [lnPrefs, setLnPrefs]   = useState<string[]>([]);
   const [dnPrefs, setDnPrefs]   = useState<string[]>([]);
+  const [snPrefs, setSnPrefs]   = useState<string[]>([]);
 
   // Step 4
   const [familyMembers, setFamilyMembers] = useState<DBMember[]>([]);
@@ -226,6 +227,7 @@ export default function MealWizardScreen() {
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
         lunchPrefs:     lnPrefs.length > 0 ? lnPrefs : undefined,
         dinnerPrefs:    dnPrefs.length > 0 ? dnPrefs : undefined,
+        snackPrefs:     snPrefs.length > 0 ? snPrefs : undefined,
         includeDessert,
       }, (current, total) => setGeneratingProgress({ current, total }));
 
@@ -238,7 +240,7 @@ export default function MealWizardScreen() {
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
       setStep('generating-error');
     }
-  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, includeDessert]);
+  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert]);
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
@@ -456,10 +458,10 @@ export default function MealWizardScreen() {
   function renderPeriod() {
     const today = startOfDay(new Date());
     const cards = [
-      { label: 'Today',       icon: '📅', fn: () => { setSelectedFrom(today); setSelectedTo(today); setShowCustom(false); advance('food-pref'); } },
-      { label: 'Tomorrow',    icon: '📆', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('food-pref'); } },
-      { label: 'This Week',   icon: '🗓️', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
-      { label: 'Next Week',   icon: '📋', fn: () => { const { start, end } = getWeekRange(1); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
+      { label: 'Today',       icon: '', fn: () => { setSelectedFrom(today); setSelectedTo(today); setShowCustom(false); advance('food-pref'); } },
+      { label: 'Tomorrow',    icon: '', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('food-pref'); } },
+      { label: 'This Week',   icon: '', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
+      { label: 'Next Week',   icon: '', fn: () => { const { start, end } = getWeekRange(1); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
     ];
     return (
       <View>
@@ -505,7 +507,7 @@ export default function MealWizardScreen() {
 
         {/* Dessert toggle */}
         <TouchableOpacity style={[s.toggleRow, includeDessert && s.toggleRowOn]} onPress={() => setIncludeDessert((v) => !v)} activeOpacity={0.8}>
-          <Text style={s.toggleIcon}>🍮</Text>
+          <Text style={s.toggleIcon}></Text>
           <View style={{ flex: 1 }}>
             <Text style={s.toggleLabel}>Include Desserts</Text>
             <Text style={s.toggleSub}>Sunday sweets · Weekday quick treats</Text>
@@ -521,7 +523,7 @@ export default function MealWizardScreen() {
             onPress={() => { setFoodPref('veg'); setVegType(null); }}
             activeOpacity={0.8}
           >
-            <Text style={s.foodCardIcon}>🥗</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, foodPref === 'veg' && s.foodCardLabelActive]}>Vegetarian</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -529,13 +531,13 @@ export default function MealWizardScreen() {
             onPress={() => { setFoodPref('nonveg'); setVegType(null); }}
             activeOpacity={0.8}
           >
-            <Text style={s.foodCardIcon}>🍗</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, foodPref === 'nonveg' && s.foodCardLabelActive]}>Non-Vegetarian</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.foodCard, (foodPref as string) === 'mixed' && s.foodCardActive]}
             onPress={() => { setFoodPref('nonveg'); setVegType(null); }} activeOpacity={0.85}>
-            <Text style={s.foodCardIcon}>🥗</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, (foodPref as string) === 'mixed' && s.foodCardLabelActive]}>Mixed</Text>
             <Text style={{fontSize:11,color:'#5A7A8A',marginTop:2}}>Veg breakfast + non-veg meals</Text>
           </TouchableOpacity>
@@ -544,7 +546,7 @@ export default function MealWizardScreen() {
         {/* Meal slots */}
         <Text style={[s.sectionLabel,{marginTop:16}]}>WHICH MEALS TO PLAN?</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12}}>
-          {[{k:'breakfast',i:'🌅',l:'Breakfast'},{k:'lunch',i:'☀️',l:'Lunch'},{k:'dinner',i:'🌙',l:'Dinner'},{k:'snack',i:'🫖',l:'Evening Snack'}].map(({k,i,l})=>(
+          {[{k:'breakfast',i:'',l:'Breakfast'},{k:'lunch',i:'',l:'Lunch'},{k:'dinner',i:'',l:'Dinner'},{k:'snack',i:'',l:'Evening Snack'}].map(({k,i,l})=>(
             <TouchableOpacity key={k}
               style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:selectedSlots.includes(k)?'#1B3A5C':'#D4EDE5',backgroundColor:selectedSlots.includes(k)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
               onPress={()=>setSelectedSlots(prev=>prev.includes(k)?prev.filter(s=>s!==k):[...prev,k])}>
@@ -586,12 +588,12 @@ export default function MealWizardScreen() {
           <View style={s.foodCards}>
             <TouchableOpacity style={[s.foodCard, vegType === 'normal' && s.foodCardActive]}
               onPress={() => setVegType('normal')} activeOpacity={0.8}>
-              <Text style={s.foodCardIcon}>🥗</Text>
+              <Text style={s.foodCardIcon}></Text>
               <Text style={[s.foodCardLabel, vegType === 'normal' && s.foodCardLabelActive]}>Normal Veg</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.foodCard, vegType === 'fasting' && s.foodCardActive]}
               onPress={() => setVegType('fasting')} activeOpacity={0.8}>
-              <Text style={s.foodCardIcon}>🙏</Text>
+              <Text style={s.foodCardIcon}></Text>
               <Text style={[s.foodCardLabel, vegType === 'fasting' && s.foodCardLabelActive]}>Fasting/Upvas</Text>
             </TouchableOpacity>
           </View>
@@ -601,7 +603,7 @@ export default function MealWizardScreen() {
           <View>
             <Text style={s.sectionLabel}>SELECT OPTIONS</Text>
             <View style={s.pillRow}>
-              {['Eggs 🥚','Fish 🐟','Chicken 🍗','Mutton 🐑'].map((o) => (
+              {['Eggs','Fish','Chicken','Mutton'].map((o) => (
                 <Chip key={o} label={o} active={nonVegOpts.includes(o)}
                   onPress={() => setNonVegOpts((prev) => prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o])} />
               ))}
@@ -629,8 +631,9 @@ export default function MealWizardScreen() {
 
   function renderMealPrefs() {
     const BF_OPTS = ['Hot dish (pohe/upma/idli)','Bread/Paratha','Eggs','Fruits','Juice/Smoothie','Light only'];
-    const LN_OPTS = ['Rice based','Roti based','Dal','Sabzi','Salad','Raita','Papad','Pickle'];
-    const DN_OPTS = ['Rice based','Roti based','Non-veg main','Veg main','Soup','Salad','Dessert','Light only'];
+    const LN_OPTS = ['Full Thali','Rice based','Roti based','Dal','Sabzi','Salad','Raita','Papad','Pickle'];
+    const DN_OPTS = ['Full Thali','Rice based','Roti based','Non-veg main','Veg main','Soup','Salad','Dessert','Light only'];
+    const SN_OPTS = ['Tea/Coffee & Snack','Fruit/Juice','Chaat','Sandwich','Light only'];
 
     function toggle(list: string[], set: React.Dispatch<React.SetStateAction<string[]>>, item: string) {
       set((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]);
@@ -642,9 +645,10 @@ export default function MealWizardScreen() {
         <Text style={s.stepSub}>Select all that apply for each meal</Text>
 
         {[
-          { emoji: '🌅', label: 'Breakfast', opts: BF_OPTS, sel: bfPrefs, set: setBfPrefs },
-          { emoji: '☀️', label: 'Lunch',     opts: LN_OPTS, sel: lnPrefs, set: setLnPrefs },
-          { emoji: '🌙', label: 'Dinner',    opts: DN_OPTS, sel: dnPrefs, set: setDnPrefs },
+          { emoji: '', label: 'Breakfast', opts: BF_OPTS, sel: bfPrefs, set: setBfPrefs },
+          { emoji: '', label: 'Lunch',     opts: LN_OPTS, sel: lnPrefs, set: setLnPrefs },
+          { emoji: '', label: 'Evening Snack', opts: SN_OPTS, sel: snPrefs, set: setSnPrefs },
+          { emoji: '', label: 'Dinner',    opts: DN_OPTS, sel: dnPrefs, set: setDnPrefs },
         ].map(({ emoji, label, opts, sel, set }) => (
           <View key={label} style={s.mealPrefSection}>
             <Text style={s.mealPrefHeader}>{emoji} {label}</Text>
@@ -676,12 +680,12 @@ export default function MealWizardScreen() {
         <View style={s.foodCards}>
           <TouchableOpacity style={[s.foodCard, everyoneWell && s.foodCardActive]}
             onPress={() => { setEveryoneWell(true); setUnwellIds([]); }} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>😊</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, everyoneWell && s.foodCardLabelActive]}>Everyone is fine</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.foodCard, !everyoneWell && s.foodCardActive]}
             onPress={() => setEveryoneWell(false)} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>🤒</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, !everyoneWell && s.foodCardLabelActive]}>Someone is unwell</Text>
           </TouchableOpacity>
         </View>
@@ -733,7 +737,7 @@ export default function MealWizardScreen() {
             <Button title="← Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="🍳 Generate My Meal Plan" onPress={() => advance('generating')} />
+            <Button title="Generate My Meal Plan" onPress={() => advance('generating')} />
           </View>
         </View>
       </View>
@@ -781,9 +785,9 @@ export default function MealWizardScreen() {
   function renderSelection() {
     if (!generatedPlan) return null;
     const slots: { key: MealSlotKey; icon: string; label: string }[] = [
-      { key: 'breakfast', icon: '🌅', label: 'Breakfast' },
-      { key: 'lunch',     icon: '☀️', label: 'Lunch'     },
-      { key: 'dinner',    icon: '🌙', label: 'Dinner'    },
+      { key: 'breakfast', icon: '', label: 'Breakfast' },
+      { key: 'lunch',     icon: '', label: 'Lunch'     },
+      { key: 'dinner',    icon: '', label: 'Dinner'    },
     ];
     const total = generatedPlan.length * 3;
 
@@ -890,7 +894,7 @@ export default function MealWizardScreen() {
               <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>✕ Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:10,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
-              <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>🔄 Regenerate</Text>
+              <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
             </TouchableOpacity>
             <Button
               title="Confirm ✓"
@@ -976,7 +980,7 @@ export default function MealWizardScreen() {
 
     return (
       <View>
-        <Text style={s.stepTitle}>🛒 Your Shopping List</Text>
+        <Text style={s.stepTitle}>Your Shopping List</Text>
         <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo
           ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`
           : 'your plan'}
@@ -984,14 +988,14 @@ export default function MealWizardScreen() {
 
         <View style={s.groceryActions}>
           <TouchableOpacity style={s.groceryActionBtn} onPress={() => void copyGrocery()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>📋 Copy</Text>
+            <Text style={s.groceryActionText}>Copy</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.groceryActionBtn} onPress={() => void shareWhatsApp()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>📱 WhatsApp</Text>
+            <Text style={s.groceryActionText}>WhatsApp</Text>
           </TouchableOpacity>
           {Platform.OS === 'web' && (
             <TouchableOpacity style={s.groceryActionBtn} onPress={() => void downloadGrocery()} activeOpacity={0.8}>
-              <Text style={s.groceryActionText}>📄 Download</Text>
+              <Text style={s.groceryActionText}>Download</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1041,7 +1045,7 @@ export default function MealWizardScreen() {
     if (feedbackDone) {
       return (
         <View style={s.doneScreen}>
-          <Text style={s.doneEmoji}>🙏</Text>
+          <Text style={s.doneEmoji}></Text>
           <Text style={s.doneTitle}>Bon Appétit!</Text>
           <Text style={s.doneSub}>Your meal plan is ready. Maharaj wishes your family a delicious week!</Text>
           <View style={{ width: '100%', maxWidth: 320 }}>
@@ -1052,7 +1056,7 @@ export default function MealWizardScreen() {
     }
     return (
       <View>
-        <Text style={s.stepTitle}>Bon Appétit! 🙏</Text>
+        <Text style={s.stepTitle}>Bon Appétit!</Text>
         <Text style={s.stepSub}>How did you enjoy your meals? Your feedback helps Maharaj improve.</Text>
 
         {feedbacks.map((fb, idx) => (
@@ -1063,13 +1067,13 @@ export default function MealWizardScreen() {
                 style={[s.thumbBtn, fb.rating === 1 && s.thumbUp]}
                 onPress={() => setFeedbacks((prev) => prev.map((f, i) => i === idx ? { ...f, rating: 1 } : f))}
               >
-                <Text style={s.thumbText}>👍</Text>
+                <Text style={s.thumbText}>Yes</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.thumbBtn, fb.rating === -1 && s.thumbDown]}
                 onPress={() => setFeedbacks((prev) => prev.map((f, i) => i === idx ? { ...f, rating: -1 } : f))}
               >
-                <Text style={s.thumbText}>👎</Text>
+                <Text style={s.thumbText}>No</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1102,11 +1106,11 @@ export default function MealWizardScreen() {
         <Text style={s.stepSub}>Add a special cuisine for your guests</Text>
         <View style={s.foodCards}>
           <TouchableOpacity style={[s.foodCard, !hasGuests && s.foodCardActive]} onPress={()=>{setHasGuests(false);setGuestCuisine('');}} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>👨‍👩‍👧</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, !hasGuests && s.foodCardLabelActive]}>Just my family</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.foodCard, hasGuests && s.foodCardActive]} onPress={()=>setHasGuests(true)} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>🎊</Text>
+            <Text style={s.foodCardIcon}></Text>
             <Text style={[s.foodCardLabel, hasGuests && s.foodCardLabelActive]}>We have guests</Text>
           </TouchableOpacity>
         </View>
@@ -1175,7 +1179,7 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:22,color:'#9CA3AF'}}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:18,padding:20,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',alignItems:'center',flexDirection:'row',gap:16}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
-            <Text style={{fontSize:36}}>🛵</Text>
+            <Text style={{fontSize:36}}></Text>
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Order Out</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Find delivery options near you</Text>
@@ -1219,7 +1223,7 @@ export default function MealWizardScreen() {
           <TouchableOpacity onPress={goBack} style={s.headerBack}>
             <Text style={s.headerBackText}>←</Text>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Meal Plan Wizard</Text>
+          <Text style={s.headerTitle}>Curating Your Meal Plan</Text>
           {isUserStep && (
             <Text style={s.headerStep}>{currentNum} of {totalUserSteps()}</Text>
           )}

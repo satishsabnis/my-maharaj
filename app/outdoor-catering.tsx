@@ -63,11 +63,11 @@ Include 3-5 items per section. Beverages must always have at least 3 options inc
     finally { setLoading(false); }
   }
 
-  function Section({ title, icon, items }: { title: string; icon: string; items?: { name: string; description: string }[] }) {
+  function Section({ title, items }: { title: string; items?: { name: string; description: string }[] }) {
     if (!items?.length) return null;
     return (
       <View style={s.section}>
-        <Text style={s.sectionTitle}>{icon} {title}</Text>
+        <Text style={s.sectionTitle}>{title}</Text>
         {items.map((item, i) => (
           <View key={i} style={[s.item, i === items.length - 1 && { borderBottomWidth: 0 }]}>
             <Text style={s.itemName}>{item.name}</Text>
@@ -143,7 +143,7 @@ Include 3-5 items per section. Beverages must always have at least 3 options inc
               {loading ? <ActivityIndicator color={white} /> : <Text style={s.genBtnTxt}>Generate Outdoor Menu</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.cancelLink} onPress={() => router.push('/home' as never)}>
-              <Text style={s.cancelLinkTxt}>✕ Cancel</Text>
+              <Text style={s.cancelLinkTxt}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -159,18 +159,18 @@ Include 3-5 items per section. Beverages must always have at least 3 options inc
             {/* Cancel before Regenerate */}
             <View style={s.actionRow}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => router.push('/home' as never)}>
-                <Text style={s.cancelBtnTxt}>✕ Cancel</Text>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
-                {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>🔄 Regenerate</Text>}
+                {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>Regenerate</Text>}
               </TouchableOpacity>
             </View>
 
             {menu && <>
-              <Section title="Starters"    icon="🍢" items={menu.starters}    />
-              <Section title="Main Course"  icon="🍛" items={menu.main_course} />
-              <Section title="Desserts"     icon="🍮" items={menu.desserts}    />
-              <Section title="Beverages"    icon="🥤" items={menu.beverages}   />
+              <Section title="Starters"    items={menu.starters}    />
+              <Section title="Main Course"  items={menu.main_course} />
+              <Section title="Desserts"     items={menu.desserts}    />
+              <Section title="Beverages"    items={menu.beverages}   />
               {menu.packing_tips?.length > 0 && (
                 <View style={s.section}>
                   <Text style={s.sectionTitle}>Packing & Serving Tips</Text>
@@ -213,8 +213,8 @@ const s = StyleSheet.create({
   chipTxtOn:   { color: white, fontWeight: '600' },
   genBtn:      { backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
   genBtnTxt:   { color: white, fontSize: 16, fontWeight: '700' },
-  cancelLink:  { alignItems: 'center', paddingVertical: 14 },
-  cancelLinkTxt: { fontSize: 13, color: midGray },
+  cancelLink:  { alignItems: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: 'rgba(26,107,60,0.3)', borderRadius: 12, marginTop: 8 },
+  cancelLinkTxt: { fontSize: 14, color: ACCENT, fontWeight: '600' },
   error:       { color: errorRed, fontSize: 13, textAlign: 'center', marginTop: 14 },
   resultHeader: { backgroundColor: ACCENT, borderRadius: 14, padding: 20, marginBottom: 12 },
   resultTitle: { fontSize: 22, fontWeight: '800', color: white },
