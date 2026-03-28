@@ -357,7 +357,7 @@ export default function ProfileSetupScreen() {
           <View style={[s.navRow, step === 1 && { justifyContent: 'flex-end' }]}>
             {step > 1 && (
               <View style={{ flex: 1, marginRight: 12 }}>
-                <Button title="← Back" onPress={back} variant="outline" />
+                <Button title="Back" onPress={back} variant="outline" />
               </View>
             )}
             <View style={{ flex: step === 1 ? undefined : 2, width: step === 1 ? '100%' : undefined }}>

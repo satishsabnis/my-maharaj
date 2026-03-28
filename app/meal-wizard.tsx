@@ -683,7 +683,7 @@ export default function MealWizardScreen() {
         {error ? <Text style={s.errorText}>{error}</Text> : null}
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
+            <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
             <Button title="Continue →" onPress={() => {
@@ -730,7 +730,7 @@ export default function MealWizardScreen() {
 
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
+            <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
             <Button title="Continue →" onPress={() => advance('unwell')} />
@@ -774,7 +774,7 @@ export default function MealWizardScreen() {
 
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
+            <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
             <Button title="Continue →" onPress={() => {
@@ -825,7 +825,7 @@ export default function MealWizardScreen() {
         <View style={{gap:10,marginTop:16}}>
           <Button title="Generate My Meal Plan" onPress={() => advance('generating')} />
           <View style={{flexDirection:'row',gap:10}}>
-            <View style={{flex:1}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
+            <View style={{flex:1}}><Button title="Back" onPress={goBack} variant="outline" /></View>
             <View style={{flex:1}}>
               <TouchableOpacity style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
                 <Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
@@ -869,7 +869,7 @@ export default function MealWizardScreen() {
         <View style={{ marginTop: 32, width: '80%', maxWidth: 280 }}>
           <Button title="Try Again" onPress={() => { setError(''); setStep('generating'); }} />
           <View style={{ height: 12 }} />
-          <Button title="← Back to Settings" onPress={() => { setError(''); setStep('nutrition'); }} variant="outline" />
+          <Button title="Back to Settings" onPress={() => { setError(''); setStep('nutrition'); }} variant="outline" />
         </View>
       </View>
     );
@@ -1057,7 +1057,7 @@ export default function MealWizardScreen() {
 
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
+            <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
             <Button title={recipeDishes.length > 0 ? 'Save & Continue →' : 'Skip Recipes →'} onPress={() => {
@@ -1129,7 +1129,7 @@ export default function MealWizardScreen() {
 
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
+            <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
             <Button title="Continue →" onPress={() => advance('feedback')} />
@@ -1179,7 +1179,7 @@ export default function MealWizardScreen() {
 
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
+            <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
             <Button title="Submit Feedback & Finish" onPress={() => void submitFeedback()} />
@@ -1199,7 +1199,7 @@ export default function MealWizardScreen() {
     const ALL_CUISINES = ['Afghan','Andhra','Assamese','Bangladeshi','Bengali','Bihari','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mediterranean','Mexican','Moroccan','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
     return (
       <View>
-        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}><Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel</Text></TouchableOpacity>
+        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:12,alignItems:'center',marginBottom:12}}><Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text></TouchableOpacity>
         <Text style={s.stepTitle}>Any guests joining?</Text>
         <Text style={s.stepSub}>Add a special cuisine for your guests</Text>
         <View style={s.foodCards}>
@@ -1225,7 +1225,7 @@ export default function MealWizardScreen() {
           </View>
         </View>)}
         <View style={s.btnRow}>
-          <View style={{flex:1,marginRight:12}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
+          <View style={{flex:1,marginRight:12}}><Button title="Back" onPress={goBack} variant="outline" /></View>
           <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('meal-prefs')} /></View>
         </View>
       </View>
@@ -1238,7 +1238,7 @@ export default function MealWizardScreen() {
     const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return (
       <View>
-        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}><Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel</Text></TouchableOpacity>
+        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:12,alignItems:'center',marginBottom:12}}><Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text></TouchableOpacity>
         <Text style={s.stepTitle}>Set veg/fasting days</Text>
         <Text style={s.stepSub}>Choose how each day should be planned</Text>
         {dates.map(d=>{
@@ -1255,7 +1255,7 @@ export default function MealWizardScreen() {
           );
         })}
         <View style={s.btnRow}>
-          <View style={{flex:1,marginRight:12}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
+          <View style={{flex:1,marginRight:12}}><Button title="Back" onPress={goBack} variant="outline" /></View>
           <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('nutrition')} /></View>
         </View>
       </View>

@@ -159,8 +159,8 @@ export interface Translations {
 }
 
 const en: Translations = {
-  back: '← Back',
-  home: '🏠',
+  back: 'Back',
+  home: 'Home',
   exit: 'Exit',
   appName: 'My Maharaj',
   namaste: 'Namaste',
@@ -288,8 +288,8 @@ const en: Translations = {
 };
 
 const hi: Translations = {
-  back: '← वापस',
-  home: '🏠',
+  back: 'वापस',
+  home: 'Home',
   exit: 'बाहर',
   appName: 'माय महाराज',
   namaste: 'नमस्ते',
@@ -417,8 +417,8 @@ const hi: Translations = {
 };
 
 const mr: Translations = {
-  back: '← मागे',
-  home: '🏠',
+  back: 'मागे',
+  home: 'Home',
   exit: 'बाहेर',
   appName: 'माय महाराज',
   namaste: 'नमस्कार',
@@ -546,8 +546,8 @@ const mr: Translations = {
 };
 
 const gu: Translations = {
-  back: '← પાછળ',
-  home: '🏠',
+  back: 'પાછળ',
+  home: 'Home',
   exit: 'બહાર',
   appName: 'માય મહારાજ',
   namaste: 'નમસ્તે',
@@ -675,8 +675,8 @@ const gu: Translations = {
 };
 
 const ta: Translations = {
-  back: '← பின்',
-  home: '🏠',
+  back: 'பின்',
+  home: 'Home',
   exit: 'வெளியேறு',
   appName: 'மை மகாராஜ்',
   namaste: 'வணக்கம்',

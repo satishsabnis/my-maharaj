@@ -90,7 +90,7 @@ export default function OrderOutScreen({ mealName }: Props) {
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={s.backTxt}>← Back</Text>
+            <Text style={s.backTxt}>Back</Text>
           </TouchableOpacity>
           <Text style={s.headerTitle}>Order Out</Text>
           <TouchableOpacity onPress={() => router.push('/home' as never)}>
