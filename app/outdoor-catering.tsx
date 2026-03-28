@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { loadOrDetectLocation } from '../lib/location';
 import { navy, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
 const EVENT_TYPES  = ['Picnic','Corporate Outing','Beach Party','Garden Party','Sports Day','School Trip','Family Reunion','Camping'];
@@ -38,6 +39,9 @@ export default function OutdoorCateringScreen() {
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const [menu,      setMenu]      = useState<OutdoorMenu | null>(null);
+  const [loc,       setLoc]       = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
+
+  useEffect(() => { loadOrDetectLocation().then(setLoc); }, []);
 
   async function generateMenu() {
     setError('');
@@ -52,7 +56,7 @@ Generate an outdoor catering menu for:
 - Event: ${eventType}, Guests: ${g}, Food: ${foodType}
 - Setup: ${setup}, Weather: ${weather}
 - Budget: AED ${b} per head (Total: AED ${g * b})
-- Dubai UAE — ingredients from Carrefour/Spinneys/Lulu
+- ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
 Focus on food that travels well, stays fresh outdoors and suits the weather.
 Respond ONLY with valid JSON (no markdown):
 {"starters":[{"name":"...","description":"..."}],"main_course":[{"name":"...","description":"..."}],"desserts":[{"name":"...","description":"..."}],"beverages":[{"name":"...","description":"..."}],"packing_tips":["..."],"shopping_list":["..."]}

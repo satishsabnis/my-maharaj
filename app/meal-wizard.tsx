@@ -3,6 +3,7 @@ import { Animated, Image, Linking, Platform, SafeAreaView, ScrollView, StyleShee
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
+import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
@@ -103,6 +104,7 @@ export default function MealWizardScreen() {
   const [guestCuisine,   setGuestCuisine]   = useState('');
   const [guestDays,      setGuestDays]      = useState(2);
   const [savedCuisines,  setSavedCuisines]  = useState<string[]>([]);
+  const [userLocation,   setUserLocation]   = useState<UserLocation>({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
   const [selectedSlots,  setSelectedSlots]  = useState<string[]>(['breakfast','lunch','dinner']);
   const [presentMembers, setPresentMembers] = useState<string[]>([]);
   const [guestCount,     setGuestCount]     = useState(0);
@@ -136,6 +138,7 @@ export default function MealWizardScreen() {
       ]);
       setFamilyMembers((data as DBMember[]) ?? []);
       setSavedCuisines((cuisineData ?? []).map((c: any) => c.cuisine_name));
+      loadOrDetectLocation().then(setUserLocation);
     }
     void load();
   }, []);
@@ -234,6 +237,8 @@ export default function MealWizardScreen() {
         dinnerPrefs:    dnPrefs.length > 0 ? dnPrefs : undefined,
         snackPrefs:     snPrefs.length > 0 ? snPrefs : undefined,
         includeDessert,
+        locationCity: userLocation.city,
+        locationStores: userLocation.stores,
       }, (current, total) => setGeneratingProgress({ current, total }));
 
       const defaultSel: Record<number, Record<MealSlotKey, number>> = {};

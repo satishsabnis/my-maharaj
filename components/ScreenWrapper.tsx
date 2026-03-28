@@ -39,6 +39,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
         <View style={sw.footer}>
           <Image source={require("../assets/blueflute-logo.png")} style={{ width: 56, height: 20 }} resizeMode="contain" />
           <Text style={{ fontSize: 10, color: "#5A7A8A", fontWeight: "600" }}>  {t.poweredBy}</Text>
+          <Text style={{ fontSize: 10, color: "#9CA3AF", fontStyle: "italic", textAlign: "center" }}>This prototype is under testing phase</Text>
         </View>
       </SafeAreaView>
     </ImageBackground>
