@@ -130,8 +130,12 @@ export default function MealWizardScreen() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('family_members').select('id, name, age').eq('user_id', user.id);
+      const [{ data }, { data: cuisineData }] = await Promise.all([
+        supabase.from('family_members').select('id, name, age').eq('user_id', user.id),
+        supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
+      ]);
       setFamilyMembers((data as DBMember[]) ?? []);
+      setSavedCuisines((cuisineData ?? []).map((c: any) => c.cuisine_name));
     }
     void load();
   }, []);
@@ -412,19 +416,17 @@ export default function MealWizardScreen() {
 
   function goBack() {
     setError('');
+    const isSingleDay = selectedFrom && selectedTo ? getDates(selectedFrom, selectedTo).length <= 1 : true;
     const backMap: Partial<Record<WizardStep, WizardStep>> = {
       'food-pref': 'period',
       'guest-cuisine': 'food-pref',
       'meal-prefs': 'guest-cuisine',
+      'unwell': 'meal-prefs',
       'veg-days': 'unwell',
-      'nutrition': 'veg-days',
-      'selection': 'generating',
+      'nutrition': isSingleDay ? 'unwell' : 'veg-days',
+      'selection': 'nutrition',
       'cook-or-order': 'selection',
       'recipes': 'cook-or-order',
-      'unwell': 'meal-prefs',
-      'nutrition': 'unwell',
-      'selection': 'nutrition',
-      'recipes': 'selection',
       'grocery': 'recipes',
       'feedback': 'grocery',
     };
@@ -718,7 +720,11 @@ export default function MealWizardScreen() {
             <Button title="← Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => advance('nutrition')} />
+            <Button title="Continue →" onPress={() => {
+              const dates = selectedFrom && selectedTo ? getDates(selectedFrom, selectedTo) : [];
+              if (dates.length > 1) advance('veg-days');
+              else advance('nutrition');
+            }} />
           </View>
         </View>
       </View>
@@ -727,8 +733,27 @@ export default function MealWizardScreen() {
 
   function renderNutrition() {
     const GOALS = ['Balanced','Blood Sugar Control','Bone Health','Detox','Digestive Health','Doctor Recommended','Energy Boost','Heart Health','High Fibre','High Protein','Immunity Boost','Keto','Kid Friendly','Less Oil','Less Spice','Low Calorie','Low Carb','Low Sodium','Mental Clarity','Muscle Gain','Post-illness Recovery','Pregnancy Safe','Sattvic / Fasting','Senior Friendly','Skin Health','Weight Loss'];
+    const activeCuisines = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
+    const allCuisines = guestCuisine && !activeCuisines.includes(guestCuisine)
+      ? [...activeCuisines, `${guestCuisine} (guest)`]
+      : activeCuisines;
     return (
       <View>
+        {/* Cuisine confirmation banner */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:14,marginBottom:16,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
+          <Text style={{fontSize:12,fontWeight:'700',color:'#5A7A8A',textTransform:'uppercase',letterSpacing:0.4,marginBottom:8}}>Cuisines for this plan</Text>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+            {allCuisines.map(c => (
+              <View key={c} style={{backgroundColor:'#E3F2FD',borderRadius:12,paddingHorizontal:10,paddingVertical:5}}>
+                <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>{c}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity onPress={() => router.push('/dietary-profile' as never)} style={{marginTop:8}}>
+            <Text style={{fontSize:12,color:'#1A6B5C',fontWeight:'600'}}>Change cuisines →</Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={s.stepTitle}>Any nutrition goal?</Text>
         <Text style={s.stepSub}>Select all that apply</Text>
         <View style={s.pillRow}>
@@ -1152,7 +1177,7 @@ export default function MealWizardScreen() {
 
   function renderVegDays() {
     const dates = getDates(selectedFrom!, selectedTo!);
-    if (dates.length <= 1) { advance('nutrition'); return null; }
+    if (dates.length <= 1) return null;
     const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return (
       <View>
