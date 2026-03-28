@@ -33,7 +33,7 @@ interface ParsedItem {
 // ─── Claude API helper ────────────────────────────────────────────────────────
 
 async function callClaude(messages: any[], systemPrompt?: string): Promise<string> {
-  const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+  const base = 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -45,6 +45,7 @@ async function callClaude(messages: any[], systemPrompt?: string): Promise<strin
     }),
   });
   const data = await res.json();
+  if (data?.error) throw new Error(data.error.message ?? data.error);
   return data?.content?.[0]?.text ?? '';
 }
 
