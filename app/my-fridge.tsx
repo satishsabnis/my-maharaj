@@ -64,6 +64,8 @@ export default function MyFridgeScreen() {
   const [showManual,   setShowManual]   = useState(false);
   const [showSmartBanner, setShowSmartBanner] = useState(true);
   const [manualItem,   setManualItem]   = useState({ item_name:'', quantity:'', unit:'', store:'', buy_date: new Date().toISOString().split('T')[0] });
+  const [scannedPages, setScannedPages] = useState<string[]>([]);
+  const [showPageReview, setShowPageReview] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,61 +103,53 @@ export default function MyFridgeScreen() {
     await load();
   }
 
-  async function scanWithCamera() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      setError('Camera permission required to scan bills.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      await processBillImage(result.assets[0].base64 ?? '');
-    }
-  }
-
-  async function scanFromGallery() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      await processBillImage(result.assets[0].base64 ?? '');
+  async function scanPage() {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') { setError('Camera permission required.'); return; }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        base64: true,
+      });
+      if (!result.canceled && result.assets[0] && result.assets[0].base64) {
+        setScannedPages(prev => [...prev, result.assets[0].base64!]);
+        setShowPageReview(true);
+      }
+    } catch {
+      setError('Camera not available. Try uploading a photo instead.');
     }
   }
 
-  async function processBillImage(base64: string) {
+  async function processAllPages() {
+    if (scannedPages.length === 0) return;
     setScanning(true);
     setError('');
+    setShowPageReview(false);
     try {
-      const response = await callClaude([
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: 'image/jpeg', data: base64 },
-            },
-            {
-              type: 'text',
-              text: `You are a grocery bill scanner. Extract ALL food and grocery items from this bill image.
+      const imageBlocks = scannedPages.map(data => ({
+        type: 'image' as const,
+        source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
+      }));
+      const response = await callClaude([{
+        role: 'user',
+        content: [
+          ...imageBlocks,
+          {
+            type: 'text' as const,
+            text: `You are a grocery bill scanner. Extract ALL food and grocery items from these ${scannedPages.length} bill page(s).
 For each item, identify: item name, quantity (number), unit (kg/g/L/ml/pcs/pack), and store name if visible.
 Respond ONLY with valid JSON array, no markdown:
-[{"item_name":"Basmati Rice","quantity":"2","unit":"kg","store":"Carrefour"},{"item_name":"Tomatoes","quantity":"500","unit":"g","store":"Carrefour"}]
-If store name not visible, use "Unknown Store". Extract every food item you can see.`,
-            },
-          ],
-        },
-      ]);
-
+[{"item_name":"Basmati Rice","quantity":"2","unit":"kg","store":"Carrefour"}]
+If store name not visible, use "Unknown Store". Extract every food item you can see across all pages.`,
+          },
+        ],
+      }]);
       const cleaned = response.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleaned) as ParsedItem[];
       setScanResult(parsed);
       setStoreName(parsed[0]?.store ?? '');
+      setScannedPages([]);
       setShowScanModal(true);
     } catch (e) {
       setError('Could not read the bill. Please try a clearer photo.');
@@ -243,7 +237,7 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
 
         {/* Action buttons */}
         <View style={s.actionRow}>
-          <TouchableOpacity style={s.scanBtn} onPress={scanWithCamera} disabled={scanning} activeOpacity={0.85}>
+          <TouchableOpacity style={s.scanBtn} onPress={scanPage} disabled={scanning} activeOpacity={0.85}>
             {scanning ? <ActivityIndicator color={white} size="small" /> : null}
             <Text style={s.scanBtnTxt}>Scan Bill</Text>
           </TouchableOpacity>
@@ -251,6 +245,23 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
             <Text style={[s.scanBtnTxt, { color: navy }]}>Add Manually</Text>
           </TouchableOpacity>
         </View>
+
+        {showPageReview && (
+          <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,padding:16,marginBottom:12,borderWidth:1,borderColor:border}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:navy,marginBottom:8}}>{scannedPages.length} page{scannedPages.length > 1 ? 's' : ''} scanned</Text>
+            <View style={{flexDirection:'row',gap:10}}>
+              <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={scanPage}>
+                <Text style={{fontSize:13,fontWeight:'600',color:white}}>Scan Another Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{flex:1,backgroundColor:'#16A34A',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={processAllPages}>
+                <Text style={{fontSize:13,fontWeight:'600',color:white}}>Done - Process Bill</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={{alignItems:'center',paddingTop:8}} onPress={() => { setScannedPages([]); setShowPageReview(false); }}>
+              <Text style={{fontSize:12,color:'#9CA3AF'}}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Smart fridge note */}
         {showSmartBanner && (

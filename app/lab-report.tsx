@@ -90,6 +90,8 @@ export default function LabReportScreen() {
     {name:'',value:'',unit:'',normal_range:'',test_date:new Date().toISOString().split('T')[0]}
   ]);
   const [reminder, setReminder] = useState<{memberName:string;dueDate:string}|null>(null);
+  const [scannedPages, setScannedPages] = useState<string[]>([]);
+  const [showPageReview, setShowPageReview] = useState(false);
 
   useEffect(() => {
     async function checkReminders() {
@@ -151,14 +153,61 @@ export default function LabReportScreen() {
     if (!file) return;
     try {
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         const base64 = (reader.result as string).split(',')[1];
-        const type = file.type?.includes('pdf') ? 'pdf' : 'image';
-        await processReport(base64, type);
+        setScannedPages(prev => [...prev, base64]);
+        setShowPageReview(true);
       };
       reader.readAsDataURL(file);
     } catch {
       setError('Could not read file. Please try again.');
+    }
+    // Reset input so same file can be re-selected
+    if (e?.target) e.target.value = '';
+  }
+
+  async function processAllPages() {
+    if (scannedPages.length === 0) return;
+    setScanning(true); setError(''); setResult(null); setSaved(false);
+    setShowPageReview(false);
+
+    const systemPrompt = `You are a medical lab report analyzer. Extract ALL blood test markers from the report.
+Focus on: HbA1c, Blood Glucose, Cholesterol (Total/LDL/HDL), Triglycerides, BP, TSH, T3, T4, Creatinine, eGFR, Uric Acid, Hemoglobin, Iron, Ferritin, Testosterone, LH, FSH, Vitamin D, Vitamin B12, Calcium, Sodium, Potassium.
+For each marker that is OUT OF RANGE (high or low), provide:
+- The marker name, value, unit, normal range
+- Status (high/low/normal)
+- Dietary impact (what foods affect this marker)
+- Specific food recommendation
+- Which health condition it maps to (Diabetic/BP/Cholesterol/Thyroid/Kidney/Anaemia/PCOS or null)
+ONLY include markers that are out of range or borderline.
+Always add disclaimer about consulting a doctor.
+Respond ONLY with JSON, no markdown.`;
+
+    try {
+      const imageBlocks = scannedPages.map(data => ({
+        type: 'image' as const,
+        source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
+      }));
+      const response = await callClaude([{
+        role: 'user',
+        content: [
+          ...imageBlocks,
+          {
+            type: 'text' as const,
+            text: `Analyze these ${scannedPages.length} lab report page(s) and extract out-of-range markers. Return JSON:
+{"patient_name":"...or null","report_date":"...or null","markers":[{"name":"HbA1c","value":"7.2","unit":"%","normal_range":"< 5.7%","status":"high","dietary_impact":"High glycemic foods raise HbA1c","recommendation":"Avoid refined carbs, white rice, sugar. Increase fibre, vegetables, whole grains.","health_condition":"Diabetic"}],"summary":"Brief 2-sentence clinical summary","dietary_notes":["Key dietary recommendation 1","Key dietary recommendation 2"]}`,
+          },
+        ],
+      }], systemPrompt);
+      const cleaned = response.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned) as LabResult;
+      setResult(parsed);
+      setScannedPages([]);
+      if (parsed.markers.length > 0) setShowConfirm(true);
+    } catch (e) {
+      setError('Could not analyze the report. Please try clearer images.');
+    } finally {
+      setScanning(false);
     }
   }
 
@@ -268,6 +317,12 @@ Respond ONLY with JSON, no markdown.`;
         rd.setDate(rd.getDate() + 80);
         setReminder({ memberName: memberName || 'You', dueDate: rd.toISOString().split('T')[0] });
       }
+      // Persist reminder to localStorage for home screen
+      if (typeof window !== 'undefined' && result.report_date) {
+        const rd = new Date(result.report_date);
+        rd.setDate(rd.getDate() + 80);
+        window.localStorage?.setItem('lab_reminder', JSON.stringify({ memberName: memberName || 'You', dueDate: rd.toISOString().split('T')[0] }));
+      }
     } catch (e) {
       setError('Could not save to profile. Please try again.');
     } finally {
@@ -301,6 +356,23 @@ Respond ONLY with JSON, no markdown.`;
             <Text style={[s.scanBtnTxt, { color: navy }]}>Enter Manually</Text>
           </TouchableOpacity>
         </View>
+
+        {showPageReview && (
+          <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,padding:16,marginBottom:12,borderWidth:1,borderColor:border}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:navy,marginBottom:8}}>{scannedPages.length} page{scannedPages.length > 1 ? 's' : ''} scanned</Text>
+            <View style={{flexDirection:'row',gap:10}}>
+              <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={handleFileUpload}>
+                <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Add Another Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={processAllPages}>
+                <Text style={{fontSize:13,fontWeight:'600',color:white}}>Done - Analyse Report</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={{alignItems:'center',paddingTop:8}} onPress={() => { setScannedPages([]); setShowPageReview(false); }}>
+              <Text style={{fontSize:12,color:'#9CA3AF'}}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Disclaimer */}
         <View style={s.disclaimer}>
