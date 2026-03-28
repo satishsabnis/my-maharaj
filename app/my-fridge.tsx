@@ -62,6 +62,7 @@ export default function MyFridgeScreen() {
   const [error,        setError]        = useState('');
   const [success,      setSuccess]      = useState('');
   const [showManual,   setShowManual]   = useState(false);
+  const [showSmartBanner, setShowSmartBanner] = useState(true);
   const [manualItem,   setManualItem]   = useState({ item_name:'', quantity:'', unit:'', store:'', buy_date: new Date().toISOString().split('T')[0] });
 
   const load = useCallback(async () => {
@@ -243,24 +244,23 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
         {/* Action buttons */}
         <View style={s.actionRow}>
           <TouchableOpacity style={s.scanBtn} onPress={scanWithCamera} disabled={scanning} activeOpacity={0.85}>
-            {scanning ? <ActivityIndicator color={white} size="small" /> : <Text style={s.scanBtnIcon}></Text>}
-            <Text style={s.scanBtnTxt}>Scan Bill (Camera)</Text>
+            {scanning ? <ActivityIndicator color={white} size="small" /> : null}
+            <Text style={s.scanBtnTxt}>Scan Bill</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={scanFromGallery} disabled={scanning} activeOpacity={0.85}>
-            <Text style={s.scanBtnIcon}></Text>
-            <Text style={[s.scanBtnTxt, { color: navy }]}>Upload Bill</Text>
+          <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={() => setShowManual(true)} activeOpacity={0.85}>
+            <Text style={[s.scanBtnTxt, { color: navy }]}>Add Manually</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary, {marginBottom:12}]} onPress={() => setShowManual(true)} activeOpacity={0.85}>
-          <Text style={[s.scanBtnTxt, { color: navy }]}>+ Add Item Manually</Text>
-        </TouchableOpacity>
 
         {/* Smart fridge note */}
-        <View style={s.smartFridgeBanner}>
-          <Text style={s.smartFridgeIcon}></Text>
-          <Text style={s.smartFridgeTxt}>Smart fridge integration coming soon — auto-sync with Samsung Family Hub & LG ThinQ</Text>
-        </View>
+        {showSmartBanner && (
+          <View style={s.smartFridgeBanner}>
+            <Text style={[s.smartFridgeTxt, {flex:1}]}>Smart fridge integration coming soon — auto-sync with Samsung Family Hub & LG ThinQ</Text>
+            <TouchableOpacity onPress={() => setShowSmartBanner(false)} style={{padding:4}}>
+              <Text style={{fontSize:14,color:'#92400E',fontWeight:'700'}}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {error ? <Text style={s.errorTxt}>{error}</Text> : null}
         {success ? <Text style={s.successTxt}>{success}</Text> : null}

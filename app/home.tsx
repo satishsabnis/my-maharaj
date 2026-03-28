@@ -81,6 +81,7 @@ export default function HomeScreen() {
   const [dateTimeStr, setDateTimeStr] = useState(formatDateTime(new Date()));
   const [showExit,    setShowExit]    = useState(false);
   const [userCity,    setUserCity]    = useState('');
+  const [labReminder, setLabReminder] = useState<{name:string;date:string}|null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -97,6 +98,24 @@ export default function HomeScreen() {
       const first = name.split(' ')[0];
       setFirstName(first);
       setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
+
+      // Check lab report reminders
+      const { data: members } = await supabase.from('family_members').select('name, health_notes').eq('user_id', user.id);
+      if (members) {
+        const today = new Date(); today.setHours(0,0,0,0);
+        for (const m of members) {
+          const match = (m.health_notes ?? '').match(/Lab \((\d{4}-\d{2}-\d{2})\)/);
+          if (!match) continue;
+          const labDate = new Date(match[1]);
+          const reminderDate = new Date(labDate);
+          reminderDate.setDate(reminderDate.getDate() + 80);
+          const daysUntil = Math.ceil((reminderDate.getTime() - today.getTime()) / 86400000);
+          if (daysUntil <= 7 && daysUntil >= -7) {
+            setLabReminder({ name: m.name, date: reminderDate.toISOString().split('T')[0] });
+            break;
+          }
+        }
+      }
     }
     void load();
     loadOrDetectLocation().then(loc => setUserCity(`${loc.city}, ${loc.country}`));
@@ -174,6 +193,18 @@ export default function HomeScreen() {
           <Text style={s.dateTxt}>{userCity ? `${userCity}  ·  ` : ''}{dateTimeStr}</Text>
           {firstName ? <Text style={s.greetTxt}>Namaste, {firstName} 🙏</Text> : null}
         </View>
+
+        {labReminder && (
+          <View style={{flexDirection:'row',alignItems:'center',marginHorizontal:16,marginTop:8,backgroundColor:'rgba(217,119,6,0.1)',borderRadius:12,padding:12,borderWidth:1,borderColor:'rgba(217,119,6,0.3)'}}>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:13,fontWeight:'700',color:'#92400E'}}>Lab Retest Due</Text>
+              <Text style={{fontSize:12,color:'#78350F',lineHeight:18}}>{labReminder.name}'s retest due around {labReminder.date}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setLabReminder(null)} style={{padding:4}}>
+              <Text style={{fontSize:14,color:'#92400E',fontWeight:'700'}}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Card grid */}
         <ScrollView

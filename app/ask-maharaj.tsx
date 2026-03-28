@@ -228,7 +228,7 @@ Always track health conditions from the profile when suggesting food. Never repe
             {messages.map((msg, i) => (
               <View key={i} style={[s.bubble, msg.role === 'user' ? s.bubbleUser : s.bubbleAI]}>
                 {msg.role === 'assistant' && (
-                  <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:50,height:22}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
+                  <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:40,height:18}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
                 )}
                 <Text style={[s.bubbleTxt, msg.role === 'user' ? s.bubbleTxtUser : s.bubbleTxtAI]}>
                   {msg.content}
@@ -238,7 +238,7 @@ Always track health conditions from the profile when suggesting food. Never repe
 
             {loading && (
               <View style={[s.bubble, s.bubbleAI]}>
-                <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:50,height:22}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
+                <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:40,height:18}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
                 <ActivityIndicator color={navy} size="small" style={{ marginTop: 4 }} />
                 <Text style={[s.bubbleTxt, s.bubbleTxtAI, { fontStyle: 'italic', marginTop: 4 }]}>
                   Consulting ancient wisdom...
@@ -249,7 +249,7 @@ Always track health conditions from the profile when suggesting food. Never repe
             {mealResult && (
               <View style={s.mealResultInline}>
                 <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>
-                  <Image source={require('../assets/logo.png')} style={{width:60,height:26}} resizeMode="contain" />
+                  <Image source={require('../assets/logo.png')} style={{width:40,height:18}} resizeMode="contain" />
                   <Text style={{fontSize:16,fontWeight:'800',color:navy}}>{mealResult.title ?? 'Your Meal Plan'}</Text>
                 </View>
                 {mealResult.meals.map((meal, i) => (
@@ -346,11 +346,11 @@ const s = StyleSheet.create({
   welcomeEmoji:  { fontSize:56, marginBottom:12 },
   welcomeTitle:  { fontSize:20, fontWeight:'800', color:navy, marginBottom:8 },
   welcomeText:   { fontSize:14, color:textSec, textAlign:'center', lineHeight:22, marginBottom:20 },
-  suggestions:   { width:'100%', gap:8 },
-  suggChip:      { backgroundColor:'rgba(255,255,255,0.9)', borderRadius:12, padding:12, borderWidth:1, borderColor:border },
+  suggestions:   { width:'100%', flexDirection:'row', flexWrap:'wrap', gap:8 },
+  suggChip:      { backgroundColor:'rgba(255,255,255,0.9)', borderRadius:12, padding:10, borderWidth:1, borderColor:border, width:'48%' },
   suggTxt:       { fontSize:13, color:navy, fontWeight:'500' },
 
-  bubble:       { marginBottom:12, maxWidth:'88%' },
+  bubble:       { marginBottom:12, maxWidth:'85%' },
   bubbleUser:   { alignSelf:'flex-end', backgroundColor:navy, borderRadius:18, borderBottomRightRadius:4, padding:14 },
   bubbleAI:     { alignSelf:'flex-start', backgroundColor:'rgba(255,255,255,0.92)', borderRadius:18, borderBottomLeftRadius:4, padding:14, borderWidth:1, borderColor:border },
   bubbleLabel:  { fontSize:10, fontWeight:'700', color:textSec, marginBottom:4 },
@@ -382,7 +382,7 @@ const s = StyleSheet.create({
 
   // Inline meal result
   mealResultInline: {
-    marginBottom:12, maxWidth:'88%', alignSelf:'flex-start' as const,
+    marginBottom:12, maxWidth:'85%', alignSelf:'flex-start' as const,
     backgroundColor:'rgba(255,255,255,0.92)', borderRadius:18, padding:14,
     borderWidth:1, borderColor:border,
   },
