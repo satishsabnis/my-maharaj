@@ -240,6 +240,7 @@ export default function MealWizardScreen() {
         includeDessert,
         locationCity: userLocation.city,
         locationStores: userLocation.stores,
+        selectedSlots: selectedSlots.length > 0 ? selectedSlots : ['breakfast', 'lunch', 'dinner'],
       }, (current, total) => setGeneratingProgress({ current, total }));
 
       const defaultSel: Record<number, Record<MealSlotKey, number>> = {};
@@ -300,7 +301,7 @@ export default function MealWizardScreen() {
     }
 
     generatedPlan.forEach((_, dayIdx) => {
-      (['breakfast','lunch','dinner'] as MealSlotKey[]).forEach((slot) => {
+      (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) as MealSlotKey[] : ['breakfast','lunch','dinner'] as MealSlotKey[]).forEach((slot) => {
         getOpt(dayIdx, slot)?.ingredients.forEach((ing) => {
           const { name, qty, unit } = parseIngredient(ing);
           const key = normaliseKey(name);
@@ -383,7 +384,7 @@ export default function MealWizardScreen() {
 
     // Collect all ingredients from selected meals
     const usedIngredients: { name: string; qty: number; unit: string }[] = [];
-    const slots: MealSlotKey[] = ['breakfast', 'lunch', 'dinner'];
+    const slots: MealSlotKey[] = selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) as MealSlotKey[] : ['breakfast', 'lunch', 'dinner'];
     generatedPlan.forEach((_, dayIdx) => {
       slots.forEach((slot) => {
         const opt = getOpt(dayIdx, slot);

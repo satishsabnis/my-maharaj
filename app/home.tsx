@@ -283,10 +283,10 @@ const s = StyleSheet.create({
   greetTxt: { fontSize:12, color:'#1A6B5C', fontWeight:'500' },
 
   scroll: { padding:16 },
-  heroCard:      { backgroundColor:'#1B3A5C', borderRadius:20, padding:20, marginBottom:16, flexDirection:'row', alignItems:'center', justifyContent:'space-between', shadowColor:'#1B3A5C', shadowOffset:{width:0,height:6}, shadowOpacity:0.4, shadowRadius:16, elevation:8 },
+  heroCard:      { backgroundColor:'#1B3A5C', borderRadius:20, padding:14, maxHeight:80, marginBottom:16, flexDirection:'row', alignItems:'center', justifyContent:'space-between', shadowColor:'#1B3A5C', shadowOffset:{width:0,height:6}, shadowOpacity:0.4, shadowRadius:16, elevation:8 },
   heroCardLeft:  { flexDirection:'row', alignItems:'center', gap:16, flex:1 },
-  heroCardIcon:  { fontSize:36 },
-  heroCardTitle: { fontSize:17, fontWeight:'800', color:'#FFFFFF', marginBottom:4 },
+  heroCardIcon:  { fontSize:28 },
+  heroCardTitle: { fontSize:15, fontWeight:'800', color:'#FFFFFF', marginBottom:4 },
   heroCardDesc:  { fontSize:12, color:'rgba(255,255,255,0.75)', lineHeight:18 },
   heroCardArrow: { fontSize:28, color:'rgba(255,255,255,0.6)', fontWeight:'300' },
 
@@ -294,15 +294,15 @@ const s = StyleSheet.create({
 
   card: {
     backgroundColor:'rgba(255,255,255,0.88)',
-    borderRadius:18, padding:14, marginBottom:12,
+    borderRadius:18, padding:10, maxHeight:100, marginBottom:12,
     shadowColor:'#1B3A5C', shadowOffset:{width:0,height:3},
     shadowOpacity:0.09, shadowRadius:10, elevation:3,
     overflow:'hidden', borderWidth:1, borderColor:'rgba(180,220,220,0.45)',
   },
-  iconWrap:  { width:48, height:48, borderRadius:14, alignItems:'center', justifyContent:'center', marginBottom:10 },
-  iconEmoji: { fontSize:24 },
-  cardTitle: { fontSize:13, fontWeight:'800', marginBottom:4, lineHeight:18 },
-  cardDesc:  { fontSize:11, color:textSec, lineHeight:16 },
+  iconWrap:  { width:36, height:36, borderRadius:10, alignItems:'center', justifyContent:'center', marginBottom:6 },
+  iconEmoji: { fontSize:18 },
+  cardTitle: { fontSize:12, fontWeight:'800', marginBottom:4, lineHeight:18 },
+  cardDesc:  { fontSize:10, color:textSec, lineHeight:16 },
   accentBar: { position:'absolute', bottom:0, left:0, right:0, height:3 },
 
   footer:      { flexDirection:'row', alignItems:'center', justifyContent:'center', gap:10, paddingVertical:10, marginTop:4, borderTopWidth:1, borderTopColor:'rgba(27,58,92,0.08)', backgroundColor:'rgba(255,255,255,0.6)' },

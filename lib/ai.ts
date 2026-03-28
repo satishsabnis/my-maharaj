@@ -224,6 +224,7 @@ export async function generateMealPlan(
     dinnerPrefs?: string[];
     locationCity?: string;
     locationStores?: string;
+    selectedSlots?: string[];
   },
   onProgress?: (current: number, total: number) => void,
 ): Promise<MealPlanResult> {
@@ -267,6 +268,9 @@ export async function generateMealPlan(
   const dnPrefs  = params.dinnerPrefs ?? params.mealPrefs?.dinner;
   const cityName = params.locationCity || 'Dubai';
   const storeNames = params.locationStores || 'Carrefour/Spinneys/Lulu';
+  const slots = params.selectedSlots && params.selectedSlots.length > 0
+    ? params.selectedSlots
+    : ['breakfast', 'lunch', 'dinner'];
 
   const total = params.dates.length;
   onProgress?.(0, total);
@@ -297,9 +301,9 @@ export async function generateMealPlan(
     const batchResults = await Promise.all(
       batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
         const [breakfast, lunch, dinner] = await Promise.all([
-          generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames),
-          generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames),
-          generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames),
+          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('breakfast', i)),
+          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('lunch', i)),
+          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('dinner', i)),
         ]);
         completed++;
         onProgress?.(completed, total);
