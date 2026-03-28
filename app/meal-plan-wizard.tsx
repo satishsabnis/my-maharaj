@@ -7,7 +7,7 @@ export default function MealPlanWizardScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>← Back</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>Back</Text></TouchableOpacity>
         <Text style={s.headerTitle}>Generate Meal Plan</Text>
         <View style={{ width: 60 }} />
       </View>
@@ -16,7 +16,7 @@ export default function MealPlanWizardScreen() {
         <Text style={s.title}>Meal Plan Wizard</Text>
         <Text style={s.desc}>The full meal plan wizard is coming in the next sprint. It will include period selection, food preferences, AI generation with Gemini, and more.</Text>
         <TouchableOpacity style={s.btn} onPress={() => router.back()}>
-          <Text style={s.btnText}>← Go Back</Text>
+          <Text style={s.btnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

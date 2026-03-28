@@ -72,7 +72,7 @@ export default function CuisineSelectionScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>← Back</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>Back</Text></TouchableOpacity>
         <Text style={s.headerTitle}>Cuisine Selection</Text>
         <View style={{ width: 60 }} />
       </View>

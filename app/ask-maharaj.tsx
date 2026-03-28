@@ -178,7 +178,7 @@ Always track health conditions from the profile when suggesting food. Never repe
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Text style={s.backTxt}>← Back</Text>
+            <Text style={s.backTxt}>Back</Text>
           </TouchableOpacity>
           <View style={s.headerCenter}>
             <Text style={s.headerTitle}>Ask Maharaj AI</Text>
