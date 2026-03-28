@@ -270,27 +270,35 @@ export default function MealWizardScreen() {
   }
 
   function buildGrocery(): Record<GroceryCat, { name: string; qty?: number; unit?: string }[]> {
-    // Consolidate: parse "Item Xg" or "Item X cups" and sum quantities
     const itemMap: Record<string, { baseName: string; qty: number; unit: string; cat: GroceryCat }> = {};
     if (!generatedPlan) return {} as any;
+
+    // Parse various ingredient formats: "Rice 200g", "2 cups milk", "Onion 1 medium", "Salt to taste"
+    function parseIngredient(ing: string): { name: string; qty: number; unit: string } {
+      const s = ing.trim();
+      // "200g Rice" or "2 cups Milk" — number at start
+      const leadMatch = s.match(/^(\d+(?:\.\d+)?)\s*(g|kg|ml|L|l|tsp|tbsp|cup|cups|pcs|piece|pieces|medium|large|small|bunch|nos)?\s+(.+)$/i);
+      if (leadMatch) return { name: leadMatch[3].trim(), qty: parseFloat(leadMatch[1]), unit: (leadMatch[2] ?? '').replace(/s$/i, '') };
+      // "Rice 200g" or "Onion 1 medium" — number at end
+      const trailMatch = s.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(g|kg|ml|L|l|tsp|tbsp|cup|cups|pcs|piece|pieces|medium|large|small|bunch|nos)?$/i);
+      if (trailMatch) return { name: trailMatch[1].trim(), qty: parseFloat(trailMatch[2]), unit: (trailMatch[3] ?? '').replace(/s$/i, '') };
+      return { name: s, qty: 0, unit: '' };
+    }
+
+    function normaliseKey(name: string): string {
+      return name.toLowerCase().replace(/e?s$/, '').replace(/\s+/g, ' ').trim();
+    }
+
     generatedPlan.forEach((_, dayIdx) => {
       (['breakfast','lunch','dinner'] as MealSlotKey[]).forEach((slot) => {
         getOpt(dayIdx, slot)?.ingredients.forEach((ing) => {
-          // Parse "Basmati rice 200g" -> name=Basmati rice, qty=200, unit=g
-          const match = ing.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(g|kg|ml|L|l|tsp|tbsp|cup|cups|pcs|piece|pieces|medium|large|small|bunch)?$/i);
-          let baseName = ing.trim();
-          let qty = 0;
-          let unit = '';
-          if (match) {
-            baseName = match[1].trim();
-            qty = parseFloat(match[2]);
-            unit = match[3] ?? '';
-          }
-          const key = baseName.toLowerCase();
+          const { name, qty, unit } = parseIngredient(ing);
+          const key = normaliseKey(name);
           if (itemMap[key]) {
-            itemMap[key].qty += qty;
+            if (unit === itemMap[key].unit) itemMap[key].qty += qty;
+            else if (qty > 0 && !itemMap[key].qty) { itemMap[key].qty = qty; itemMap[key].unit = unit; }
           } else {
-            itemMap[key] = { baseName, qty, unit, cat: categorise(ing) };
+            itemMap[key] = { baseName: name.charAt(0).toUpperCase() + name.slice(1), qty, unit, cat: categorise(ing) };
           }
         });
       });
@@ -298,7 +306,7 @@ export default function MealWizardScreen() {
     const grouped = {} as Record<GroceryCat, { name: string; qty?: number; unit?: string }[]>;
     Object.values(itemMap).forEach(({ baseName, qty, unit, cat }) => {
       if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ name: baseName, qty: qty > 0 ? qty : undefined, unit: unit || undefined });
+      grouped[cat].push({ name: baseName, qty: qty > 0 ? Math.round(qty * 10) / 10 : undefined, unit: unit || undefined });
     });
     return grouped;
   }
@@ -310,8 +318,8 @@ export default function MealWizardScreen() {
     CAT_ORDER.forEach((cat) => {
       const items = grocery[cat];
       if (!items?.length) return;
-      lines.push(`${CAT_ICONS[cat]} ${cat.toUpperCase()}:`);
-      items.forEach((it) => lines.push(`  - ${it.name}`));
+      lines.push(`${cat.toUpperCase()}:`);
+      items.forEach((it, i) => lines.push(`  ${i+1}. ${it.name}${it.qty ? ` — ${it.qty}${it.unit||''}` : ''}`));
       lines.push('');
     });
     return lines.join('\n');
@@ -1000,9 +1008,12 @@ export default function MealWizardScreen() {
           </TouchableOpacity>
           {Platform.OS === 'web' && (
             <TouchableOpacity style={s.groceryActionBtn} onPress={() => void downloadGrocery()} activeOpacity={0.8}>
-              <Text style={s.groceryActionText}>Download</Text>
+              <Text style={s.groceryActionText}>Print / PDF</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={s.groceryActionBtn} onPress={() => setStep('recipes')} activeOpacity={0.8}>
+            <Text style={s.groceryActionText}>View Recipes</Text>
+          </TouchableOpacity>
         </View>
 
         {totalItems === 0 ? (
@@ -1015,7 +1026,7 @@ export default function MealWizardScreen() {
             if (!items?.length) return null;
             return (
               <View key={cat} style={s.groceryCat}>
-                <Text style={s.groceryCatTitle}>{CAT_ICONS[cat]} {cat}</Text>
+                <Text style={s.groceryCatTitle}>{cat}</Text>
                 <View style={s.groceryCatDivider} />
                 <View style={{flexDirection:'row',paddingVertical:4,paddingHorizontal:4,borderBottomWidth:1,borderBottomColor:'#E5E7EB'}}>
                   <Text style={{width:30,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>#</Text>
