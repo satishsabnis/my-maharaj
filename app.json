@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "my-maharaj",
+    "name": "My Maharaj",
     "slug": "my-maharaj",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +21,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.mymaharaj"
+      "package": "com.blueflute.mymaharaj"
     },
     "web": {
       "bundler": "metro",
