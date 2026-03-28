@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
@@ -10,9 +10,9 @@ import { navy, gold, peacock, textSec, errorRed, white, border, surface, textCol
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
-  | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'nutrition'
+  | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'nutrition'
   | 'generating' | 'generating-error' | 'selection'
-  | 'recipes' | 'grocery' | 'feedback';
+  | 'cook-or-order' | 'recipes' | 'grocery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner';
 
@@ -63,7 +63,7 @@ const CAT_ORDER: GroceryCat[] = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pa
 
 // ─── Wizard progress ──────────────────────────────────────────────────────────
 
-const USER_STEPS: WizardStep[] = ['period','food-pref','guest-cuisine','meal-prefs','unwell','nutrition'];
+const USER_STEPS: WizardStep[] = ['period','food-pref','guest-cuisine','meal-prefs','unwell','veg-days','nutrition'];
 function stepNum(step: WizardStep): number { return USER_STEPS.indexOf(step) + 1; }
 function totalUserSteps(): number { return USER_STEPS.length; }
 
@@ -80,19 +80,8 @@ export default function MealWizardScreen() {
   const [pickerTo,   setPickerTo]   = useState(addDays(startOfDay(new Date()), 1));
   const [showCustom, setShowCustom] = useState(false);
 
-  // Guest cuisine
-  const [hasGuests,      setHasGuests]      = useState(false);
-  const [guestCuisine,   setGuestCuisine]   = useState('');
-  const [guestDays,      setGuestDays]      = useState(2);
-  const [savedCuisines,  setSavedCuisines]  = useState<string[]>([]);
-
-  // Meal slots
-  const [selectedSlots, setSelectedSlots] = useState<string[]>(['breakfast','lunch','dinner']);
-  // Guest count
-  const [guestCount, setGuestCount] = useState(0);
-
   // Step 2
-  const [foodPref, setFoodPref]   = useState<'veg' | 'nonveg' | 'mixed' | null>(null);
+  const [foodPref, setFoodPref]   = useState<'veg' | 'nonveg' | null>(null);
   const [vegType,  setVegType]    = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
@@ -108,7 +97,15 @@ export default function MealWizardScreen() {
   const [unwellIds,     setUnwellIds]     = useState<string[]>([]);
 
   // Step 5
-  const [nutritionGoals, setNutritionGoals] = useState<string[]>(['Balanced']);
+  const [nutritionGoals, setNutritionGoals] = useState<string[]>([]);
+  const [hasGuests,      setHasGuests]      = useState(false);
+  const [guestCuisine,   setGuestCuisine]   = useState('');
+  const [guestDays,      setGuestDays]      = useState(2);
+  const [savedCuisines,  setSavedCuisines]  = useState<string[]>([]);
+  const [selectedSlots,  setSelectedSlots]  = useState<string[]>(['breakfast','lunch','dinner']);
+  const [presentMembers, setPresentMembers] = useState<string[]>([]);
+  const [guestCount,     setGuestCount]     = useState(0);
+  const [vegFastDays,    setVegFastDays]    = useState<Record<string,'normal'|'veg'|'fasting'>>({});
 
   // Generation
   const [generatedPlan,     setGeneratedPlan]     = useState<MealPlanDay[] | null>(null);
@@ -269,22 +266,36 @@ export default function MealWizardScreen() {
     0);
   }
 
-  function buildGrocery(): Record<GroceryCat, { name: string }[]> {
-    const grouped = {} as Record<GroceryCat, { name: string }[]>;
-    const seen = new Set<string>();
-    if (!generatedPlan) return grouped;
+  function buildGrocery(): Record<GroceryCat, { name: string; qty?: number; unit?: string }[]> {
+    // Consolidate: parse "Item Xg" or "Item X cups" and sum quantities
+    const itemMap: Record<string, { baseName: string; qty: number; unit: string; cat: GroceryCat }> = {};
+    if (!generatedPlan) return {} as any;
     generatedPlan.forEach((_, dayIdx) => {
       (['breakfast','lunch','dinner'] as MealSlotKey[]).forEach((slot) => {
         getOpt(dayIdx, slot)?.ingredients.forEach((ing) => {
-          const key = ing.toLowerCase().trim();
-          if (!seen.has(key)) {
-            seen.add(key);
-            const cat = categorise(ing);
-            if (!grouped[cat]) grouped[cat] = [];
-            grouped[cat].push({ name: ing });
+          // Parse "Basmati rice 200g" -> name=Basmati rice, qty=200, unit=g
+          const match = ing.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(g|kg|ml|L|l|tsp|tbsp|cup|cups|pcs|piece|pieces|medium|large|small|bunch)?$/i);
+          let baseName = ing.trim();
+          let qty = 0;
+          let unit = '';
+          if (match) {
+            baseName = match[1].trim();
+            qty = parseFloat(match[2]);
+            unit = match[3] ?? '';
+          }
+          const key = baseName.toLowerCase();
+          if (itemMap[key]) {
+            itemMap[key].qty += qty;
+          } else {
+            itemMap[key] = { baseName, qty, unit, cat: categorise(ing) };
           }
         });
       });
+    });
+    const grouped = {} as Record<GroceryCat, { name: string; qty?: number; unit?: string }[]>;
+    Object.values(itemMap).forEach(({ baseName, qty, unit, cat }) => {
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push({ name: baseName, qty: qty > 0 ? qty : undefined, unit: unit || undefined });
     });
     return grouped;
   }
@@ -366,39 +377,22 @@ export default function MealWizardScreen() {
     }
   }
 
-  async function downloadGroceryPDF() {
+  async function downloadGrocery() {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     const grocery = buildGrocery();
-    const lines: string[] = [];
-    lines.push('SHOPPING LIST');
-    lines.push('');
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    let html = '<html><head><title>Shopping List</title><style>body{font-family:Arial,sans-serif;padding:24px}h1{color:#1B3A5C;font-size:20px}p{color:#666;font-size:12px}h2{color:#1A6B5C;font-size:13px;margin-top:18px;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1B3A5C;color:white;padding:8px;text-align:left;font-size:11px}td{padding:8px;border-bottom:1px solid #E5E7EB;font-size:13px}.qty{text-align:right;color:#1A6B5C;font-weight:600;width:80px}</style></head><body>';
+    html += '<h1>My Maharaj Shopping List</h1><p>' + today + '</p>';
     CAT_ORDER.forEach(cat => {
       const items = grocery[cat];
-      if (!items?.length) return;
-      lines.push(cat.toUpperCase());
-      lines.push('-'.repeat(30));
-      items.forEach((item, i) => {
-        const qty = item.qty ? `${item.qty}${item.unit ? ' ' + item.unit : ''}` : '';
-        lines.push(`${i + 1}. ${item.name}${qty ? '  [' + qty + ']' : ''}`);
-      });
-      lines.push('');
+      if (!items || !items.length) return;
+      html += '<h2>' + cat + '</h2><table><tr><th>#</th><th>Item</th><th class="qty">Qty</th></tr>';
+      items.forEach((it, i) => { html += '<tr><td>' + (i+1) + '</td><td>' + it.name + '</td><td class="qty">' + (it.qty ? it.qty + (it.unit||'') : '—') + '</td></tr>'; });
+      html += '</table>';
     });
-    const text = lines.join('\n');
-    if (typeof window !== 'undefined') {
-      const blob = new Blob([text], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'shopping-list.txt'; a.click();
-      URL.revokeObjectURL(url);
-    }
-  }
-
-  async function downloadGrocery() {
-    if (Platform.OS !== 'web') return;
-    const blob = new Blob([buildGroceryText()], { type: 'text/plain' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'MyMaharaj-Shopping-List.txt'; a.click();
-    URL.revokeObjectURL(url);
+    html += '<script>window.onload=function(){window.print()};</script></body></html>';
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -411,6 +405,11 @@ export default function MealWizardScreen() {
       'food-pref': 'period',
       'guest-cuisine': 'food-pref',
       'meal-prefs': 'guest-cuisine',
+      'veg-days': 'unwell',
+      'nutrition': 'veg-days',
+      'selection': 'generating',
+      'cook-or-order': 'selection',
+      'recipes': 'cook-or-order',
       'unwell': 'meal-prefs',
       'nutrition': 'unwell',
       'selection': 'nutrition',
@@ -453,14 +452,6 @@ export default function MealWizardScreen() {
   }
 
   // ── Render steps ──────────────────────────────────────────────────────────
-
-  function CancelBtn() {
-    return (
-      <TouchableOpacity onPress={() => router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}>
-        <Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel — Back to Home</Text>
-      </TouchableOpacity>
-    );
-  }
 
   function renderPeriod() {
     const today = startOfDay(new Date());
@@ -507,7 +498,6 @@ export default function MealWizardScreen() {
   function renderFoodPref() {
     return (
       <View>
-        <CancelBtn />
         <Text style={s.stepTitle}>What type of food?</Text>
         {selectedFrom && (
           <Text style={s.stepSub}>{fmtL(selectedFrom)}{selectedTo && selectedTo.getTime() !== selectedFrom.getTime() ? ` – ${fmtL(selectedTo)}` : ''}</Text>
@@ -543,33 +533,49 @@ export default function MealWizardScreen() {
             <Text style={[s.foodCardLabel, foodPref === 'nonveg' && s.foodCardLabelActive]}>Non-Vegetarian</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[s.foodCard, foodPref === 'mixed' && s.foodCardActive]}
-            onPress={() => { setFoodPref('mixed'); setVegType(null); }} activeOpacity={0.85}>
+            style={[s.foodCard, (foodPref as string) === 'mixed' && s.foodCardActive]}
+            onPress={() => { setFoodPref('nonveg'); setVegType(null); }} activeOpacity={0.85}>
             <Text style={s.foodCardIcon}>🥗</Text>
-            <Text style={[s.foodCardLabel, foodPref === 'mixed' && s.foodCardLabelActive]}>Mixed</Text>
-            <Text style={{fontSize:11,color:foodPref==='mixed'?'rgba(255,255,255,0.8)':'#5A7A8A',marginTop:2}}>Veg breakfast + non-veg meals</Text>
+            <Text style={[s.foodCardLabel, (foodPref as string) === 'mixed' && s.foodCardLabelActive]}>Mixed</Text>
+            <Text style={{fontSize:11,color:'#5A7A8A',marginTop:2}}>Veg breakfast + non-veg meals</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Meal slot selector */}
-        <Text style={[s.sectionLabel,{marginTop:20}]}>WHICH MEALS TO PLAN?</Text>
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:8}}>
-          {[{key:'breakfast',icon:'🌅',label:'Breakfast'},{key:'lunch',icon:'☀️',label:'Lunch'},{key:'dinner',icon:'🌙',label:'Dinner'},{key:'snack',icon:'🫖',label:'Evening Snack'}].map(({key,icon,label})=>(
-            <TouchableOpacity key={key}
-              style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:selectedSlots.includes(key)?'#1B3A5C':'#D4EDE5',backgroundColor:selectedSlots.includes(key)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
-              onPress={()=>setSelectedSlots(prev=>prev.includes(key)?prev.filter(s=>s!==key):[...prev,key])}>
-              <Text style={{fontSize:13,fontWeight:'600',color:selectedSlots.includes(key)?'#FFFFFF':'#1B3A5C'}}>{icon} {label}</Text>
+        {/* Meal slots */}
+        <Text style={[s.sectionLabel,{marginTop:16}]}>WHICH MEALS TO PLAN?</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12}}>
+          {[{k:'breakfast',i:'🌅',l:'Breakfast'},{k:'lunch',i:'☀️',l:'Lunch'},{k:'dinner',i:'🌙',l:'Dinner'},{k:'snack',i:'🫖',l:'Evening Snack'}].map(({k,i,l})=>(
+            <TouchableOpacity key={k}
+              style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:selectedSlots.includes(k)?'#1B3A5C':'#D4EDE5',backgroundColor:selectedSlots.includes(k)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+              onPress={()=>setSelectedSlots(prev=>prev.includes(k)?prev.filter(s=>s!==k):[...prev,k])}>
+              <Text style={{fontSize:13,fontWeight:'600',color:selectedSlots.includes(k)?'#FFFFFF':'#1B3A5C'}}>{i} {l}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Guest count */}
-        <Text style={[s.sectionLabel,{marginTop:12}]}>COOKING FOR GUESTS?</Text>
-        <View style={{flexDirection:'row',alignItems:'center',gap:12,marginBottom:8}}>
-          <Text style={{fontSize:13,color:'#5A7A8A'}}>Extra guests:</Text>
+        {/* Present members - who is home */}
+        {familyMembers.length > 0 && (
+          <View style={{marginBottom:12}}>
+            <Text style={s.sectionLabel}>WHO IS HOME FOR MEALS?</Text>
+            <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+              {familyMembers.map(m=>(
+                <TouchableOpacity key={m.id}
+                  style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:presentMembers.includes(m.id)?'#1B3A5C':'#D4EDE5',backgroundColor:presentMembers.includes(m.id)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+                  onPress={()=>setPresentMembers(prev=>prev.includes(m.id)?prev.filter(x=>x!==m.id):[...prev,m.id])}>
+                  <Text style={{fontSize:13,fontWeight:'600',color:presentMembers.includes(m.id)?'#FFFFFF':'#1B3A5C'}}>{m.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{fontSize:11,color:'#9CA3AF',marginTop:4}}>Leave all unselected = cook for everyone</Text>
+          </View>
+        )}
+
+        {/* Additional guests */}
+        <Text style={s.sectionLabel}>ADDITIONAL GUESTS?</Text>
+        <View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:4}}>
           {[0,1,2,3,4,5,8,10].map(n=>(
             <TouchableOpacity key={n}
-              style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:guestCount===n?'#1B3A5C':'#D4EDE5',backgroundColor:guestCount===n?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+              style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestCount===n?'#1B3A5C':'#D4EDE5',backgroundColor:guestCount===n?'#1B3A5C':'rgba(255,255,255,0.9)'}}
               onPress={()=>setGuestCount(n)}>
               <Text style={{fontSize:13,fontWeight:'600',color:guestCount===n?'#FFFFFF':'#1B3A5C'}}>{n===0?'None':'+'+n}</Text>
             </TouchableOpacity>
@@ -632,7 +638,6 @@ export default function MealWizardScreen() {
 
     return (
       <View>
-        <CancelBtn />
         <Text style={s.stepTitle}>What would you like in each meal?</Text>
         <Text style={s.stepSub}>Select all that apply for each meal</Text>
 
@@ -666,7 +671,6 @@ export default function MealWizardScreen() {
   function renderUnwell() {
     return (
       <View>
-        <CancelBtn />
         <Text style={s.stepTitle}>Is anyone feeling unwell?</Text>
 
         <View style={s.foodCards}>
@@ -709,10 +713,10 @@ export default function MealWizardScreen() {
   }
 
   function renderNutrition() {
-    const GOALS = ['Balanced','Low Calorie','Keto','High Protein','Less Oil','High Fibre','Weight Loss','Doctor Recommended'];
+    const GOALS = ['Balanced','Blood Sugar Control','Bone Health','Detox','Digestive Health','Doctor Recommended','Energy Boost','Heart Health','High Fibre','High Protein','Immunity Boost','Keto','Kid Friendly','Less Oil','Less Spice','Low Calorie','Low Carb','Low Sodium','Mental Clarity','Muscle Gain','Post-illness Recovery','Pregnancy Safe','Sattvic / Fasting','Senior Friendly','Skin Health','Weight Loss'];
     return (
       <View>
-        <CancelBtn />
+        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}><Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel</Text></TouchableOpacity>
         <Text style={s.stepTitle}>Any nutrition goal?</Text>
         <Text style={s.stepSub}>Select all that apply</Text>
         <View style={s.pillRow}>
@@ -881,9 +885,12 @@ export default function MealWizardScreen() {
         {/* Floating bottom bar */}
         <View style={s.floatBar}>
           <Text style={s.floatCount}>{selectedCount()} of {total} meals selected</Text>
-          <View style={{flexDirection:'row',gap:10}}>
-            <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
-              <Text style={{fontSize:14,fontWeight:'700',color:'#1B3A5C'}}>🔄 Regenerate</Text>
+          <View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}>
+            <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:10,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>router.push('/home' as never)}>
+              <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>✕ Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:10,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
+              <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>🔄 Regenerate</Text>
             </TouchableOpacity>
             <Button
               title="Confirm ✓"
@@ -892,90 +899,6 @@ export default function MealWizardScreen() {
             />
           </View>
         </View>
-      </View>
-    );
-  }
-
-  function renderGuestCuisine() {
-    const ALL_CUISINES = ['Afghan','Andhra','Assamese','Bangladeshi','Bengali','Bihari','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mediterranean','Mexican','Moroccan','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
-    return (
-      <View>
-        <CancelBtn />
-        <Text style={s.stepTitle}>Any guests joining?</Text>
-        <Text style={s.stepSub}>Add a special cuisine for your guests</Text>
-        <View style={s.foodCards}>
-          <TouchableOpacity style={[s.foodCard, !hasGuests && s.foodCardActive]} onPress={() => { setHasGuests(false); setGuestCuisine(''); }} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>👨‍👩‍👧</Text>
-            <Text style={[s.foodCardLabel, !hasGuests && s.foodCardLabelActive]}>Just my family</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.foodCard, hasGuests && s.foodCardActive]} onPress={() => setHasGuests(true)} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}>🎊</Text>
-            <Text style={[s.foodCardLabel, hasGuests && s.foodCardLabelActive]}>We have guests</Text>
-          </TouchableOpacity>
-        </View>
-        {hasGuests && (
-          <View>
-            <Text style={s.sectionLabel}>GUEST CUISINE</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{flexDirection:'row',gap:8,paddingVertical:4,paddingBottom:8}}>
-                {ALL_CUISINES.map(c => (
-                  <TouchableOpacity key={c} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:20,borderWidth:1.5,borderColor:guestCuisine===c?'#1B3A5C':'#D4EDE5',backgroundColor:guestCuisine===c?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestCuisine(c)}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:guestCuisine===c?'#FFFFFF':'#1B3A5C'}}>{c}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-            <Text style={s.sectionLabel}>FOR HOW MANY DAYS?</Text>
-            <View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:8}}>
-              {[1,2,3,4,5,7].map(d=>(
-                <TouchableOpacity key={d} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestDays===d?'#1B3A5C':'#D4EDE5',backgroundColor:guestDays===d?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestDays(d)}>
-                  <Text style={{fontSize:13,fontWeight:'600',color:guestDays===d?'#FFFFFF':'#1B3A5C'}}>{d} day{d>1?'s':''}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {guestCuisine ? (
-              <View style={{backgroundColor:'rgba(201,162,39,0.1)',borderRadius:12,padding:12,borderWidth:1,borderColor:'rgba(201,162,39,0.3)'}}>
-                <Text style={{fontSize:13,color:'#78350F',fontWeight:'600'}}>{guestCuisine} cuisine for first {guestDays} day{guestDays>1?'s':''}, then your saved cuisines</Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-        <View style={s.btnRow}>
-          <View style={{flex:1,marginRight:12}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
-          <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('meal-prefs')} /></View>
-        </View>
-      </View>
-    );
-  }
-
-  function renderCookOrOrder() {
-    return (
-      <View style={s.cookOrderScreen}>
-        <Text style={s.stepTitle}>How would you like to proceed?</Text>
-        <Text style={s.stepSub}>Your meal plan is ready!</Text>
-        <View style={s.cookOrderCards}>
-          <TouchableOpacity style={s.cookOrderCard} onPress={() => advance('recipes')} activeOpacity={0.85}>
-            <Text style={s.cookOrderIcon}>👨‍🍳</Text>
-            <Text style={s.cookOrderTitle}>Cook at Home</Text>
-            <Text style={s.cookOrderSub}>Get full recipes, ingredients and step-by-step instructions</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.cookOrderCard} onPress={() => router.push('/order-out' as never)} activeOpacity={0.85}>
-            <Text style={s.cookOrderIcon}>🛵</Text>
-            <Text style={s.cookOrderTitle}>Order Out</Text>
-            <Text style={s.cookOrderSub}>Find restaurants and delivery options for your meals</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={s.btnRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button title="View Recipes →" onPress={() => advance('recipes')} />
-          </View>
-        </View>
-        <TouchableOpacity style={{alignItems:'center',paddingVertical:12}} onPress={() => router.push('/home' as never)}>
-          <Text style={{fontSize:13,color:'#5A7A8A'}}>✕ Done — Back to Home</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -1061,19 +984,17 @@ export default function MealWizardScreen() {
 
         <View style={s.groceryActions}>
           <TouchableOpacity style={s.groceryActionBtn} onPress={() => void copyGrocery()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>Copy</Text>
+            <Text style={s.groceryActionText}>📋 Copy</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.groceryActionBtn} onPress={() => void shareWhatsApp()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>WhatsApp</Text>
+            <Text style={s.groceryActionText}>📱 WhatsApp</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => void downloadGroceryPDF()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>Download PDF</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity style={s.groceryActionBtn} onPress={() => void downloadGrocery()} activeOpacity={0.8}>
+              <Text style={s.groceryActionText}>📄 Download</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        {/* Recipes button */}
-        <TouchableOpacity style={s.recipesQuickBtn} onPress={() => advance('recipes')} activeOpacity={0.85}>
-          <Text style={s.recipesQuickBtnTxt}>View Recipes →</Text>
-        </TouchableOpacity>
 
         {totalItems === 0 ? (
           <View style={s.emptyBox}>
@@ -1087,10 +1008,16 @@ export default function MealWizardScreen() {
               <View key={cat} style={s.groceryCat}>
                 <Text style={s.groceryCatTitle}>{CAT_ICONS[cat]} {cat}</Text>
                 <View style={s.groceryCatDivider} />
+                <View style={{flexDirection:'row',paddingVertical:4,paddingHorizontal:4,borderBottomWidth:1,borderBottomColor:'#E5E7EB'}}>
+                  <Text style={{width:30,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>#</Text>
+                  <Text style={{flex:1,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>ITEM</Text>
+                  <Text style={{width:80,fontSize:11,fontWeight:'700',color:'#9CA3AF',textAlign:'right'}}>QTY</Text>
+                </View>
                 {items.map((item, i) => (
-                  <View key={i} style={[s.groceryRow, i < items.length - 1 && s.groceryRowBorder]}>
-                    <Text style={[s.groceryName,{flex:1}]}>{item.name}</Text>
-                    {item.qty ? <Text style={s.groceryQty}>{item.qty}{item.unit?' '+item.unit:''}</Text> : null}
+                  <View key={i} style={{flexDirection:'row',paddingVertical:8,paddingHorizontal:4,borderBottomWidth:i<items.length-1?1:0,borderBottomColor:'#F3F4F6',alignItems:'center'}}>
+                    <Text style={{width:30,fontSize:13,color:'#9CA3AF'}}>{i+1}.</Text>
+                    <Text style={{flex:1,fontSize:14,color:'#1B3A5C',fontWeight:'500'}}>{item.name}</Text>
+                    <Text style={{width:80,fontSize:13,color:'#1A6B5C',fontWeight:'600',textAlign:'right'}}>{item.qty ? `${item.qty}${item.unit||''}` : '—'}</Text>
                   </View>
                 ))}
               </View>
@@ -1165,16 +1092,115 @@ export default function MealWizardScreen() {
 
   // ── Main render ───────────────────────────────────────────────────────────
 
+
+  function renderGuestCuisine() {
+    const ALL_CUISINES = ['Afghan','Andhra','Assamese','Bangladeshi','Bengali','Bihari','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mediterranean','Mexican','Moroccan','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
+    return (
+      <View>
+        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}><Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel</Text></TouchableOpacity>
+        <Text style={s.stepTitle}>Any guests joining?</Text>
+        <Text style={s.stepSub}>Add a special cuisine for your guests</Text>
+        <View style={s.foodCards}>
+          <TouchableOpacity style={[s.foodCard, !hasGuests && s.foodCardActive]} onPress={()=>{setHasGuests(false);setGuestCuisine('');}} activeOpacity={0.8}>
+            <Text style={s.foodCardIcon}>👨‍👩‍👧</Text>
+            <Text style={[s.foodCardLabel, !hasGuests && s.foodCardLabelActive]}>Just my family</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.foodCard, hasGuests && s.foodCardActive]} onPress={()=>setHasGuests(true)} activeOpacity={0.8}>
+            <Text style={s.foodCardIcon}>🎊</Text>
+            <Text style={[s.foodCardLabel, hasGuests && s.foodCardLabelActive]}>We have guests</Text>
+          </TouchableOpacity>
+        </View>
+        {hasGuests && (<View>
+          <Text style={[s.sectionLabel,{marginTop:12}]}>GUEST CUISINE</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{flexDirection:'row',gap:8,paddingVertical:4,paddingBottom:8}}>
+              {ALL_CUISINES.map(c=>(<TouchableOpacity key={c} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:20,borderWidth:1.5,borderColor:guestCuisine===c?'#1B3A5C':'#D4EDE5',backgroundColor:guestCuisine===c?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestCuisine(c)}><Text style={{fontSize:13,fontWeight:'600',color:guestCuisine===c?'#FFFFFF':'#1B3A5C'}}>{c}</Text></TouchableOpacity>))}
+            </View>
+          </ScrollView>
+          <Text style={s.sectionLabel}>FOR HOW MANY DAYS?</Text>
+          <View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:8}}>
+            {[1,2,3,4,5,7].map(d=>(<TouchableOpacity key={d} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestDays===d?'#1B3A5C':'#D4EDE5',backgroundColor:guestDays===d?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestDays(d)}><Text style={{fontSize:13,fontWeight:'600',color:guestDays===d?'#FFFFFF':'#1B3A5C'}}>{d} day{d>1?'s':''}</Text></TouchableOpacity>))}
+          </View>
+        </View>)}
+        <View style={s.btnRow}>
+          <View style={{flex:1,marginRight:12}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
+          <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('meal-prefs')} /></View>
+        </View>
+      </View>
+    );
+  }
+
+  function renderVegDays() {
+    const dates = getDates(selectedFrom!, selectedTo!);
+    if (dates.length <= 1) { advance('nutrition'); return null; }
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return (
+      <View>
+        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}><Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel</Text></TouchableOpacity>
+        <Text style={s.stepTitle}>Set veg/fasting days</Text>
+        <Text style={s.stepSub}>Choose how each day should be planned</Text>
+        {dates.map(d=>{
+          const dt = new Date(d);
+          const label = `${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+          const val = vegFastDays[d] ?? 'normal';
+          return (
+            <View key={d} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:'rgba(255,255,255,0.9)',borderRadius:12,padding:14,marginBottom:8}}>
+              <Text style={{fontSize:14,fontWeight:'600',color:'#1B3A5C',width:70}}>{label}</Text>
+              <View style={{flexDirection:'row',gap:6}}>
+                {(['normal','veg','fasting'] as const).map(opt=>(<TouchableOpacity key={opt} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:14,borderWidth:1.5,borderColor:val===opt?'#1B3A5C':'#D4EDE5',backgroundColor:val===opt?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setVegFastDays(p=>({...p,[d]:opt}))}><Text style={{fontSize:12,fontWeight:'600',color:val===opt?'#FFFFFF':'#1B3A5C',textTransform:'capitalize'}}>{opt}</Text></TouchableOpacity>))}
+              </View>
+            </View>
+          );
+        })}
+        <View style={s.btnRow}>
+          <View style={{flex:1,marginRight:12}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
+          <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('nutrition')} /></View>
+        </View>
+      </View>
+    );
+  }
+
+  function renderCookOrOrder() {
+    return (
+      <View style={{paddingVertical:8}}>
+        <Text style={s.stepTitle}>How would you like to proceed?</Text>
+        <Text style={s.stepSub}>Your meal plan is confirmed!</Text>
+        <View style={{gap:14,marginVertical:20}}>
+          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:18,padding:20,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',alignItems:'center',flexDirection:'row',gap:16}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
+            <Image source={require('../assets/logo.png')} style={{width:60,height:28}} resizeMode="contain" />
+            <View style={{flex:1}}>
+              <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Cook at Home</Text>
+              <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Get full recipes & step-by-step instructions</Text>
+            </View>
+            <Text style={{fontSize:22,color:'#9CA3AF'}}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:18,padding:20,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',alignItems:'center',flexDirection:'row',gap:16}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
+            <Text style={{fontSize:36}}>🛵</Text>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Order Out</Text>
+              <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Find delivery options near you</Text>
+            </View>
+            <Text style={{fontSize:22,color:'#9CA3AF'}}>›</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={{backgroundColor:'rgba(27,58,92,0.08)',borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.15)'}} onPress={()=>router.push('/home' as never)}>
+          <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'600'}}>Done — Back to Home</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const STEP_RENDER: Record<WizardStep, () => React.ReactNode> = {
     'period':           renderPeriod,
     'food-pref':        renderFoodPref,
-    'guest-cuisine':    renderGuestCuisine,
     'meal-prefs':       renderMealPrefs,
     'unwell':           renderUnwell,
     'nutrition':        renderNutrition,
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
+    'guest-cuisine':    renderGuestCuisine,
+    'veg-days':         renderVegDays,
     'cook-or-order':    renderCookOrOrder,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
@@ -1335,13 +1361,6 @@ const s = StyleSheet.create({
   recipeSection:{ fontSize: 12, fontWeight: '700', color: navy, marginTop: 10, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
   recipeItem:   { fontSize: 13, color: textSec, lineHeight: 20, marginBottom: 2 },
 
-  cookOrderScreen: { paddingVertical:8 },
-  cookOrderCards:  { gap:14, marginVertical:20 },
-  cookOrderCard:   { backgroundColor:'rgba(255,255,255,0.92)', borderRadius:18, padding:20, borderWidth:1, borderColor:'rgba(27,58,92,0.12)', alignItems:'center' },
-  cookOrderIcon:   { fontSize:40, marginBottom:10 },
-  cookOrderTitle:  { fontSize:17, fontWeight:'800', color:'#1B3A5C', marginBottom:6 },
-  cookOrderSub:    { fontSize:13, color:'#5A7A8A', textAlign:'center', lineHeight:20 },
-
   floatBar:   { backgroundColor: surface, borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginTop: 8, marginBottom: 16, gap: 12 },
   floatCount: { fontSize: 14, color: textSec, textAlign: 'center', fontWeight: '600' },
 
@@ -1358,9 +1377,6 @@ const s = StyleSheet.create({
   recipeCardTags: { fontSize: 13, color: textSec, marginBottom: 8, fontStyle: 'italic' },
 
   // Grocery
-  recipesQuickBtn:    { backgroundColor:'rgba(27,58,92,0.08)', borderRadius:12, paddingVertical:12, alignItems:'center', marginBottom:12, borderWidth:1, borderColor:'rgba(27,58,92,0.15)' },
-  recipesQuickBtnTxt: { fontSize:14, fontWeight:'600', color:'#1B3A5C' },
-  groceryQty:         { fontSize:13, color:'#1A6B5C', fontWeight:'600', marginLeft:8 },
   groceryActions: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   groceryActionBtn: { flex: 1, height: 44, borderRadius: 10, borderWidth: 1.5, borderColor: border, alignItems: 'center', justifyContent: 'center', backgroundColor: surface },
   groceryActionText:{ fontSize: 13, color: navy, fontWeight: '600' },
