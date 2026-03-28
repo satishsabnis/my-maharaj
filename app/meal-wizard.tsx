@@ -224,6 +224,7 @@ export default function MealWizardScreen() {
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: nutritionGoals.length > 0 ? nutritionGoals.join(', ') : undefined,
         vegDays:        profile?.veg_days ?? [],
+        cuisinePerDay:  hasGuests && guestCuisine ? getDates(selectedFrom, selectedTo).map((_, i) => i < guestDays ? guestCuisine : cuisine) : undefined,
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
         lunchPrefs:     lnPrefs.length > 0 ? lnPrefs : undefined,
         dinnerPrefs:    dnPrefs.length > 0 ? dnPrefs : undefined,
@@ -240,7 +241,7 @@ export default function MealWizardScreen() {
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
       setStep('generating-error');
     }
-  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert]);
+  }, [selectedFrom, selectedTo, foodPref, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert, hasGuests, guestCuisine, guestDays]);
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
@@ -720,7 +721,6 @@ export default function MealWizardScreen() {
     const GOALS = ['Balanced','Blood Sugar Control','Bone Health','Detox','Digestive Health','Doctor Recommended','Energy Boost','Heart Health','High Fibre','High Protein','Immunity Boost','Keto','Kid Friendly','Less Oil','Less Spice','Low Calorie','Low Carb','Low Sodium','Mental Clarity','Muscle Gain','Post-illness Recovery','Pregnancy Safe','Sattvic / Fasting','Senior Friendly','Skin Health','Weight Loss'];
     return (
       <View>
-        <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{alignItems:'center',paddingVertical:6,marginBottom:4}}><Text style={{fontSize:12,color:'#9CA3AF'}}>✕ Cancel</Text></TouchableOpacity>
         <Text style={s.stepTitle}>Any nutrition goal?</Text>
         <Text style={s.stepSub}>Select all that apply</Text>
         <View style={s.pillRow}>
@@ -732,12 +732,15 @@ export default function MealWizardScreen() {
           ))}
         </View>
 
-        <View style={s.btnRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="← Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button title="Generate My Meal Plan" onPress={() => advance('generating')} />
+        <View style={{gap:10,marginTop:16}}>
+          <Button title="Generate My Meal Plan" onPress={() => advance('generating')} />
+          <View style={{flexDirection:'row',gap:10}}>
+            <View style={{flex:1}}><Button title="← Back" onPress={goBack} variant="outline" /></View>
+            <View style={{flex:1}}>
+              <TouchableOpacity style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
+                <Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
