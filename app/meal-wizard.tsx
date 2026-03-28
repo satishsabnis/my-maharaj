@@ -268,8 +268,9 @@ export default function MealWizardScreen() {
 
   function allSelected(): boolean {
     if (!generatedPlan) return false;
+    const slotsToCheck = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
     return generatedPlan.every((_, i) =>
-      (['breakfast','lunch','dinner'] as MealSlotKey[]).every((slot) => selections[i]?.[slot] !== undefined)
+      slotsToCheck.every((slot) => selections[i]?.[slot] !== undefined)
     );
   }
 
@@ -300,9 +301,14 @@ export default function MealWizardScreen() {
       return name.toLowerCase().replace(/e?s$/, '').replace(/\s+/g, ' ').trim();
     }
 
-    generatedPlan.forEach((_, dayIdx) => {
-      (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) as MealSlotKey[] : ['breakfast','lunch','dinner'] as MealSlotKey[]).forEach((slot) => {
-        getOpt(dayIdx, slot)?.ingredients.forEach((ing) => {
+    const slotsToUse = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
+    let totalIngs = 0;
+    generatedPlan.forEach((day, dayIdx) => {
+      slotsToUse.forEach((slot) => {
+        // Try selected option first, then fall back to first option directly from plan
+        const opt = getOpt(dayIdx, slot) ?? day[slot]?.options?.[0] ?? null;
+        opt?.ingredients?.forEach((ing: string) => {
+          totalIngs++;
           const { name, qty, unit } = parseIngredient(ing);
           const key = normaliseKey(name);
           if (itemMap[key]) {
@@ -314,6 +320,7 @@ export default function MealWizardScreen() {
         });
       });
     });
+    console.log(`[buildGrocery] ${totalIngs} ingredients found across ${slotsToUse.join(',')} slots, ${Object.keys(itemMap).length} unique items`);
     const grouped = {} as Record<GroceryCat, { name: string; qty?: number; unit?: string }[]>;
     Object.values(itemMap).forEach(({ baseName, qty, unit, cat }) => {
       if (!grouped[cat]) grouped[cat] = [];

@@ -128,9 +128,11 @@ Always track health conditions from the profile when suggesting food. Never repe
       const assistantMsg: Message = { role: 'assistant', content: cleanResponse };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      console.error('[AskMaharaj] API error:', errMsg);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'I apologize, I encountered an issue. Please try again.',
+        content: `Sorry, something went wrong: ${errMsg}. Please try again.`,
       }]);
     } finally {
       setLoading(false);
