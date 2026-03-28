@@ -174,7 +174,7 @@ Include 3-5 items per section. Beverages must always have at least 3 options inc
               <Section title="Starters"    items={menu.starters}    />
               <Section title="Main Course"  items={menu.main_course} />
               <Section title="Desserts"     items={menu.desserts}    />
-              <Section title="Beverages"    items={menu.beverages}   />
+              <Section title="Beverages"    items={menu.beverages ?? (menu as any).drinks}   />
               {menu.packing_tips?.length > 0 && (
                 <View style={s.section}>
                   <Text style={s.sectionTitle}>Packing & Serving Tips</Text>
