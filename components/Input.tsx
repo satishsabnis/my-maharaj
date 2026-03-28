@@ -41,7 +41,7 @@ export default function Input({
         />
         {secureTextEntry && (
           <TouchableOpacity onPress={() => setVisible((v) => !v)} style={s.eyeBtn} activeOpacity={0.7}>
-            <Text style={s.eye}>{visible ? '🙈' : '👁️'}</Text>
+            <Text style={s.eye}>{visible ? 'Hide' : 'Show'}</Text>
           </TouchableOpacity>
         )}
       </View>
