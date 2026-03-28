@@ -1186,25 +1186,27 @@ export default function MealWizardScreen() {
         <Text style={s.stepTitle}>How would you like to proceed?</Text>
         <Text style={s.stepSub}>Your meal plan is confirmed!</Text>
         <View style={{gap:14,marginVertical:20}}>
-          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:18,padding:20,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',alignItems:'center',flexDirection:'row',gap:16}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
-            <Image source={require('../assets/logo.png')} style={{width:60,height:28}} resizeMode="contain" />
+          <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#1B3A5C',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
+            <Image source={require('../assets/logo.png')} style={{width:64,height:30}} resizeMode="contain" />
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Cook at Home</Text>
-              <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Get full recipes & step-by-step instructions</Text>
+              <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Full recipes & step-by-step instructions</Text>
             </View>
-            <Text style={{fontSize:22,color:'#9CA3AF'}}>›</Text>
+            <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:18,padding:20,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',alignItems:'center',flexDirection:'row',gap:16}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
-            <Text style={{fontSize:36}}></Text>
+          <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#1B3A5C',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
+            <View style={{width:64,height:30,backgroundColor:'#E3F2FD',borderRadius:10,alignItems:'center',justifyContent:'center'}}>
+              <Text style={{fontSize:14,fontWeight:'700',color:'#1B3A5C'}}>Delivery</Text>
+            </View>
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Order Out</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Find delivery options near you</Text>
             </View>
-            <Text style={{fontSize:22,color:'#9CA3AF'}}>›</Text>
+            <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={{backgroundColor:'rgba(27,58,92,0.08)',borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.15)'}} onPress={()=>router.push('/home' as never)}>
-          <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'600'}}>Done — Back to Home</Text>
+        <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>router.push('/home' as never)}>
+          <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'700'}}>Done — Back to Home</Text>
         </TouchableOpacity>
       </View>
     );

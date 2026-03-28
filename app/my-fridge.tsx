@@ -252,6 +252,10 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
           </TouchableOpacity>
         </View>
 
+        <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary, {marginBottom:12}]} onPress={() => setShowManual(true)} activeOpacity={0.85}>
+          <Text style={[s.scanBtnTxt, { color: navy }]}>+ Add Item Manually</Text>
+        </TouchableOpacity>
+
         {/* Smart fridge note */}
         <View style={s.smartFridgeBanner}>
           <Text style={s.smartFridgeIcon}></Text>
