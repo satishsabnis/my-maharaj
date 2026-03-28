@@ -366,6 +366,63 @@ export default function MealWizardScreen() {
       }),
       dishRows.length > 0 ? supabase.from('dish_history').insert(dishRows) : Promise.resolve(),
     ]);
+    // Deduct ingredients from fridge
+    await deductFromFridge();
+  }
+
+  async function deductFromFridge() {
+    if (!generatedPlan) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Collect all ingredients from selected meals
+    const usedIngredients: { name: string; qty: number; unit: string }[] = [];
+    const slots: MealSlotKey[] = ['breakfast', 'lunch', 'dinner'];
+    generatedPlan.forEach((_, dayIdx) => {
+      slots.forEach((slot) => {
+        const opt = getOpt(dayIdx, slot);
+        if (!opt) return;
+        opt.ingredients.forEach((ing) => {
+          const trailMatch = ing.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(g|kg|ml|L|l|pcs|piece|pieces)?$/i);
+          const leadMatch = ing.match(/^(\d+(?:\.\d+)?)\s*(g|kg|ml|L|l|pcs|piece|pieces)?\s+(.+)$/i);
+          if (trailMatch) {
+            usedIngredients.push({ name: trailMatch[1].trim(), qty: parseFloat(trailMatch[2]), unit: (trailMatch[3] ?? '').toLowerCase() });
+          } else if (leadMatch) {
+            usedIngredients.push({ name: leadMatch[3].trim(), qty: parseFloat(leadMatch[1]), unit: (leadMatch[2] ?? '').toLowerCase() });
+          }
+        });
+      });
+    });
+
+    if (usedIngredients.length === 0) return;
+
+    // Get fridge inventory
+    const { data: fridgeItems } = await supabase
+      .from('fridge_inventory')
+      .select('id, item_name, quantity, unit')
+      .eq('user_id', user.id);
+    if (!fridgeItems) return;
+
+    // Match and deduct
+    for (const used of usedIngredients) {
+      const usedKey = used.name.toLowerCase().replace(/e?s$/, '');
+      const match = fridgeItems.find(f => {
+        const fridgeKey = f.item_name.toLowerCase().replace(/e?s$/, '');
+        return fridgeKey.includes(usedKey) || usedKey.includes(fridgeKey);
+      });
+      if (match && match.quantity) {
+        const currentQty = parseFloat(match.quantity) || 0;
+        const newQty = Math.max(0, currentQty - used.qty);
+        if (newQty <= 0) {
+          await supabase.from('fridge_inventory').delete().eq('id', match.id);
+        } else {
+          await supabase.from('fridge_inventory').update({
+            quantity: String(Math.round(newQty * 10) / 10),
+            updated_at: new Date().toISOString()
+          }).eq('id', match.id);
+        }
+      }
+    }
   }
 
   async function submitFeedback() {

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  Image, ImageBackground, KeyboardAvoidingView, Modal, Platform,
+  Image, ImageBackground, KeyboardAvoidingView, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
@@ -41,15 +41,12 @@ async function callClaude(messages: { role: string; content: string }[], systemP
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-type ScreenMode = 'chat' | 'result';
-
 export default function AskMaharajScreen() {
-  const [screenMode,   setScreenMode]   = useState<ScreenMode>('chat');
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [input,        setInput]        = useState('');
   const [loading,      setLoading]      = useState(false);
   const [mealResult,   setMealResult]   = useState<MealResult | null>(null);
-  const [showMealModal,setShowMealModal]= useState(false);
+
   const [listening,    setListening]    = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -124,7 +121,6 @@ Always track health conditions from the profile when suggesting food. Never repe
         try {
           const parsed = JSON.parse(mealMatch[1]) as MealResult;
           setMealResult(parsed);
-          setScreenMode('result');
         } catch {}
       }
 
@@ -249,6 +245,43 @@ Always track health conditions from the profile when suggesting food. Never repe
                 </Text>
               </View>
             )}
+
+            {mealResult && (
+              <View style={s.mealResultInline}>
+                <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>
+                  <Image source={require('../assets/logo.png')} style={{width:60,height:26}} resizeMode="contain" />
+                  <Text style={{fontSize:16,fontWeight:'800',color:navy}}>{mealResult.title ?? 'Your Meal Plan'}</Text>
+                </View>
+                {mealResult.meals.map((meal, i) => (
+                  <View key={i} style={s.mealCard}>
+                    <View style={s.mealSlotBadge}>
+                      <Text style={s.mealSlotTxt}>{meal.slot}</Text>
+                    </View>
+                    <Text style={s.mealName}>{meal.name}</Text>
+                    <Text style={s.mealDesc}>{meal.description}</Text>
+                  </View>
+                ))}
+                {mealResult.tips && mealResult.tips.length > 0 && (
+                  <View style={s.tipsCard}>
+                    <Text style={s.tipsTitle}>Maharaj's Tips</Text>
+                    {mealResult.tips.map((tip, i) => (
+                      <Text key={i} style={s.tipTxt}>• {tip}</Text>
+                    ))}
+                  </View>
+                )}
+                <View style={{flexDirection:'row',gap:10,marginTop:8}}>
+                  <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setMealResult(null)}>
+                    <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Dismiss</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{flex:1,backgroundColor:'#1B3A5C',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>{setMealResult(null);setMessages([]);}}>
+                    <Text style={{fontSize:13,fontWeight:'600',color:'white'}}>New Question</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={s.goToWizardBtn} onPress={() => router.push('/meal-wizard' as never)}>
+                  <Text style={s.goToWizardTxt}>Generate Full Weekly Plan →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
 
           {/* Input bar */}
@@ -278,65 +311,6 @@ Always track health conditions from the profile when suggesting food. Never repe
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-
-        {/* ── Meal Result Modal ── */}
-        <Modal
-          visible={screenMode === 'result'}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setScreenMode('chat')}
-        >
-          <View style={s.modalOverlay}>
-            <View style={s.modalBox}>
-              <View style={s.modalHeader}>
-                <Text style={s.modalTitle}>{mealResult?.title ?? 'Your Meal Plan'}</Text>
-                <TouchableOpacity onPress={() => setScreenMode('chat')}>
-                  <Text style={s.modalClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {mealResult?.meals.map((meal, i) => (
-                  <View key={i} style={s.mealCard}>
-                    <View style={s.mealSlotBadge}>
-                      <Text style={s.mealSlotTxt}>
-                        {meal.slot}
-                      </Text>
-                    </View>
-                    <Text style={s.mealName}>{meal.name}</Text>
-                    <Text style={s.mealDesc}>{meal.description}</Text>
-                  </View>
-                ))}
-
-                {mealResult?.tips && mealResult.tips.length > 0 && (
-                  <View style={s.tipsCard}>
-                    <Text style={s.tipsTitle}>Maharaj's Tips</Text>
-                    {mealResult.tips.map((tip, i) => (
-                      <Text key={i} style={s.tipTxt}>• {tip}</Text>
-                    ))}
-                  </View>
-                )}
-
-                <View style={{flexDirection:'row',gap:10,marginTop:8,marginBottom:8}}>
-                  <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setScreenMode('chat')}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Close</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={{flex:1,backgroundColor:'#1B3A5C',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={async()=>{setScreenMode('chat');setMealResult(null);}}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:'white'}}>New Question</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity
-                  style={s.goToWizardBtn}
-                  onPress={() => { setScreenMode('chat'); router.push('/meal-wizard' as never); }}
-                >
-                  <Text style={s.goToWizardTxt}>Generate Full Weekly Plan →</Text>
-                </TouchableOpacity>
-
-                <View style={{ height: 20 }} />
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
 
       </SafeAreaView>
     </ImageBackground>
@@ -405,15 +379,12 @@ const s = StyleSheet.create({
   },
   sendTxt: { fontSize:20, color:white, fontWeight:'700', lineHeight:24 },
 
-  // Modal
-  modalOverlay: { flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'flex-end' },
-  modalBox: {
-    backgroundColor:white, borderTopLeftRadius:24, borderTopRightRadius:24,
-    maxHeight:'80%', padding:20,
+  // Inline meal result
+  mealResultInline: {
+    marginBottom:12, maxWidth:'88%', alignSelf:'flex-start' as const,
+    backgroundColor:'rgba(255,255,255,0.92)', borderRadius:18, padding:14,
+    borderWidth:1, borderColor:border,
   },
-  modalHeader:  { flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:16 },
-  modalTitle:   { fontSize:18, fontWeight:'800', color:navy, flex:1 },
-  modalClose:   { fontSize:18, color:textSec, paddingLeft:12 },
 
   mealCard: {
     backgroundColor:'#F8FFFE', borderRadius:14, padding:14, marginBottom:10,
