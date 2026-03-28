@@ -125,8 +125,7 @@ export default function OrderOutScreen({ mealName }: Props) {
           <View style={s.noteBanner}>
             <Text style={s.noteIcon}></Text>
             <Text style={s.noteTxt}>
-              API integration with delivery partners coming after Pre-Seed funding.
-              Tapping below opens the app/website to complete your order.
+              Integration coming soon. Tapping below opens the app/website to complete your order.
             </Text>
           </View>
 

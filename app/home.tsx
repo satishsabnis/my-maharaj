@@ -260,7 +260,7 @@ const s = StyleSheet.create({
   header: {
     flexDirection:'row', alignItems:'center', justifyContent:'space-between',
     paddingHorizontal:16,
-    paddingTop: Platform.OS === 'web' ? 12 : 6,
+    paddingTop: Platform.OS === 'android' ? 25 : Platform.OS === 'web' ? 12 : 6,
     paddingBottom:10,
     backgroundColor:'rgba(255,255,255,0.80)',
     borderBottomWidth:1, borderBottomColor:'rgba(27,58,92,0.1)',

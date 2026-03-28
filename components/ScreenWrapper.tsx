@@ -27,7 +27,6 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
                 <Text style={[sw.langToggleTxt, isEnglish && sw.langToggleTxtActive]}>EN</Text>
               </TouchableOpacity>
             )}
-            <Image source={require("../assets/blueflute-logo.png")} style={sw.bfLogo} resizeMode="contain" />
             {showHome && (
               <TouchableOpacity onPress={() => router.push("/home" as never)} style={sw.homeBtn}>
                 <Text style={sw.homeTxt}>Home</Text>
@@ -47,7 +46,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
 }
 
 const sw = StyleSheet.create({
-  header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: Platform.OS === "web" ? 14 : 8, paddingBottom: 12, backgroundColor: "rgba(255,255,255,0.85)", borderBottomWidth: 1, borderBottomColor: "rgba(27,58,92,0.1)" },
+  header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: Platform.OS === "android" ? 25 : Platform.OS === "web" ? 14 : 8, paddingBottom: 12, backgroundColor: "rgba(255,255,255,0.85)", borderBottomWidth: 1, borderBottomColor: "rgba(27,58,92,0.1)" },
   backBtn:      { paddingRight: 8, minWidth: 60 },
   backTxt:      { fontSize: 15, color: "#1B3A5C", fontWeight: "600" },
   maharajLogo:  { flex: 1, height: 60, maxWidth: 220 },
@@ -56,7 +55,6 @@ const sw = StyleSheet.create({
   langToggleActive: { backgroundColor: "#1B3A5C", borderColor: "#1B3A5C" },
   langToggleTxt:    { fontSize: 11, fontWeight: "700", color: "#1B3A5C" },
   langToggleTxtActive: { color: "#FFFFFF" },
-  bfLogo:       { width: 90, height: 34 },
   homeBtn:      { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.25)", backgroundColor: "rgba(255,255,255,0.8)" },
   homeTxt:      { fontSize: 12, fontWeight: "700", color: "#1B3A5C" },
   footer:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "rgba(255,255,255,0.7)", borderTopWidth: 1, borderTopColor: "rgba(27,58,92,0.08)" },

@@ -361,6 +361,7 @@ const s = StyleSheet.create({
   inputBar: {
     flexDirection:'row', alignItems:'flex-end', gap:8,
     padding:12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : Platform.OS === 'android' ? 24 : 0,
     backgroundColor:'rgba(255,255,255,0.92)',
     borderTopWidth:1, borderTopColor:'rgba(27,58,92,0.1)',
   },

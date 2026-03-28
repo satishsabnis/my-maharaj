@@ -83,6 +83,7 @@ export default function MealWizardScreen() {
 
   // Step 2
   const [foodPref, setFoodPref]   = useState<'veg' | 'nonveg' | null>(null);
+  const [isMixed,  setIsMixed]    = useState(false);
   const [vegType,  setVegType]    = useState<'normal' | 'fasting' | null>(null);
   const [nonVegOpts, setNonVegOpts] = useState<string[]>([]);
   const [includeDessert, setIncludeDessert] = useState(false);
@@ -105,7 +106,7 @@ export default function MealWizardScreen() {
   const [guestDays,      setGuestDays]      = useState(2);
   const [savedCuisines,  setSavedCuisines]  = useState<string[]>([]);
   const [userLocation,   setUserLocation]   = useState<UserLocation>({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
-  const [selectedSlots,  setSelectedSlots]  = useState<string[]>(['breakfast','lunch','dinner']);
+  const [selectedSlots,  setSelectedSlots]  = useState<string[]>([]);
   const [presentMembers, setPresentMembers] = useState<string[]>([]);
   const [guestCount,     setGuestCount]     = useState(0);
   const [vegFastDays,    setVegFastDays]    = useState<Record<string,'normal'|'veg'|'fasting'>>({});
@@ -229,7 +230,7 @@ export default function MealWizardScreen() {
           nonVegOptions: nonVegOpts.length > 0 ? nonVegOpts : undefined,
         },
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
-        nutritionFocus: nutritionGoals.length > 0 ? nutritionGoals.join(', ') : undefined,
+        nutritionFocus: [nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
         vegDays:        profile?.veg_days ?? [],
         cuisinePerDay:  hasGuests && guestCuisine ? getDates(selectedFrom, selectedTo).map((_, i) => i < guestDays ? guestCuisine : cuisine) : undefined,
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
@@ -592,26 +593,26 @@ export default function MealWizardScreen() {
 
         <View style={s.foodCards}>
           <TouchableOpacity
-            style={[s.foodCard, foodPref === 'veg' && s.foodCardActive]}
-            onPress={() => { setFoodPref('veg'); setVegType(null); }}
+            style={[s.foodCard, foodPref === 'veg' && !isMixed && s.foodCardActive]}
+            onPress={() => { setFoodPref('veg'); setVegType(null); setIsMixed(false); }}
             activeOpacity={0.8}
           >
             <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, foodPref === 'veg' && s.foodCardLabelActive]}>Vegetarian</Text>
+            <Text style={[s.foodCardLabel, foodPref === 'veg' && !isMixed && s.foodCardLabelActive]}>Vegetarian</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[s.foodCard, foodPref === 'nonveg' && s.foodCardActive]}
-            onPress={() => { setFoodPref('nonveg'); setVegType(null); }}
+            style={[s.foodCard, foodPref === 'nonveg' && !isMixed && s.foodCardActive]}
+            onPress={() => { setFoodPref('nonveg'); setVegType(null); setIsMixed(false); }}
             activeOpacity={0.8}
           >
             <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, foodPref === 'nonveg' && s.foodCardLabelActive]}>Non-Vegetarian</Text>
+            <Text style={[s.foodCardLabel, foodPref === 'nonveg' && !isMixed && s.foodCardLabelActive]}>Non-Vegetarian</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[s.foodCard, (foodPref as string) === 'mixed' && s.foodCardActive]}
-            onPress={() => { setFoodPref('nonveg'); setVegType(null); }} activeOpacity={0.85}>
+            style={[s.foodCard, isMixed && s.foodCardActive]}
+            onPress={() => { setFoodPref('nonveg'); setVegType(null); setIsMixed(true); }} activeOpacity={0.85}>
             <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, (foodPref as string) === 'mixed' && s.foodCardLabelActive]}>Mixed</Text>
+            <Text style={[s.foodCardLabel, isMixed && s.foodCardLabelActive]}>Mixed</Text>
             <Text style={{fontSize:11,color:'#5A7A8A',marginTop:2}}>Veg breakfast + non-veg meals</Text>
           </TouchableOpacity>
         </View>
