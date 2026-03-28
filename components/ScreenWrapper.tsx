@@ -30,7 +30,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
             <Image source={require("../assets/blueflute-logo.png")} style={sw.bfLogo} resizeMode="contain" />
             {showHome && (
               <TouchableOpacity onPress={() => router.push("/home" as never)} style={sw.homeBtn}>
-                <Text style={{ fontSize: 20 }}>{t.home}</Text>
+                <Text style={sw.homeTxt}>Home</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -56,6 +56,7 @@ const sw = StyleSheet.create({
   langToggleTxt:    { fontSize: 11, fontWeight: "700", color: "#1B3A5C" },
   langToggleTxtActive: { color: "#FFFFFF" },
   bfLogo:       { width: 90, height: 34 },
-  homeBtn:      { padding: 4 },
+  homeBtn:      { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.25)", backgroundColor: "rgba(255,255,255,0.8)" },
+  homeTxt:      { fontSize: 12, fontWeight: "700", color: "#1B3A5C" },
   footer:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "rgba(255,255,255,0.7)", borderTopWidth: 1, borderTopColor: "rgba(27,58,92,0.08)" },
 });
