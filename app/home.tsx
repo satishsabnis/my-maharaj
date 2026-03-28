@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { loadOrDetectLocation } from '../lib/location';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 
 // ─── Festival data ────────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ export default function HomeScreen() {
   const [initials,    setInitials]    = useState('?');
   const [dateTimeStr, setDateTimeStr] = useState(formatDateTime(new Date()));
   const [showExit,    setShowExit]    = useState(false);
+  const [userCity,    setUserCity]    = useState('');
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -97,6 +99,7 @@ export default function HomeScreen() {
       setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
     }
     void load();
+    loadOrDetectLocation().then(loc => setUserCity(`${loc.city}, ${loc.country}`));
   }, []);
 
   async function doLogout() {
@@ -168,7 +171,7 @@ export default function HomeScreen() {
 
         {/* Date bar */}
         <View style={s.dateBar}>
-          <Text style={s.dateTxt}>{dateTimeStr}</Text>
+          <Text style={s.dateTxt}>{userCity ? `${userCity}  ·  ` : ''}{dateTimeStr}</Text>
           {firstName ? <Text style={s.greetTxt}>Namaste, {firstName} 🙏</Text> : null}
         </View>
 

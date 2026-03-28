@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { loadOrDetectLocation } from '../lib/location';
 import { navy, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
 const OCCASIONS = ['Birthday','Anniversary','Festival','Get-together','Dinner Party','Baby Shower','Wedding','Office Party'];
@@ -31,6 +32,9 @@ export default function PartyMenuScreen() {
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
   const [menu,     setMenu]     = useState<PartyMenu | null>(null);
+  const [loc,      setLoc]      = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
+
+  useEffect(() => { loadOrDetectLocation().then(setLoc); }, []);
 
   async function generateMenu() {
     setError('');
@@ -42,7 +46,7 @@ export default function PartyMenuScreen() {
     try {
       const text = await callClaude(`You are Maharaj, expert Indian chef. Generate a party menu:
 - Occasion: ${occasion}, Guests: ${g}, Food: ${foodType}, Total Budget: AED ${b}
-- Dubai UAE — ingredients from Carrefour/Spinneys/Lulu
+- ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
 Respond ONLY with valid JSON (no markdown):
 {"starters":[{"name":"...","description":"..."}],"main_course":[{"name":"...","description":"..."}],"desserts":[{"name":"...","description":"..."}],"beverages":[{"name":"...","description":"..."}],"serving_tips":["..."],"shopping_list":["..."]}
 Include 3-5 items per section. ALWAYS include beverages with at least 3 drink options.`);

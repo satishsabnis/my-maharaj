@@ -131,6 +131,8 @@ async function generateOneMeal(
   dayIdx = 0,
   festivalContext?: string,
   weekDishHistory?: string[],
+  city = 'Dubai',
+  stores = 'Carrefour/Spinneys/Lulu',
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
@@ -148,7 +150,7 @@ async function generateOneMeal(
     ? ' CRITICAL: At least one option MUST be a real non-veg dish with chicken/fish/eggs/mutton.'
     : '';
 
-  const prompt = `You are Maharaj, a professional Indian chef in Dubai specialising in authentic regional Indian cooking.
+  const prompt = `You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
 
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. Health considerations: ${healthInfo}.
@@ -220,6 +222,8 @@ export async function generateMealPlan(
     breakfastPrefs?: string[];
     lunchPrefs?: string[];
     dinnerPrefs?: string[];
+    locationCity?: string;
+    locationStores?: string;
   },
   onProgress?: (current: number, total: number) => void,
 ): Promise<MealPlanResult> {
@@ -261,6 +265,8 @@ export async function generateMealPlan(
   const bfPrefs  = params.breakfastPrefs ?? params.mealPrefs?.breakfast;
   const lnPrefs  = params.lunchPrefs ?? params.mealPrefs?.lunch;
   const dnPrefs  = params.dinnerPrefs ?? params.mealPrefs?.dinner;
+  const cityName = params.locationCity || 'Dubai';
+  const storeNames = params.locationStores || 'Carrefour/Spinneys/Lulu';
 
   const total = params.dates.length;
   onProgress?.(0, total);
@@ -291,9 +297,9 @@ export async function generateMealPlan(
     const batchResults = await Promise.all(
       batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
         const [breakfast, lunch, dinner] = await Promise.all([
-          generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
-          generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
-          generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory),
+          generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames),
+          generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames),
+          generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames),
         ]);
         completed++;
         onProgress?.(completed, total);
