@@ -18,6 +18,7 @@ export interface MealPlanDay {
   breakfast: MealSlot;
   lunch: MealSlot;
   dinner: MealSlot;
+  snack?: MealSlot;
 }
 
 export interface GroceryItem {
@@ -222,6 +223,7 @@ export async function generateMealPlan(
     breakfastPrefs?: string[];
     lunchPrefs?: string[];
     dinnerPrefs?: string[];
+    snackPrefs?: string[];
     locationCity?: string;
     locationStores?: string;
     selectedSlots?: string[];
@@ -266,6 +268,7 @@ export async function generateMealPlan(
   const bfPrefs  = params.breakfastPrefs ?? params.mealPrefs?.breakfast;
   const lnPrefs  = params.lunchPrefs ?? params.mealPrefs?.lunch;
   const dnPrefs  = params.dinnerPrefs ?? params.mealPrefs?.dinner;
+  const snPrefs  = params.snackPrefs;
   const cityName = params.locationCity || 'Dubai';
   const storeNames = params.locationStores || 'Carrefour/Spinneys/Lulu';
   const slots = params.selectedSlots && params.selectedSlots.length > 0
@@ -300,14 +303,17 @@ export async function generateMealPlan(
     const batch = dayMeta.slice(batchStart, batchStart + BATCH_SIZE);
     const batchResults = await Promise.all(
       batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
-        const [breakfast, lunch, dinner] = await Promise.all([
+        const [breakfast, lunch, dinner, snack] = await Promise.all([
           slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('breakfast', i)),
           slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('lunch', i)),
           slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('dinner', i)),
+          slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, 'Light evening snack — chai, biscuits, sandwiches, fruits, chaat, namkeen. NOT a full meal.', lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(undefined),
         ]);
         completed++;
         onProgress?.(completed, total);
-        return { date, day: dayName, breakfast, lunch, dinner };
+        const day: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };
+        if (snack) day.snack = snack;
+        return day;
       })
     );
     dayResults.push(...batchResults);

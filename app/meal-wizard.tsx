@@ -15,7 +15,7 @@ type WizardStep =
   | 'generating' | 'generating-error' | 'selection'
   | 'cook-or-order' | 'recipes' | 'grocery' | 'feedback';
 
-type MealSlotKey = 'breakfast' | 'lunch' | 'dinner';
+type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 interface DBMember { id: string; name: string; age: number; }
 interface FeedbackEntry { dishName: string; rating: 1 | -1 | null; comment: string; }
@@ -167,6 +167,11 @@ export default function MealWizardScreen() {
       setStep('generating-error');
       return;
     }
+    if (selectedSlots.length === 0) {
+      setError('Please select at least one meal slot (Breakfast, Lunch or Dinner).');
+      setStep('generating-error');
+      return;
+    }
     setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -240,11 +245,11 @@ export default function MealWizardScreen() {
         includeDessert,
         locationCity: userLocation.city,
         locationStores: userLocation.stores,
-        selectedSlots: selectedSlots.length > 0 ? selectedSlots : ['breakfast', 'lunch', 'dinner'],
+        selectedSlots,
       }, (current, total) => setGeneratingProgress({ current, total }));
 
       const defaultSel: Record<number, Record<MealSlotKey, number>> = {};
-      plan.days.forEach((_, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0 }; });
+      plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
       setGeneratedPlan(plan.days);
       setSelections(defaultSel);
       setStep('selection');
@@ -263,12 +268,14 @@ export default function MealWizardScreen() {
   function getOpt(dayIdx: number, slot: MealSlotKey): MealOption | null {
     if (!generatedPlan) return null;
     const optIdx = selections[dayIdx]?.[slot] ?? 0;
-    return generatedPlan[dayIdx][slot].options[optIdx] ?? null;
+    const slotData = generatedPlan[dayIdx][slot];
+    if (!slotData) return null;
+    return slotData.options[optIdx] ?? null;
   }
 
   function allSelected(): boolean {
     if (!generatedPlan) return false;
-    const slotsToCheck = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
+    const slotsToCheck = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner','snack'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
     return generatedPlan.every((_, i) =>
       slotsToCheck.every((slot) => selections[i]?.[slot] !== undefined)
     );
@@ -301,7 +308,7 @@ export default function MealWizardScreen() {
       return name.toLowerCase().replace(/e?s$/, '').replace(/\s+/g, ' ').trim();
     }
 
-    const slotsToUse = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
+    const slotsToUse = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner','snack'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
     let totalIngs = 0;
     generatedPlan.forEach((day, dayIdx) => {
       slotsToUse.forEach((slot) => {
@@ -891,12 +898,15 @@ export default function MealWizardScreen() {
 
   function renderSelection() {
     if (!generatedPlan) return null;
-    const slots: { key: MealSlotKey; icon: string; label: string }[] = [
+    const allSlots: { key: MealSlotKey; icon: string; label: string }[] = [
       { key: 'breakfast', icon: '', label: 'Breakfast' },
       { key: 'lunch',     icon: '', label: 'Lunch'     },
+      { key: 'snack',     icon: '', label: 'Evening Snack' },
       { key: 'dinner',    icon: '', label: 'Dinner'    },
     ];
-    const total = generatedPlan.length * 3;
+    const slots = allSlots.filter(s => s.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length));
+    const activeSlotKeys = slots.filter(s => selectedSlots.length === 0 || selectedSlots.includes(s.key)).map(s => s.key);
+    const total = generatedPlan.length * activeSlotKeys.length;
 
     return (
       <View>
