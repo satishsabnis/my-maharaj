@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Modal, Platform, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
@@ -89,6 +89,30 @@ export default function LabReportScreen() {
   const [manualMarkers, setManualMarkers] = useState<Array<{name:string;value:string;unit:string;normal_range:string;test_date:string}>>([
     {name:'',value:'',unit:'',normal_range:'',test_date:new Date().toISOString().split('T')[0]}
   ]);
+  const [reminder, setReminder] = useState<{memberName:string;dueDate:string}|null>(null);
+
+  useEffect(() => {
+    async function checkReminders() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: members } = await supabase.from('family_members').select('name, health_notes').eq('user_id', user.id);
+      if (!members) return;
+      const today = new Date(); today.setHours(0,0,0,0);
+      for (const m of members) {
+        const match = (m.health_notes ?? '').match(/Lab \((\d{4}-\d{2}-\d{2})\)/);
+        if (!match) continue;
+        const labDate = new Date(match[1]);
+        const reminderDate = new Date(labDate);
+        reminderDate.setDate(reminderDate.getDate() + 80);
+        const daysUntil = Math.ceil((reminderDate.getTime() - today.getTime()) / 86400000);
+        if (daysUntil <= 7 && daysUntil >= -7) {
+          setReminder({ memberName: m.name, dueDate: reminderDate.toISOString().split('T')[0] });
+          break;
+        }
+      }
+    }
+    void checkReminders();
+  }, []);
 
   // ── Scan report ───────────────────────────────────────────────────────────
 
@@ -237,6 +261,13 @@ Respond ONLY with JSON, no markdown.`;
 
       setSaved(true);
       setShowConfirm(false);
+
+      // Store reminder for 80 days from report date
+      if (result.report_date) {
+        const rd = new Date(result.report_date);
+        rd.setDate(rd.getDate() + 80);
+        setReminder({ memberName: memberName || 'You', dueDate: rd.toISOString().split('T')[0] });
+      }
     } catch (e) {
       setError('Could not save to profile. Please try again.');
     } finally {
@@ -275,6 +306,16 @@ Respond ONLY with JSON, no markdown.`;
         <View style={s.disclaimer}>
           <Text style={s.disclaimerTxt}>For informational purposes only. Always consult your doctor before making dietary changes based on lab results.</Text>
         </View>
+
+        {reminder && (
+          <View style={s.reminderBanner}>
+            <Text style={s.reminderTitle}>Lab Retest Reminder</Text>
+            <Text style={s.reminderTxt}>{reminder.memberName}'s lab retest is due around {reminder.dueDate}. Schedule a follow-up with your doctor.</Text>
+            <TouchableOpacity onPress={() => setReminder(null)} style={s.reminderDismiss}>
+              <Text style={s.reminderDismissTxt}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {error ? <Text style={s.errorTxt}>{error}</Text> : null}
 
@@ -469,4 +510,9 @@ const s = StyleSheet.create({
   nameInput:    { borderWidth: 1.5, borderColor: border, borderRadius: 10, padding: 12, marginBottom: 12 },
   nameInputHint:{ fontSize: 13, color: textSec },
   disclaimerSmall: { fontSize: 11, color: textSec, fontStyle: 'italic', lineHeight: 18 },
+  reminderBanner: { backgroundColor: 'rgba(217,119,6,0.1)', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(217,119,6,0.3)' },
+  reminderTitle: { fontSize: 14, fontWeight: '700', color: '#92400E', marginBottom: 4 },
+  reminderTxt: { fontSize: 13, color: '#78350F', lineHeight: 20 },
+  reminderDismiss: { alignSelf: 'flex-end', marginTop: 8 },
+  reminderDismissTxt: { fontSize: 12, color: '#92400E', fontWeight: '600' },
 });
