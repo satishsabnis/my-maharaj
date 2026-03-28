@@ -9,12 +9,14 @@ const OCCASIONS = ['Birthday','Anniversary','Festival','Get-together','Dinner Pa
 const FOOD_TYPES = ['Vegetarian','Non-Vegetarian','Mixed'];
 
 async function callClaude(prompt: string): Promise<string> {
-  const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+  const base = 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }),
   });
-  return ((await res.json())?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
+  const data = await res.json();
+  if (data?.error) throw new Error(data.error.message ?? data.error);
+  return (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
 }
 
 interface Item { name: string; description: string; }
