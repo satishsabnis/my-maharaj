@@ -47,7 +47,7 @@ export default function Layout() {
     const currentRoute = segments[0] as string | undefined;
     const isSplash = currentRoute === undefined || currentRoute === 'index';
     const onAuthScreen = isSplash || currentRoute === 'login' || currentRoute === 'signup';
-    const onLangScreen = currentRoute === 'language-select';
+    const onLangScreen = currentRoute === 'language-select' || currentRoute === 'disclaimer';
 
     // Let splash screen handle its own navigation
     if (isSplash) return;
@@ -90,6 +90,7 @@ export default function Layout() {
       <Stack.Screen name="my-fridge" />
       <Stack.Screen name="lab-report" />
       <Stack.Screen name="meal-prep" />
+      <Stack.Screen name="disclaimer" />
     </Stack>
     </LanguageProvider>
   );
