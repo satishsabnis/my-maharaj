@@ -5,7 +5,7 @@
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const apiKey = process.env.CLAUDE_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'API key not configured' }); return; }
+  if (!apiKey) { res.status(500).json({ error: 'CLAUDE_KEY environment variable is not set on the server. Please configure it in Vercel dashboard.' }); return; }
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -17,6 +17,11 @@
       body: JSON.stringify(req.body)
     });
     const data = await response.json();
+    if (!response.ok) {
+      console.error('[claude.js] API error:', response.status, JSON.stringify(data));
+      res.status(response.status).json({ error: data?.error?.message ?? `Claude API error (${response.status})` });
+      return;
+    }
     res.status(200).json(data);
   } catch(e) {
     res.status(500).json({ error: e.message });

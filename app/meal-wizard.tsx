@@ -181,16 +181,28 @@ export default function MealWizardScreen() {
     }
     setError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      let userId: string;
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setError('Session expired. Please log out and log in again.');
+          setStep('generating-error');
+          return;
+        }
+        userId = session.user.id;
+        console.log('[MealWizard] getUser failed, using session.user:', userId);
+      } else {
+        userId = user.id;
+      }
 
       const { data: profile } = await supabase
         .from('profiles')
         .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,veg_days')
-        .eq('id', user.id).maybeSingle();
+        .eq('id', userId).maybeSingle();
 
       const { data: memberRows } = await supabase
-        .from('family_members').select('health_notes').eq('user_id', user.id);
+        .from('family_members').select('health_notes').eq('user_id', userId);
 
       const hf = emptyHealthFlags();
       (memberRows ?? []).forEach((m: { health_notes: string | null }) => {
@@ -210,7 +222,7 @@ export default function MealWizardScreen() {
 
       const { data: cuisineData } = await supabase
         .from('cuisine_preferences').select('cuisine_name')
-        .eq('user_id', user.id).eq('is_excluded', false);
+        .eq('user_id', userId).eq('is_excluded', false);
       const cuisines = (cuisineData ?? []).map((r: { cuisine_name: string }) => r.cuisine_name);
       const cuisine  = cuisines.length > 0 ? cuisines[Math.floor(Math.random() * cuisines.length)] : 'Konkani';
       console.log('[MealWizard] Cuisine for generation:', cuisine, 'All saved:', cuisines, 'Extra:', extraCuisines);
@@ -218,14 +230,14 @@ export default function MealWizardScreen() {
       const since = toYMD(addDays(new Date(), -14));
       const { data: historyData } = await supabase
         .from('dish_history').select('dish_name')
-        .eq('user_id', user.id).gte('served_date', since);
+        .eq('user_id', userId).gte('served_date', since);
       const dishHistory = (historyData ?? []).map((r: { dish_name: string }) => r.dish_name);
 
       const unwellNames = familyMembers.filter((m) => unwellIds.includes(m.id)).map((m) => m.name);
 
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
-        userId: user.id,
+        userId,
         dates:  getDates(selectedFrom, selectedTo),
         healthFlags: hf,
         servings: {
