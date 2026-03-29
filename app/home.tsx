@@ -208,6 +208,7 @@ export default function HomeScreen() {
                 {label:'Family Profile',route:'/dietary-profile'},
                 {label:'Lab Reports',route:'/lab-report'},
                 {label:'Cuisine Preferences',route:'/cuisine-selection'},
+                {label:'Legal & Privacy',route:'/disclaimer'},
               ].map(item => (
                 <TouchableOpacity key={item.label} style={{paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setShowMenu(false); router.push(item.route as never); }}>
                   <Text style={{fontSize:14,color:navy,fontWeight:'500'}}>{item.label}</Text>
