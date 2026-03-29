@@ -167,6 +167,7 @@ export default function MealWizardScreen() {
   // ── Generation ────────────────────────────────────────────────────────────
 
   const runGeneration = useCallback(async () => {
+    console.log('[MealWizard] Generation started. selectedFrom:', selectedFrom, 'selectedTo:', selectedTo, 'selectedSlots:', selectedSlots);
     if (!selectedFrom || !selectedTo) return;
     if (!foodPref) {
       setError('Please select a food preference before generating.');
@@ -563,10 +564,15 @@ export default function MealWizardScreen() {
   function renderPeriod() {
     const today = startOfDay(new Date());
 
+    function quickSelect(from: Date, to: Date) {
+      setSelectedFrom(from);
+      setSelectedTo(to);
+      setStep('food-pref');
+    }
     const quickCards = [
-      { label: 'Today', fn: () => { setSelectedFrom(today); setSelectedTo(today); setTimeout(() => advance('food-pref'), 0); } },
-      { label: 'Tomorrow', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); setTimeout(() => advance('food-pref'), 0); } },
-      { label: 'This Week', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); setTimeout(() => advance('food-pref'), 0); } },
+      { label: 'Today', fn: () => { const d = new Date(); d.setHours(0,0,0,0); quickSelect(d, d); } },
+      { label: 'Tomorrow', fn: () => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+1); quickSelect(d, d); } },
+      { label: 'This Week', fn: () => { const s = new Date(); s.setHours(0,0,0,0); const e = new Date(); e.setHours(0,0,0,0); e.setDate(e.getDate()+6); quickSelect(s, e); } },
     ];
 
     const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
@@ -1414,15 +1420,17 @@ export default function MealWizardScreen() {
           </View>
         </ScrollView>
 
-        <View style={{gap:10}}>
-          <Button title="Generate My Meal Plan" onPress={() => advance('generating')} />
+        <View style={{gap:12,marginTop:8}}>
+          <TouchableOpacity style={{backgroundColor:'#1B3A5C',borderRadius:14,paddingVertical:18,alignItems:'center'}} onPress={() => advance('generating')} activeOpacity={0.85}>
+            <Text style={{fontSize:16,fontWeight:'800',color:'white'}}>Generate My Meal Plan</Text>
+          </TouchableOpacity>
           <View style={{flexDirection:'row',gap:10}}>
-            <View style={{flex:1}}><Button title="Back" onPress={goBack} variant="outline" /></View>
-            <View style={{flex:1}}>
-              <TouchableOpacity style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
-                <Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={goBack}>
+              <Text style={{fontSize:14,fontWeight:'600',color:'#1B3A5C'}}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+              <Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
