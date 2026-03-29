@@ -138,7 +138,9 @@ async function generateOneMeal(
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
-  const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}.` : '';
+  const hasThali = mealPrefs && mealPrefs.some(p => p.toLowerCase().includes('thali'));
+  const thaliNote = hasThali ? 'Full Thali means a complete traditional Indian thali plate with dal, sabzi, rice or roti, papad, pickle, raita, and dessert. Generate ONE complete thali description, not individual dishes.' : '';
+  const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}. ${thaliNote}` : '';
   const unwellStr = unwellNote ? `Gentle recovery meals for: ${unwellNote}.` : '';
   const nutritionStr = nutritionGoals ? `Nutrition goal: ${nutritionGoals}.` : '';
   const historyStr = weekDishHistory && weekDishHistory.length > 0
@@ -153,6 +155,7 @@ async function generateOneMeal(
     : '';
 
   const prompt = `You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
+Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
 
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. Health considerations: ${healthInfo}.

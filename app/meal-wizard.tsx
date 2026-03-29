@@ -1016,8 +1016,8 @@ export default function MealWizardScreen() {
               <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
                 <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
-                <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
+              <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={goBack}>
+                <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Back</Text>
               </TouchableOpacity>
             </View>
           </View>

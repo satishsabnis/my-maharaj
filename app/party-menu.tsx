@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { loadOrDetectLocation } from '../lib/location';
 import { navy, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
@@ -37,6 +38,19 @@ export default function PartyMenuScreen() {
   const [loc,      setLoc]      = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
 
   useEffect(() => { loadOrDetectLocation().then(setLoc); }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setStep('form');
+      setMenu(null);
+      setOccasion('Birthday');
+      setGuests('10');
+      setFoodType('Vegetarian');
+      setBudget('500');
+      setError('');
+      setLoading(false);
+    }, [])
+  );
 
   async function generateMenu() {
     setError('');
