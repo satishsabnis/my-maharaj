@@ -23,17 +23,26 @@ export default function SplashScreen() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        // Not logged in — go to landing/login
         router.replace('/login');
         return;
       }
 
-      // Logged in — check first launch
-      const isFirstLaunch = typeof window !== 'undefined'
-        ? !window.localStorage?.getItem('maharaj_lang_set')
-        : false;
+      // Check disclaimer acceptance
+      const disclaimerAccepted = typeof window !== 'undefined'
+        ? window.localStorage?.getItem('maharaj_disclaimer_accepted')
+        : null;
 
-      if (isFirstLaunch) {
+      if (!disclaimerAccepted) {
+        router.replace('/disclaimer');
+        return;
+      }
+
+      // Check language set
+      const langSet = typeof window !== 'undefined'
+        ? window.localStorage?.getItem('maharaj_lang_set')
+        : null;
+
+      if (!langSet) {
         router.replace('/language-select');
       } else {
         router.replace('/home');
