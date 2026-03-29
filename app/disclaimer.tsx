@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BackHandler, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { navy, gold, white, textSec, border } from '../theme/colors';
@@ -29,6 +29,14 @@ const SECTIONS = [
 export default function DisclaimerScreen() {
   const router = useRouter();
   const [accepting, setAccepting] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const accepted = window.localStorage?.getItem('maharaj_disclaimer_accepted');
+      if (accepted) setViewOnly(true);
+    }
+  }, []);
 
   function accept() {
     setAccepting(true);
@@ -60,13 +68,20 @@ export default function DisclaimerScreen() {
           </View>
         ))}
 
-        <TouchableOpacity style={s.acceptBtn} onPress={accept} disabled={accepting} activeOpacity={0.88}>
-          <Text style={s.acceptTxt}>{accepting ? 'Please wait...' : 'I Agree & Continue'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.exitBtn} onPress={exitApp} activeOpacity={0.7}>
-          <Text style={s.exitTxt}>Exit App</Text>
-        </TouchableOpacity>
+        {viewOnly ? (
+          <TouchableOpacity style={s.acceptBtn} onPress={() => router.back()} activeOpacity={0.88}>
+            <Text style={s.acceptTxt}>Close</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity style={s.acceptBtn} onPress={accept} disabled={accepting} activeOpacity={0.88}>
+              <Text style={s.acceptTxt}>{accepting ? 'Please wait...' : 'I Agree & Continue'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.exitBtn} onPress={exitApp} activeOpacity={0.7}>
+              <Text style={s.exitTxt}>Exit App</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
