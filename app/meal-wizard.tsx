@@ -223,9 +223,9 @@ export default function MealWizardScreen() {
         dates:  getDates(selectedFrom, selectedTo),
         healthFlags: hf,
         servings: {
-          breakfast: profile?.breakfast_count ?? 2,
-          lunch:     profile?.lunch_count     ?? 2,
-          dinner:    profile?.dinner_count    ?? 2,
+          breakfast: presentMembers.length > 0 ? presentMembers.length + guestCount : (profile?.breakfast_count ?? 2),
+          lunch:     presentMembers.length > 0 ? presentMembers.length + guestCount : (profile?.lunch_count     ?? 2),
+          dinner:    presentMembers.length > 0 ? presentMembers.length + guestCount : (profile?.dinner_count    ?? 2),
         },
         appetite:  profile?.appetite_level ?? 'Normal',
         language:  profile?.app_language   ?? 'en',
@@ -1311,7 +1311,7 @@ export default function MealWizardScreen() {
   }
 
   function renderCuisineConfirm() {
-    const ALL_CUISINES = ['Afghan','Andhra','Assamese','Bengali','Bihari','Chettinad','Chinese','Continental','Goan','Greek','Gujarati','Hyderabadi','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mediterranean','Mexican','Mughlai','Punjabi','Rajasthani','South Indian','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
+    const ALL_CUISINES = ['Afghan','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mangalorean','Mediterranean','Mexican','Moroccan','Mughlai','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
     const activeCuisines = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
     return (
       <View>

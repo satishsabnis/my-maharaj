@@ -3,7 +3,7 @@ import { Animated, Image, ImageBackground, Platform, SafeAreaView, StyleSheet, T
 import { router } from "expo-router";
 import { useLang } from "../lib/LanguageProvider";
 
-const TICKER_TEXT = "  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback welcome ·  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback welcome ·  ";
+const TICKER_TEXT = "  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  ";
 
 interface Props {
   title?: string;
@@ -17,9 +17,10 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
   const scrollX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    scrollX.setValue(-600);
     const anim = Animated.loop(
       Animated.timing(scrollX, {
-        toValue: -600,
+        toValue: 0,
         duration: 12000,
         useNativeDriver: true,
       })

@@ -158,7 +158,7 @@ async function generateOneMeal(
 Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
 
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
-Cuisine style: ${cuisine}. You MUST generate dishes ONLY from ${cuisine} cuisine. Do not suggest dishes from other cuisines.
+Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
 Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}

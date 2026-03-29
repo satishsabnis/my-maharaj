@@ -66,7 +66,9 @@ export default function PartyMenuScreen() {
 Respond ONLY with this exact JSON structure - no other text, no markdown:
 {"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"serving_tips":["string"],"shopping_list":["string"]}
 Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include welcome drinks, mocktails, juices and water options. The key MUST be "beverages" not "drinks".
-CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.`);
+CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.
+You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`);
+      console.log('[PartyMenu] Raw API text:', text);
       const parsed = JSON.parse(text) as PartyMenu;
       console.log('[PartyMenu] API response:', JSON.stringify(parsed));
       setMenu(parsed);
