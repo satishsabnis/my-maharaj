@@ -19,21 +19,21 @@ export default function SplashScreen() {
       if (navigated) return;
       setNavigated(true);
 
-      // Check auth state
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.replace('/login');
-        return;
-      }
-
-      // Check disclaimer acceptance
+      // Always check disclaimer first
       const disclaimerAccepted = typeof window !== 'undefined'
         ? window.localStorage?.getItem('maharaj_disclaimer_accepted')
         : null;
 
       if (!disclaimerAccepted) {
         router.replace('/disclaimer');
+        return;
+      }
+
+      // Check auth state
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace('/login');
         return;
       }
 

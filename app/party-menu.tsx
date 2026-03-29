@@ -81,6 +81,14 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         parsed.beverages = (parsed as any).drinks ?? [{name:'Water',description:'Chilled still water'},{name:'Fresh Juice',description:'Seasonal fresh fruit juice'},{name:'Masala Chaas',description:'Spiced buttermilk'}];
       }
       console.log('[PartyMenu] Parsed beverages:', JSON.stringify(parsed.beverages));
+      // Nuclear fix: if raw text didn't contain 'beverages', make second call
+      if (!text.includes('"beverages"') && parsed.beverages?.[0]?.name === 'Water') {
+        try {
+          const bev2 = await callClaude('Return ONLY this JSON, nothing else: {"beverages":[{"name":"Mango Lassi","description":"Thick sweet mango yogurt drink"},{"name":"Masala Chaas","description":"Spiced buttermilk with cumin and mint"},{"name":"Fresh Lime Soda","description":"Chilled lime soda with rock salt"}]}');
+          const bev2Match = bev2.match(/\{[\s\S]*\}/);
+          if (bev2Match) { const b = JSON.parse(bev2Match[0]); if (b.beverages?.length) parsed.beverages = b.beverages; }
+        } catch {}
+      }
       setMenu(parsed);
       setStep('result');
     } catch { setError('Failed to generate. Please try again.'); }
