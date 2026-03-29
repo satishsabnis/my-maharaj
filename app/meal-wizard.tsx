@@ -208,6 +208,7 @@ export default function MealWizardScreen() {
         .eq('user_id', user.id).eq('is_excluded', false);
       const cuisines = (cuisineData ?? []).map((r: { cuisine_name: string }) => r.cuisine_name);
       const cuisine  = cuisines.length > 0 ? cuisines[Math.floor(Math.random() * cuisines.length)] : 'Konkani';
+      console.log('[MealWizard] Cuisine for generation:', cuisine, 'All saved:', cuisines, 'Extra:', extraCuisines);
 
       const since = toYMD(addDays(new Date(), -14));
       const { data: historyData } = await supabase

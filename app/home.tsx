@@ -84,7 +84,7 @@ export default function HomeScreen() {
   const [labReminder, setLabReminder] = useState<{name:string;date:string}|null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const tickerX = useRef(new Animated.Value(-600)).current;
+  const tickerX = useRef(new Animated.Value(-800)).current;
 
   useEffect(() => {
     timerRef.current = setInterval(() => setDateTimeStr(formatDateTime(new Date())), 60000);
@@ -95,10 +95,11 @@ export default function HomeScreen() {
     const anim = Animated.loop(
       Animated.timing(tickerX, {
         toValue: 0,
-        duration: 12000,
+        duration: 15000,
         useNativeDriver: true,
       })
     );
+    tickerX.setValue(-800);
     anim.start();
     return () => anim.stop();
   }, []);
@@ -281,9 +282,9 @@ export default function HomeScreen() {
           onPress={() => router.push('/ask-maharaj' as never)}
           activeOpacity={0.88}
         >
-          <Text style={s.fabIcon}>🧠</Text>
+          <Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" />
           <Text style={s.fabLabel}>Ask Maharaj AI</Text>
-          <Text style={s.fabMic}>🎙️</Text>
+          <Text style={s.fabMic}>Mic</Text>
         </TouchableOpacity>
 
       </SafeAreaView>
@@ -369,7 +370,7 @@ const s = StyleSheet.create({
     shadowColor:navy, shadowOffset:{width:0,height:6},
     shadowOpacity:0.4, shadowRadius:16, elevation:8,
   },
-  fabIcon:  { fontSize:20 },
+  fabIcon:  { width:36, height:36 },
   fabLabel: { flex:1, fontSize:15, fontWeight:'800', color:white, textAlign:'center' },
   fabMic:   { fontSize:20 },
 });
