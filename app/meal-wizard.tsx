@@ -111,6 +111,7 @@ export default function MealWizardScreen() {
   const [guestCount,     setGuestCount]     = useState(0);
   const [vegFastDays,    setVegFastDays]    = useState<Record<string, string>>({});
   const [extraCuisines,  setExtraCuisines]  = useState<string[]>([]);
+  const [removedCuisines, setRemovedCuisines] = useState<string[]>([]);
   const [perDayCuisine,  setPerDayCuisine]  = useState<Record<string, string>>({});
 
   // Generation
@@ -242,7 +243,7 @@ export default function MealWizardScreen() {
         vegDays:        profile?.veg_days ?? [],
         cuisinePerDay: (() => {
           const dates = getDates(selectedFrom, selectedTo);
-          const allCuisines = [...savedCuisines, ...extraCuisines];
+          const allCuisines = [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
           return dates.map((d, i) => {
             if (perDayCuisine[d]) return perDayCuisine[d];
             if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
@@ -1313,20 +1314,27 @@ export default function MealWizardScreen() {
 
   function renderCuisineConfirm() {
     const ALL_CUISINES = ['Afghan','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mangalorean','Mediterranean','Mexican','Moroccan','Mughlai','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
-    const activeCuisines = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
+    const allSaved = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
+    const activeCuisines = allSaved.filter(c => !removedCuisines.includes(c));
     return (
       <View>
         <Text style={s.stepTitle}>Confirm cuisines for this plan</Text>
-        <Text style={s.stepSub}>Your saved cuisines will be used across the week</Text>
+        <Text style={s.stepSub}>Tap ✕ to exclude a cuisine for this plan only</Text>
 
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:14,marginBottom:12,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
           <Text style={{fontSize:12,fontWeight:'700',color:'#5A7A8A',textTransform:'uppercase',letterSpacing:0.4,marginBottom:8}}>Your saved cuisines</Text>
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
             {activeCuisines.map(c => (
-              <View key={c} style={{backgroundColor:'#E3F2FD',borderRadius:12,paddingHorizontal:10,paddingVertical:5}}>
+              <TouchableOpacity key={c} style={{backgroundColor:'#E3F2FD',borderRadius:12,paddingHorizontal:10,paddingVertical:5,flexDirection:'row',gap:4,alignItems:'center'}} onPress={() => setRemovedCuisines(prev => [...prev, c])}>
                 <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>{c}</Text>
-              </View>
+                <Text style={{fontSize:10,color:'#9CA3AF'}}>✕</Text>
+              </TouchableOpacity>
             ))}
+            {removedCuisines.length > 0 && (
+              <TouchableOpacity style={{paddingHorizontal:10,paddingVertical:5}} onPress={() => setRemovedCuisines([])}>
+                <Text style={{fontSize:11,color:'#1A6B5C',fontWeight:'600'}}>Restore all</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
