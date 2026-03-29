@@ -559,42 +559,92 @@ export default function MealWizardScreen() {
 
   function renderPeriod() {
     const today = startOfDay(new Date());
-    const cards = [
-      { label: 'Today',       icon: '', fn: () => { setSelectedFrom(today); setSelectedTo(today); setShowCustom(false); advance('food-pref'); } },
-      { label: 'Tomorrow',    icon: '', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('food-pref'); } },
-      { label: 'This Week',   icon: '', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
-      { label: 'Next Week',   icon: '', fn: () => { const { start, end } = getWeekRange(1); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
+    const [calMonth, setCalMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+    const [rangeStart, setRangeStart] = useState<Date | null>(null);
+    const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
+
+    const quickCards = [
+      { label: 'Today', fn: () => { setSelectedFrom(today); setSelectedTo(today); advance('food-pref'); } },
+      { label: 'Tomorrow', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('food-pref'); } },
+      { label: 'This Week', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
     ];
+
+    const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
+    const firstDayOfWeek = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1).getDay();
+    const monthName = MONTHS_L[calMonth.getMonth()];
+    const canGoPrev = calMonth > new Date(today.getFullYear(), today.getMonth(), 1);
+
+    function tapDate(d: Date) {
+      if (d < today) return;
+      if (!rangeStart || rangeEnd) { setRangeStart(d); setRangeEnd(null); }
+      else if (d >= rangeStart) { setRangeEnd(d); }
+      else { setRangeStart(d); setRangeEnd(null); }
+    }
+
+    function isInRange(d: Date): boolean {
+      if (!rangeStart) return false;
+      if (!rangeEnd) return d.getTime() === rangeStart.getTime();
+      return d >= rangeStart && d <= rangeEnd;
+    }
+
     return (
       <View>
         <Text style={s.stepTitle}>When would you like to plan?</Text>
-        <View style={s.periodGrid}>
-          {cards.map((c) => (
-            <TouchableOpacity key={c.label} style={s.periodCard} onPress={c.fn} activeOpacity={0.8}>
-              <Text style={s.periodIcon}>{c.icon}</Text>
-              <Text style={s.periodLabel}>{c.label}</Text>
+
+        <View style={{flexDirection:'row',gap:8,marginBottom:16}}>
+          {quickCards.map(c => (
+            <TouchableOpacity key={c.label} style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,paddingVertical:12,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)'}} onPress={c.fn} activeOpacity={0.8}>
+              <Text style={{fontSize:13,fontWeight:'700',color:'#1B3A5C'}}>{c.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity onPress={() => setShowCustom((v) => !v)} activeOpacity={0.7} style={s.customLink}>
-          <Text style={s.customLinkText}>Or choose specific dates ›</Text>
-        </TouchableOpacity>
-        {showCustom && (
-          <View style={s.customCard}>
-            <Text style={s.customCardTitle}>Select Date Range</Text>
-            <DateRow label="From" date={pickerFrom}
-              onDec={() => { const n = addDays(pickerFrom,-1); if (n>=today){setPickerFrom(n);if(pickerTo<=n)setPickerTo(addDays(n,1));} }}
-              onInc={() => { const n=addDays(pickerFrom,1); setPickerFrom(n); if(pickerTo<=n)setPickerTo(addDays(n,1)); }}
-              canDec={pickerFrom > today} />
-            <DateRow label="To" date={pickerTo}
-              onDec={() => { const n=addDays(pickerTo,-1); if(n>pickerFrom)setPickerTo(n); }}
-              onInc={() => setPickerTo(addDays(pickerTo,1))}
-              canDec={addDays(pickerTo,-1) > pickerFrom} />
-            <Button title={`Plan ${fmt(pickerFrom)} → ${fmt(pickerTo)}`} onPress={() => {
-              setSelectedFrom(pickerFrom); setSelectedTo(pickerTo); advance('food-pref');
-            }} />
+
+        <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,padding:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <TouchableOpacity onPress={() => { if (canGoPrev) setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1)); }} style={{padding:8,opacity:canGoPrev?1:0.3}}>
+              <Text style={{fontSize:18,color:'#1B3A5C',fontWeight:'700'}}>{'‹'}</Text>
+            </TouchableOpacity>
+            <Text style={{fontSize:16,fontWeight:'700',color:'#1B3A5C'}}>{monthName} {calMonth.getFullYear()}</Text>
+            <TouchableOpacity onPress={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))} style={{padding:8}}>
+              <Text style={{fontSize:18,color:'#1B3A5C',fontWeight:'700'}}>{'›'}</Text>
+            </TouchableOpacity>
           </View>
-        )}
+
+          <View style={{flexDirection:'row',marginBottom:4}}>
+            {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+              <Text key={d} style={{flex:1,textAlign:'center',fontSize:11,fontWeight:'600',color:'#9CA3AF'}}>{d}</Text>
+            ))}
+          </View>
+
+          <View style={{flexDirection:'row',flexWrap:'wrap'}}>
+            {Array.from({length: firstDayOfWeek}).map((_, i) => <View key={`e${i}`} style={{width:'14.28%',height:36}} />)}
+            {Array.from({length: daysInMonth}).map((_, i) => {
+              const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), i + 1);
+              const isPast = d < today;
+              const inRange = isInRange(d);
+              const isStart = rangeStart && d.getTime() === rangeStart.getTime();
+              const isEnd = rangeEnd && d.getTime() === rangeEnd.getTime();
+              return (
+                <TouchableOpacity key={i} style={{width:'14.28%',height:36,alignItems:'center',justifyContent:'center',backgroundColor:inRange?'#1B3A5C':'transparent',borderRadius: isStart||isEnd ? 18 : 0,opacity:isPast?0.3:1}} onPress={() => tapDate(d)} disabled={isPast}>
+                  <Text style={{fontSize:14,fontWeight:inRange?'700':'400',color:inRange?'#FFFFFF':'#1B3A5C'}}>{i+1}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {rangeStart && (
+            <View style={{marginTop:12}}>
+              <Text style={{fontSize:13,color:'#5A7A8A',textAlign:'center',marginBottom:8}}>
+                {rangeEnd ? `${fmt(rangeStart)} → ${fmt(rangeEnd)}` : `Start: ${fmt(rangeStart)} — tap end date`}
+              </Text>
+              {(rangeEnd || rangeStart) && (
+                <Button title={`Plan ${fmt(rangeStart)}${rangeEnd ? ` → ${fmt(rangeEnd)}` : ''}`} onPress={() => {
+                  setSelectedFrom(rangeStart); setSelectedTo(rangeEnd ?? rangeStart); advance('food-pref');
+                }} />
+              )}
+            </View>
+          )}
+        </View>
       </View>
     );
   }

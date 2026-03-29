@@ -59,7 +59,7 @@ const HERO_CARD = { id:'mealplan', icon:'🍳', title:'Generate Meal Plan', desc
 
 const CARDS = [
   { id:'festivals',  icon:'🪔', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
-  { id:'family',     icon:'👨‍👩‍👧', title:'Family Profile',    desc:'Health, cuisines & lab',    route:'/dietary-profile',     accent:'#1A6B5C', iconBg:'#E8F5E9' },
+  { id:'mealprep',   icon:'🥘', title:'Meal Prep',          desc:'Prep guide & batch cook',   route:'/meal-prep',           accent:'#1A6B5C', iconBg:'#E8F5E9' },
   { id:'party',      icon:'🎉', title:'Party Menu',         desc:'Plan your gathering',       route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
   { id:'outdoor',    icon:'🏕️', title:'Outdoor Catering',   desc:'Events & picnics',          route:'/outdoor-catering',    accent:'#1A6B5C', iconBg:'#E8F5E9' },
   { id:'fridge',     icon:'🧊', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
@@ -82,6 +82,7 @@ export default function HomeScreen() {
   const [showExit,    setShowExit]    = useState(false);
   const [userCity,    setUserCity]    = useState('');
   const [labReminder, setLabReminder] = useState<{name:string;date:string}|null>(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickerX = useRef(new Animated.Value(-800)).current;
@@ -180,9 +181,9 @@ export default function HomeScreen() {
 
         {/* Header */}
         <View style={s.header}>
-          <View style={s.avatar}>
+          <TouchableOpacity onPress={() => setShowMenu(v => !v)} style={s.avatar}>
             <Text style={s.avatarTxt}>{initials}</Text>
-          </View>
+          </TouchableOpacity>
 
           <Image
             source={require('../assets/logo.png')}
@@ -196,11 +197,28 @@ export default function HomeScreen() {
               style={s.bfLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity onPress={() => setShowExit(true)} style={s.exitBtn}>
-              <Text style={s.exitTxt}>Exit</Text>
-            </TouchableOpacity>
           </View>
         </View>
+
+        {showMenu && (
+          <TouchableOpacity style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:998}} activeOpacity={1} onPress={() => setShowMenu(false)}>
+            <View style={{position:'absolute',top: 70,left:16,backgroundColor:'white',borderRadius:14,paddingVertical:8,width:220,zIndex:999,shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:0.15,shadowRadius:12,elevation:10,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
+              {[
+                {label:'Edit Profile',route:'/profile-setup'},
+                {label:'Family Profile',route:'/dietary-profile'},
+                {label:'Lab Reports',route:'/lab-report'},
+                {label:'Cuisine Preferences',route:'/cuisine-selection'},
+              ].map(item => (
+                <TouchableOpacity key={item.label} style={{paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setShowMenu(false); router.push(item.route as never); }}>
+                  <Text style={{fontSize:14,color:navy,fontWeight:'500'}}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:12}} onPress={() => { setShowMenu(false); setShowExit(true); }}>
+                <Text style={{fontSize:14,color:'#DC2626',fontWeight:'600'}}>Exit / Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Date bar */}
         <View style={s.dateBar}>
@@ -321,9 +339,6 @@ const s = StyleSheet.create({
   mmLogo:    { width:180, height:62 },
   headerRight:{ flexDirection:'row', alignItems:'center', gap:8 },
   bfLogo:    { width:130, height:44 },
-  exitBtn:   { paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1.5, borderColor:'rgba(27,58,92,0.25)' },
-  exitTxt:   { fontSize:13, color:navy, fontWeight:'600' },
-
   dateBar: {
     flexDirection:'row', justifyContent:'space-between', alignItems:'center',
     paddingHorizontal:16, paddingVertical:8,
