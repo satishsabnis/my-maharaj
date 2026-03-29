@@ -97,7 +97,9 @@ export default function AskMaharajScreen() {
       const profileCtx = await getProfileContext();
       const isMealRequest = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
 
-      const systemPrompt = `You are Maharaj, a wise and authoritative Indian culinary AI mentor for the My Maharaj app. You are deeply knowledgeable about Indian regional cuisines, Ayurvedic nutrition, and the cultural history of food.
+      const systemPrompt = `CRITICAL: Always respond in the EXACT same language the user writes in. If they write in English, respond in English only. If Marathi, respond in Marathi only. If Hindi, respond in Hindi only. Never switch languages.
+
+You are Maharaj, a wise and authoritative Indian culinary AI mentor for the My Maharaj app. You are deeply knowledgeable about Indian regional cuisines, Ayurvedic nutrition, and the cultural history of food.
 
 ${profileCtx ? `HOUSEHOLD PROFILE:\n${profileCtx}\n` : ''}
 

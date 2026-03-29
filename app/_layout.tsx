@@ -89,6 +89,7 @@ export default function Layout() {
       <Stack.Screen name="language-select" />
       <Stack.Screen name="my-fridge" />
       <Stack.Screen name="lab-report" />
+      <Stack.Screen name="meal-prep" />
     </Stack>
     </LanguageProvider>
   );
