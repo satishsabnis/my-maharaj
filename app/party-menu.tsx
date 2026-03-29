@@ -68,26 +68,28 @@ Respond ONLY with this exact JSON structure - no other text, no markdown:
 Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include welcome drinks, mocktails, juices and water options. The key MUST be "beverages" not "drinks".
 CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.
 You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`);
-      console.log('[PartyMenu] RAW API RESPONSE:', text.substring(0, 500));
+      console.log('RAW RESPONSE FIRST 300 CHARS:', text.substring(0, 300));
+
       let parsed: PartyMenu;
       try {
-        parsed = JSON.parse(text) as PartyMenu;
-      } catch {
         const match = text.match(/\{[\s\S]*\}/);
-        if (match) parsed = JSON.parse(match[0]) as PartyMenu;
-        else throw new Error('No valid JSON in response');
+        parsed = JSON.parse(match ? match[0] : text) as PartyMenu;
+      } catch(e) {
+        console.error('JSON parse failed:', e);
+        throw new Error('Failed to parse menu response');
       }
+
+      // Nuclear fallback - always ensure beverages exist
       if (!parsed.beverages || parsed.beverages.length === 0) {
-        parsed.beverages = (parsed as any).drinks ?? [{name:'Water',description:'Chilled still water'},{name:'Fresh Juice',description:'Seasonal fresh fruit juice'},{name:'Masala Chaas',description:'Spiced buttermilk'}];
-      }
-      console.log('[PartyMenu] Parsed beverages:', JSON.stringify(parsed.beverages));
-      // Nuclear fix: if raw text didn't contain 'beverages', make second call
-      if (!text.includes('"beverages"') && parsed.beverages?.[0]?.name === 'Water') {
-        try {
-          const bev2 = await callClaude('Return ONLY this JSON, nothing else: {"beverages":[{"name":"Mango Lassi","description":"Thick sweet mango yogurt drink"},{"name":"Masala Chaas","description":"Spiced buttermilk with cumin and mint"},{"name":"Fresh Lime Soda","description":"Chilled lime soda with rock salt"}]}');
-          const bev2Match = bev2.match(/\{[\s\S]*\}/);
-          if (bev2Match) { const b = JSON.parse(bev2Match[0]); if (b.beverages?.length) parsed.beverages = b.beverages; }
-        } catch {}
+        if ((parsed as any).drinks && (parsed as any).drinks.length > 0) {
+          parsed.beverages = (parsed as any).drinks;
+        } else {
+          parsed.beverages = [
+            { name: 'Fresh Lime Soda', description: 'Chilled fresh lime with soda water and mint' },
+            { name: 'Mango Lassi', description: 'Thick sweet mango blended with yogurt' },
+            { name: 'Mineral Water', description: 'Still and sparkling water options' },
+          ];
+        }
       }
       setMenu(parsed);
       setStep('result');

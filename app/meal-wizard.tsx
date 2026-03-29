@@ -120,6 +120,7 @@ export default function MealWizardScreen() {
   // Generation
   const [generatedPlan,     setGeneratedPlan]     = useState<MealPlanDay[] | null>(null);
   const [generatingProgress,setGeneratingProgress] = useState<{ current: number; total: number } | null>(null);
+  const [servingsCount, setServingsCount] = useState(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Selection
@@ -235,15 +236,24 @@ export default function MealWizardScreen() {
 
       const unwellNames = familyMembers.filter((m) => unwellIds.includes(m.id)).map((m) => m.name);
 
+      // Family member count for servings
+      const { data: members } = await supabase.from('family_members')
+        .select('id').eq('user_id', userId);
+      const familyCount = members?.length ?? 1;
+      const presentCount = presentMembers.length > 0 ? presentMembers.length : familyCount;
+      const totalServings = presentCount + guestCount;
+      console.log('[MealWizard] Servings:', { familyCount, presentCount, guestCount, totalServings });
+      setServingsCount(totalServings);
+
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
         userId,
         dates:  getDates(selectedFrom, selectedTo),
         healthFlags: hf,
         servings: {
-          breakfast: presentMembers.length > 0 ? presentMembers.length + guestCount : (profile?.breakfast_count ?? 2),
-          lunch:     presentMembers.length > 0 ? presentMembers.length + guestCount : (profile?.lunch_count     ?? 2),
-          dinner:    presentMembers.length > 0 ? presentMembers.length + guestCount : (profile?.dinner_count    ?? 2),
+          breakfast: totalServings,
+          lunch:     totalServings,
+          dinner:    totalServings,
         },
         appetite:  profile?.appetite_level ?? 'Normal',
         language:  profile?.app_language   ?? 'en',
@@ -929,6 +939,9 @@ export default function MealWizardScreen() {
           style={{ width: 200, height: 140, resizeMode: 'contain', backgroundColor: 'transparent', opacity: pulseAnim }}
         />
         <Text style={s.genTitle}>Maharaj is preparing your meal plan...</Text>
+        {servingsCount > 0 && (
+          <Text style={[s.genSub, { fontWeight: '600', marginBottom: 4 }]}>Cooking for {servingsCount} people</Text>
+        )}
         <Text style={s.genSub}>
           {generatingProgress
             ? `Generating day ${generatingProgress.current} of ${generatingProgress.total}...`
