@@ -80,6 +80,9 @@ export default function MealWizardScreen() {
   const [pickerFrom, setPickerFrom] = useState(startOfDay(new Date()));
   const [pickerTo,   setPickerTo]   = useState(addDays(startOfDay(new Date()), 1));
   const [showCustom, setShowCustom] = useState(false);
+  const [calMonth,    setCalMonth]    = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [rangeStart,  setRangeStart]  = useState<Date | null>(null);
+  const [rangeEnd,    setRangeEnd]    = useState<Date | null>(null);
 
   // Step 2
   const [foodPref, setFoodPref]   = useState<'veg' | 'nonveg' | null>(null);
@@ -559,14 +562,11 @@ export default function MealWizardScreen() {
 
   function renderPeriod() {
     const today = startOfDay(new Date());
-    const [calMonth, setCalMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-    const [rangeStart, setRangeStart] = useState<Date | null>(null);
-    const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
 
     const quickCards = [
-      { label: 'Today', fn: () => { setSelectedFrom(today); setSelectedTo(today); advance('food-pref'); } },
-      { label: 'Tomorrow', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); advance('food-pref'); } },
-      { label: 'This Week', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); advance('food-pref'); } },
+      { label: 'Today', fn: () => { setSelectedFrom(today); setSelectedTo(today); setTimeout(() => advance('food-pref'), 0); } },
+      { label: 'Tomorrow', fn: () => { const t = addDays(today, 1); setSelectedFrom(t); setSelectedTo(t); setTimeout(() => advance('food-pref'), 0); } },
+      { label: 'This Week', fn: () => { const { start, end } = getWeekRange(0); setSelectedFrom(start); setSelectedTo(end); setTimeout(() => advance('food-pref'), 0); } },
     ];
 
     const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
@@ -624,9 +624,10 @@ export default function MealWizardScreen() {
               const inRange = isInRange(d);
               const isStart = rangeStart && d.getTime() === rangeStart.getTime();
               const isEnd = rangeEnd && d.getTime() === rangeEnd.getTime();
+              const isToday = d.getTime() === today.getTime();
               return (
-                <TouchableOpacity key={i} style={{width:'14.28%',height:36,alignItems:'center',justifyContent:'center',backgroundColor:inRange?'#1B3A5C':'transparent',borderRadius: isStart||isEnd ? 18 : 0,opacity:isPast?0.3:1}} onPress={() => tapDate(d)} disabled={isPast}>
-                  <Text style={{fontSize:14,fontWeight:inRange?'700':'400',color:inRange?'#FFFFFF':'#1B3A5C'}}>{i+1}</Text>
+                <TouchableOpacity key={i} style={{width:'14.28%',height:36,alignItems:'center',justifyContent:'center',backgroundColor:inRange?'#1B3A5C':isToday?'rgba(27,58,92,0.15)':'transparent',borderRadius: isStart||isEnd||isToday ? 18 : 0,opacity:isPast?0.3:1}} onPress={() => tapDate(d)} disabled={isPast}>
+                  <Text style={{fontSize:14,fontWeight:inRange||isToday?'700':'400',color:inRange?'#FFFFFF':'#1B3A5C'}}>{i+1}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1264,7 +1265,7 @@ export default function MealWizardScreen() {
 
 
   function renderGuestCuisine() {
-    const ALL_CUISINES = ['Afghan','Andhra','Assamese','Bangladeshi','Bengali','Bihari','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mediterranean','Mexican','Moroccan','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
+    const ALL_CUISINES = ['Afghan','American','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Brazilian','Burmese','Cantonese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Emirati','Ethiopian','Filipino','French','German','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Israeli','Italian','Japanese','Kashmiri','Kenyan','Konkani','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian','Mangalorean','Mediterranean','Mexican','Moroccan','Mughlai','Nepali','Nigerian','Odia','Omani','Pakistani','Persian','Peruvian','Punjabi','Rajasthani','Saudi','Singaporean','South African','South Indian','Spanish','Sri Lankan','Szechuan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
     return (
       <View>
         <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:12,alignItems:'center',marginBottom:12}}><Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text></TouchableOpacity>
@@ -1363,7 +1364,7 @@ export default function MealWizardScreen() {
   }
 
   function renderCuisineConfirm() {
-    const ALL_CUISINES = ['Afghan','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Italian','Japanese','Kashmiri','Konkani','Korean','Lebanese','Maharashtrian','Malabar','Malaysian','Mangalorean','Mediterranean','Mexican','Moroccan','Mughlai','Nepali','Odia','Pakistani','Persian','Punjabi','Rajasthani','South Indian','Spanish','Sri Lankan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
+    const ALL_CUISINES = ['Afghan','American','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Brazilian','Burmese','Cantonese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Emirati','Ethiopian','Filipino','French','German','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Israeli','Italian','Japanese','Kashmiri','Kenyan','Konkani','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian','Mangalorean','Mediterranean','Mexican','Moroccan','Mughlai','Nepali','Nigerian','Odia','Omani','Pakistani','Persian','Peruvian','Punjabi','Rajasthani','Saudi','Singaporean','South African','South Indian','Spanish','Sri Lankan','Szechuan','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese'].sort();
     const allSaved = savedCuisines.length > 0 ? savedCuisines : ['Konkani'];
     const activeCuisines = allSaved.filter(c => !removedCuisines.includes(c));
     return (

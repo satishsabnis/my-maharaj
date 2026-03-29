@@ -95,6 +95,13 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         parsed.beverages = (parsed as any).drinks ?? [{name:'Water',description:'Chilled still water'},{name:'Fresh Lime Soda',description:'Lime soda with mint'},{name:'Coconut Water',description:'Fresh tender coconut water'}];
       }
       console.log('[OutdoorCatering] Parsed beverages:', JSON.stringify(parsed.beverages));
+      if (!rawText.includes('"beverages"') && parsed.beverages?.[0]?.name === 'Water') {
+        try {
+          const bev2 = await callClaude('Return ONLY this JSON, nothing else: {"beverages":[{"name":"Coconut Water","description":"Fresh tender coconut water"},{"name":"Watermelon Juice","description":"Chilled fresh watermelon juice"},{"name":"Iced Mint Lemonade","description":"Fresh mint lemonade with ice"}]}');
+          const bev2Match = bev2.match(/\{[\s\S]*\}/);
+          if (bev2Match) { const b = JSON.parse(bev2Match[0]); if (b.beverages?.length) parsed.beverages = b.beverages; }
+        } catch {}
+      }
       setMenu(parsed);
       setStep('result');
     } catch { setError('Failed to generate menu. Please try again.'); }

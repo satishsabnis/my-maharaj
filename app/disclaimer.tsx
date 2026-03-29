@@ -43,7 +43,12 @@ export default function DisclaimerScreen() {
     if (typeof window !== 'undefined') {
       window.localStorage?.setItem('maharaj_disclaimer_accepted', 'true');
     }
-    router.replace('/language-select');
+    const langSet = typeof window !== 'undefined' ? window.localStorage?.getItem('maharaj_lang_set') : null;
+    if (langSet) {
+      router.replace('/home');
+    } else {
+      router.replace('/language-select');
+    }
   }
 
   function exitApp() {
