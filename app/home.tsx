@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ImageBackground, Platform, SafeAreaView, ScrollView,
+  Animated, ImageBackground, Platform, SafeAreaView, ScrollView,
   StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, Image,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -84,10 +84,23 @@ export default function HomeScreen() {
   const [labReminder, setLabReminder] = useState<{name:string;date:string}|null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickerX = useRef(new Animated.Value(-600)).current;
 
   useEffect(() => {
     timerRef.current = setInterval(() => setDateTimeStr(formatDateTime(new Date())), 60000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(tickerX, {
+        toValue: 0,
+        duration: 12000,
+        useNativeDriver: true,
+      })
+    );
+    anim.start();
+    return () => anim.stop();
   }, []);
 
   useEffect(() => {
@@ -205,6 +218,12 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        <View style={{backgroundColor:'#F59E0B',overflow:'hidden',paddingVertical:4}}>
+          <Animated.Text style={{fontSize:11,color:'#FFFFFF',fontWeight:'600',width:1200,transform:[{translateX:tickerX}]}}>
+            {'  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  '}
+          </Animated.Text>
+        </View>
 
         {/* Card grid */}
         <ScrollView

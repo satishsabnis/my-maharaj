@@ -79,8 +79,11 @@ Focus on food that travels well, stays fresh outdoors and suits the weather.
 Respond ONLY with this exact JSON structure - no other text, no markdown:
 {"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":["string"]}
 Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include water, fresh juices and refreshing drinks. The key MUST be "beverages" not "drinks".
-CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.`;
-      const parsed = JSON.parse(await callClaude(prompt)) as OutdoorMenu;
+CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.
+You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`;
+      const rawText = await callClaude(prompt);
+      console.log('[OutdoorCatering] Raw API text:', rawText);
+      const parsed = JSON.parse(rawText) as OutdoorMenu;
       console.log('[OutdoorCatering] API response:', JSON.stringify(parsed));
       setMenu(parsed);
       setStep('result');
