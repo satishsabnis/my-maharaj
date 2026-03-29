@@ -276,9 +276,8 @@ export async function generateMealPlan(
   const snPrefs  = params.snackPrefs;
   const cityName = params.locationCity || 'Dubai';
   const storeNames = params.locationStores || 'Carrefour/Spinneys/Lulu';
-  const slots = params.selectedSlots && params.selectedSlots.length > 0
-    ? params.selectedSlots
-    : ['breakfast', 'lunch', 'dinner'];
+  const slots = params.selectedSlots ?? ['breakfast', 'lunch', 'dinner'];
+  if (slots.length === 0) throw new Error('No meal slots selected. Please select at least one meal slot.');
 
   const total = params.dates.length;
   onProgress?.(0, total);

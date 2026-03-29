@@ -137,6 +137,9 @@ Always respond in the same language the user writes in. If they write in Marathi
         const utterance = new SpeechSynthesisUtterance(cleanResponse.slice(0, 500));
         utterance.lang = 'en-IN';
         utterance.rate = 0.9;
+        const voices = window.speechSynthesis.getVoices();
+        const male = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('male') || v.name.includes('Google UK English Male')));
+        if (male) utterance.voice = male;
         window.speechSynthesis.speak(utterance);
       }
     } catch (e) {
