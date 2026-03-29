@@ -69,8 +69,17 @@ Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at lea
 CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.
 You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`);
       console.log('[PartyMenu] Raw API text:', text);
-      const parsed = JSON.parse(text) as PartyMenu;
+      let parsed = JSON.parse(text) as PartyMenu;
       console.log('[PartyMenu] API response:', JSON.stringify(parsed));
+      // Fallback: if beverages missing, make second call
+      if (!parsed.beverages?.length && !(parsed as any).drinks?.length) {
+        try {
+          const bevText = await callClaude('Return ONLY a JSON array of 3 Indian beverages for a party: [{"name":"...","description":"..."}]. No other text.');
+          const bevParsed = JSON.parse(bevText);
+          parsed = { ...parsed, beverages: Array.isArray(bevParsed) ? bevParsed : bevParsed.beverages ?? [] };
+          console.log('[PartyMenu] Beverages fallback:', JSON.stringify(parsed.beverages));
+        } catch { console.log('[PartyMenu] Beverages fallback failed'); }
+      }
       setMenu(parsed);
       setStep('result');
     } catch { setError('Failed to generate. Please try again.'); }

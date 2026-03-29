@@ -83,8 +83,17 @@ CRITICAL: You MUST include a beverages array with at least 3 drink options. This
 You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`;
       const rawText = await callClaude(prompt);
       console.log('[OutdoorCatering] Raw API text:', rawText);
-      const parsed = JSON.parse(rawText) as OutdoorMenu;
+      let parsed = JSON.parse(rawText) as OutdoorMenu;
       console.log('[OutdoorCatering] API response:', JSON.stringify(parsed));
+      // Fallback: if beverages missing, make second call
+      if (!parsed.beverages?.length && !(parsed as any).drinks?.length) {
+        try {
+          const bevText = await callClaude('Return ONLY a JSON array of 3 refreshing outdoor beverages: [{"name":"...","description":"..."}]. No other text.');
+          const bevParsed = JSON.parse(bevText);
+          parsed = { ...parsed, beverages: Array.isArray(bevParsed) ? bevParsed : bevParsed.beverages ?? [] };
+          console.log('[OutdoorCatering] Beverages fallback:', JSON.stringify(parsed.beverages));
+        } catch { console.log('[OutdoorCatering] Beverages fallback failed'); }
+      }
       setMenu(parsed);
       setStep('result');
     } catch { setError('Failed to generate menu. Please try again.'); }

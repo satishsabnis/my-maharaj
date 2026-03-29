@@ -49,6 +49,7 @@ export default function AskMaharajScreen() {
   const [mealResult,   setMealResult]   = useState<MealResult | null>(null);
 
   const [listening,    setListening]    = useState(false);
+  const [lastVoiceInput, setLastVoiceInput] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   // ── Load dietary profile for context ───────────────────────────────────────
@@ -82,6 +83,8 @@ export default function AskMaharajScreen() {
 
   async function send() {
     const text = input.trim();
+    const wasVoice = lastVoiceInput;
+    setLastVoiceInput(false);
     if (!text || loading) return;
     setInput('');
 
@@ -109,7 +112,8 @@ MEAL_JSON_START
 {"title":"...", "meals":[{"slot":"Breakfast","name":"...","description":"..."},{"slot":"Lunch","name":"...","description":"..."},{"slot":"Dinner","name":"...","description":"..."}],"tips":["tip1","tip2"]}
 MEAL_JSON_END` : ''}
 
-Always track health conditions from the profile when suggesting food. Never repeat dishes within the same response.`;
+Always track health conditions from the profile when suggesting food. Never repeat dishes within the same response.
+Always respond in the same language the user writes in. If they write in Marathi, respond in Marathi. If Hindi, respond in Hindi. If English, respond in English. Match the user's language exactly.`;
 
       const response = await callClaude(
         newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -128,6 +132,13 @@ Always track health conditions from the profile when suggesting food. Never repe
       const cleanResponse = response.replace(/MEAL_JSON_START[\s\S]*?MEAL_JSON_END/g, '').trim();
       const assistantMsg: Message = { role: 'assistant', content: cleanResponse };
       setMessages(prev => [...prev, assistantMsg]);
+      // Speak response if triggered by voice
+      if (wasVoice && typeof window !== 'undefined' && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(cleanResponse.slice(0, 500));
+        utterance.lang = 'en-IN';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
       console.error('[AskMaharaj] API error:', errMsg);
@@ -161,6 +172,7 @@ Always track health conditions from the profile when suggesting food. Never repe
     recognition.onresult = (e: any) => {
       const transcript = e.results[0][0].transcript;
       setInput(transcript);
+      setLastVoiceInput(true);
       setListening(false);
     };
     recognition.onerror = () => setListening(false);
@@ -236,6 +248,11 @@ Always track health conditions from the profile when suggesting food. Never repe
                 <Text style={[s.bubbleTxt, msg.role === 'user' ? s.bubbleTxtUser : s.bubbleTxtAI]}>
                   {msg.content}
                 </Text>
+                {msg.role === 'assistant' && (
+                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:6,paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { const u = new SpeechSynthesisUtterance(msg.content.slice(0,500)); u.lang = 'en-IN'; u.rate = 0.9; window.speechSynthesis.speak(u); } }}>
+                    <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Speak</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
 
@@ -272,13 +289,23 @@ Always track health conditions from the profile when suggesting food. Never repe
                     ))}
                   </View>
                 )}
-                <View style={{flexDirection:'row',gap:10,marginTop:8}}>
-                  <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setMealResult(null)}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Dismiss</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={{flex:1,backgroundColor:'#1B3A5C',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>{setMealResult(null);setMessages([]);}}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:'white'}}>New Question</Text>
-                  </TouchableOpacity>
+                <View style={{gap:8,marginTop:8}}>
+                  <View style={{flexDirection:'row',gap:8}}>
+                    <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:12,paddingVertical:10,alignItems:'center'}} onPress={() => { if (mealResult && typeof navigator !== 'undefined' && navigator.clipboard) { const txt = mealResult.meals.map(m => `${m.slot}: ${m.name} — ${m.description}`).join('\n'); navigator.clipboard.writeText(txt); } }}>
+                      <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>Copy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:12,paddingVertical:10,alignItems:'center'}} onPress={()=>{setMealResult(null);setInput('Suggest different meals');}} >
+                      <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{flexDirection:'row',gap:8}}>
+                    <TouchableOpacity style={{flex:1,backgroundColor:'#1B3A5C',borderRadius:12,paddingVertical:10,alignItems:'center'}} onPress={()=>{setMealResult(null);setMessages([]);}}>
+                      <Text style={{fontSize:12,fontWeight:'600',color:'white'}}>New Question</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{flex:1,backgroundColor:'#16A34A',borderRadius:12,paddingVertical:10,alignItems:'center'}} onPress={()=>setMealResult(null)}>
+                      <Text style={{fontSize:12,fontWeight:'600',color:'white'}}>Thank You</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <TouchableOpacity style={s.goToWizardBtn} onPress={() => router.push('/meal-wizard' as never)}>
                   <Text style={s.goToWizardTxt}>Generate Full Weekly Plan →</Text>
@@ -396,8 +423,8 @@ const s = StyleSheet.create({
   },
   mealSlotBadge:{ alignSelf:'flex-start', backgroundColor:'#E8F5E9', borderRadius:8, paddingHorizontal:10, paddingVertical:4, marginBottom:6 },
   mealSlotTxt:  { fontSize:11, fontWeight:'700', color:'#1A6B5C' },
-  mealName:     { fontSize:15, fontWeight:'800', color:navy, marginBottom:4 },
-  mealDesc:     { fontSize:13, color:textSec, lineHeight:20 },
+  mealName:     { fontSize:18, fontWeight:'800', color:navy, marginBottom:4 },
+  mealDesc:     { fontSize:14, color:textSec, lineHeight:22 },
 
   tipsCard:   { backgroundColor:'#FFFBEB', borderRadius:14, padding:14, marginBottom:10, borderWidth:1, borderColor:'#FDE68A' },
   tipsTitle:  { fontSize:13, fontWeight:'700', color:'#B45309', marginBottom:8 },
