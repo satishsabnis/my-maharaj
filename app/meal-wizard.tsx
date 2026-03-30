@@ -1071,57 +1071,66 @@ export default function MealWizardScreen() {
                 const isSel = selections[activeDay]?.[key] === optIdx;
                 const recKey = `${activeDay}-${key}-${optIdx}`;
                 const isExp = expandedRecipes[recKey];
+                const isThali = opt.name.toLowerCase().includes('thali');
                 return (
-                  <TouchableOpacity
-                    key={optIdx}
-                    style={{
-                      flexDirection:'row',alignItems:'center',gap:10,
-                      backgroundColor: isSel ? 'rgba(27,58,92,0.08)' : 'rgba(255,255,255,0.95)',
-                      borderRadius:12,padding:12,marginBottom:6,
-                      borderWidth:1.5,borderColor: isSel ? navy : '#E5E7EB',
-                    }}
-                    onPress={() => setSelections((prev) => ({
-                      ...prev,
-                      [activeDay]: { ...(prev[activeDay] ?? {}), [key]: optIdx },
-                    }))}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{
-                      width:22,height:22,borderRadius:11,borderWidth:2,
-                      borderColor: isSel ? navy : '#D1D5DB',
-                      alignItems:'center',justifyContent:'center',
-                    }}>
-                      {isSel && <View style={{width:12,height:12,borderRadius:6,backgroundColor:navy}} />}
-                    </View>
-                    <View style={{flex:1}}>
-                      <Text style={{fontSize:14,fontWeight: isSel ? '700' : '500',color: isSel ? navy : '#374151'}}>{opt.name}</Text>
-                      {opt.name.toLowerCase().includes('thali') && opt.description && (
-                        <ThaliDetails description={opt.description} />
-                      )}
-                      {opt.tags.length > 0 && (
-                        <View style={{flexDirection:'row',gap:4,marginTop:3}}>
-                          {opt.tags.slice(0,3).map(tag => (
-                            <Text key={tag} style={{fontSize:10,color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:6,paddingVertical:1,borderRadius:6}}>{tag}</Text>
-                          ))}
-                        </View>
-                      )}
-                      {isExp && (
-                        <View style={{marginTop:8}}>
-                          {opt.ingredients.length > 0 && <>
-                            <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginBottom:2}}>Ingredients</Text>
-                            {opt.ingredients.map((ing,ii) => <Text key={ii} style={{fontSize:12,color:'#374151',lineHeight:18}}>• {ing}</Text>)}
-                          </>}
-                          {opt.steps.length > 0 && <>
-                            <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginTop:6,marginBottom:2}}>Method</Text>
-                            {opt.steps.map((st,si) => <Text key={si} style={{fontSize:12,color:'#374151',lineHeight:18}}>{si+1}. {st}</Text>)}
-                          </>}
-                        </View>
-                      )}
-                    </View>
-                    <TouchableOpacity onPress={() => setExpandedRecipes(prev => ({...prev,[recKey]:!prev[recKey]}))} hitSlop={{top:8,bottom:8,left:8,right:8}}>
-                      <Text style={{fontSize:11,color:'#5A7A8A',fontWeight:'600'}}>{isExp ? '▲' : '▼'}</Text>
+                  <View key={optIdx} style={{
+                    backgroundColor: isSel ? 'rgba(27,58,92,0.06)' : 'rgba(255,255,255,0.95)',
+                    borderRadius:14,padding:14,marginBottom:8,
+                    borderWidth:2,borderColor: isSel ? navy : '#E5E7EB',
+                  }}>
+                    {/* Main tap area: radio + dish name + option # */}
+                    <TouchableOpacity
+                      style={{flexDirection:'row',alignItems:'flex-start',gap:10}}
+                      onPress={() => setSelections((prev) => ({
+                        ...prev,
+                        [activeDay]: { ...(prev[activeDay] ?? {}), [key]: optIdx },
+                      }))}
+                      activeOpacity={0.8}
+                    >
+                      <View style={{width:24,height:24,borderRadius:12,borderWidth:2.5,borderColor: isSel ? navy : '#D1D5DB',alignItems:'center',justifyContent:'center',marginTop:2}}>
+                        {isSel && <View style={{width:13,height:13,borderRadius:7,backgroundColor:navy}} />}
+                      </View>
+                      <View style={{flex:1}}>
+                        <Text style={{fontSize:16,fontWeight:'700',color: isSel ? navy : '#1F2937',lineHeight:22}}>{opt.name}</Text>
+                        {isThali && opt.description && opt.description.includes(' | ') && (
+                          <Text style={{fontSize:11,color:'#5A7A8A',marginTop:2,lineHeight:16}}>
+                            {opt.description.split(' | ').map(c => c.split(':')[0].trim()).join(' · ')}
+                          </Text>
+                        )}
+                        {opt.tags.length > 0 && (
+                          <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:4}}>
+                            {opt.tags.slice(0,4).map(tag => (
+                              <Text key={tag} style={{fontSize:10,fontWeight:'600',color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:7,paddingVertical:2,borderRadius:8}}>{tag}</Text>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{fontSize:13,fontWeight:'700',color: isSel ? navy : '#9CA3AF',marginTop:2}}>#{optIdx + 1}</Text>
                     </TouchableOpacity>
-                  </TouchableOpacity>
+
+                    {/* View Recipe toggle */}
+                    <TouchableOpacity
+                      style={{marginTop:8,paddingTop:8,borderTopWidth:1,borderTopColor:'#F3F4F6',alignItems:'center'}}
+                      onPress={() => setExpandedRecipes(prev => ({...prev,[recKey]:!prev[recKey]}))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{fontSize:12,fontWeight:'600',color:'#5A7A8A'}}>{isExp ? '▲ Hide Recipe' : '▼ View Recipe'}</Text>
+                    </TouchableOpacity>
+
+                    {isExp && (
+                      <View style={{marginTop:8}}>
+                        {isThali && opt.description && <ThaliDetails description={opt.description} />}
+                        {opt.ingredients.length > 0 && <>
+                          <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginBottom:2,marginTop:isThali ? 8 : 0}}>Ingredients</Text>
+                          {opt.ingredients.map((ing,ii) => <Text key={ii} style={{fontSize:12,color:'#374151',lineHeight:18}}>• {ing}</Text>)}
+                        </>}
+                        {opt.steps.length > 0 && <>
+                          <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginTop:6,marginBottom:2}}>Method</Text>
+                          {opt.steps.map((st,si) => <Text key={si} style={{fontSize:12,color:'#374151',lineHeight:18}}>{si+1}. {st}</Text>)}
+                        </>}
+                      </View>
+                    )}
+                  </View>
                 );
               })}
             </View>
@@ -1478,68 +1487,87 @@ export default function MealWizardScreen() {
     const SLOT_LABELS: { key: MealSlotKey; label: string }[] = [
       { key: 'breakfast', label: 'Breakfast' },
       { key: 'lunch', label: 'Lunch' },
-      { key: 'snack', label: 'Snack' },
+      { key: 'snack', label: 'Evening Snack' },
       { key: 'dinner', label: 'Dinner' },
     ];
     const slotsToShow = SLOT_LABELS.filter(sl =>
       (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) &&
       (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
     );
-    const COL_W = 120;
+    const COL_W = 130;
+    const BORDER = '#1B3A5C';
+    const dateRange = selectedFrom && selectedTo
+      ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`
+      : '';
+
+    function doPrint() {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.print();
+      }
+    }
 
     return (
-      <View>
-        <Text style={s.stepTitle}>Your Meal Plan</Text>
-        {selectedFrom && selectedTo && (
-          <Text style={s.stepSub}>
-            {selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`}
-            {servingsCount > 0 ? ` · ${servingsCount} people` : ''}
-          </Text>
+      <View style={{maxWidth:794,width:'100%',alignSelf:'center'}}>
+        {/* Print-only CSS */}
+        {Platform.OS === 'web' && (
+          <View>
+            <Text style={{display:'none'}}>{`
+              <style>@media print { .no-print { display: none !important; } body { margin: 0; } @page { size: A4 landscape; margin: 10mm; } }</style>
+            `}</Text>
+          </View>
         )}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{marginTop:12}}>
-          <View>
+        {/* Header */}
+        <View style={{alignItems:'center',marginBottom:16}}>
+          <Text style={{fontSize:22,fontWeight:'800',color:navy}}>My Maharaj — Weekly Meal Plan</Text>
+          <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4}}>{dateRange}{servingsCount > 0 ? ` · Cooking for ${servingsCount} people` : ''}</Text>
+        </View>
+
+        {/* Print button */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity style={{position:'absolute',top:0,right:0,paddingHorizontal:14,paddingVertical:8,borderRadius:8,backgroundColor:'rgba(27,58,92,0.1)'}} onPress={doPrint}>
+            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Print / PDF</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Table */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+          <View style={{borderWidth:1,borderColor:BORDER,borderRadius:4,overflow:'hidden'}}>
             {/* Header row */}
             <View style={{flexDirection:'row'}}>
-              <View style={{width:80,padding:8,backgroundColor:'#1B3A5C',borderTopLeftRadius:10}}>
-                <Text style={{fontSize:11,fontWeight:'700',color:white}}>Meal</Text>
+              <View style={{width:90,padding:10,backgroundColor:BORDER,justifyContent:'center'}}>
+                <Text style={{fontSize:12,fontWeight:'800',color:white}}>Meal</Text>
               </View>
-              {generatedPlan.map((day, i) => {
-                const short = day.day.substring(0,3);
-                const dd = day.date.split('-')[2];
+              {generatedPlan.map((day) => {
+                const d = new Date(day.date);
+                const label = `${day.day.substring(0,3)} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
                 return (
-                  <View key={day.date} style={{width:COL_W,padding:8,backgroundColor:'#1B3A5C',borderTopRightRadius: i === generatedPlan.length - 1 ? 10 : 0}}>
-                    <Text style={{fontSize:11,fontWeight:'700',color:white,textAlign:'center'}}>{short} {dd}</Text>
+                  <View key={day.date} style={{width:COL_W,padding:10,backgroundColor:BORDER,borderLeftWidth:1,borderLeftColor:'rgba(255,255,255,0.2)'}}>
+                    <Text style={{fontSize:11,fontWeight:'700',color:white,textAlign:'center'}}>{label}</Text>
                   </View>
                 );
               })}
             </View>
 
-            {/* Slot rows */}
+            {/* Data rows */}
             {slotsToShow.map(({ key, label }, slotIdx) => (
-              <View key={key} style={{flexDirection:'row',borderBottomWidth:1,borderBottomColor:'#E5E7EB'}}>
-                <View style={{width:80,padding:8,backgroundColor:'rgba(27,58,92,0.05)',justifyContent:'center'}}>
-                  <Text style={{fontSize:11,fontWeight:'700',color:navy}}>{label}</Text>
+              <View key={key} style={{flexDirection:'row',borderTopWidth:1,borderTopColor:BORDER}}>
+                <View style={{width:90,padding:10,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,justifyContent:'center',borderRightWidth:1,borderRightColor:BORDER}}>
+                  <Text style={{fontSize:11,fontWeight:'800',color:navy}}>{label}</Text>
                 </View>
                 {generatedPlan.map((day, dayIdx) => {
                   const opt = getOpt(dayIdx, key);
                   const isThali = opt?.name?.toLowerCase().includes('thali');
-                  const [expanded, setExpanded] = [expandedRecipes[`summary-${dayIdx}-${key}`], (v: boolean) => setExpandedRecipes(prev => ({...prev,[`summary-${dayIdx}-${key}`]:v}))];
+                  const thaliSummary = isThali && opt?.description?.includes(' | ')
+                    ? opt.description.split(' | ').map(c => c.split(':')[0].trim()).join(' · ')
+                    : null;
                   return (
-                    <TouchableOpacity
-                      key={day.date}
-                      style={{width:COL_W,padding:6,backgroundColor: slotIdx % 2 === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(245,247,250,0.9)'}}
-                      onPress={() => isThali && setExpanded(!expanded)}
-                      activeOpacity={isThali ? 0.7 : 1}
-                    >
-                      <Text style={{fontSize:11,fontWeight:'600',color:'#374151',lineHeight:15}} numberOfLines={expanded ? undefined : 2}>
-                        {opt?.name ?? '—'}
-                      </Text>
-                      {isThali && <Text style={{fontSize:9,color:'#5A7A8A',marginTop:1}}>{expanded ? '▲ hide' : '▼ details'}</Text>}
-                      {isThali && expanded && opt?.description && (
-                        <ThaliDetails description={opt.description} />
+                    <View key={day.date} style={{width:COL_W,padding:8,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,borderLeftWidth:1,borderLeftColor:'#D1D5DB'}}>
+                      <Text style={{fontSize:11,fontWeight:'700',color:'#1F2937',lineHeight:15}}>{opt?.name ?? '—'}</Text>
+                      {thaliSummary && (
+                        <Text style={{fontSize:9,color:'#5A7A8A',marginTop:2,lineHeight:12}}>{thaliSummary}</Text>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   );
                 })}
               </View>
@@ -1547,8 +1575,11 @@ export default function MealWizardScreen() {
           </View>
         </ScrollView>
 
+        {/* Watermark */}
+        <Text style={{textAlign:'center',fontSize:10,color:'#D1D5DB',marginTop:12,fontStyle:'italic'}}>Generated by My Maharaj</Text>
+
         {/* Action buttons */}
-        <View style={{flexDirection:'row',gap:8,marginTop:16}}>
+        <View style={{flexDirection:'row',gap:8,marginTop:20}}>
           <TouchableOpacity
             style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}}
             onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}
@@ -1556,16 +1587,10 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}}
+            style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}}
             onPress={() => advance('cook-or-order')}
           >
-            <Text style={{fontSize:13,fontWeight:'700',color:white}}>Cook at Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:'#1A6B3C',alignItems:'center'}}
-            onPress={() => router.push('/order-out' as never)}
-          >
-            <Text style={{fontSize:13,fontWeight:'700',color:white}}>Order Out</Text>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Continue</Text>
           </TouchableOpacity>
         </View>
       </View>
