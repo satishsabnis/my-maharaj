@@ -62,6 +62,7 @@ export default function OutdoorCateringScreen() {
   );
 
   async function generateMenu() {
+    setMenu(null);
     setError('');
     const g = parseInt(guests, 10);
     const b = parseInt(budget, 10);
@@ -69,6 +70,7 @@ export default function OutdoorCateringScreen() {
     if (!b || b < 1) { setError('Enter a valid budget per head.'); return; }
     setLoading(true);
     try {
+      // Call 1: menu without beverages
       const prompt = `You are Maharaj, expert Indian chef specialising in outdoor catering.
 Generate an outdoor catering menu for:
 - Event: ${eventType}, Guests: ${g}, Food: ${foodType}
@@ -77,12 +79,9 @@ Generate an outdoor catering menu for:
 - ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
 Focus on food that travels well, stays fresh outdoors and suits the weather.
 Respond ONLY with this exact JSON structure - no other text, no markdown:
-{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":["string"]}
-Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include water, fresh juices and refreshing drinks. The key MUST be "beverages" not "drinks".
-CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.
-You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`;
+{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":["string"]}
+Include 3-5 items per section.`;
       const rawText = await callClaude(prompt);
-      console.log('RAW RESPONSE FIRST 300 CHARS:', rawText.substring(0, 300));
 
       let parsed: OutdoorMenu;
       try {
@@ -92,18 +91,25 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         throw new Error('Failed to parse menu response');
       }
 
-      // Force beverages - never rely on AI returning them
-      parsed.beverages = parsed.beverages?.length > 0 ? parsed.beverages :
-        (parsed as any).drinks?.length > 0 ? (parsed as any).drinks : [
-          { name: 'Fresh Lime Soda', description: 'Chilled with soda water and mint' },
-          { name: 'Mango Lassi', description: 'Sweet mango blended with yogurt' },
-          { name: 'Mineral Water', description: 'Still and sparkling options' },
-          { name: 'Masala Chai', description: 'Spiced Indian tea with milk' },
+      // Call 2: separate beverages call
+      try {
+        const bevPrompt = `Generate exactly 4 refreshing beverages suitable for an outdoor ${eventType} with ${g} guests in ${weather} weather in ${loc.city}. Return ONLY this JSON array: [{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."}]`;
+        const bevRaw = await callClaude(bevPrompt);
+        const bevMatch = bevRaw.match(/\[[\s\S]*\]/);
+        parsed.beverages = bevMatch ? JSON.parse(bevMatch[0]) : [];
+      } catch { parsed.beverages = []; }
+
+      // Fallback if second call also failed
+      if (!parsed.beverages || parsed.beverages.length === 0) {
+        parsed.beverages = [
+          { name: 'Fresh Lime Soda', description: 'Chilled with mint' },
+          { name: 'Mango Lassi', description: 'Sweet yogurt drink' },
+          { name: 'Mineral Water', description: 'Still and sparkling' },
+          { name: 'Masala Chai', description: 'Spiced Indian tea' },
         ];
-      console.log('[OutdoorCatering] menu set:', JSON.stringify(parsed).substring(0, 200));
-      console.log('[OutdoorCatering] beverages count:', parsed.beverages?.length);
+      }
+
       setMenu(parsed);
-      console.log('[OutdoorCatering] step changing to result');
       setStep('result');
     } catch (err) { console.error('[OutdoorCatering] generateMenu error:', err); setError('Failed to generate menu. Please try again.'); }
     finally { setLoading(false); }

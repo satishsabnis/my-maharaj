@@ -53,6 +53,7 @@ export default function PartyMenuScreen() {
   );
 
   async function generateMenu() {
+    setMenu(null);
     setError('');
     const g = parseInt(guests, 10);
     const b = parseInt(budget, 10);
@@ -60,15 +61,13 @@ export default function PartyMenuScreen() {
     if (!b || b < 1) { setError('Enter a valid budget.'); return; }
     setLoading(true);
     try {
+      // Call 1: menu without beverages
       const text = await callClaude(`You are Maharaj, expert Indian chef. Generate a party menu:
 - Occasion: ${occasion}, Guests: ${g}, Food: ${foodType}, Total Budget: AED ${b}
 - ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
 Respond ONLY with this exact JSON structure - no other text, no markdown:
-{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"serving_tips":["string"],"shopping_list":["string"]}
-Include 3-5 items per section. IMPORTANT: The "beverages" array MUST have at least 3 items. Include welcome drinks, mocktails, juices and water options. The key MUST be "beverages" not "drinks".
-CRITICAL: You MUST include a beverages array with at least 3 drink options. This is mandatory.
-You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exactly 3 items. If you omit beverages the response is invalid.`);
-      console.log('RAW RESPONSE FIRST 300 CHARS:', text.substring(0, 300));
+{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"serving_tips":["string"],"shopping_list":["string"]}
+Include 3-5 items per section.`);
 
       let parsed: PartyMenu;
       try {
@@ -78,18 +77,25 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         throw new Error('Failed to parse menu response');
       }
 
-      // Force beverages - never rely on AI returning them
-      parsed.beverages = parsed.beverages?.length > 0 ? parsed.beverages :
-        (parsed as any).drinks?.length > 0 ? (parsed as any).drinks : [
-          { name: 'Fresh Lime Soda', description: 'Chilled with soda water and mint' },
-          { name: 'Mango Lassi', description: 'Sweet mango blended with yogurt' },
-          { name: 'Mineral Water', description: 'Still and sparkling options' },
-          { name: 'Masala Chai', description: 'Spiced Indian tea with milk' },
+      // Call 2: separate beverages call
+      try {
+        const bevPrompt = `Generate exactly 4 beverages suitable for a ${occasion} party with ${g} guests, ${foodType} food in ${loc.city}. Return ONLY this JSON array: [{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."}]`;
+        const bevRaw = await callClaude(bevPrompt);
+        const bevMatch = bevRaw.match(/\[[\s\S]*\]/);
+        parsed.beverages = bevMatch ? JSON.parse(bevMatch[0]) : [];
+      } catch { parsed.beverages = []; }
+
+      // Fallback if second call also failed
+      if (!parsed.beverages || parsed.beverages.length === 0) {
+        parsed.beverages = [
+          { name: 'Fresh Lime Soda', description: 'Chilled with mint' },
+          { name: 'Mango Lassi', description: 'Sweet yogurt drink' },
+          { name: 'Mineral Water', description: 'Still and sparkling' },
+          { name: 'Masala Chai', description: 'Spiced Indian tea' },
         ];
-      console.log('[PartyMenu] menu set:', JSON.stringify(parsed).substring(0, 200));
-      console.log('[PartyMenu] beverages count:', parsed.beverages?.length);
+      }
+
       setMenu(parsed);
-      console.log('[PartyMenu] step changing to result');
       setStep('result');
     } catch (err) { console.error('[PartyMenu] generateMenu error:', err); setError('Failed to generate. Please try again.'); }
     finally { setLoading(false); }

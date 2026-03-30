@@ -18,21 +18,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Automatically refreshes the session if the first attempt returns no user.
 
 export async function getSessionUser() {
-  // Attempt 1: getSession from local storage
-  const { data: { session }, error: sessErr } = await supabase.auth.getSession();
-  console.log('[getSessionUser] getSession result:', session ? `user=${session.user?.id}` : 'null', sessErr ? `err=${sessErr.message}` : '');
-  if (session?.user) return session.user;
+  // Attempt 1: getSession - reads from local storage / memory
+  const { data } = await supabase.auth.getSession();
+  const user = data?.session?.user;
+  if (user) return user;
 
-  // Attempt 2: refresh the token
-  console.log('[getSessionUser] No session, trying refreshSession...');
-  const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
-  console.log('[getSessionUser] refreshSession result:', refreshData?.session ? `user=${refreshData.session.user?.id}` : 'null', refreshErr ? `err=${refreshErr.message}` : '');
-  if (refreshData?.session?.user) return refreshData.session.user;
-
-  // Attempt 3: getSession again after refresh
-  const { data: { session: retrySession } } = await supabase.auth.getSession();
-  console.log('[getSessionUser] retry getSession:', retrySession ? `user=${retrySession.user?.id}` : 'null');
-  return retrySession?.user ?? null;
+  // Attempt 2: refresh token then retry
+  await supabase.auth.refreshSession();
+  const { data: retried } = await supabase.auth.getSession();
+  return retried?.session?.user ?? null;
 }
 
 // ─── Security helper ──────────────────────────────────────────────────────────
