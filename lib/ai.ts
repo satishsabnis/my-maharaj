@@ -165,11 +165,47 @@ If only Eggs selected - ONLY egg dishes. If only Fish - ONLY fish dishes. If onl
     ? ' CRITICAL: At least one option MUST be a real non-veg dish with the allowed proteins only.'
     : '';
 
-  // Meal constraint from page 4 prefs
-  const constraintStr = mealConstraint ? `\nMEAL CONSTRAINT: ${mealConstraint}` : '';
+  // Build strict mandatory constraint from page 4 prefs
+  let mandatoryInstruction = '';
+  if (mealConstraint) {
+    if (mealConstraint.includes('Full Thali') || mealConstraint.includes('FULL THALI')) {
+      mandatoryInstruction = `MANDATORY INSTRUCTION - THIS OVERRIDES ALL OTHER INSTRUCTIONS:
+Generate a COMPLETE TRADITIONAL FULL THALI. A Full Thali is NOT a single dish.
+A Full Thali MUST contain ALL of the following components:
+1. Dal — one lentil/pulse dish (e.g. Dal Tadka, Rasam, Sambhar)
+2. Sabzi — one or two vegetable dishes (e.g. Aloo Gobi, Bhindi, Palak)
+3. Rice — steamed or flavoured rice dish
+4. Roti/Bread — phulka, chapati, puri or regional bread
+5. Raita or Curd — yogurt-based accompaniment
+6. Papad — roasted or fried
+7. Pickle/Achar — one condiment
+8. Dessert/Meetha — one sweet dish (e.g. Kheer, Halwa, Gulab Jamun)
+9. Drink/Sharbat — one beverage (e.g. Chaas, Lassi, Nimbu Pani)
+
+The dish name MUST be '[Cuisine] Full Thali' e.g. 'Maharashtrian Full Thali'.
+The description MUST list all components separated by commas.
+Do NOT generate a single dish for Full Thali. This is non-negotiable.
+`;
+    }
+    if (mealConstraint.includes('Rice based')) {
+      mandatoryInstruction += 'MANDATORY: Generate a rice-based dish only. No roti or bread in this meal.\n';
+    }
+    if (mealConstraint.includes('Roti based')) {
+      mandatoryInstruction += 'MANDATORY: Generate a roti or bread-based meal only. No rice.\n';
+    }
+    if (mealConstraint.includes('Light only')) {
+      mandatoryInstruction += 'MANDATORY: Generate a very light meal — khichdi, soup, or simple salad only. No heavy curries or fried food.\n';
+    }
+    if (mealConstraint.includes('Egg')) {
+      mandatoryInstruction += 'MANDATORY: Egg-based dishes only for this meal.\n';
+    }
+    if (mealConstraint.includes('Fruit')) {
+      mandatoryInstruction += 'MANDATORY: Fruit-based meal only.\n';
+    }
+  }
 
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
-  const prompt = `You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
+  const prompt = `${mandatoryInstruction}You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
 Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
 
 Variation seed: ${variationSeed}
@@ -179,7 +215,7 @@ Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
 Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
-${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}${constraintStr}
+${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}
 
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
