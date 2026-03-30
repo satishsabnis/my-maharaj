@@ -75,7 +75,6 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         const match = text.match(/\{[\s\S]*\}/);
         parsed = JSON.parse(match ? match[0] : text) as PartyMenu;
       } catch(e) {
-        console.error('JSON parse failed:', e);
         throw new Error('Failed to parse menu response');
       }
 
