@@ -198,13 +198,15 @@ export default function MealWizardScreen() {
         }
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,veg_days')
         .eq('id', userId).maybeSingle();
+      if (profileErr) console.error('[MealWizard] profile query error:', profileErr.message);
 
-      const { data: memberRows } = await supabase
+      const { data: memberRows, error: memberErr } = await supabase
         .from('family_members').select('health_notes').eq('user_id', userId);
+      if (memberErr) console.error('[MealWizard] family_members query error:', memberErr.message);
 
       const hf = emptyHealthFlags();
       (memberRows ?? []).forEach((m: { health_notes: string | null }) => {
@@ -222,29 +224,35 @@ export default function MealWizardScreen() {
         if (notes.includes('gluten'))   hf.glutenIntolerant = true;
       });
 
-      const { data: cuisineData } = await supabase
+      const { data: cuisineData, error: cuisineErr } = await supabase
         .from('cuisine_preferences').select('cuisine_name')
         .eq('user_id', userId).eq('is_excluded', false);
+      if (cuisineErr) console.error('[MealWizard] cuisine_preferences query error:', cuisineErr.message);
       const cuisines = (cuisineData ?? []).map((r: { cuisine_name: string }) => r.cuisine_name);
       const cuisine  = cuisines.length > 0 ? cuisines[Math.floor(Math.random() * cuisines.length)] : 'Konkani';
-      console.log('[MealWizard] Cuisine for generation:', cuisine, 'All saved:', cuisines, 'Extra:', extraCuisines);
 
       const since = toYMD(addDays(new Date(), -14));
-      const { data: historyData } = await supabase
+      const { data: historyData, error: historyErr } = await supabase
         .from('dish_history').select('dish_name')
         .eq('user_id', userId).gte('served_date', since);
+      if (historyErr) console.error('[MealWizard] dish_history query error:', historyErr.message);
       const dishHistory = (historyData ?? []).map((r: { dish_name: string }) => r.dish_name);
 
       const unwellNames = familyMembers.filter((m) => unwellIds.includes(m.id)).map((m) => m.name);
 
-      // Family member count for servings
-      const { data: members } = await supabase.from('family_members')
+      // Family member count for servings - ensure plain numbers
+      const { data: members, error: membersErr } = await supabase.from('family_members')
         .select('id').eq('user_id', userId);
+      if (membersErr) console.error('[MealWizard] family_members count error:', membersErr.message);
       const familyCount = members?.length ?? 1;
       const presentCount = presentMembers.length > 0 ? presentMembers.length : familyCount;
-      const totalServings = presentCount + guestCount;
-      console.log('[MealWizard] Servings:', { familyCount, presentCount, guestCount, totalServings });
+      const totalServings = Number(presentCount) + Number(guestCount);
+      console.log('[MealWizard] totalServings:', totalServings, typeof totalServings);
       setServingsCount(totalServings);
+
+      // Ensure slots is never empty - default to breakfast/lunch/dinner
+      const slotsToUse = selectedSlots.length > 0 ? selectedSlots : ['breakfast', 'lunch', 'dinner'];
+      console.log('[MealWizard] slotsToUse:', slotsToUse);
 
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
@@ -286,7 +294,7 @@ export default function MealWizardScreen() {
         includeDessert,
         locationCity: userLocation.city,
         locationStores: userLocation.stores,
-        selectedSlots,
+        selectedSlots: slotsToUse,
       }, (current, total) => setGeneratingProgress({ current, total }));
 
       const defaultSel: Record<number, Record<MealSlotKey, number>> = {};
