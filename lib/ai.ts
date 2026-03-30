@@ -240,7 +240,7 @@ IMPORTANT RULES:
 - NEVER repeat any dish that appears in the history list above
 - The ${mealType} options must be DIFFERENT from what would be served at other meals today
 - For fasting: breakfast dishes (sabudana khichdi, fruit bowl, rajgira paratha) must differ from lunch (sama rice, vrat ki sabzi, kuttu paratha) and dinner (sabudana vada, makhana kheer, singhare ki puri)
-- Include 5-8 real ingredients with quantities (e.g. "Flattened rice 200g", "Onion 1 medium")
+- MANDATORY: Each option MUST include a non-empty "ing" array with 6-15 ingredients. Format: "[item] [qty][unit]" e.g. "Basmati rice 200g", "Onion 2 medium", "Coriander leaves 1 bunch". An empty ingredients array is INVALID and will be rejected.
 - Include 4-6 clear cooking steps
 - Tags: vegetarian/non-vegetarian, plus relevant health tags
 
@@ -252,14 +252,21 @@ Reply ONLY with this JSON (no other text, no markdown):
     const raw = JSON.parse(text) as {
       options: Array<{ name: string; desc?: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
     };
-    const opts = (raw.options ?? []).map((o) => ({
-      name: o.name ?? '',
-      description: o.desc ?? undefined,
-      vegetarian: o.veg ?? true,
-      tags: o.tags ?? [],
-      ingredients: o.ing ?? [],
-      steps: o.steps ?? [],
-    }));
+    const opts = (raw.options ?? []).map((o) => {
+      let ingredients = o.ing ?? [];
+      if (ingredients.length === 0) {
+        console.warn(`[generateOneMeal] Empty ingredients for "${o.name}" — adding placeholders`);
+        ingredients = ['Oil 2 tbsp', 'Salt to taste', 'Onion 2 medium', 'Tomato 2 medium', 'Green chilli 2', 'Ginger-garlic paste 1 tbsp'];
+      }
+      return {
+        name: o.name ?? '',
+        description: o.desc ?? undefined,
+        vegetarian: o.veg ?? true,
+        tags: o.tags ?? [],
+        ingredients,
+        steps: o.steps ?? [],
+      };
+    });
     if (opts.length === 0) return fallbackSlot(mealType, dayIdx);
     return { options: opts };
   } catch {
