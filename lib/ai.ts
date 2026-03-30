@@ -184,9 +184,9 @@ A Full Thali MUST contain ALL of the following components:
 9. Drink/Sharbat — one beverage (e.g. Chaas, Lassi, Nimbu Pani)
 
 The dish name MUST be '[Cuisine] Full Thali' e.g. 'Maharashtrian Full Thali'.
-The description MUST use this EXACT pipe-separated format:
-"Dal: [name] | Sabzi: [name] | Rice: [type] | Bread: [type] | Raita: [type] | Papad | Pickle: [type] | Dessert: [name] | Drink: [name]"
-Example: "Dal: Masoor Dal Tadka | Sabzi: Bharli Vangi, Batata Bhaji | Rice: Steamed Basmati | Bread: Phulka | Raita: Koshimbir | Papad | Pickle: Mango Pickle | Dessert: Puran Poli | Drink: Sol Kadhi"
+The "desc" field MUST use this EXACT pipe-separated format with REAL dish names:
+"Dal: Masoor Dal Tadka | Sabzi: Bhindi Masala | Rice: Steamed Basmati Rice | Bread: Ragi Roti | Raita: Cucumber Raita | Papad: Roasted Urad Papad | Pickle: Mango Pickle | Dessert: Gulab Jamun | Drink: Masala Chaas"
+Use REAL authentic dish names for each component, not generic labels. Every component MUST have a specific dish name after the colon.
 Do NOT generate a single dish for Full Thali. This is non-negotiable.
 `;
     }
@@ -207,8 +207,19 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
     }
   }
 
+  const slotRules: Record<string, string> = {
+    breakfast: 'BREAKFAST: Light morning meal. Examples: Pohe, Upma, Idli, Thepla, Paratha, Eggs, Fruits, Smoothie. NEVER suggest rice-based lunch dishes or heavy curries.',
+    lunch: 'LUNCH: Main meal of the day. Can be substantial. Full Thali is appropriate here.',
+    dinner: 'DINNER: Moderate evening meal. Lighter than lunch but not as light as snack. Dal-rice, roti-sabzi, biryani etc.',
+    snack: 'EVENING SNACK: Very light. Tea, coffee, biscuits, chaat, sandwich, fruit only. NOT a meal.',
+  };
+  const slotRule = slotRules[mealType] ?? '';
+
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
-  const prompt = `${mandatoryInstruction}You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
+  const prompt = `You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
+STRICT RULE: Do NOT suggest a breakfast item for lunch/dinner. Do NOT suggest a lunch item for evening snack. Each meal type has its own appropriate dishes.
+
+${mandatoryInstruction}You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
 Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
 
 Variation seed: ${variationSeed}

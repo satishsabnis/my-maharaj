@@ -1069,68 +1069,40 @@ export default function MealWizardScreen() {
               <Text style={{fontSize:13,fontWeight:'700',color:'#5A7A8A',marginBottom:6}}>{icon} {label}</Text>
               {slotData.options.map((opt, optIdx) => {
                 const isSel = selections[activeDay]?.[key] === optIdx;
-                const recKey = `${activeDay}-${key}-${optIdx}`;
-                const isExp = expandedRecipes[recKey];
                 const isThali = opt.name.toLowerCase().includes('thali');
                 return (
-                  <View key={optIdx} style={{
-                    backgroundColor: isSel ? 'rgba(27,58,92,0.06)' : 'rgba(255,255,255,0.95)',
-                    borderRadius:14,padding:14,marginBottom:8,
-                    borderWidth:2,borderColor: isSel ? navy : '#E5E7EB',
-                  }}>
-                    {/* Main tap area: radio + dish name + option # */}
-                    <TouchableOpacity
-                      style={{flexDirection:'row',alignItems:'flex-start',gap:10}}
-                      onPress={() => setSelections((prev) => ({
-                        ...prev,
-                        [activeDay]: { ...(prev[activeDay] ?? {}), [key]: optIdx },
-                      }))}
-                      activeOpacity={0.8}
-                    >
-                      <View style={{width:24,height:24,borderRadius:12,borderWidth:2.5,borderColor: isSel ? navy : '#D1D5DB',alignItems:'center',justifyContent:'center',marginTop:2}}>
-                        {isSel && <View style={{width:13,height:13,borderRadius:7,backgroundColor:navy}} />}
-                      </View>
-                      <View style={{flex:1}}>
-                        <Text style={{fontSize:16,fontWeight:'700',color: isSel ? navy : '#1F2937',lineHeight:22}}>{opt.name}</Text>
-                        {isThali && opt.description && opt.description.includes(' | ') && (
-                          <Text style={{fontSize:11,color:'#5A7A8A',marginTop:2,lineHeight:16}}>
-                            {opt.description.split(' | ').map(c => c.split(':')[0].trim()).join(' · ')}
-                          </Text>
-                        )}
-                        {opt.tags.length > 0 && (
-                          <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:4}}>
-                            {opt.tags.slice(0,4).map(tag => (
-                              <Text key={tag} style={{fontSize:10,fontWeight:'600',color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:7,paddingVertical:2,borderRadius:8}}>{tag}</Text>
-                            ))}
-                          </View>
-                        )}
-                      </View>
-                      <Text style={{fontSize:13,fontWeight:'700',color: isSel ? navy : '#9CA3AF',marginTop:2}}>#{optIdx + 1}</Text>
-                    </TouchableOpacity>
-
-                    {/* View Recipe toggle */}
-                    <TouchableOpacity
-                      style={{marginTop:8,paddingTop:8,borderTopWidth:1,borderTopColor:'#F3F4F6',alignItems:'center'}}
-                      onPress={() => setExpandedRecipes(prev => ({...prev,[recKey]:!prev[recKey]}))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={{fontSize:12,fontWeight:'600',color:'#5A7A8A'}}>{isExp ? '▲ Hide Recipe' : '▼ View Recipe'}</Text>
-                    </TouchableOpacity>
-
-                    {isExp && (
-                      <View style={{marginTop:8}}>
-                        {isThali && opt.description && <ThaliDetails description={opt.description} />}
-                        {opt.ingredients.length > 0 && <>
-                          <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginBottom:2,marginTop:isThali ? 8 : 0}}>Ingredients</Text>
-                          {opt.ingredients.map((ing,ii) => <Text key={ii} style={{fontSize:12,color:'#374151',lineHeight:18}}>• {ing}</Text>)}
-                        </>}
-                        {opt.steps.length > 0 && <>
-                          <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginTop:6,marginBottom:2}}>Method</Text>
-                          {opt.steps.map((st,si) => <Text key={si} style={{fontSize:12,color:'#374151',lineHeight:18}}>{si+1}. {st}</Text>)}
-                        </>}
-                      </View>
-                    )}
-                  </View>
+                  <TouchableOpacity
+                    key={optIdx}
+                    style={{
+                      flexDirection:'row',alignItems:'flex-start',gap:10,
+                      backgroundColor: isSel ? 'rgba(27,58,92,0.06)' : 'rgba(255,255,255,0.95)',
+                      borderRadius:14,padding:14,marginBottom:8,
+                      borderWidth:2,borderColor: isSel ? navy : '#E5E7EB',
+                    }}
+                    onPress={() => setSelections((prev) => ({
+                      ...prev,
+                      [activeDay]: { ...(prev[activeDay] ?? {}), [key]: optIdx },
+                    }))}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{width:24,height:24,borderRadius:12,borderWidth:2.5,borderColor: isSel ? navy : '#D1D5DB',alignItems:'center',justifyContent:'center',marginTop:2}}>
+                      {isSel && <View style={{width:13,height:13,borderRadius:7,backgroundColor:navy}} />}
+                    </View>
+                    <View style={{flex:1}}>
+                      <Text style={{fontSize:16,fontWeight:'700',color: isSel ? navy : '#1F2937',lineHeight:22}}>{opt.name}</Text>
+                      {isThali && opt.description && opt.description.includes(' | ') && (
+                        <ThaliDetails description={opt.description} />
+                      )}
+                      {opt.tags.length > 0 && (
+                        <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:4}}>
+                          {opt.tags.slice(0,4).map(tag => (
+                            <Text key={tag} style={{fontSize:10,fontWeight:'600',color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:7,paddingVertical:2,borderRadius:8}}>{tag}</Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{fontSize:13,fontWeight:'700',color: isSel ? navy : '#9CA3AF',marginTop:2}}>#{optIdx + 1}</Text>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -1162,9 +1134,10 @@ export default function MealWizardScreen() {
 
   function renderRecipes() {
     if (!generatedPlan) return null;
+    const slotsForRecipes = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
     const allDishes: string[] = [];
     generatedPlan.forEach((_, i) =>
-      (['breakfast','lunch','dinner'] as MealSlotKey[]).forEach((slot) => {
+      slotsForRecipes.forEach((slot) => {
         const opt = getOpt(i, slot);
         if (opt && !allDishes.includes(opt.name)) allDishes.push(opt.name);
       })
@@ -1193,7 +1166,7 @@ export default function MealWizardScreen() {
         </View>
 
         {selected.length > 0 && generatedPlan.flatMap((day, dayIdx) =>
-          (['breakfast','lunch','dinner'] as MealSlotKey[]).map((slot) => {
+          slotsForRecipes.map((slot) => {
             const opt = getOpt(dayIdx, slot);
             if (!opt || !selected.includes(opt.name)) return null;
             return (
