@@ -128,6 +128,7 @@ export default function MealWizardScreen() {
   const [selections,      setSelections]      = useState<Record<number, Record<MealSlotKey, number>>>({});
   const [expandedDays,    setExpandedDays]    = useState<Record<number, boolean>>({ 0: true });
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
+  const [activeDay,       setActiveDay]       = useState(0);
 
   // Post-selection
   const [recipeDishes, setRecipeDishes] = useState<string[]>([]);
@@ -265,6 +266,8 @@ export default function MealWizardScreen() {
           vegType:       vegType ?? undefined,
           nonVegOptions: nonVegOpts.length > 0 ? nonVegOpts : undefined,
         },
+        allowedProteins: nonVegOpts.length > 0 ? nonVegOpts : undefined,
+        isMixed,
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: [nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
         vegDays:        profile?.veg_days ?? [],
@@ -291,6 +294,7 @@ export default function MealWizardScreen() {
       plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
       setGeneratedPlan(plan.days);
       setSelections(defaultSel);
+      setActiveDay(0);
       setStep('selection');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
@@ -982,127 +986,135 @@ export default function MealWizardScreen() {
   function renderSelection() {
     if (!generatedPlan) return null;
     const allSlots: { key: MealSlotKey; icon: string; label: string }[] = [
-      { key: 'breakfast', icon: '', label: 'Breakfast' },
-      { key: 'lunch',     icon: '', label: 'Lunch'     },
-      { key: 'snack',     icon: '', label: 'Evening Snack' },
-      { key: 'dinner',    icon: '', label: 'Dinner'    },
+      { key: 'breakfast', icon: '🌅', label: 'Breakfast' },
+      { key: 'lunch',     icon: '☀️', label: 'Lunch'     },
+      { key: 'snack',     icon: '🍵', label: 'Snack'     },
+      { key: 'dinner',    icon: '🌙', label: 'Dinner'    },
     ];
-    const slots = allSlots.filter(s => s.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length));
-    const activeSlotKeys = slots.filter(s => selectedSlots.length === 0 || selectedSlots.includes(s.key)).map(s => s.key);
-    const total = generatedPlan.length * activeSlotKeys.length;
+    const visibleSlots = allSlots.filter(sl =>
+      (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) &&
+      (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
+    );
+    const total = generatedPlan.length * visibleSlots.length;
+    const day = generatedPlan[activeDay];
+    if (!day) return null;
+
+    const shortDay = day.day.substring(0, 3);
+    const dateNum = day.date.split('-')[2];
 
     return (
-      <View>
-        <Text style={s.stepTitle}>Your Meal Plan</Text>
-        {selectedFrom && selectedTo && (
-          <Text style={s.stepSub}>
-            {selectedFrom.getTime() === selectedTo.getTime()
-              ? fmtL(selectedFrom)
-              : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`}
-          </Text>
-        )}
+      <View style={{flex:1}}>
+        {/* Day tabs - horizontal scroll */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:56,marginBottom:12}}>
+          <View style={{flexDirection:'row',gap:6,paddingHorizontal:4,paddingVertical:4}}>
+            {generatedPlan.map((d, idx) => {
+              const dn = d.day.substring(0, 3);
+              const dd = d.date.split('-')[2];
+              const isActive = idx === activeDay;
+              return (
+                <TouchableOpacity
+                  key={d.date}
+                  style={{
+                    paddingHorizontal:16,paddingVertical:10,borderRadius:14,
+                    backgroundColor: isActive ? navy : 'rgba(255,255,255,0.9)',
+                    borderWidth:1.5,borderColor: isActive ? navy : '#D4EDE5',
+                    alignItems:'center',minWidth:60,
+                  }}
+                  onPress={() => setActiveDay(idx)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{fontSize:12,fontWeight:'700',color: isActive ? white : '#5A7A8A'}}>{dn}</Text>
+                  <Text style={{fontSize:16,fontWeight:'800',color: isActive ? white : navy}}>{dd}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
 
-        {generatedPlan.map((day, dayIdx) => {
-          const expanded = expandedDays[dayIdx] ?? false; const setExpanded = (fn) => setExpandedDays((prev) => ({ ...prev, [dayIdx]: fn(prev[dayIdx] ?? false) }));
+        {/* Active day's slots */}
+        <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:8}}>{day.day}, {day.date}</Text>
+
+        {visibleSlots.map(({ key, icon, label }) => {
+          const slotData = day[key];
+          if (!slotData || slotData.options.length === 0) return null;
           return (
-            <View key={day.date} style={s.dayCard}>
-              <TouchableOpacity style={s.dayCardHeader} onPress={() => setExpanded((v) => !v)} activeOpacity={0.8}>
-                <View>
-                  <Text style={s.dayCardDay}>{day.day}</Text>
-                  <Text style={s.dayCardDate}>{day.date}</Text>
-                </View>
-                <Text style={s.dayCardArrow}>{expanded ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-
-              {expanded && slots.map(({ key, icon, label }) => (
-                <View key={key} style={s.slotBlock}>
-                  <Text style={s.slotLabel}>{icon} {label}</Text>
-                  {day[key].options.map((opt, optIdx) => {
-                    const recKey = `${dayIdx}-${key}-${optIdx}`;
-                    const isSel  = selections[dayIdx]?.[key] === optIdx;
-                    const isExp  = expandedRecipes[recKey];
-                    return (
-                      <View key={optIdx} style={[s.optCard, isSel && s.optCardActive]}>
-                        <TouchableOpacity
-                          style={s.optCardHeader}
-                          onPress={() => setSelections((prev) => ({
-                            ...prev,
-                            [dayIdx]: { ...(prev[dayIdx] ?? { breakfast: 0, lunch: 0, dinner: 0 }), [key]: optIdx },
-                          }))}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[s.radio, isSel && s.radioOn]}>
-                            {isSel && <View style={s.radioDot} />}
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[s.optName, isSel && { color: navy, fontWeight: '700' }]}>{opt.name}</Text>
-                            {opt.tags.length > 0 && (
-                              <View style={s.tagRow}>
-                                {opt.tags.slice(0, 3).map((tag) => (
-                                  <View key={tag} style={[s.tag, tag.toLowerCase().includes('non-veg') && s.tagRed]}>
-                                    <Text style={[s.tagText, tag.toLowerCase().includes('non-veg') && s.tagTextRed]}>{tag}</Text>
-                                  </View>
-                                ))}
-                              </View>
-                            )}
-                          </View>
-                          <Text style={s.optNum}>#{optIdx + 1}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={s.viewRecipeBtn}
-                          onPress={() => setExpandedRecipes((prev) => ({ ...prev, [recKey]: !prev[recKey] }))}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={s.viewRecipeText}>{isExp ? '▲ Hide Recipe' : '▼ View Recipe'}</Text>
-                        </TouchableOpacity>
-
-                        {isExp && (
-                          <View style={s.inlineRecipe}>
-                            {opt.ingredients.length > 0 && (
-                              <>
-                                <Text style={s.recipeSection}>Ingredients</Text>
-                                {opt.ingredients.map((ing, ii) => (
-                                  <Text key={ii} style={s.recipeItem}>• {ing}</Text>
-                                ))}
-                              </>
-                            )}
-                            {opt.steps.length > 0 && (
-                              <>
-                                <Text style={s.recipeSection}>Method</Text>
-                                {opt.steps.map((st, si) => (
-                                  <Text key={si} style={s.recipeItem}>{si + 1}. {st}</Text>
-                                ))}
-                              </>
-                            )}
-                          </View>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              ))}
+            <View key={key} style={{marginBottom:14}}>
+              <Text style={{fontSize:13,fontWeight:'700',color:'#5A7A8A',marginBottom:6}}>{icon} {label}</Text>
+              {slotData.options.map((opt, optIdx) => {
+                const isSel = selections[activeDay]?.[key] === optIdx;
+                const recKey = `${activeDay}-${key}-${optIdx}`;
+                const isExp = expandedRecipes[recKey];
+                return (
+                  <TouchableOpacity
+                    key={optIdx}
+                    style={{
+                      flexDirection:'row',alignItems:'center',gap:10,
+                      backgroundColor: isSel ? 'rgba(27,58,92,0.08)' : 'rgba(255,255,255,0.95)',
+                      borderRadius:12,padding:12,marginBottom:6,
+                      borderWidth:1.5,borderColor: isSel ? navy : '#E5E7EB',
+                    }}
+                    onPress={() => setSelections((prev) => ({
+                      ...prev,
+                      [activeDay]: { ...(prev[activeDay] ?? {}), [key]: optIdx },
+                    }))}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{
+                      width:22,height:22,borderRadius:11,borderWidth:2,
+                      borderColor: isSel ? navy : '#D1D5DB',
+                      alignItems:'center',justifyContent:'center',
+                    }}>
+                      {isSel && <View style={{width:12,height:12,borderRadius:6,backgroundColor:navy}} />}
+                    </View>
+                    <View style={{flex:1}}>
+                      <Text style={{fontSize:14,fontWeight: isSel ? '700' : '500',color: isSel ? navy : '#374151'}}>{opt.name}</Text>
+                      {opt.tags.length > 0 && (
+                        <View style={{flexDirection:'row',gap:4,marginTop:3}}>
+                          {opt.tags.slice(0,3).map(tag => (
+                            <Text key={tag} style={{fontSize:10,color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:6,paddingVertical:1,borderRadius:6}}>{tag}</Text>
+                          ))}
+                        </View>
+                      )}
+                      {isExp && (
+                        <View style={{marginTop:8}}>
+                          {opt.ingredients.length > 0 && <>
+                            <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginBottom:2}}>Ingredients</Text>
+                            {opt.ingredients.map((ing,ii) => <Text key={ii} style={{fontSize:12,color:'#374151',lineHeight:18}}>• {ing}</Text>)}
+                          </>}
+                          {opt.steps.length > 0 && <>
+                            <Text style={{fontSize:11,fontWeight:'700',color:'#5A7A8A',marginTop:6,marginBottom:2}}>Method</Text>
+                            {opt.steps.map((st,si) => <Text key={si} style={{fontSize:12,color:'#374151',lineHeight:18}}>{si+1}. {st}</Text>)}
+                          </>}
+                        </View>
+                      )}
+                    </View>
+                    <TouchableOpacity onPress={() => setExpandedRecipes(prev => ({...prev,[recKey]:!prev[recKey]}))} hitSlop={{top:8,bottom:8,left:8,right:8}}>
+                      <Text style={{fontSize:11,color:'#5A7A8A',fontWeight:'600'}}>{isExp ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           );
         })}
 
-        {/* Floating bottom bar */}
-        <View style={s.floatBar}>
-          <Text style={s.floatCount}>{selectedCount()} of {total} meals selected</Text>
-          <View style={{gap:8,marginTop:8}}>
-            <Button
-              title="Confirm"
-              onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
-              disabled={!allSelected()}
-            />
-            <View style={{flexDirection:'row',gap:8}}>
-              <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setStep('generating');}}>
-                <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={goBack}>
-                <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Back</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Bottom buttons */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:16,padding:14,marginTop:8,borderWidth:1,borderColor:'#E5E7EB'}}>
+          <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A',textAlign:'center',marginBottom:8}}>
+            {selectedCount()} of {total} meals selected
+          </Text>
+          <Button
+            title="Confirm Meal Plan"
+            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
+            disabled={!allSelected()}
+          />
+          <View style={{flexDirection:'row',gap:8,marginTop:8}}>
+            <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}>
+              <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+              <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>

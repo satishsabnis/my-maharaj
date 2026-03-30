@@ -135,6 +135,8 @@ async function generateOneMeal(
   weekDishHistory?: string[],
   city = 'Dubai',
   stores = 'Carrefour/Spinneys/Lulu',
+  allowedProteins?: string[],
+  mealConstraint?: string,
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
@@ -149,10 +151,22 @@ async function generateOneMeal(
 
   const festivalStr = festivalContext ? `FESTIVAL CONTEXT: ${festivalContext} is being celebrated. Include at least one traditionally appropriate festival dish option. For sattvic/fasting festivals, ensure options follow fasting rules (no onion, no garlic, use kuttu/sabudana/rajgira/sama rice).` : '';
 
+  // Protein restriction - absolute rule
+  let proteinRule = '';
+  if (allowedProteins && allowedProteins.length > 0) {
+    const forbidden = ['Eggs','Fish','Chicken','Mutton'].filter(p => !allowedProteins.includes(p));
+    proteinRule = `\nPROTEIN RESTRICTION - ABSOLUTE RULE: ONLY use these proteins: ${allowedProteins.join(', ')}.
+${forbidden.length > 0 ? `${forbidden.join(', ')} are FORBIDDEN. Do not use them under any circumstance.` : ''}
+If only Eggs selected - ONLY egg dishes. If only Fish - ONLY fish dishes. If only Chicken - ONLY chicken. If only Mutton - ONLY mutton. No protein outside this list.`;
+  }
+
   const nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
     ['chicken','fish','egg','mutton'].some((w) => foodNote.toLowerCase().includes(w))
-    ? ' CRITICAL: At least one option MUST be a real non-veg dish with chicken/fish/eggs/mutton.'
+    ? ' CRITICAL: At least one option MUST be a real non-veg dish with the allowed proteins only.'
     : '';
+
+  // Meal constraint from page 4 prefs
+  const constraintStr = mealConstraint ? `\nMEAL CONSTRAINT: ${mealConstraint}` : '';
 
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
   const prompt = `You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
@@ -165,7 +179,7 @@ Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
 Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
-${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}
+${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}${constraintStr}
 
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
@@ -236,6 +250,8 @@ export async function generateMealPlan(
     locationCity?: string;
     locationStores?: string;
     selectedSlots?: string[];
+    allowedProteins?: string[];
+    isMixed?: boolean;
   },
   onProgress?: (current: number, total: number) => void,
 ): Promise<MealPlanResult> {
@@ -259,12 +275,17 @@ export async function generateMealPlan(
   if (hf.glutenIntolerant) healthParts.push('No gluten');
   const healthInfo = healthParts.length > 0 ? healthParts.join('; ') : 'Normal healthy';
 
+  const allowedProteins = params.allowedProteins ?? params.foodPrefs.nonVegOptions;
+  const isMixed = params.isMixed ?? false;
+
   const baseFoodPref =
     params.foodPrefs.type === 'veg'
       ? params.foodPrefs.vegType === 'fasting'
         ? 'Fasting only (sabudana/rajgira/fruits/sama rice)'
-        : 'Vegetarian'
-      : `Non-vegetarian: include ${params.foodPrefs.nonVegOptions?.join(', ') || 'chicken, fish, eggs, mutton'}`;
+        : 'Strictly Vegetarian — zero non-veg, no eggs, no fish, no chicken, no mutton'
+      : isMixed
+        ? 'Mixed — Vegetarian for breakfast, non-veg allowed for lunch and dinner only'
+        : `Non-vegetarian: ONLY use ${allowedProteins?.join(', ') || 'chicken, fish, eggs, mutton'}`;
 
   const unwellNote = params.unwellMembers && params.unwellMembers.length > 0
     ? params.unwellMembers.join(', ')
@@ -280,6 +301,28 @@ export async function generateMealPlan(
   const snPrefs  = params.snackPrefs;
   const cityName = params.locationCity || 'Dubai';
   const storeNames = params.locationStores || 'Carrefour/Spinneys/Lulu';
+
+  // Build meal constraints from page 4 prefs per slot
+  function buildConstraint(prefs?: string[], slot?: string): string {
+    if (!prefs || prefs.length === 0) return '';
+    const parts: string[] = [];
+    if (prefs.includes('Full Thali')) parts.push('Generate a FULL THALI with ALL components: Dal, Sabzi, Rice or Roti, Raita, Papad or Pickle, one Dessert, one Drink. ONE complete thali entry.');
+    if (prefs.includes('Rice based')) parts.push('Generate rice dish only, no bread/roti.');
+    if (prefs.includes('Roti based')) parts.push('Generate roti/bread dish only, no rice.');
+    if (prefs.includes('Light only')) parts.push('Light meals only — soup, khichdi or salad. No heavy curries.');
+    if (prefs.includes('Eggs')) parts.push('Egg-based dishes only for this meal.');
+    if (prefs.includes('Fruits') || prefs.includes('Fruit/Juice')) parts.push('Fruit-based meal only.');
+    if (slot === 'snack') parts.push('Evening snack ONLY — chai, snack, chaat, sandwich. NOT a full meal.');
+    return parts.join(' ');
+  }
+  const bfConstraint = buildConstraint(bfPrefs, 'breakfast');
+  const lnConstraint = buildConstraint(lnPrefs, 'lunch');
+  const dnConstraint = buildConstraint(dnPrefs, 'dinner');
+  const snConstraint = buildConstraint(snPrefs, 'snack') || 'Evening snack ONLY — chai, biscuits, sandwiches, fruits, chaat, namkeen. NOT a full meal.';
+
+  // For mixed: breakfast is always veg, proteins only for lunch/dinner
+  const bfProteins = isMixed ? undefined : allowedProteins;
+  const ldProteins = allowedProteins;
   const slots = params.selectedSlots ?? ['breakfast', 'lunch', 'dinner'];
   if (slots.length === 0) throw new Error('No meal slots selected. Please select at least one meal slot.');
 
@@ -293,8 +336,9 @@ export async function generateMealPlan(
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
     const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
+    const bfFoodPref = isMixed && !isVegDay ? 'Strictly Vegetarian — Mixed mode: breakfast is always vegetarian' : foodPref;
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
-      ? `${foodPref}. Mix veg and non-veg naturally across the week.`
+      ? `${foodPref}. Use ONLY allowed proteins.`
       : foodPref;
     const dayCuisine = cuisinePerDay && cuisinePerDay[i] ? cuisinePerDay[i] : cuisine;
     return { date, dayName, foodPref, lunchDinnerPref, dayCuisine, i };
@@ -313,10 +357,10 @@ export async function generateMealPlan(
       batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
         const emptySlot: MealSlot = { options: [] };
         const [breakfast, lunch, dinner, snack] = await Promise.all([
-          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(emptySlot),
-          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(emptySlot),
-          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(emptySlot),
-          slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, 'Light evening snack — chai, biscuits, sandwiches, fruits, chaat, namkeen. NOT a full meal.', lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(undefined),
+          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
+          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint) : Promise.resolve(emptySlot),
+          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint) : Promise.resolve(emptySlot),
+          slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint) : Promise.resolve(undefined),
         ]);
         completed++;
         onProgress?.(completed, total);

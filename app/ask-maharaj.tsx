@@ -59,9 +59,10 @@ export default function AskMaharajScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return '';
 
-      const [{ data: members }, { data: cuisines }] = await Promise.all([
+      const [{ data: members }, { data: cuisines }, { data: profile }] = await Promise.all([
         supabase.from('family_members').select('name, age, health_notes').eq('user_id', user.id),
         supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
+        supabase.from('profiles').select('food_pref, allowed_proteins').eq('id', user.id).maybeSingle(),
       ]);
 
       const memberContext = (members ?? []).map((m: any) =>
@@ -70,9 +71,21 @@ export default function AskMaharajScreen() {
 
       const cuisineContext = (cuisines ?? []).map((c: any) => c.cuisine_name).join(', ');
 
+      // Food preference and protein restrictions
+      const foodPref = profile?.food_pref;
+      const allowedProteins: string[] = profile?.allowed_proteins ?? [];
+      let dietContext = '';
+      if (foodPref === 'veg') {
+        dietContext = 'DIETARY RESTRICTION: This household is STRICTLY VEGETARIAN. Never suggest non-veg dishes, eggs, fish, chicken, or mutton.';
+      } else if (foodPref === 'nonveg' && allowedProteins.length > 0) {
+        const forbidden = ['Eggs','Fish','Chicken','Mutton'].filter(p => !allowedProteins.includes(p));
+        dietContext = `PROTEIN RESTRICTION: ONLY use these proteins: ${allowedProteins.join(', ')}.${forbidden.length > 0 ? ` ${forbidden.join(', ')} are FORBIDDEN.` : ''}`;
+      }
+
       return [
         memberContext ? `Family members: ${memberContext}` : '',
         cuisineContext ? `Preferred cuisines: ${cuisineContext}` : '',
+        dietContext,
       ].filter(Boolean).join('\n');
     } catch {
       return '';
