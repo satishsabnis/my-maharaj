@@ -4,7 +4,7 @@ import {
   ScrollView, ActivityIndicator, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, midGray, darkGray, errorRed } from '../theme/colors';
 
 const CUISINES: { name: string; description: string; icon: string }[] = [
@@ -37,7 +37,7 @@ export default function CuisineSelectionScreen() {
   useEffect(() => { void loadCuisines(); }, []);
 
   async function loadCuisines() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) { setLoading(false); return; }
     const { data } = await supabase
       .from('cuisine_preferences')
@@ -55,7 +55,7 @@ export default function CuisineSelectionScreen() {
 
   async function save() {
     setSaving(true); setError('');
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) { setError('Not authenticated.'); setSaving(false); return; }
     await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
     if (selected.length > 0) {

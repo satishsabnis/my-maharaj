@@ -4,7 +4,7 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -96,7 +96,7 @@ export default function LabReportScreen() {
 
   useEffect(() => {
     async function checkReminders() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return;
       const { data: members } = await supabase.from('family_members').select('name, health_notes').eq('user_id', user.id);
       if (!members) return;
@@ -262,7 +262,7 @@ Respond ONLY with JSON, no markdown.`;
     if (!result) return;
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return;
 
       // Get health conditions to add

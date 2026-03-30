@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -90,7 +90,7 @@ export default function DietaryProfileScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) { setLoading(false); return; }
     const [{ data: membersData }, { data: cuisineData }] = await Promise.all([
       supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id),
@@ -125,7 +125,7 @@ export default function DietaryProfileScreen() {
     if (!form.name.trim()) { setFormError('Name is required'); return; }
     setSaving(true); setFormError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) throw new Error('Not authenticated');
       const payload = { user_id: user.id, name: form.name.trim(), age: parseInt(form.age, 10) || 0, health_notes: formToNotes(form) || null };
       if (editId) {
@@ -144,7 +144,7 @@ export default function DietaryProfileScreen() {
   async function saveCuisines() {
     setCuisineSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return;
       await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
       if (selectedCuisines.length > 0) {

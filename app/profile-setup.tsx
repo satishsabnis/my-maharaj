@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { navy, gold, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
@@ -104,7 +104,7 @@ export default function ProfileSetupScreen() {
     setLoading(true);
     setError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) throw new Error('Not authenticated');
 
       await supabase.from('profiles').upsert({

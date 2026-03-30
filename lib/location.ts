@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
+import { supabase, getSessionUser } from './supabase';
 
 export interface UserLocation {
   city: string;
@@ -63,7 +63,7 @@ export async function detectLocation(): Promise<UserLocation> {
 
 export async function loadOrDetectLocation(): Promise<UserLocation> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return DEFAULT_LOCATION;
 
     // Check if location is already saved

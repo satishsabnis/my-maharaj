@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -70,7 +70,7 @@ export default function MyFridgeScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) { setLoading(false); return; }
     const { data } = await supabase
       .from('fridge_inventory')
@@ -87,7 +87,7 @@ export default function MyFridgeScreen() {
 
   async function saveManualItem() {
     if (!manualItem.item_name.trim()) { setError('Please enter an item name.'); return; }
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return;
     const { data: existing } = await supabase.from('fridge_inventory').select('id, quantity')
       .eq('user_id', user.id).eq('item_name', manualItem.item_name).maybeSingle();
@@ -160,7 +160,7 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
   }
 
   async function confirmScan() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return;
 
     const today = new Date().toISOString().split('T')[0];

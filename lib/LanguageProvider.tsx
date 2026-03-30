@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from './supabase';
+import { supabase, getSessionUser } from './supabase';
 import { getTranslations, Translations } from './translations';
 import { en } from './translations';
 
@@ -27,7 +27,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadLang() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getSessionUser();
         if (!user) return;
         const { data } = await supabase.from('profiles')
           .select('app_language').eq('id', user.id).maybeSingle();
