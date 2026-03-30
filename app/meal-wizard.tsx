@@ -748,7 +748,7 @@ export default function MealWizardScreen() {
           {[{k:'breakfast',i:'',l:'Breakfast'},{k:'lunch',i:'',l:'Lunch'},{k:'dinner',i:'',l:'Dinner'},{k:'snack',i:'',l:'Evening Snack'}].map(({k,i,l})=>(
             <TouchableOpacity key={k}
               style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:selectedSlots.includes(k)?'#1B3A5C':'#D4EDE5',backgroundColor:selectedSlots.includes(k)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
-              onPress={()=>setSelectedSlots(prev=>prev.includes(k)?prev.filter(s=>s!==k):[...prev,k])}>
+              onPress={()=>setSelectedSlots(prev=>prev.includes(k)?prev.filter(x=>x!==k):[...prev,k])}>
               <Text style={{fontSize:13,fontWeight:'600',color:selectedSlots.includes(k)?'#FFFFFF':'#1B3A5C'}}>{i} {l}</Text>
             </TouchableOpacity>
           ))}

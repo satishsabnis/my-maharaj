@@ -66,28 +66,8 @@ export async function loadOrDetectLocation(): Promise<UserLocation> {
     const user = await getSessionUser();
     if (!user) return DEFAULT_LOCATION;
 
-    // Check if location is already saved
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_city, user_country')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (profile?.user_city && profile?.user_country) {
-      return {
-        city: profile.user_city,
-        country: profile.user_country,
-        stores: getStores(profile.user_country),
-      };
-    }
-
-    // Detect and save
+    // Detect location (user_city/user_country columns may not exist yet)
     const loc = await detectLocation();
-    await supabase
-      .from('profiles')
-      .update({ user_city: loc.city, user_country: loc.country })
-      .eq('id', user.id);
-
     return loc;
   } catch {
     return DEFAULT_LOCATION;
