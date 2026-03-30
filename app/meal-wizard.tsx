@@ -1271,20 +1271,8 @@ export default function MealWizardScreen() {
   }
 
   function renderDeliveryApps() {
-    const apps = [
-      { name: 'Amazon',        url: 'https://www.amazon.ae',       color: '#FF9900', dark: true },
-      { name: 'Barakat',       url: 'https://www.barakat.com',     color: '#00A651', dark: false },
-      { name: 'Careem',        url: 'https://www.careem.com/food/',color: '#1DBF73', dark: false },
-      { name: 'Deliveroo',     url: 'https://deliveroo.ae',        color: '#00CCBC', dark: false },
-      { name: 'elGrocer',      url: 'https://www.elgrocer.com',    color: '#E63946', dark: false },
-      { name: 'Fresh to Home', url: 'https://www.freshtohome.com', color: '#FF6B35', dark: false },
-      { name: 'Instashop',     url: 'https://instashop.io',        color: '#00A651', dark: false },
-      { name: 'Keeta',         url: 'https://www.keeta.com',       color: '#FF0000', dark: false },
-      { name: 'Noon',          url: 'https://www.noon.com',        color: '#FFEE00', dark: true },
-      { name: 'Smiles',        url: 'https://www.smilesuae.com',   color: '#FF6600', dark: false },
-      { name: 'Talabat',       url: 'https://www.talabat.com',     color: '#FF6B00', dark: false },
-    ];
-    const rows: typeof apps[number][][] = [];
+    const apps = ['Amazon','Barakat','Careem','Deliveroo','elGrocer','Fresh to Home','Instashop','Keeta','Noon','Smiles','Talabat'];
+    const rows: string[][] = [];
     for (let i = 0; i < apps.length; i += 2) rows.push(apps.slice(i, i + 2));
 
     return (
@@ -1292,37 +1280,34 @@ export default function MealWizardScreen() {
         <Text style={s.stepTitle}>Where would you like to order from?</Text>
 
         {/* Banner 1: Integration */}
-        <View style={{flexDirection:'row',gap:8,alignItems:'flex-start',backgroundColor:'rgba(201,162,39,0.12)',borderRadius:12,padding:12,marginTop:12,borderWidth:1,borderColor:'rgba(201,162,39,0.3)'}}>
+        <View style={{flexDirection:'row',gap:8,alignItems:'flex-start',backgroundColor:'rgba(201,162,39,0.12)',borderRadius:12,padding:12,marginTop:12,borderWidth:1,borderColor:'rgba(201,162,39,0.3)',width:'100%'}}>
           <Text style={{fontSize:14}}>🔗</Text>
           <Text style={{flex:1,fontSize:12,color:'#78350F',lineHeight:18}}>Direct ordering integration coming soon — we are working with these platforms to enable one-tap ordering from your meal plan</Text>
         </View>
 
         {/* Banner 2: Smart shopping */}
-        <View style={{backgroundColor:navy,borderRadius:12,padding:14,marginTop:10}}>
+        <View style={{backgroundColor:navy,borderRadius:12,padding:14,marginTop:10,width:'100%'}}>
           <Text style={{fontSize:12,fontWeight:'600',color:white,lineHeight:18}}>Coming soon. Maharaj is learning the art of smart shopping. Soon, he will compare prices across prominent stores in your area — finding you the best deals, seasonal offers and bulk savings before you step into the store.</Text>
         </View>
 
-        {/* 2-column grid */}
-        <View style={{gap:12,marginTop:16}}>
+        {/* 2-column pill grid */}
+        <View style={{gap:10,marginTop:16}}>
           {rows.map((row, ri) => (
-            <View key={ri} style={{flexDirection:'row',gap:12,justifyContent:'center'}}>
-              {row.map(app => (
-                <TouchableOpacity key={app.name} style={{alignItems:'center',width:80}} onPress={() => Linking.openURL(app.url)} activeOpacity={0.8}>
-                  <View style={{width:56,height:56,borderRadius:28,backgroundColor:app.color,alignItems:'center',justifyContent:'center',marginBottom:4}}>
-                    <Text style={{fontSize:22,fontWeight:'800',color:app.dark ? '#1F2937' : white}}>{app.name.charAt(0)}</Text>
-                  </View>
-                  <Text style={{fontSize:11,fontWeight:'600',color:navy,textAlign:'center'}} numberOfLines={2}>{app.name}</Text>
-                </TouchableOpacity>
+            <View key={ri} style={{flexDirection:'row',gap:10}}>
+              {row.map(name => (
+                <View key={name} style={{flex:1,backgroundColor:'rgba(27,58,92,0.06)',borderWidth:1,borderColor:'rgba(27,58,92,0.2)',borderRadius:20,paddingHorizontal:16,paddingVertical:10,alignItems:'center'}}>
+                  <Text style={{fontSize:13,fontWeight:'600',color:navy}}>{name}</Text>
+                </View>
               ))}
-              {row.length < 2 && <View style={{width:80}} />}
+              {row.length < 2 && <View style={{flex:1}} />}
             </View>
           ))}
         </View>
 
         {/* Disclaimer */}
-        <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',marginTop:16,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
+        <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',paddingVertical:12,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
 
-        <View style={{gap:10,marginTop:20}}>
+        <View style={{gap:10,marginTop:8}}>
           <Button title="Done — Continue" onPress={() => advance('feedback')} />
           <TouchableOpacity style={{paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',alignItems:'center'}} onPress={() => advance('feedback')}>
             <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Skip</Text>
