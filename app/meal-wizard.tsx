@@ -7,14 +7,14 @@ import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
-import DeliveryAppsSection from '../components/DeliveryApps';
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
   | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'nutrition' | 'cuisine-confirm'
   | 'generating' | 'generating-error' | 'selection' | 'plan-summary'
-  | 'cook-or-order' | 'recipes' | 'grocery' | 'delivery' | 'feedback';
+  | 'cook-or-order' | 'recipes' | 'grocery' | 'delivery-apps' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -563,8 +563,8 @@ export default function MealWizardScreen() {
       'cook-or-order': 'plan-summary',
       'recipes': 'cook-or-order',
       'grocery': 'recipes',
-      'delivery': 'grocery',
-      'feedback': 'delivery',
+      'delivery-apps': 'grocery',
+      'feedback': 'delivery-apps',
     };
     const prev = backMap[step];
     if (prev) setStep(prev);
@@ -1258,74 +1258,79 @@ export default function MealWizardScreen() {
           })
         )}
 
-        <DeliveryAppsSection country={userLocation.country} title="Order ingredients online" compact />
-
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => advance('delivery')} />
+            <Button title="Continue →" onPress={() => advance('delivery-apps')} />
           </View>
         </View>
       </View>
     );
   }
 
-  function renderDelivery() {
-    const isUAE = userLocation.country?.toUpperCase().includes('UAE') || userLocation.city?.toLowerCase().includes('dubai') || userLocation.city?.toLowerCase().includes('abu dhabi');
-    const uaeApps = [
-      { name: 'Instashop', tagline: 'Grocery delivery in 60 mins', color: '#00A651', url: 'https://www.instashop.io' },
-      { name: 'Deliveroo', tagline: 'Your favourite food, delivered', color: '#00CCBC', url: 'https://deliveroo.ae' },
-      { name: 'Smiles', tagline: 'Grocery & essentials delivery', color: '#FF6600', url: 'https://www.smilesuae.com' },
-      { name: 'elGrocer', tagline: 'Online supermarket shopping', color: '#E63946', url: 'https://www.elgrocer.com' },
+  function renderDeliveryApps() {
+    const apps = [
+      { name: 'Amazon',        url: 'https://www.amazon.ae',       color: '#FF9900', logo: 'https://logo.clearbit.com/amazon.ae' },
+      { name: 'Barakat',       url: 'https://www.barakat.com',     color: '#00A651', logo: 'https://logo.clearbit.com/barakat.com' },
+      { name: 'Careem',        url: 'https://www.careem.com/food/',color: '#1DBF73', logo: 'https://logo.clearbit.com/careem.com' },
+      { name: 'Deliveroo',     url: 'https://deliveroo.ae',        color: '#00CCBC', logo: 'https://logo.clearbit.com/deliveroo.ae' },
+      { name: 'elGrocer',      url: 'https://www.elgrocer.com',    color: '#E63946', logo: 'https://logo.clearbit.com/elgrocer.com' },
+      { name: 'Fresh to Home', url: 'https://www.freshtohome.com', color: '#FF6B35', logo: 'https://logo.clearbit.com/freshtohome.com' },
+      { name: 'Instashop',     url: 'https://instashop.io',        color: '#00A651', logo: 'https://logo.clearbit.com/instashop.io' },
+      { name: 'Keeta',         url: 'https://www.keeta.com',       color: '#FF0000', logo: 'https://logo.clearbit.com/keeta.com' },
+      { name: 'Noon',          url: 'https://www.noon.com',        color: '#FFEE00', logo: 'https://logo.clearbit.com/noon.com' },
+      { name: 'Smiles',        url: 'https://www.smilesuae.com',   color: '#FF6600', logo: 'https://logo.clearbit.com/smilesuae.com' },
+      { name: 'Talabat',       url: 'https://www.talabat.com',     color: '#FF6B00', logo: 'https://logo.clearbit.com/talabat.com' },
     ];
-    const genericApps = [
-      { name: 'Instacart', tagline: 'Grocery delivery & pickup', color: '#43B02A', url: 'https://www.instacart.com' },
-      { name: 'DoorDash', tagline: 'Delivery & takeout nearby', color: '#FF3008', url: 'https://www.doordash.com' },
-      { name: 'Uber Eats', tagline: 'Food delivery from local spots', color: '#06C167', url: 'https://www.ubereats.com' },
-      { name: 'Swiggy Instamart', tagline: 'Groceries in minutes', color: '#FC8019', url: 'https://www.swiggy.com/instamart' },
-    ];
-    const apps = isUAE ? uaeApps : genericApps;
+    // 2-column rows
+    const rows: typeof apps[number][][] = [];
+    for (let i = 0; i < apps.length; i += 2) rows.push(apps.slice(i, i + 2));
 
     return (
       <View>
-        <Text style={s.stepTitle}>Order ingredients online?</Text>
-        <Text style={s.stepSub}>Get everything delivered to your door from these apps{isUAE ? ' in UAE' : ''}.</Text>
+        <Text style={s.stepTitle}>Where would you like to order from?</Text>
+        <Text style={s.stepSub}>Tap any app to open it</Text>
 
-        <View style={{ gap: 12, marginTop: 16 }}>
-          {apps.map((app) => (
-            <TouchableOpacity
-              key={app.name}
-              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 14, padding: 16, borderWidth: 1.5, borderColor: '#E5E7EB' }}
-              onPress={() => Linking.openURL(app.url)}
-              activeOpacity={0.8}
-            >
-              <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: app.color, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: white }}>{app.name.charAt(0)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: navy }}>{app.name}</Text>
-                <Text style={{ fontSize: 12, color: textSec, marginTop: 2 }}>{app.tagline}</Text>
-              </View>
-              <Text style={{ fontSize: 18, color: textSec }}>→</Text>
-            </TouchableOpacity>
+        <View style={{gap:10,marginTop:16}}>
+          {rows.map((row, ri) => (
+            <View key={ri} style={{flexDirection:'row',gap:10}}>
+              {row.map(app => (
+                <TouchableOpacity
+                  key={app.name}
+                  style={{flex:1,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:10,borderWidth:1.5,borderColor:'#E5E7EB'}}
+                  onPress={() => Linking.openURL(app.url)}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={{uri: app.logo}}
+                    style={{width:28,height:28,borderRadius:6,backgroundColor:'#F3F4F6'}}
+                    defaultSource={require('../assets/logo.png')}
+                  />
+                  <Text style={{fontSize:13,fontWeight:'700',color:navy,flex:1}} numberOfLines={1}>{app.name}</Text>
+                </TouchableOpacity>
+              ))}
+              {row.length < 2 && <View style={{flex:1}} />}
+            </View>
           ))}
         </View>
 
-        <View style={{ gap: 10, marginTop: 24 }}>
-          <Button title="Done ordering - Continue" onPress={() => advance('feedback')} />
-          <TouchableOpacity
-            style={{ paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.3)', alignItems: 'center' }}
-            onPress={() => advance('feedback')}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: navy }}>No thanks - Continue</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{ paddingVertical: 10, alignItems: 'center' }}
-            onPress={goBack}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '500', color: textSec }}>Back to Shopping List</Text>
+        {/* Banner 1: Integration */}
+        <View style={{flexDirection:'row',gap:8,alignItems:'flex-start',backgroundColor:'rgba(201,162,39,0.12)',borderRadius:12,padding:12,marginTop:16,borderWidth:1,borderColor:'rgba(201,162,39,0.3)'}}>
+          <Text style={{fontSize:14}}>🔗</Text>
+          <Text style={{flex:1,fontSize:12,color:'#78350F',lineHeight:18}}>Direct ordering integration coming soon — we are working with these platforms to enable one-tap ordering from your meal plan</Text>
+        </View>
+
+        {/* Banner 2: Smart shopping */}
+        <View style={{backgroundColor:navy,borderRadius:12,padding:14,marginTop:10}}>
+          <Text style={{fontSize:12,fontWeight:'600',color:white,lineHeight:18}}>Coming soon. Maharaj is learning the art of smart shopping. Soon, he will compare prices across prominent stores in your area — finding you the best deals, seasonal offers and bulk savings before you step into the store.</Text>
+        </View>
+
+        <View style={{gap:10,marginTop:20}}>
+          <Button title="Done — Continue" onPress={() => advance('feedback')} />
+          <TouchableOpacity style={{paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',alignItems:'center'}} onPress={() => advance('feedback')}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Skip</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1595,7 +1600,6 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
         </View>
-        <DeliveryAppsSection country={userLocation.country} title="Order ingredients or food online" compact />
         <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)',marginTop:16}} onPress={()=>router.push('/home' as never)}>
           <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'700'}}>Done — Back to Home</Text>
         </TouchableOpacity>
@@ -1687,7 +1691,7 @@ export default function MealWizardScreen() {
     'cook-or-order':    renderCookOrOrder,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
-    'delivery':         renderDelivery,
+    'delivery-apps':    renderDeliveryApps,
     'feedback':         renderFeedback,
   };
 
