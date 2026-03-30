@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
@@ -45,17 +45,15 @@ const LANGUAGES = [
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
-const INDIAN_CUISINES = [
-  'Andhra','Assamese','Bengali','Bihari','Chettinad','Goan','Gujarati',
-  'Hyderabadi','Kashmiri','Konkani','Maharashtrian','Malabar','Manipuri',
-  'Marwari','Meghalayan','Naga','Odia','Punjabi','Rajasthani','Sindhi',
-  'South Indian','Tamil','Telugu','Udupi',
-].sort();
-
-const INTERNATIONAL_CUISINES = [
-  'American','Arabian','Chinese','Continental','Ethiopian','French','Greek',
-  'Indonesian','Italian','Japanese','Korean','Lebanese','Mediterranean',
-  'Mexican','Moroccan','Persian','Spanish','Thai','Turkish','Vietnamese',
+const ALL_CUISINES = [
+  'Afghan','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese',
+  'Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan',
+  'Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Italian','Japanese','Kashmiri',
+  'Konkani','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian',
+  'Mediterranean','Mexican','Moroccan','Nepali','Nigerian','Odia','Omani','Pakistani',
+  'Palestinian','Persian','Punjabi','Rajasthani','Saudi','Singaporean','South African',
+  'South Indian','Spanish','Sri Lankan','Syrian','Tamil','Telugu','Thai','Turkish',
+  'Udupi','Vietnamese','Yemeni',
 ].sort();
 
 function formToNotes(form: MemberForm): string {
@@ -87,6 +85,7 @@ export default function DietaryProfileScreen() {
   const [formError,        setFormError]        = useState('');
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSaving,    setCuisineSaving]    = useState(false);
+  const [cuisineSearch,    setCuisineSearch]    = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -247,29 +246,27 @@ export default function DietaryProfileScreen() {
           <Text style={s.cuisineTitle}>Cuisine Preferences</Text>
           <Text style={s.cuisineSub}>Select cuisines to guide your meal plans</Text>
 
-          <Text style={s.groupLabel}>INDIAN CUISINES</Text>
+          <Text style={s.cuisineCount}>{selectedCuisines.length} cuisine{selectedCuisines.length !== 1 ? 's' : ''} selected</Text>
+
+          <TextInput
+            style={{borderWidth:1.5,borderColor:'#E5E7EB',borderRadius:12,paddingHorizontal:14,paddingVertical:10,fontSize:14,color:'#1F2937',backgroundColor:'rgba(255,255,255,0.9)',marginBottom:12}}
+            placeholder="Search cuisines..."
+            placeholderTextColor="#9CA3AF"
+            value={cuisineSearch}
+            onChangeText={setCuisineSearch}
+          />
+
           <View style={s.pillRow}>
-            {INDIAN_CUISINES.map((c) => (
-              <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}
-                style={[s.cuisinePill, selectedCuisines.includes(c) && s.cuisinePillActive]}>
-                <Text style={[s.cuisinePillTxt, selectedCuisines.includes(c) && s.cuisinePillTxtActive]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
+            {ALL_CUISINES
+              .filter(c => !cuisineSearch || c.toLowerCase().includes(cuisineSearch.toLowerCase()))
+              .map((c) => (
+                <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}
+                  style={[s.cuisinePill, selectedCuisines.includes(c) && s.cuisinePillActive]}>
+                  <Text style={[s.cuisinePillTxt, selectedCuisines.includes(c) && s.cuisinePillTxtActive]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
           </View>
 
-          <Text style={[s.groupLabel, { marginTop: 16 }]}>INTERNATIONAL CUISINES</Text>
-          <View style={s.pillRow}>
-            {INTERNATIONAL_CUISINES.map((c) => (
-              <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}
-                style={[s.cuisinePill, selectedCuisines.includes(c) && s.cuisinePillActive]}>
-                <Text style={[s.cuisinePillTxt, selectedCuisines.includes(c) && s.cuisinePillTxtActive]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {selectedCuisines.length > 0 && (
-            <Text style={s.cuisineCount}>{selectedCuisines.length} cuisine{selectedCuisines.length > 1 ? 's' : ''} selected</Text>
-          )}
           <View style={{ marginTop: 16 }}>
             <Button title={cuisineSaving ? 'Saving...' : '✓ Save Cuisine Preferences'} onPress={() => void saveCuisines()} loading={cuisineSaving} />
           </View>
