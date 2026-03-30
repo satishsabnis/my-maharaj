@@ -341,7 +341,7 @@ export async function generateMealPlan(
       ? `${foodPref}. Use ONLY allowed proteins.`
       : foodPref;
     const dayCuisine = cuisinePerDay && cuisinePerDay[i] ? cuisinePerDay[i] : cuisine;
-    return { date, dayName, foodPref, lunchDinnerPref, dayCuisine, i };
+    return { date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i };
   });
 
   let completed = 0;
@@ -354,7 +354,7 @@ export async function generateMealPlan(
   for (let batchStart = 0; batchStart < dayMeta.length; batchStart += BATCH_SIZE) {
     const batch = dayMeta.slice(batchStart, batchStart + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
+      batch.map(async ({ date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i }) => {
         const emptySlot: MealSlot = { options: [] };
         const [breakfast, lunch, dinner, snack] = await Promise.all([
           slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
