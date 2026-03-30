@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
 import { navy, white, textSec, border, errorRed } from '../theme/colors';
@@ -35,7 +35,7 @@ export default function MealPrepScreen() {
   async function generatePrep() {
     setLoading(true); setError(''); setResult(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) throw new Error('Not authenticated');
 
       const [{ data: historyData }, { data: fridgeData }] = await Promise.all([

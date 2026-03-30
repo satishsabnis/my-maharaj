@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Image, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
@@ -140,7 +140,7 @@ export default function MealWizardScreen() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return;
       const [{ data }, { data: cuisineData }] = await Promise.all([
         supabase.from('family_members').select('id, name, age').eq('user_id', user.id),
@@ -184,20 +184,13 @@ export default function MealWizardScreen() {
     }
     setError('');
     try {
-      let userId: string;
-      const { data: { user }, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !user) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          setError('Session expired. Please log out and log in again.');
-          setStep('generating-error');
-          return;
-        }
-        userId = session.user.id;
-        console.log('[MealWizard] getUser failed, using session.user:', userId);
-      } else {
-        userId = user.id;
+      const user = await getSessionUser();
+      if (!user) {
+        setError('Session expired. Please log out and log in again.');
+        setStep('generating-error');
+        return;
       }
+      const userId = user.id;
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -407,7 +400,7 @@ export default function MealWizardScreen() {
 
   async function saveHistory() {
     if (!generatedPlan || !selectedFrom || !selectedTo) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return;
     const slots: MealSlotKey[] = ['breakfast','lunch','dinner'];
     const dishRows = generatedPlan.flatMap((day, i) =>
@@ -441,7 +434,7 @@ export default function MealWizardScreen() {
 
   async function deductFromFridge() {
     if (!generatedPlan) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return;
 
     // Collect all ingredients from selected meals
@@ -495,7 +488,7 @@ export default function MealWizardScreen() {
   }
 
   async function submitFeedback() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return;
     const rows = feedbacks.filter((f) => f.rating !== null).map((f) => ({
       user_id: user.id, dish_name: f.dishName, rating: f.rating, comment: f.comment || null,

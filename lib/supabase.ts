@@ -6,18 +6,30 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
     persistSession: true,
+    autoRefreshToken: true,
     detectSessionInUrl: Platform.OS === 'web',
+    storage: Platform.OS === 'web' ? (typeof window !== 'undefined' ? window.localStorage : undefined) : undefined,
   },
 });
 
+// ─── Session helper ──────────────────────────────────────────────────────────
+// Use getSession() instead of getUser() to avoid "session expired" errors.
+// Automatically refreshes the session if the first attempt returns no user.
+
+export async function getSessionUser() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) return session.user;
+  // Try refreshing
+  await supabase.auth.refreshSession();
+  const { data: { session: refreshed } } = await supabase.auth.getSession();
+  return refreshed?.user ?? null;
+}
+
 // ─── Security helper ──────────────────────────────────────────────────────────
-// Use this for all data fetches — ensures the authenticated user can only
-// access their own rows and auto-signs out on any identity mismatch.
 
 export async function getSecureUserData(table: string, userId: string) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user || user.id !== userId) {
     await supabase.auth.signOut();
     throw new Error('Unauthorized access attempt');

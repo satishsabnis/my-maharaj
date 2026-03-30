@@ -4,7 +4,7 @@ import {
   StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, Image,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { loadOrDetectLocation } from '../lib/location';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 
@@ -107,7 +107,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return;
       const name = (user.user_metadata?.full_name ?? user.email ?? '') as string;
       const first = name.split(' ')[0];

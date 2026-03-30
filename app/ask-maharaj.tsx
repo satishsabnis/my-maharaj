@@ -5,7 +5,7 @@ import {
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border, errorRed, mint } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export default function AskMaharajScreen() {
 
   async function getProfileContext(): Promise<string> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return '';
 
       const [{ data: members }, { data: cuisines }, { data: profile }] = await Promise.all([

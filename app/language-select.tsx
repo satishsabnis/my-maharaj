@@ -4,7 +4,7 @@ import {
   Text, TouchableOpacity, View, Image, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 
 // ─── All Languages ────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ export default function LanguageSelectScreen() {
   async function confirm() {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (user) {
         await supabase.from('profiles').upsert({
           id: user.id,

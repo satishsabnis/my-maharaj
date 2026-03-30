@@ -3,7 +3,7 @@ import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from '
 import { router } from 'expo-router';
 import { SkeletonList } from '../components/Skeleton';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, textSec, white, border, surface, gold, textColor } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ export default function MenuHistoryScreen() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) { setLoading(false); return; }
       const { data } = await supabase
         .from('menu_history')
