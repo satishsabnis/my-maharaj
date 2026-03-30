@@ -1595,7 +1595,7 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
         </View>
-        <DeliveryAppsSection country={userLocation.country} compact />
+        <DeliveryAppsSection country={userLocation.country} title="Order ingredients or food online" compact />
         <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)',marginTop:16}} onPress={()=>router.push('/home' as never)}>
           <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'700'}}>Done — Back to Home</Text>
         </TouchableOpacity>

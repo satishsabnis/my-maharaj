@@ -4,41 +4,46 @@ import { navy, white, textSec } from '../theme/colors';
 
 interface DeliveryApp {
   name: string;
-  tagline: string;
-  color: string;
   url: string;
+  color: string;
+  darkText?: boolean;
 }
 
 const UAE_APPS: DeliveryApp[] = [
-  { name: 'Instashop', tagline: 'Grocery delivery in 1 hour', color: '#00A651', url: 'https://instashop.io' },
-  { name: 'Deliveroo', tagline: 'Food and grocery delivery', color: '#00CCBC', url: 'https://deliveroo.ae' },
-  { name: 'Smiles', tagline: 'Deals and food delivery', color: '#FF6600', url: 'https://www.smilesuae.com' },
-  { name: 'elGrocer', tagline: 'Online supermarket delivery', color: '#E63946', url: 'https://www.elgrocer.com' },
+  { name: 'Amazon',        url: 'https://www.amazon.ae',           color: '#FF9900' },
+  { name: 'Barakat',       url: 'https://www.barakat.com',         color: '#00A651' },
+  { name: 'Careem',        url: 'https://www.careem.com/food/',    color: '#1DBF73' },
+  { name: 'Deliveroo',     url: 'https://deliveroo.ae',            color: '#00CCBC' },
+  { name: 'elGrocer',      url: 'https://www.elgrocer.com',        color: '#E63946' },
+  { name: 'Fresh to Home', url: 'https://www.freshtohome.com',     color: '#FF6B35' },
+  { name: 'Instashop',     url: 'https://instashop.io',            color: '#00A651' },
+  { name: 'Keeta',         url: 'https://www.keeta.com',           color: '#FF0000' },
+  { name: 'Noon',          url: 'https://www.noon.com',            color: '#FFEE00', darkText: true },
+  { name: 'Smiles',        url: 'https://www.smilesuae.com',       color: '#FF6600' },
+  { name: 'Talabat',       url: 'https://www.talabat.com',         color: '#FF6B00' },
 ];
 
 const INDIA_APPS: DeliveryApp[] = [
-  { name: 'Zomato', tagline: 'Food delivery & dining out', color: '#E23744', url: 'https://www.zomato.com' },
-  { name: 'Swiggy', tagline: 'Food & grocery delivery', color: '#FC8019', url: 'https://www.swiggy.com' },
-  { name: 'Blinkit', tagline: 'Groceries in 10 minutes', color: '#0C831F', url: 'https://www.blinkit.com' },
-  { name: 'Zepto', tagline: 'Instant grocery delivery', color: '#8B5CF6', url: 'https://www.zeptonow.com' },
+  { name: 'Blinkit', url: 'https://www.blinkit.com',  color: '#0C831F' },
+  { name: 'Swiggy',  url: 'https://www.swiggy.com',   color: '#FC8019' },
+  { name: 'Zepto',   url: 'https://www.zeptonow.com', color: '#8B5CF6' },
+  { name: 'Zomato',  url: 'https://www.zomato.com',   color: '#E23744' },
 ];
 
 const GENERIC_APPS: DeliveryApp[] = [
-  { name: 'Uber Eats', tagline: 'Food delivery from local spots', color: '#06C167', url: 'https://www.ubereats.com' },
-  { name: 'DoorDash', tagline: 'Delivery & takeout nearby', color: '#FF3008', url: 'https://www.doordash.com' },
+  { name: 'DoorDash',  url: 'https://www.doordash.com',  color: '#FF3008' },
+  { name: 'Uber Eats', url: 'https://www.ubereats.com',  color: '#06C167' },
 ];
 
 function getApps(country?: string): DeliveryApp[] {
   const c = (country ?? '').toUpperCase();
-  if (c.includes('UAE') || c.includes('EMIRATES')) return UAE_APPS;
+  if (c.includes('UAE') || c.includes('EMIRATES') || c.includes('DUBAI')) return UAE_APPS;
   if (c.includes('INDIA') || c === 'IN') return INDIA_APPS;
   return GENERIC_APPS;
 }
 
 function openURL(url: string) {
-  try {
-    Linking.openURL(url);
-  } catch {
+  try { Linking.openURL(url); } catch {
     if (Platform.OS === 'web') window.open(url, '_blank');
   }
 }
@@ -51,9 +56,12 @@ interface Props {
 
 export default function DeliveryAppsSection({ country, title, compact }: Props) {
   const apps = getApps(country);
-  const regionName = (country ?? '').toUpperCase().includes('UAE') ? 'UAE'
-    : (country ?? '').toUpperCase().includes('INDIA') || (country ?? '').toUpperCase() === 'IN' ? 'India'
-    : 'your area';
+
+  // Split into rows of 3
+  const rows: DeliveryApp[][] = [];
+  for (let i = 0; i < apps.length; i += 3) {
+    rows.push(apps.slice(i, i + 3));
+  }
 
   return (
     <View style={{ marginTop: compact ? 12 : 20 }}>
@@ -61,48 +69,60 @@ export default function DeliveryAppsSection({ country, title, compact }: Props) 
         {title || 'Order ingredients or food online'}
       </Text>
 
+      {/* 3-column grid */}
       <View style={{ gap: 10 }}>
-        {apps.map((app) => (
-          <TouchableOpacity
-            key={app.name}
-            style={{
-              flexDirection: 'row', alignItems: 'center',
-              backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 14,
-              padding: compact ? 12 : 16,
-              borderLeftWidth: 4, borderLeftColor: app.color,
-              borderWidth: 1, borderColor: '#E5E7EB',
-            }}
-            onPress={() => openURL(app.url)}
-            activeOpacity={0.8}
-          >
-            <View style={{
-              width: 42, height: 42, borderRadius: 10,
-              backgroundColor: app.color + '18',
-              alignItems: 'center', justifyContent: 'center', marginRight: 12,
-            }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: app.color }}>
-                {app.name.charAt(0)}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: navy }}>{app.name}</Text>
-              <Text style={{ fontSize: 11, color: textSec, marginTop: 1 }}>{app.tagline}</Text>
-            </View>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: app.color }}>Open App →</Text>
-          </TouchableOpacity>
+        {rows.map((row, ri) => (
+          <View key={ri} style={{ flexDirection: 'row', gap: 10 }}>
+            {row.map((app) => (
+              <TouchableOpacity
+                key={app.name}
+                style={{
+                  flex: 1, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12,
+                  padding: 10, borderLeftWidth: 4, borderLeftColor: app.color,
+                  borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center',
+                }}
+                onPress={() => openURL(app.url)}
+                activeOpacity={0.8}
+              >
+                <View style={{
+                  width: 36, height: 36, borderRadius: 18, backgroundColor: app.color,
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+                }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: app.darkText ? '#1F2937' : white }}>
+                    {app.name.charAt(0)}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: navy, textAlign: 'center' }} numberOfLines={1}>{app.name}</Text>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: app.color, marginTop: 4 }}>Open</Text>
+              </TouchableOpacity>
+            ))}
+            {/* Fill empty cells in last row */}
+            {row.length < 3 && Array.from({ length: 3 - row.length }).map((_, fi) => (
+              <View key={`fill-${fi}`} style={{ flex: 1 }} />
+            ))}
+          </View>
         ))}
       </View>
 
-      {/* Integration coming soon banner */}
+      {/* Banner 1: Integration coming soon */}
       <View style={{
         flexDirection: 'row', gap: 8, alignItems: 'flex-start',
         backgroundColor: 'rgba(201,162,39,0.12)', borderRadius: 12,
         padding: 12, marginTop: 14,
         borderWidth: 1, borderColor: 'rgba(201,162,39,0.3)',
       }}>
-        <Text style={{ fontSize: 16 }}>🔗</Text>
+        <Text style={{ fontSize: 14 }}>🔗</Text>
         <Text style={{ flex: 1, fontSize: 12, color: '#78350F', lineHeight: 18 }}>
           Direct ordering integration coming soon — we are working with these platforms to enable one-tap ordering from your meal plan
+        </Text>
+      </View>
+
+      {/* Banner 2: Smart shopping */}
+      <View style={{
+        backgroundColor: navy, borderRadius: 12, padding: 14, marginTop: 10,
+      }}>
+        <Text style={{ fontSize: 12, fontWeight: '600', color: white, lineHeight: 18 }}>
+          Coming soon. Maharaj is learning the art of smart shopping. Soon, he will compare prices across prominent stores in your area — finding you the best deals, seasonal offers and bulk savings before you step into the store.
         </Text>
       </View>
     </View>
