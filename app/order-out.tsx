@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { navy, gold, white, textSec, border } from '../theme/colors';
+import DeliveryAppsSection from '../components/DeliveryApps';
 
 // ─── Locales ──────────────────────────────────────────────────────────────────
 
@@ -149,13 +150,23 @@ export default function OrderOutScreen({ mealName }: Props) {
             </TouchableOpacity>
           ))}
 
+          {/* Grocery delivery apps */}
+          <DeliveryAppsSection country={currentLocale.name} title="Grocery & ingredient delivery" compact />
+
           {/* Cook at home option */}
           <TouchableOpacity
-            style={s.cookBtn}
+            style={[s.cookBtn, { marginTop: 20 }]}
             onPress={() => router.back()}
           >
             <Text style={s.cookIcon}></Text>
             <Text style={s.cookTxt}>Cook at Home Instead</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.cookBtn, { marginTop: 8, borderColor: 'rgba(27,58,92,0.15)' }]}
+            onPress={() => router.push('/home' as never)}
+          >
+            <Text style={s.cookTxt}>Back to Home</Text>
           </TouchableOpacity>
 
           <View style={{ height: 32 }} />

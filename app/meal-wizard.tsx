@@ -7,6 +7,7 @@ import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
+import DeliveryAppsSection from '../components/DeliveryApps';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1233,6 +1234,8 @@ export default function MealWizardScreen() {
           })
         )}
 
+        <DeliveryAppsSection country={userLocation.country} title="Order ingredients online" compact />
+
         <View style={s.btnRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Button title="Back" onPress={goBack} variant="outline" />
@@ -1453,7 +1456,8 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={()=>router.push('/home' as never)}>
+        <DeliveryAppsSection country={userLocation.country} compact />
+        <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)',marginTop:16}} onPress={()=>router.push('/home' as never)}>
           <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'700'}}>Done — Back to Home</Text>
         </TouchableOpacity>
       </View>
