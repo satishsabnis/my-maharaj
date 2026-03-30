@@ -13,7 +13,7 @@ import { navy, gold, peacock, textSec, errorRed, white, border, surface, textCol
 type WizardStep =
   | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'nutrition' | 'cuisine-confirm'
   | 'generating' | 'generating-error' | 'selection'
-  | 'cook-or-order' | 'recipes' | 'grocery' | 'feedback';
+  | 'cook-or-order' | 'recipes' | 'grocery' | 'delivery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -411,20 +411,25 @@ export default function MealWizardScreen() {
         return opt ? { user_id: user.id, dish_name: opt.name, served_date: day.date, meal_type: slot } : null;
       }).filter(Boolean)
     );
-    await Promise.all([
-      supabase.from('menu_history').insert({
-        user_id: user.id,
-        period_start: toYMD(selectedFrom), period_end: toYMD(selectedTo),
-        cuisine: 'Various', food_pref: foodPref ?? 'veg',
-        menu_json: { days: generatedPlan.map((day, i) => ({
-          date: day.date, day: day.day,
-          breakfast: getOpt(i, 'breakfast'),
-          lunch:     getOpt(i, 'lunch'),
-          dinner:    getOpt(i, 'dinner'),
-        })) },
-      }),
-      dishRows.length > 0 ? supabase.from('dish_history').insert(dishRows) : Promise.resolve(),
+    const menuPayload = {
+      user_id: user.id,
+      period_start: toYMD(selectedFrom), period_end: toYMD(selectedTo),
+      cuisine: 'Various', food_pref: foodPref ?? 'veg',
+      menu_json: { days: generatedPlan.map((day, i) => ({
+        date: day.date, day: day.day,
+        breakfast: getOpt(i, 'breakfast'),
+        lunch:     getOpt(i, 'lunch'),
+        dinner:    getOpt(i, 'dinner'),
+      })) },
+    };
+    console.log('[saveHistory] Saving menu_history:', JSON.stringify(menuPayload).substring(0, 500));
+    console.log('[saveHistory] Saving dish_history rows:', dishRows.length);
+    const [menuRes, dishRes] = await Promise.all([
+      supabase.from('menu_history').insert(menuPayload),
+      dishRows.length > 0 ? supabase.from('dish_history').insert(dishRows) : Promise.resolve({ error: null }),
     ]);
+    console.log('[saveHistory] menu_history result:', menuRes.error ? `ERROR: ${menuRes.error.message}` : 'SUCCESS');
+    console.log('[saveHistory] dish_history result:', dishRes.error ? `ERROR: ${dishRes.error.message}` : 'SUCCESS');
     // Deduct ingredients from fridge
     await deductFromFridge();
   }
@@ -545,7 +550,8 @@ export default function MealWizardScreen() {
       'cook-or-order': 'selection',
       'recipes': 'cook-or-order',
       'grocery': 'recipes',
-      'feedback': 'grocery',
+      'delivery': 'grocery',
+      'feedback': 'delivery',
     };
     const prev = backMap[step];
     if (prev) setStep(prev);
@@ -1232,8 +1238,68 @@ export default function MealWizardScreen() {
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => advance('feedback')} />
+            <Button title="Continue →" onPress={() => advance('delivery')} />
           </View>
+        </View>
+      </View>
+    );
+  }
+
+  function renderDelivery() {
+    const isUAE = userLocation.country?.toUpperCase().includes('UAE') || userLocation.city?.toLowerCase().includes('dubai') || userLocation.city?.toLowerCase().includes('abu dhabi');
+    const uaeApps = [
+      { name: 'Instashop', tagline: 'Grocery delivery in 60 mins', color: '#00A651', url: 'https://www.instashop.io' },
+      { name: 'Deliveroo', tagline: 'Your favourite food, delivered', color: '#00CCBC', url: 'https://deliveroo.ae' },
+      { name: 'Smiles', tagline: 'Grocery & essentials delivery', color: '#FF6600', url: 'https://www.smilesuae.com' },
+      { name: 'elGrocer', tagline: 'Online supermarket shopping', color: '#E63946', url: 'https://www.elgrocer.com' },
+    ];
+    const genericApps = [
+      { name: 'Instacart', tagline: 'Grocery delivery & pickup', color: '#43B02A', url: 'https://www.instacart.com' },
+      { name: 'DoorDash', tagline: 'Delivery & takeout nearby', color: '#FF3008', url: 'https://www.doordash.com' },
+      { name: 'Uber Eats', tagline: 'Food delivery from local spots', color: '#06C167', url: 'https://www.ubereats.com' },
+      { name: 'Swiggy Instamart', tagline: 'Groceries in minutes', color: '#FC8019', url: 'https://www.swiggy.com/instamart' },
+    ];
+    const apps = isUAE ? uaeApps : genericApps;
+
+    return (
+      <View>
+        <Text style={s.stepTitle}>Order ingredients online?</Text>
+        <Text style={s.stepSub}>Get everything delivered to your door from these apps{isUAE ? ' in UAE' : ''}.</Text>
+
+        <View style={{ gap: 12, marginTop: 16 }}>
+          {apps.map((app) => (
+            <TouchableOpacity
+              key={app.name}
+              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 14, padding: 16, borderWidth: 1.5, borderColor: '#E5E7EB' }}
+              onPress={() => Linking.openURL(app.url)}
+              activeOpacity={0.8}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: app.color, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: white }}>{app.name.charAt(0)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: navy }}>{app.name}</Text>
+                <Text style={{ fontSize: 12, color: textSec, marginTop: 2 }}>{app.tagline}</Text>
+              </View>
+              <Text style={{ fontSize: 18, color: textSec }}>→</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={{ gap: 10, marginTop: 24 }}>
+          <Button title="Done ordering - Continue" onPress={() => advance('feedback')} />
+          <TouchableOpacity
+            style={{ paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.3)', alignItems: 'center' }}
+            onPress={() => advance('feedback')}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: navy }}>No thanks - Continue</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ paddingVertical: 10, alignItems: 'center' }}
+            onPress={goBack}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '500', color: textSec }}>Back to Shopping List</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1477,6 +1543,7 @@ export default function MealWizardScreen() {
     'cook-or-order':    renderCookOrOrder,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
+    'delivery':         renderDelivery,
     'feedback':         renderFeedback,
   };
 

@@ -92,18 +92,14 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         throw new Error('Failed to parse menu response');
       }
 
-      // Nuclear fallback - always ensure beverages exist
-      if (!parsed.beverages || parsed.beverages.length === 0) {
-        if ((parsed as any).drinks && (parsed as any).drinks.length > 0) {
-          parsed.beverages = (parsed as any).drinks;
-        } else {
-          parsed.beverages = [
-            { name: 'Fresh Lime Soda', description: 'Chilled fresh lime with soda water and mint' },
-            { name: 'Mango Lassi', description: 'Thick sweet mango blended with yogurt' },
-            { name: 'Mineral Water', description: 'Still and sparkling water options' },
-          ];
-        }
-      }
+      // Force beverages - never rely on AI returning them
+      parsed.beverages = parsed.beverages?.length > 0 ? parsed.beverages :
+        (parsed as any).drinks?.length > 0 ? (parsed as any).drinks : [
+          { name: 'Fresh Lime Soda', description: 'Chilled with soda water and mint' },
+          { name: 'Mango Lassi', description: 'Sweet mango blended with yogurt' },
+          { name: 'Mineral Water', description: 'Still and sparkling options' },
+          { name: 'Masala Chai', description: 'Spiced Indian tea with milk' },
+        ];
       setMenu(parsed);
       setStep('result');
     } catch { setError('Failed to generate menu. Please try again.'); }

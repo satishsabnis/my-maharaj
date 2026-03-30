@@ -301,7 +301,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/ask-maharaj' as never)}
           activeOpacity={0.88}
         >
-          <Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" />
+          <Image source={require('../assets/logo.png')} style={{ width: 40, height: 40, borderRadius: 20 }} resizeMode="contain" />
           <Text style={s.fabLabel}>Ask Maharaj AI</Text>
           <Text style={s.fabMic}>Mic</Text>
         </TouchableOpacity>
