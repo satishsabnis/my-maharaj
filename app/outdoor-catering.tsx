@@ -89,7 +89,6 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
         const match = rawText.match(/\{[\s\S]*\}/);
         parsed = JSON.parse(match ? match[0] : rawText) as OutdoorMenu;
       } catch(e) {
-        console.error('JSON parse failed:', e);
         throw new Error('Failed to parse menu response');
       }
 

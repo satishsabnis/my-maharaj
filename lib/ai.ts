@@ -154,8 +154,12 @@ async function generateOneMeal(
     ? ' CRITICAL: At least one option MUST be a real non-veg dish with chicken/fish/eggs/mutton.'
     : '';
 
+  const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
   const prompt = `You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
 Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
+
+Variation seed: ${variationSeed}
+IMPORTANT: Generate completely different dishes from any previous response. Do not repeat any dish name from this session.
 
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
@@ -307,10 +311,11 @@ export async function generateMealPlan(
     const batch = dayMeta.slice(batchStart, batchStart + BATCH_SIZE);
     const batchResults = await Promise.all(
       batch.map(async ({ date, dayName, foodPref, lunchDinnerPref, dayCuisine, i }) => {
+        const emptySlot: MealSlot = { options: [] };
         const [breakfast, lunch, dinner, snack] = await Promise.all([
-          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('breakfast', i)),
-          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('lunch', i)),
-          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(fallbackSlot('dinner', i)),
+          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, foodPref,          lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(emptySlot),
+          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(emptySlot),
+          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(emptySlot),
           slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, 'Light evening snack — chai, biscuits, sandwiches, fruits, chaat, namkeen. NOT a full meal.', lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames) : Promise.resolve(undefined),
         ]);
         completed++;
