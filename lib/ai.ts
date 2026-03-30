@@ -2,6 +2,7 @@
 
 export interface MealOption {
   name: string;
+  description?: string;
   vegetarian: boolean;
   tags: string[];
   ingredients: string[];
@@ -183,7 +184,9 @@ A Full Thali MUST contain ALL of the following components:
 9. Drink/Sharbat — one beverage (e.g. Chaas, Lassi, Nimbu Pani)
 
 The dish name MUST be '[Cuisine] Full Thali' e.g. 'Maharashtrian Full Thali'.
-The description MUST list all components separated by commas.
+The description MUST use this EXACT pipe-separated format:
+"Dal: [name] | Sabzi: [name] | Rice: [type] | Bread: [type] | Raita: [type] | Papad | Pickle: [type] | Dessert: [name] | Drink: [name]"
+Example: "Dal: Masoor Dal Tadka | Sabzi: Bharli Vangi, Batata Bhaji | Rice: Steamed Basmati | Bread: Phulka | Raita: Koshimbir | Papad | Pickle: Mango Pickle | Dessert: Puran Poli | Drink: Sol Kadhi"
 Do NOT generate a single dish for Full Thali. This is non-negotiable.
 `;
     }
@@ -231,15 +234,16 @@ IMPORTANT RULES:
 - Tags: vegetarian/non-vegetarian, plus relevant health tags
 
 Reply ONLY with this JSON (no other text, no markdown):
-{"options":[{"name":"Real Dish Name 1","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
+{"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
 
   try {
     const text = await askClaude(prompt);
     const raw = JSON.parse(text) as {
-      options: Array<{ name: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
+      options: Array<{ name: string; desc?: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
     };
     const opts = (raw.options ?? []).map((o) => ({
       name: o.name ?? '',
+      description: o.desc ?? undefined,
       vegetarian: o.veg ?? true,
       tags: o.tags ?? [],
       ingredients: o.ing ?? [],

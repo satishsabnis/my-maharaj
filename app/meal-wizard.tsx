@@ -13,7 +13,7 @@ import DeliveryAppsSection from '../components/DeliveryApps';
 
 type WizardStep =
   | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'nutrition' | 'cuisine-confirm'
-  | 'generating' | 'generating-error' | 'selection'
+  | 'generating' | 'generating-error' | 'selection' | 'plan-summary'
   | 'cook-or-order' | 'recipes' | 'grocery' | 'delivery' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -559,7 +559,8 @@ export default function MealWizardScreen() {
       'nutrition': isSingleDay ? 'unwell' : 'veg-days',
       'cuisine-confirm': 'nutrition',
       'selection': 'cuisine-confirm',
-      'cook-or-order': 'selection',
+      'plan-summary': 'selection',
+      'cook-or-order': 'plan-summary',
       'recipes': 'cook-or-order',
       'grocery': 'recipes',
       'delivery': 'grocery',
@@ -990,6 +991,25 @@ export default function MealWizardScreen() {
     );
   }
 
+  function ThaliDetails({ description }: { description: string }) {
+    if (!description || !description.includes(' | ')) return null;
+    const components = description.split(' | ').map(c => c.trim()).filter(Boolean);
+    return (
+      <View style={{marginTop:4,gap:2}}>
+        {components.map((comp, i) => {
+          const [label, ...rest] = comp.split(':');
+          const value = rest.join(':').trim();
+          return (
+            <Text key={i} style={{fontSize:11,color:'#374151',lineHeight:16}}>
+              <Text style={{fontWeight:'700',color:'#1B3A5C'}}>{label.trim()}</Text>
+              {value ? `: ${value}` : ''}
+            </Text>
+          );
+        })}
+      </View>
+    );
+  }
+
   function renderSelection() {
     if (!generatedPlan) return null;
     const allSlots: { key: MealSlotKey; icon: string; label: string }[] = [
@@ -1075,6 +1095,9 @@ export default function MealWizardScreen() {
                     </View>
                     <View style={{flex:1}}>
                       <Text style={{fontSize:14,fontWeight: isSel ? '700' : '500',color: isSel ? navy : '#374151'}}>{opt.name}</Text>
+                      {opt.name.toLowerCase().includes('thali') && opt.description && (
+                        <ThaliDetails description={opt.description} />
+                      )}
                       {opt.tags.length > 0 && (
                         <View style={{flexDirection:'row',gap:4,marginTop:3}}>
                           {opt.tags.slice(0,3).map(tag => (
@@ -1112,7 +1135,7 @@ export default function MealWizardScreen() {
           </Text>
           <Button
             title="Confirm Meal Plan"
-            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('cook-or-order'); }}
+            onPress={() => { void saveHistory(); setRecipeDishes([]); advance('plan-summary'); }}
             disabled={!allSelected()}
           />
           <View style={{flexDirection:'row',gap:8,marginTop:8}}>
@@ -1450,6 +1473,105 @@ export default function MealWizardScreen() {
     );
   }
 
+  function renderPlanSummary() {
+    if (!generatedPlan) return null;
+    const SLOT_LABELS: { key: MealSlotKey; label: string }[] = [
+      { key: 'breakfast', label: 'Breakfast' },
+      { key: 'lunch', label: 'Lunch' },
+      { key: 'snack', label: 'Snack' },
+      { key: 'dinner', label: 'Dinner' },
+    ];
+    const slotsToShow = SLOT_LABELS.filter(sl =>
+      (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) &&
+      (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
+    );
+    const COL_W = 120;
+
+    return (
+      <View>
+        <Text style={s.stepTitle}>Your Meal Plan</Text>
+        {selectedFrom && selectedTo && (
+          <Text style={s.stepSub}>
+            {selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`}
+            {servingsCount > 0 ? ` · ${servingsCount} people` : ''}
+          </Text>
+        )}
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{marginTop:12}}>
+          <View>
+            {/* Header row */}
+            <View style={{flexDirection:'row'}}>
+              <View style={{width:80,padding:8,backgroundColor:'#1B3A5C',borderTopLeftRadius:10}}>
+                <Text style={{fontSize:11,fontWeight:'700',color:white}}>Meal</Text>
+              </View>
+              {generatedPlan.map((day, i) => {
+                const short = day.day.substring(0,3);
+                const dd = day.date.split('-')[2];
+                return (
+                  <View key={day.date} style={{width:COL_W,padding:8,backgroundColor:'#1B3A5C',borderTopRightRadius: i === generatedPlan.length - 1 ? 10 : 0}}>
+                    <Text style={{fontSize:11,fontWeight:'700',color:white,textAlign:'center'}}>{short} {dd}</Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Slot rows */}
+            {slotsToShow.map(({ key, label }, slotIdx) => (
+              <View key={key} style={{flexDirection:'row',borderBottomWidth:1,borderBottomColor:'#E5E7EB'}}>
+                <View style={{width:80,padding:8,backgroundColor:'rgba(27,58,92,0.05)',justifyContent:'center'}}>
+                  <Text style={{fontSize:11,fontWeight:'700',color:navy}}>{label}</Text>
+                </View>
+                {generatedPlan.map((day, dayIdx) => {
+                  const opt = getOpt(dayIdx, key);
+                  const isThali = opt?.name?.toLowerCase().includes('thali');
+                  const [expanded, setExpanded] = [expandedRecipes[`summary-${dayIdx}-${key}`], (v: boolean) => setExpandedRecipes(prev => ({...prev,[`summary-${dayIdx}-${key}`]:v}))];
+                  return (
+                    <TouchableOpacity
+                      key={day.date}
+                      style={{width:COL_W,padding:6,backgroundColor: slotIdx % 2 === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(245,247,250,0.9)'}}
+                      onPress={() => isThali && setExpanded(!expanded)}
+                      activeOpacity={isThali ? 0.7 : 1}
+                    >
+                      <Text style={{fontSize:11,fontWeight:'600',color:'#374151',lineHeight:15}} numberOfLines={expanded ? undefined : 2}>
+                        {opt?.name ?? '—'}
+                      </Text>
+                      {isThali && <Text style={{fontSize:9,color:'#5A7A8A',marginTop:1}}>{expanded ? '▲ hide' : '▼ details'}</Text>}
+                      {isThali && expanded && opt?.description && (
+                        <ThaliDetails description={opt.description} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+
+        {/* Action buttons */}
+        <View style={{flexDirection:'row',gap:8,marginTop:16}}>
+          <TouchableOpacity
+            style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}}
+            onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}
+          >
+            <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}}
+            onPress={() => advance('cook-or-order')}
+          >
+            <Text style={{fontSize:13,fontWeight:'700',color:white}}>Cook at Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:'#1A6B3C',alignItems:'center'}}
+            onPress={() => router.push('/order-out' as never)}
+          >
+            <Text style={{fontSize:13,fontWeight:'700',color:white}}>Order Out</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   function renderCookOrOrder() {
     return (
       <View style={{paddingVertical:8}}>
@@ -1561,6 +1683,7 @@ export default function MealWizardScreen() {
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
+    'plan-summary':     renderPlanSummary,
     'guest-cuisine':    renderGuestCuisine,
     'veg-days':         renderVegDays,
     'cook-or-order':    renderCookOrOrder,
