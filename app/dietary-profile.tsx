@@ -146,13 +146,27 @@ export default function DietaryProfileScreen() {
     try {
       const user = await getSessionUser();
       if (!user) return;
-      await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
+      console.log('[DietaryProfile] saveCuisines for user:', user.id, 'cuisines:', selectedCuisines);
+
+      // Upsert selected cuisines
       if (selectedCuisines.length > 0) {
-        await supabase.from('cuisine_preferences').insert(
-          selectedCuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
+        const { error: upsertErr } = await supabase.from('cuisine_preferences').upsert(
+          selectedCuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false, weight: 5 })),
+          { onConflict: 'user_id,cuisine_name' }
         );
+        if (upsertErr) console.error('[DietaryProfile] upsert error:', upsertErr.message);
       }
-    } catch (e) { console.error(e); } finally { setCuisineSaving(false); }
+
+      // Delete cuisines that were removed
+      const { error: delErr } = await supabase.from('cuisine_preferences')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('is_excluded', false)
+        .not('cuisine_name', 'in', `(${selectedCuisines.join(',')})`);
+      if (delErr) console.error('[DietaryProfile] delete error:', delErr.message);
+
+      console.log('[DietaryProfile] saveCuisines done');
+    } catch (e) { console.error('[DietaryProfile] saveCuisines exception:', e); } finally { setCuisineSaving(false); }
   }
 
   async function deleteMember(id: string) {

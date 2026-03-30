@@ -185,6 +185,7 @@ export default function MealWizardScreen() {
     setError('');
     try {
       const user = await getSessionUser();
+      console.log('[MealWizard] getSessionUser result:', user ? `id=${user.id}` : 'NULL');
       if (!user) {
         setError('Session expired. Please log out and log in again.');
         setStep('generating-error');
