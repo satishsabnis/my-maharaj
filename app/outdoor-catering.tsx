@@ -100,9 +100,12 @@ You MUST return valid JSON. The beverages array is REQUIRED and MUST contain exa
           { name: 'Mineral Water', description: 'Still and sparkling options' },
           { name: 'Masala Chai', description: 'Spiced Indian tea with milk' },
         ];
+      console.log('[OutdoorCatering] menu set:', JSON.stringify(parsed).substring(0, 200));
+      console.log('[OutdoorCatering] beverages count:', parsed.beverages?.length);
       setMenu(parsed);
+      console.log('[OutdoorCatering] step changing to result');
       setStep('result');
-    } catch { setError('Failed to generate menu. Please try again.'); }
+    } catch (err) { console.error('[OutdoorCatering] generateMenu error:', err); setError('Failed to generate menu. Please try again.'); }
     finally { setLoading(false); }
   }
 
