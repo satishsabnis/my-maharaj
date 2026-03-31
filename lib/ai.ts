@@ -200,7 +200,10 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
       mandatoryInstruction += 'MANDATORY: Generate a very light meal — khichdi, soup, or simple salad only. No heavy curries or fried food.\n';
     }
     if (mealConstraint.includes('Egg')) {
-      mandatoryInstruction += 'MANDATORY: Egg-based dishes only for this meal.\n';
+      mandatoryInstruction += `⚠️ ABSOLUTE OVERRIDE — EGG DISHES ONLY:
+ALL 3 options MUST be egg-based dishes. Examples: Egg Bhurji, Masala Omelette, Anda Curry, Egg Paratha, Boiled Eggs with Toast, Egg Dosa, Boiled Egg Salad, Egg Fried Rice, Egg Sandwich.
+ALL 3 options MUST contain eggs as the primary ingredient. No exceptions. No substitutions.
+If you suggest even one non-egg dish this response will be rejected and regenerated.\n`;
     }
     if (mealConstraint.includes('Fruit')) {
       mandatoryInstruction += 'MANDATORY: Fruit-based meal only.\n';
@@ -211,7 +214,7 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
     breakfast: `BREAKFAST RULES:
 - Light morning meal only
 - ALLOWED: Pohe, Upma, Idli, Dosa, Uttapam, Thepla, Paratha, Besan Chilla, Moong Dal Chilla, Sabudana Khichdi, Sheera, Bread Upma, Oats, Eggs, Fruits, Smoothie, Puri Bhaji
-- BANNED from breakfast: Biryani, Rajma, Chole, Dal Makhani, any rice+curry combination, any dish that is a lunch or dinner staple
+- BANNED from breakfast: Biryani, Rajma, Chole, Dal Makhani, Ragi Mudde, Ragi Ball, Mudde (these are Karnataka lunch/dinner dishes NEVER served at breakfast), any rice+curry combination, any dish that is a lunch or dinner staple
 - Dosa varieties are ONLY for breakfast — NEVER dinner`,
 
     lunch: `LUNCH RULES:
@@ -288,6 +291,28 @@ Reply ONLY with this JSON (no other text, no markdown):
       };
     });
     if (opts.length === 0) return fallbackSlot(mealType, dayIdx);
+
+    // Validate protein constraint — if AI ignored it, force fallback
+    if (mealConstraint) {
+      const names = opts.map(o => o.name.toLowerCase()).join(' ');
+      if (mealConstraint.includes('Egg') && !names.includes('egg') && !names.includes('anda') && !names.includes('omelette')) {
+        console.warn('[generateOneMeal] AI ignored egg constraint — falling back');
+        return fallbackSlot(mealType, dayIdx);
+      }
+      if (mealConstraint.includes('Chicken') && !names.includes('chicken') && !names.includes('murgh')) {
+        console.warn('[generateOneMeal] AI ignored chicken constraint — falling back');
+        return fallbackSlot(mealType, dayIdx);
+      }
+      if (mealConstraint.includes('Fish') && !names.includes('fish') && !names.includes('machli') && !names.includes('prawn') && !names.includes('seafood')) {
+        console.warn('[generateOneMeal] AI ignored fish constraint — falling back');
+        return fallbackSlot(mealType, dayIdx);
+      }
+      if (mealConstraint.includes('Mutton') && !names.includes('mutton') && !names.includes('lamb') && !names.includes('keema') && !names.includes('gosht')) {
+        console.warn('[generateOneMeal] AI ignored mutton constraint — falling back');
+        return fallbackSlot(mealType, dayIdx);
+      }
+    }
+
     return { options: opts };
   } catch {
     return fallbackSlot(mealType, dayIdx);
@@ -383,12 +408,24 @@ export async function generateMealPlan(
   // Build meal constraints from page 4 prefs per slot
   function buildConstraint(prefs?: string[], slot?: string): string {
     if (!prefs || prefs.length === 0) return '';
+    // Protein overrides — these return immediately and override all other prefs
+    if (prefs.includes('Eggs')) {
+      return '⚠️ EGG DISHES ONLY. ALL 3 options must be egg-based. Egg Bhurji, Masala Omelette, Anda Curry, Egg Paratha, Egg Sandwich are examples. NO non-egg dishes allowed.';
+    }
+    if (prefs.includes('Chicken')) {
+      return '⚠️ CHICKEN DISHES ONLY. ALL 3 options must contain chicken. Examples: Chicken Curry, Chicken Biryani, Chicken Tikka, Chicken Pulao, Murgh Makhani. NO non-chicken dishes.';
+    }
+    if (prefs.includes('Fish')) {
+      return '⚠️ FISH DISHES ONLY. ALL 3 options must contain fish or seafood. Examples: Fish Curry, Fish Fry, Prawn Masala, Fish Biryani, Machli Tikka. NO non-fish dishes.';
+    }
+    if (prefs.includes('Mutton')) {
+      return '⚠️ MUTTON DISHES ONLY. ALL 3 options must contain mutton or lamb. Examples: Mutton Curry, Rogan Josh, Mutton Biryani, Keema Matar, Mutton Rogan Josh. NO non-mutton dishes.';
+    }
     const parts: string[] = [];
     if (prefs.includes('Full Thali')) parts.push('Generate a FULL THALI with ALL components: Dal, Sabzi, Rice or Roti, Raita, Papad or Pickle, one Dessert, one Drink. ONE complete thali entry.');
     if (prefs.includes('Rice based')) parts.push('Generate rice dish only, no bread/roti.');
     if (prefs.includes('Roti based')) parts.push('Generate roti/bread dish only, no rice.');
     if (prefs.includes('Light only')) parts.push('Light meals only — soup, khichdi or salad. No heavy curries.');
-    if (prefs.includes('Eggs')) parts.push('Egg-based dishes only for this meal.');
     if (prefs.includes('Fruits') || prefs.includes('Fruit/Juice')) parts.push('Fruit-based meal only.');
     if (slot === 'snack') parts.push('Evening snack ONLY — chai, snack, chaat, sandwich. NOT a full meal.');
     return parts.join(' ');
