@@ -69,8 +69,12 @@ export default function DisclaimerScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <View style={s.disclaimerHeader}>
+        <View style={{width:80}} />
         <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
+        <Image source={require('../assets/blueflute-logo.png')} style={{width:80,height:28}} resizeMode="contain" />
+      </View>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.title}>Terms & Disclaimers</Text>
         <Text style={s.subtitle}>Please read and accept before continuing</Text>
 
@@ -104,8 +108,9 @@ export default function DisclaimerScreen() {
 
 const s = StyleSheet.create({
   safe:     { flex: 1, backgroundColor: white },
+  disclaimerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 25 : Platform.OS === 'web' ? 14 : 8, paddingBottom: 8 },
   scroll:   { padding: 24, paddingBottom: 48 },
-  logo:     { width: 180, height: 60, alignSelf: 'center', marginBottom: 16, marginTop: 8 },
+  logo:     { width: 180, height: 60 },
   title:    { fontSize: 24, fontWeight: '800', color: navy, textAlign: 'center', marginBottom: 4 },
   subtitle: { fontSize: 14, color: textSec, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   card:     { backgroundColor: '#F8FAFB', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: border },

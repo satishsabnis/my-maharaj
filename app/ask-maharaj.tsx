@@ -221,9 +221,12 @@ Always respond in the same language the user writes in. If they write in Marathi
             <Text style={s.headerTitle}>Ask Maharaj AI</Text>
             <Text style={s.headerSub}>Your Wise Nutrition Mentor</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
-            <Text style={s.homeTxt}>Home</Text>
-          </TouchableOpacity>
+          <View style={{alignItems:'flex-end',gap:4}}>
+            <Image source={require('../assets/blueflute-logo.png')} style={{width:80,height:28}} resizeMode="contain" />
+            <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
+              <Text style={s.homeTxt}>Home</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Chat area */}

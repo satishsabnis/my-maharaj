@@ -160,6 +160,7 @@ export default function HomeScreen() {
             <Text style={s.headerBf}>Blue Flute Consulting</Text>
           </View>
           <View style={s.headerRight}>
+            <Image source={require('../assets/blueflute-logo.png')} style={s.bfLogoHeader} resizeMode="contain" />
             {lang !== 'en' && (
               <TouchableOpacity onPress={toggleEnglish} style={[s.langToggle, isEnglish && s.langToggleActive]}>
                 <Text style={[s.langToggleTxt, isEnglish && s.langToggleTxtActive]}>EN</Text>
@@ -384,7 +385,8 @@ const s = StyleSheet.create({
   headerCenter: { alignItems: 'center', flex: 1 },
   headerLogo: { width: 160, height: 52 },
   headerBf: { fontSize: 8, color: textSec, marginTop: -2 },
-  headerRight: { minWidth: 36, alignItems: 'flex-end' },
+  headerRight: { minWidth: 80, alignItems: 'flex-end', gap: 4 },
+  bfLogoHeader: { width: 80, height: 28 },
   langToggle: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.3)', backgroundColor: 'rgba(255,255,255,0.8)' },
   langToggleActive: { backgroundColor: navy, borderColor: navy },
   langToggleTxt: { fontSize: 11, fontWeight: '700', color: navy },

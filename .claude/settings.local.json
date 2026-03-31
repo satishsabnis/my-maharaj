@@ -10,7 +10,8 @@
       "Bash(npx eas:*)",
       "Bash(grep -E '\"\"name\"\"|\"\"slug\"\"|\"\"package\"\"|\"\"version\"\"' app.json)",
       "Bash(grep -A3 '\"\"preview\"\"' eas.json)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(npx expo:*)"
     ]
   }
 }
