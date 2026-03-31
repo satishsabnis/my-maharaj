@@ -854,11 +854,12 @@ export default function MealWizardScreen() {
         <Text style={s.stepSub}>Select all that apply for each meal</Text>
 
         {[
-          { emoji: '', label: 'Breakfast', opts: BF_OPTS, sel: bfPrefs, set: setBfPrefs },
-          { emoji: '', label: 'Lunch',     opts: LN_OPTS, sel: lnPrefs, set: setLnPrefs },
-          { emoji: '', label: 'Evening Snack', opts: SN_OPTS, sel: snPrefs, set: setSnPrefs },
-          { emoji: '', label: 'Dinner',    opts: DN_OPTS, sel: dnPrefs, set: setDnPrefs },
-        ].map(({ emoji, label, opts, sel, set }) => (
+          { slot: 'breakfast', emoji: '', label: 'Breakfast', opts: BF_OPTS, sel: bfPrefs, set: setBfPrefs },
+          { slot: 'lunch',     emoji: '', label: 'Lunch',     opts: LN_OPTS, sel: lnPrefs, set: setLnPrefs },
+          { slot: 'snack',     emoji: '', label: 'Evening Snack', opts: SN_OPTS, sel: snPrefs, set: setSnPrefs },
+          { slot: 'dinner',    emoji: '', label: 'Dinner',    opts: DN_OPTS, sel: dnPrefs, set: setDnPrefs },
+        ].filter(({ slot }) => selectedSlots.length === 0 || selectedSlots.includes(slot))
+        .map(({ emoji, label, opts, sel, set }) => (
           <View key={label} style={s.mealPrefSection}>
             <Text style={s.mealPrefHeader}>{emoji} {label}</Text>
             <View style={s.pillRow}>
@@ -1039,9 +1040,9 @@ export default function MealWizardScreen() {
     const dateNum = day.date.split('-')[2];
 
     return (
-      <View style={{flex:1}}>
+      <View style={{flex:1,alignItems:'center'}}>
         {/* Day tabs - horizontal scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:56,marginBottom:12}}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:56,marginBottom:12,alignSelf:'center'}}>
           <View style={{flexDirection:'row',gap:6,paddingHorizontal:4,paddingVertical:4}}>
             {generatedPlan.map((d, idx) => {
               const dn = d.day.substring(0, 3);
@@ -1068,13 +1069,13 @@ export default function MealWizardScreen() {
         </ScrollView>
 
         {/* Active day's slots */}
-        <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:8}}>{day.day}, {fmtDate(day.date)}</Text>
+        <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:8,textAlign:'center',width:'100%'}}>{day.day} · {fmtDate(day.date)}</Text>
 
         {visibleSlots.map(({ key, icon, label }) => {
           const slotData = day[key];
           if (!slotData || slotData.options.length === 0) return null;
           return (
-            <View key={key} style={{marginBottom:12}}>
+            <View key={key} style={{marginBottom:12,width:'100%',maxWidth:600,alignSelf:'center'}}>
               {/* Slot header bar */}
               <View style={{backgroundColor:navy,borderRadius:10,paddingHorizontal:14,paddingVertical:8,marginBottom:8,flexDirection:'row',alignItems:'center',gap:8}}>
                 <Text style={{fontSize:16}}>{icon}</Text>
@@ -1153,7 +1154,7 @@ export default function MealWizardScreen() {
         })}
 
         {/* Bottom buttons */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:16,padding:14,marginTop:8,borderWidth:1,borderColor:'#E5E7EB'}}>
+        <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:16,padding:14,marginTop:8,borderWidth:1,borderColor:'#E5E7EB',width:'100%',maxWidth:600,alignSelf:'center'}}>
           <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A',textAlign:'center',marginBottom:8}}>
             {selectedCount()} of {total} meals selected
           </Text>
@@ -1510,7 +1511,9 @@ export default function MealWizardScreen() {
                 <Text style={{fontSize:12,fontWeight:'800',color:white}}>Meal</Text>
               </View>
               {generatedPlan.map((day) => {
-                const label = `${day.day.substring(0,3)} ${fmtDate(day.date)}`;
+                const dt = new Date(day.date);
+                const shortDate = `${dt.getDate()}-${MONTHS[dt.getMonth()]}`;
+                const label = `${day.day.substring(0,3)} · ${shortDate}`;
                 return (
                   <View key={day.date} style={{width:COL_W,padding:10,backgroundColor:BORDER,borderLeftWidth:1,borderLeftColor:'rgba(255,255,255,0.2)'}}>
                     <Text style={{fontSize:11,fontWeight:'700',color:white,textAlign:'center'}}>{label}</Text>
