@@ -2,8 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { useLang } from "../lib/LanguageProvider";
-
-const TICKER_TEXT = "  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  ";
+import { TICKER_TEXT } from "../lib/constants";
 
 interface Props {
   title?: string;
