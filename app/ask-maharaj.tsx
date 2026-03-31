@@ -50,6 +50,8 @@ export default function AskMaharajScreen() {
 
   const [listening,    setListening]    = useState(false);
   const [lastVoiceInput, setLastVoiceInput] = useState(false);
+  const [isSpeaking,  setIsSpeaking]  = useState(false);
+  const [isPaused,    setIsPaused]    = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   // ── Load dietary profile for context ───────────────────────────────────────
@@ -110,7 +112,7 @@ export default function AskMaharajScreen() {
       const profileCtx = await getProfileContext();
       const isMealRequest = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
 
-      const systemPrompt = `CRITICAL: Always respond in the EXACT same language the user writes in. If they write in English, respond in English only. If Marathi, respond in Marathi only. If Hindi, respond in Hindi only. Never switch languages.
+      const systemPrompt = `CRITICAL RULE 1: You MUST respond in the EXACT same language the user writes in. If English respond in English only. If Hindi respond in Hindi only. Never switch languages.
 
 You are Maharaj, a wise and authoritative Indian culinary AI mentor for the My Maharaj app. You are deeply knowledgeable about Indian regional cuisines, Ayurvedic nutrition, and the cultural history of food.
 
@@ -153,8 +155,10 @@ Always respond in the same language the user writes in. If they write in Marathi
         utterance.lang = 'en-IN';
         utterance.rate = 0.9;
         const voices = window.speechSynthesis.getVoices();
-        const male = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('male') || v.name.includes('Google UK English Male')));
-        if (male) utterance.voice = male;
+        const maleVoice = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('Rishi') || v.name.toLowerCase().includes('male')) || voices.find(v => v.lang.startsWith('en'));
+        utterance.voice = maleVoice || null;
+        utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
+        setIsSpeaking(true); setIsPaused(false);
         window.speechSynthesis.speak(utterance);
       }
     } catch (e) {
@@ -261,22 +265,29 @@ Always respond in the same language the user writes in. If they write in Marathi
             {messages.map((msg, i) => (
               <View key={i} style={[s.bubble, msg.role === 'user' ? s.bubbleUser : s.bubbleAI]}>
                 {msg.role === 'assistant' && (
-                  <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:40,height:18}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
+                  <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
                 )}
                 <Text style={[s.bubbleTxt, msg.role === 'user' ? s.bubbleTxtUser : s.bubbleTxtAI]}>
                   {msg.content}
                 </Text>
                 {msg.role === 'assistant' && (
-                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:6,paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { const u = new SpeechSynthesisUtterance(msg.content.slice(0,500)); u.lang = 'en-IN'; u.rate = 0.9; window.speechSynthesis.speak(u); } }}>
-                    <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Speak</Text>
-                  </TouchableOpacity>
+                  <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:6,gap:6}}>
+                    <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(msg.content.slice(0,500)); u.lang = 'en-IN'; u.rate = 0.9; const voices = window.speechSynthesis.getVoices(); const mv = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('Rishi') || v.name.toLowerCase().includes('male')) || voices.find(v => v.lang.startsWith('en')); u.voice = mv || null; u.onend = () => { setIsSpeaking(false); setIsPaused(false); }; setIsSpeaking(true); setIsPaused(false); window.speechSynthesis.speak(u); } }}>
+                      <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Speak</Text>
+                    </TouchableOpacity>
+                    {isSpeaking && (
+                      <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); } else { window.speechSynthesis.pause(); setIsPaused(true); } } }}>
+                        <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>{isPaused ? 'Resume' : 'Pause'}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
             ))}
 
             {loading && (
               <View style={[s.bubble, s.bubbleAI]}>
-                <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:40,height:18}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
+                <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
                 <ActivityIndicator color={navy} size="small" style={{ marginTop: 4 }} />
                 <Text style={[s.bubbleTxt, s.bubbleTxtAI, { fontStyle: 'italic', marginTop: 4 }]}>
                   Consulting ancient wisdom...
@@ -287,7 +298,7 @@ Always respond in the same language the user writes in. If they write in Marathi
             {mealResult && (
               <View style={s.mealResultInline}>
                 <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>
-                  <Image source={require('../assets/logo.png')} style={{width:40,height:18}} resizeMode="contain" />
+                  <Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" />
                   <Text style={{fontSize:16,fontWeight:'800',color:navy}}>{mealResult.title ?? 'Your Meal Plan'}</Text>
                 </View>
                 {mealResult.meals.map((meal, i) => (

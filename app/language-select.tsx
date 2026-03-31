@@ -4,6 +4,7 @@ import {
   Text, TouchableOpacity, View, Image, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 
@@ -74,10 +75,8 @@ export default function LanguageSelectScreen() {
         }, { onConflict: 'id' });
       }
       // Store locally too for immediate use
-      if (typeof window !== 'undefined') {
-        window.localStorage?.setItem('app_language', selected);
-        window.localStorage?.setItem('maharaj_lang_set', 'true');
-      }
+      await AsyncStorage.setItem('app_language', selected);
+      await AsyncStorage.setItem('maharaj_lang_set', 'true');
     } catch (e) {
       console.error('Language save error:', e);
     } finally {
@@ -153,7 +152,7 @@ export default function LanguageSelectScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.skipBtn} onPress={() => { if (typeof window !== 'undefined') window.localStorage?.setItem('maharaj_lang_set', 'true'); router.replace('/home'); }} activeOpacity={0.7}>
+          <TouchableOpacity style={s.skipBtn} onPress={() => { AsyncStorage.setItem('maharaj_lang_set', 'true'); router.replace('/home'); }} activeOpacity={0.7}>
             <Text style={s.skipTxt}>Skip — use English</Text>
           </TouchableOpacity>
 

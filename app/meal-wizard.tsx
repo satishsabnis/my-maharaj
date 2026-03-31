@@ -756,21 +756,25 @@ export default function MealWizardScreen() {
         </View>
 
         {/* Present members - who is home */}
-        {familyMembers.length > 0 && (
-          <View style={{marginBottom:12}}>
-            <Text style={s.sectionLabel}>WHO IS HOME FOR MEALS?</Text>
-            <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
-              {familyMembers.map(m=>(
-                <TouchableOpacity key={m.id}
-                  style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:presentMembers.includes(m.id)?'#1B3A5C':'#D4EDE5',backgroundColor:presentMembers.includes(m.id)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
-                  onPress={()=>setPresentMembers(prev=>prev.includes(m.id)?prev.filter(x=>x!==m.id):[...prev,m.id])}>
-                  <Text style={{fontSize:13,fontWeight:'600',color:presentMembers.includes(m.id)?'#FFFFFF':'#1B3A5C'}}>{m.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={{fontSize:11,color:'#9CA3AF',marginTop:4}}>Leave all unselected = cook for everyone</Text>
-          </View>
-        )}
+        <View style={{marginBottom:12}}>
+          <Text style={s.sectionLabel}>WHO IS HOME FOR MEALS?</Text>
+          {familyMembers.length > 0 ? (
+            <>
+              <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+                {familyMembers.map(m=>(
+                  <TouchableOpacity key={m.id}
+                    style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:presentMembers.includes(m.id)?'#1B3A5C':'#D4EDE5',backgroundColor:presentMembers.includes(m.id)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+                    onPress={()=>setPresentMembers(prev=>prev.includes(m.id)?prev.filter(x=>x!==m.id):[...prev,m.id])}>
+                    <Text style={{fontSize:13,fontWeight:'600',color:presentMembers.includes(m.id)?'#FFFFFF':'#1B3A5C'}}>{m.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={{fontSize:11,color:'#9CA3AF',marginTop:4}}>Leave all unselected = cook for everyone</Text>
+            </>
+          ) : (
+            <Text style={{fontSize:13,color:'#9CA3AF',fontStyle:'italic',marginTop:4}}>Add family members in Family Profile to use this feature</Text>
+          )}
+        </View>
 
         {/* Additional guests */}
         <Text style={s.sectionLabel}>ADDITIONAL GUESTS?</Text>
@@ -1271,7 +1275,7 @@ export default function MealWizardScreen() {
   }
 
   function renderDeliveryApps() {
-    const apps = ['Amazon','Barakat','Careem','Deliveroo','elGrocer','Fresh to Home','Instashop','Keeta','Noon','Smiles','Talabat'];
+    const apps = ['Amazon','Careem','Fresh to Home','Noon'];
     const rows: string[][] = [];
     for (let i = 0; i < apps.length; i += 2) rows.push(apps.slice(i, i + 2));
 
