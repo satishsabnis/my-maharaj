@@ -91,6 +91,9 @@ export default function Layout() {
       <Stack.Screen name="lab-report" />
       <Stack.Screen name="meal-prep" />
       <Stack.Screen name="disclaimer" />
+      <Stack.Screen name="who-is-home" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="dining-plating" />
     </Stack>
     </LanguageProvider>
   );

@@ -1,12 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated, ImageBackground, Platform, SafeAreaView, ScrollView,
-  StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, Image,
+  Alert, Animated, Image, ImageBackground, Platform, SafeAreaView,
+  ScrollView, StyleSheet, Text, TouchableOpacity,
+  useWindowDimensions, View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { loadOrDetectLocation } from '../lib/location';
-import { navy, gold, white, textSec, border } from '../theme/colors';
+import { TICKER_TEXT } from '../lib/constants';
+import { useLang } from '../lib/LanguageProvider';
+import { navy, gold, white, textSec, border, mint } from '../theme/colors';
+import { presentMemberIds } from './who-is-home';
 
 // ─── Festival data ────────────────────────────────────────────────────────────
 
@@ -44,267 +50,315 @@ function getNextFestival() {
 const WDAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function formatDateTime(d: Date): string {
-  let h = d.getHours();
-  const m = String(d.getMinutes()).padStart(2, '0');
-  const ap = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${WDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}  ·  ${h}:${m} ${ap}`;
+function formatDate(d: Date): string {
+  return `${WDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
-// ─── Card definitions ─────────────────────────────────────────────────────────
+// ─── Quick grid cards ─────────────────────────────────────────────────────────
 
-// Special card - full width
-const HERO_CARD = { id:'mealplan', icon:'🍳', title:'Generate Meal Plan', desc:'Smart weekly meal planning for your family', route:'/meal-wizard', accent:'#1B3A5C', iconBg:'#E3F2FD' };
-
-const CARDS = [
-  { id:'festivals',  icon:'🪔', title:'Festivals',          desc:'Upcoming celebrations',    route:'/festivals',           accent:'#B8860B', iconBg:'#FFF8E1' },
-  { id:'mealprep',   icon:'🥘', title:'Meal Prep',          desc:'Prep guide & batch cook',   route:'/meal-prep',           accent:'#1A6B5C', iconBg:'#E8F5E9' },
-  { id:'party',      icon:'🎉', title:'Party Menu',         desc:'Plan your gathering',       route:'/party-menu',          accent:'#8B1A1A', iconBg:'#FFEBEE' },
-  { id:'outdoor',    icon:'🏕️', title:'Outdoor Catering',   desc:'Events & picnics',          route:'/outdoor-catering',    accent:'#1A6B5C', iconBg:'#E8F5E9' },
-  { id:'fridge',     icon:'🧊', title:'My Fridge',          desc:'Inventory & bill scanning', route:'/my-fridge',           accent:'#0369A1', iconBg:'#E0F2FE' },
-  { id:'etiquettes', icon:'🍽️', title:'Table Etiquettes',   desc:'Dining traditions',         route:'/table-etiquettes',    accent:'#C9A227', iconBg:'#FFF8E1' },
-  { id:'plating',    icon:'🎨', title:'Traditional Plating',desc:'Present food beautifully',  route:'/traditional-plating', accent:'#2E7D32', iconBg:'#E8F5E9' },
-  { id:'history',    icon:'📋', title:'Menu History',       desc:'Past meal plans',           route:'/menu-history',        accent:'#6A1B9A', iconBg:'#F3E5F5' },
+const QUICK_CARDS = [
+  { icon: '\uD83E\uDD58', label: 'Meal Prep',         route: '/meal-prep',         accent: '#1A6B5C' },
+  { icon: '\uD83C\uDF89', label: 'Party Menu',        route: '/party-menu',        accent: '#8B1A1A' },
+  { icon: '\uD83C\uDFD5\uFE0F', label: 'Outdoor',    route: '/outdoor-catering',  accent: '#1A6B5C' },
+  { icon: '\uD83E\uDDCA', label: 'My Fridge',         route: '/my-fridge',         accent: '#0369A1' },
+  { icon: '\uD83C\uDF7D\uFE0F', label: 'Dining',     route: '/dining-plating',    accent: '#C9A227' },
+  { icon: '\uD83D\uDCCB', label: 'History',           route: '/menu-history',      accent: '#6A1B9A' },
 ];
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface FamilyMember { id: string; name: string; }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
-  const cols  = width >= 768 ? 4 : 2;
-  const gap   = 12;
-  const cardW = (width - 32 - gap * (cols - 1)) / cols;
+  const { lang, isEnglish, toggleEnglish } = useLang();
 
-  const [firstName,   setFirstName]   = useState('');
-  const [initials,    setInitials]    = useState('?');
-  const [dateTimeStr, setDateTimeStr] = useState(formatDateTime(new Date()));
-  const [showExit,    setShowExit]    = useState(false);
-  const [userCity,    setUserCity]    = useState('');
-  const [labReminder, setLabReminder] = useState<{name:string;date:string}|null>(null);
-  const [showMenu, setShowMenu] = useState(false);
+  const [firstName,    setFirstName]    = useState('');
+  const [initials,     setInitials]     = useState('?');
+  const [userCity,     setUserCity]     = useState('');
+  const [userCountry,  setUserCountry]  = useState('');
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [groceryDay,   setGroceryDay]   = useState('Saturday');
+  const [labReminder,  setLabReminder]  = useState<{ name: string; date: string } | null>(null);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickerX = useRef(new Animated.Value(-800)).current;
 
-  useEffect(() => {
-    timerRef.current = setInterval(() => setDateTimeStr(formatDateTime(new Date())), 60000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []);
-
+  // Ticker animation
   useEffect(() => {
     const anim = Animated.loop(
-      Animated.timing(tickerX, {
-        toValue: 0,
-        duration: 15000,
-        useNativeDriver: true,
-      })
+      Animated.timing(tickerX, { toValue: 0, duration: 15000, useNativeDriver: true })
     );
     tickerX.setValue(-800);
     anim.start();
     return () => anim.stop();
   }, []);
 
-  useEffect(() => {
-    async function load() {
-      const user = await getSessionUser();
-      if (!user) return;
-      const name = (user.user_metadata?.full_name ?? user.email ?? '') as string;
-      const first = name.split(' ')[0];
-      setFirstName(first);
-      setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
+  // Load data on focus (every visit)
+  useFocusEffect(
+    useCallback(() => {
+      async function load() {
+        const user = await getSessionUser();
+        if (!user) return;
 
-      // Check lab report reminders
-      const { data: members } = await supabase.from('family_members').select('name, health_notes').eq('user_id', user.id);
-      if (members) {
-        const today = new Date(); today.setHours(0,0,0,0);
-        for (const m of members) {
-          const match = (m.health_notes ?? '').match(/Lab \((\d{4}-\d{2}-\d{2})\)/);
-          if (!match) continue;
-          const labDate = new Date(match[1]);
-          const reminderDate = new Date(labDate);
-          reminderDate.setDate(reminderDate.getDate() + 80);
-          const daysUntil = Math.ceil((reminderDate.getTime() - today.getTime()) / 86400000);
-          if (daysUntil <= 7 && daysUntil >= -7) {
-            setLabReminder({ name: m.name, date: reminderDate.toISOString().split('T')[0] });
-            break;
+        const name = (user.user_metadata?.full_name ?? user.email ?? '') as string;
+        const first = name.split(' ')[0];
+        setFirstName(first);
+        setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
+
+        // Family members
+        const { data: members } = await supabase.from('family_members').select('id, name').eq('user_id', user.id);
+        setFamilyMembers((members as FamilyMember[]) ?? []);
+
+        // Lab reminder
+        const { data: membersFull } = await supabase.from('family_members').select('name, health_notes').eq('user_id', user.id);
+        if (membersFull) {
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          for (const m of membersFull) {
+            const match = (m.health_notes ?? '').match(/Lab \((\d{4}-\d{2}-\d{2})\)/);
+            if (!match) continue;
+            const labDate = new Date(match[1]);
+            const reminderDate = new Date(labDate);
+            reminderDate.setDate(reminderDate.getDate() + 80);
+            const daysUntil = Math.ceil((reminderDate.getTime() - today.getTime()) / 86400000);
+            if (daysUntil <= 7 && daysUntil >= -7) {
+              setLabReminder({ name: m.name, date: reminderDate.toISOString().split('T')[0] });
+              break;
+            }
           }
         }
+
+        // Grocery day
+        const gd = await AsyncStorage.getItem('maharaj_grocery_day');
+        if (gd) setGroceryDay(gd);
       }
-    }
-    void load();
-    loadOrDetectLocation().then(loc => setUserCity(`${loc.city}, ${loc.country}`));
-  }, []);
+      void load();
+      loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
+    }, [])
+  );
 
-  async function doLogout() {
-    setShowExit(false);
-    await supabase.auth.signOut();
-    router.replace('/');
-  }
+  const today = new Date();
+  const todayDayName = WDAYS[today.getDay()];
+  const todayIdx = today.getDay(); // 0=Sun
+  const groceryDayIdx = WDAYS.indexOf(groceryDay);
+  const nextFest = getNextFestival();
 
-  function getCardDesc(id: string, staticDesc: string): string {
-    if (id === 'festivals') {
-      const nf = getNextFestival();
-      if (!nf) return 'All festivals';
-      if (nf.daysAway === 0) return 'Today! 🎉';
-      if (nf.daysAway === 1) return nf.name + ' tomorrow';
-      return nf.name + ' in ' + nf.daysAway + 'd';
-    }
-    return staticDesc;
-  }
+  const cardW = (width - 48 - 16) / 3; // 3 columns, 16px gap between
 
   return (
-    <ImageBackground
-      source={require('../assets/background.png')}
-      style={s.bg}
-      resizeMode="cover"
-    >
+    <ImageBackground source={require('../assets/background.png')} style={{ flex: 1 }} resizeMode="cover">
       <SafeAreaView style={s.safe}>
 
-        {/* Exit overlay */}
-        {showExit && (
-          <View style={s.overlay}>
-            <View style={s.overlayBox}>
-              <Text style={s.overlayTitle}>Logout</Text>
-              <Text style={s.overlaySub}>Are you sure you want to logout?</Text>
-              <View style={s.overlayBtns}>
-                <TouchableOpacity style={s.btnCancel} onPress={() => setShowExit(false)}>
-                  <Text style={s.btnCancelTxt}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.btnConfirm} onPress={doLogout}>
-                  <Text style={s.btnConfirmTxt}>Logout</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Header */}
+        {/* ── HEADER ── */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => setShowMenu(v => !v)} style={s.avatar}>
+          <TouchableOpacity onPress={() => router.push('/settings' as never)} style={s.avatar}>
             <Text style={s.avatarTxt}>{initials}</Text>
           </TouchableOpacity>
-
-          <Image
-            source={require('../assets/logo.png')}
-            style={s.mmLogo}
-            resizeMode="contain"
-          />
-
+          <View style={s.headerCenter}>
+            <Image source={require('../assets/logo.png')} style={s.headerLogo} resizeMode="contain" />
+            <Text style={s.headerBf}>Blue Flute Consulting</Text>
+          </View>
           <View style={s.headerRight}>
-            <Image
-              source={require('../assets/blueflute-logo.png')}
-              style={s.bfLogo}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
-
-        {showMenu && (
-          <TouchableOpacity style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:998}} activeOpacity={1} onPress={() => setShowMenu(false)}>
-            <View style={{position:'absolute',top: 70,left:16,backgroundColor:'white',borderRadius:14,paddingVertical:8,width:220,zIndex:999,shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:0.15,shadowRadius:12,elevation:10,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
-              {[
-                {label:'Edit Profile',route:'/profile-setup'},
-                {label:'Family Profile',route:'/dietary-profile'},
-                {label:'Lab Reports',route:'/lab-report'},
-                {label:'Cuisine Preferences',route:'/cuisine-selection'},
-                {label:'Legal & Privacy',route:'/disclaimer'},
-              ].map(item => (
-                <TouchableOpacity key={item.label} style={{paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setShowMenu(false); router.push(item.route as never); }}>
-                  <Text style={{fontSize:14,color:navy,fontWeight:'500'}}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:12}} onPress={() => { setShowMenu(false); setShowExit(true); }}>
-                <Text style={{fontSize:14,color:'#DC2626',fontWeight:'600'}}>Exit / Logout</Text>
+            {lang !== 'en' && (
+              <TouchableOpacity onPress={toggleEnglish} style={[s.langToggle, isEnglish && s.langToggleActive]}>
+                <Text style={[s.langToggleTxt, isEnglish && s.langToggleTxtActive]}>EN</Text>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Date bar */}
-        <View style={s.dateBar}>
-          <Text style={s.dateTxt}>{userCity ? `${userCity}  ·  ` : ''}{dateTimeStr}</Text>
-          {firstName ? <Text style={s.greetTxt}>Namaste, {firstName} 🙏</Text> : null}
+            )}
+          </View>
         </View>
 
-        {labReminder && (
-          <View style={{flexDirection:'row',alignItems:'center',marginHorizontal:16,marginTop:8,backgroundColor:'rgba(217,119,6,0.1)',borderRadius:12,padding:12,borderWidth:1,borderColor:'rgba(217,119,6,0.3)'}}>
-            <View style={{flex:1}}>
-              <Text style={{fontSize:13,fontWeight:'700',color:'#92400E'}}>Lab Retest Due</Text>
-              <Text style={{fontSize:12,color:'#78350F',lineHeight:18}}>{labReminder.name}'s retest due around {labReminder.date}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setLabReminder(null)} style={{padding:4}}>
-              <Text style={{fontSize:14,color:'#92400E',fontWeight:'700'}}>✕</Text>
-            </TouchableOpacity>
+        {/* ── GREETING BAR ── */}
+        <View style={s.greetBar}>
+          <View>
+            <Text style={s.greetName}>Namaste, {firstName || 'there'}</Text>
+            <Text style={s.greetDate}>{formatDate(today)}</Text>
           </View>
-        )}
+          {userCity ? (
+            <Text style={s.greetCity}>{userCity}, {userCountry}</Text>
+          ) : null}
+        </View>
 
-        <View style={{backgroundColor:'#F59E0B',overflow:'hidden',paddingVertical:4}}>
-          <Animated.Text style={{fontSize:11,color:'#FFFFFF',fontWeight:'600',width:1200,transform:[{translateX:tickerX}]}}>
-            {'  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  '}
+        {/* ── TICKER ── */}
+        <View style={s.ticker}>
+          <Animated.Text style={[s.tickerTxt, { transform: [{ translateX: tickerX }] }]}>
+            {TICKER_TEXT}
           </Animated.Text>
         </View>
 
-        {/* Card grid */}
-        <ScrollView
-          contentContainerStyle={[s.scroll, { paddingBottom: 110 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hero card - Generate Meal Plan - full width, stands out */}
-          <TouchableOpacity
-            style={s.heroCard}
-            onPress={() => router.push(HERO_CARD.route as never)}
-            activeOpacity={0.88}
-          >
-            <View style={s.heroCardLeft}>
-              <Text style={s.heroCardIcon}>{HERO_CARD.icon}</Text>
-              <View>
-                <Text style={s.heroCardTitle}>{HERO_CARD.title}</Text>
-                <Text style={s.heroCardDesc}>{HERO_CARD.desc}</Text>
+        {/* ── SCROLL CONTENT ── */}
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+          {/* Lab reminder */}
+          {labReminder && (
+            <View style={s.labCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.labTitle}>Lab Retest Due</Text>
+                <Text style={s.labSub}>{labReminder.name}'s retest due around {labReminder.date}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setLabReminder(null)} style={{ padding: 4 }}>
+                <Text style={{ fontSize: 14, color: '#92400E', fontWeight: '700' }}>X</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── 1. TODAY'S MEAL PLAN CARD ── */}
+          <View style={s.card}>
+            <View style={s.cardHeaderRow}>
+              <Text style={s.cardTitle}>Today's meal plan</Text>
+              <View style={s.onDemandBadge}>
+                <Text style={s.onDemandText}>On demand</Text>
               </View>
             </View>
-            <Text style={s.heroCardArrow}>›</Text>
-          </TouchableOpacity>
 
-          <View style={[s.grid, { gap }]}>
-            {CARDS.map((card) => (
+            {/* Who's home chips */}
+            <View style={s.chipRow}>
+              {familyMembers.map(m => {
+                const isHome = presentMemberIds.length === 0 || presentMemberIds.includes(m.id);
+                return (
+                  <View key={m.id} style={[s.memberChip, !isHome && s.memberChipOff]}>
+                    <Text style={[s.memberChipTxt, !isHome && s.memberChipTxtOff]}>{m.name}</Text>
+                  </View>
+                );
+              })}
+              <TouchableOpacity style={s.whoHomeChip} onPress={() => router.push('/who-is-home' as never)}>
+                <Text style={s.whoHomeTxt}>+ who's home?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Meal slots */}
+            <View style={s.slotsRow}>
+              {[
+                { icon: '\uD83C\uDF05', label: 'Breakfast' },
+                { icon: '\u2600\uFE0F', label: 'Lunch' },
+                { icon: '\uD83C\uDF19', label: 'Dinner' },
+              ].map(slot => (
+                <View key={slot.label} style={s.slotBox}>
+                  <Text style={s.slotIcon}>{slot.icon}</Text>
+                  <Text style={s.slotLabel}>{slot.label}</Text>
+                  <Text style={s.slotDish}>Tap to plan</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity style={s.generateBtn} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.88}>
+              <Text style={s.generateBtnTxt}>Generate today's plan  &rarr;</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── 2. WEEKLY PLAN CARD ── */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Weekly plan — Sunday to Saturday</Text>
+            <Text style={s.cardSub}>Auto-generated before your grocery day</Text>
+
+            {/* Day dots */}
+            <View style={s.dotRow}>
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => {
+                const isToday = i === todayIdx;
+                const isGrocery = i === groceryDayIdx;
+                let dotBg = mint;
+                if (isToday) dotBg = navy;
+                if (isGrocery) dotBg = gold;
+                return (
+                  <View key={d} style={s.dotCol}>
+                    <View style={[s.dayDot, { backgroundColor: dotBg }]}>
+                      {isToday && <Text style={s.dayDotTxt}>T</Text>}
+                      {isGrocery && !isToday && <Text style={s.dayDotTxtDark}>G</Text>}
+                    </View>
+                    <Text style={s.dayDotLabel}>{d}</Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Grocery row */}
+            <View style={s.groceryRow}>
+              <Text style={s.groceryLabel}>Grocery day: <Text style={{ fontWeight: '700' }}>{groceryDay}</Text></Text>
               <TouchableOpacity
-                key={card.id}
-                style={[s.card, { width: cardW }]}
+                style={s.emailPdfBtn}
+                onPress={() => Alert.alert('Coming soon', 'Weekly email PDF feature is under development.')}
+                activeOpacity={0.8}
+              >
+                <Text style={s.emailPdfTxt}>Email PDF  &rarr;</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ── 3. FESTIVAL STRIP ── */}
+          {nextFest && (
+            <TouchableOpacity style={s.festivalStrip} onPress={() => router.push('/festivals' as never)} activeOpacity={0.85}>
+              <View style={s.festivalLeft}>
+                <Text style={s.festivalIcon}>{'\uD83E\uDE94'}</Text>
+                <View>
+                  <Text style={s.festivalName}>{nextFest.name}</Text>
+                  <Text style={s.festivalDays}>
+                    {nextFest.daysAway === 0 ? 'Today!' : nextFest.daysAway === 1 ? 'Tomorrow' : `In ${nextFest.daysAway} days`}
+                  </Text>
+                </View>
+              </View>
+              <Text style={s.festivalPlan}>Plan  &rarr;</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ── 4. MORE FEATURES LABEL ── */}
+          <Text style={s.moreLabel}>MORE FEATURES</Text>
+
+          {/* ── 5. QUICK GRID 2x3 ── */}
+          <View style={s.quickGrid}>
+            {QUICK_CARDS.map(card => (
+              <TouchableOpacity
+                key={card.label}
+                style={[s.quickCard, { width: cardW }]}
                 onPress={() => router.push(card.route as never)}
                 activeOpacity={0.82}
               >
-                <View style={[s.iconWrap, { backgroundColor: card.iconBg }]}>
-                  <Text style={s.iconEmoji}>{card.icon}</Text>
-                </View>
-                <Text style={[s.cardTitle, { color: card.accent }]} numberOfLines={2}>
-                  {card.title}
-                </Text>
-                <Text style={s.cardDesc} numberOfLines={2}>
-                  {getCardDesc(card.id, card.desc)}
-                </Text>
-                <View style={[s.accentBar, { backgroundColor: card.accent }]} />
+                <Text style={s.quickIcon}>{card.icon}</Text>
+                <Text style={s.quickLabel}>{card.label}</Text>
+                <View style={[s.quickAccent, { backgroundColor: card.accent }]} />
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Footer - compact single row */}
-          <View style={s.footer}>
-            <Image source={require('../assets/blueflute-logo.png')} style={s.footerLogo} resizeMode="contain" />
-            <Text style={s.footerName}>Blue Flute Consulting LLC-FZ  ·  www.bluefluteconsulting.com</Text>
-          </View>
+          {/* ── 6. ASK MAHARAJ BAR ── */}
+          <TouchableOpacity style={s.askBar} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
+            <View style={s.askLogoWrap}>
+              <Image source={require('../assets/logo.png')} style={s.askLogo} resizeMode="contain" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.askTitle}>Ask Maharaj</Text>
+              <Text style={s.askSub}>Your wise nutrition mentor</Text>
+            </View>
+            <TouchableOpacity style={s.askMic} onPress={() => router.push('/ask-maharaj' as never)}>
+              <Text style={s.askMicTxt}>Mic</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+
+          <View style={{ height: 20 }} />
         </ScrollView>
 
-        {/* Ask Maharaj FAB */}
-        <TouchableOpacity
-          style={s.fab}
-          onPress={() => router.push('/ask-maharaj' as never)}
-          activeOpacity={0.88}
-        >
-          <Image source={require('../assets/logo.png')} style={{ width: 40, height: 40, borderRadius: 20 }} resizeMode="contain" />
-          <Text style={s.fabLabel}>Ask Maharaj AI</Text>
-          <Text style={s.fabMic}>Mic</Text>
-        </TouchableOpacity>
+        {/* ── BOTTOM TAB BAR ── */}
+        <View style={s.tabBar}>
+          {[
+            { icon: '\uD83C\uDFE0', label: 'Home',      route: '/home' },
+            { icon: '\uD83C\uDF73', label: 'Meal Plan',  route: '/meal-wizard' },
+            { icon: '\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67', label: 'Family', route: '/dietary-profile' },
+            { icon: '\uD83D\uDED2', label: 'Groceries',  route: '/order-out' },
+            { icon: '\u2699\uFE0F', label: 'Settings',   route: '/settings' },
+          ].map((tab, i) => {
+            const isActive = i === 0;
+            return (
+              <TouchableOpacity
+                key={tab.label}
+                style={s.tabItem}
+                onPress={() => { if (!isActive) router.push(tab.route as never); }}
+                activeOpacity={0.7}
+              >
+                <Text style={s.tabIcon}>{tab.icon}</Text>
+                <Text style={[s.tabLabel, isActive && s.tabLabelActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
       </SafeAreaView>
     </ImageBackground>
@@ -314,79 +368,141 @@ export default function HomeScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  bg:   { flex: 1 },
   safe: { flex: 1 },
 
-  overlay: { position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.45)', zIndex:999, alignItems:'center', justifyContent:'center' },
-  overlayBox: { backgroundColor:white, borderRadius:20, padding:28, width:300, shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.15, shadowRadius:20, elevation:10 },
-  overlayTitle: { fontSize:18, fontWeight:'800', color:navy, marginBottom:8 },
-  overlaySub:   { fontSize:14, color:textSec, marginBottom:24, lineHeight:20 },
-  overlayBtns:  { flexDirection:'row', gap:12 },
-  btnCancel:    { flex:1, borderWidth:1.5, borderColor:border, borderRadius:12, paddingVertical:12, alignItems:'center' },
-  btnCancelTxt: { fontSize:14, color:navy, fontWeight:'600' },
-  btnConfirm:   { flex:1, backgroundColor:'#DC2626', borderRadius:12, paddingVertical:12, alignItems:'center' },
-  btnConfirmTxt:{ fontSize:14, color:white, fontWeight:'700' },
-
+  // Header
   header: {
-    flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-    paddingHorizontal:16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16,
     paddingTop: Platform.OS === 'android' ? 25 : Platform.OS === 'web' ? 12 : 6,
-    paddingBottom:10,
-    backgroundColor:'rgba(255,255,255,0.80)',
-    borderBottomWidth:1, borderBottomColor:'rgba(27,58,92,0.1)',
+    paddingBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderBottomWidth: 1, borderBottomColor: 'rgba(27,58,92,0.1)',
   },
-  avatar:    { width:38, height:38, borderRadius:19, backgroundColor:navy, alignItems:'center', justifyContent:'center' },
-  avatarTxt: { color:gold, fontSize:15, fontWeight:'800' },
-  mmLogo:    { width:180, height:62 },
-  headerRight:{ flexDirection:'row', alignItems:'center', gap:8 },
-  bfLogo:    { width:130, height:44 },
-  dateBar: {
-    flexDirection:'row', justifyContent:'space-between', alignItems:'center',
-    paddingHorizontal:16, paddingVertical:8,
-    backgroundColor:'rgba(255,255,255,0.65)',
-    borderBottomWidth:1, borderBottomColor:'rgba(27,58,92,0.08)',
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: navy, alignItems: 'center', justifyContent: 'center' },
+  avatarTxt: { color: gold, fontSize: 14, fontWeight: '800' },
+  headerCenter: { alignItems: 'center', flex: 1 },
+  headerLogo: { width: 160, height: 52 },
+  headerBf: { fontSize: 8, color: textSec, marginTop: -2 },
+  headerRight: { minWidth: 36, alignItems: 'flex-end' },
+  langToggle: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.3)', backgroundColor: 'rgba(255,255,255,0.8)' },
+  langToggleActive: { backgroundColor: navy, borderColor: navy },
+  langToggleTxt: { fontSize: 11, fontWeight: '700', color: navy },
+  langToggleTxtActive: { color: white },
+
+  // Greeting bar
+  greetBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: navy,
   },
-  dateTxt:  { fontSize:12, color:navy, fontWeight:'600' },
-  greetTxt: { fontSize:12, color:'#1A6B5C', fontWeight:'500' },
+  greetName: { fontSize: 15, fontWeight: '700', color: white },
+  greetDate: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  greetCity: { fontSize: 11, color: gold, fontWeight: '500', textAlign: 'right' },
 
-  scroll: { padding:16 },
-  heroCard:      { backgroundColor:'#1B3A5C', borderRadius:20, padding:14, maxHeight:80, marginBottom:16, flexDirection:'row', alignItems:'center', justifyContent:'space-between', shadowColor:'#1B3A5C', shadowOffset:{width:0,height:6}, shadowOpacity:0.4, shadowRadius:16, elevation:8 },
-  heroCardLeft:  { flexDirection:'row', alignItems:'center', gap:16, flex:1 },
-  heroCardIcon:  { fontSize:28 },
-  heroCardTitle: { fontSize:15, fontWeight:'800', color:'#FFFFFF', marginBottom:4 },
-  heroCardDesc:  { fontSize:12, color:'rgba(255,255,255,0.75)', lineHeight:18 },
-  heroCardArrow: { fontSize:28, color:'rgba(255,255,255,0.6)', fontWeight:'300' },
+  // Ticker
+  ticker: { backgroundColor: '#F59E0B', overflow: 'hidden', paddingVertical: 4 },
+  tickerTxt: { fontSize: 11, color: white, fontWeight: '600', width: 1200 },
 
-  grid:   { flexDirection:'row', flexWrap:'wrap' },
+  // Scroll
+  scroll: { padding: 16, paddingBottom: 8 },
 
-  card: {
-    backgroundColor:'rgba(255,255,255,0.88)',
-    borderRadius:18, padding:10, maxHeight:100, marginBottom:12,
-    shadowColor:'#1B3A5C', shadowOffset:{width:0,height:3},
-    shadowOpacity:0.09, shadowRadius:10, elevation:3,
-    overflow:'hidden', borderWidth:1, borderColor:'rgba(180,220,220,0.45)',
+  // Lab reminder
+  labCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(217,119,6,0.1)', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(217,119,6,0.3)' },
+  labTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
+  labSub: { fontSize: 12, color: '#78350F', lineHeight: 18 },
+
+  // Cards
+  card: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.12)' },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardTitle: { fontSize: 16, fontWeight: '800', color: navy },
+  cardSub: { fontSize: 12, color: textSec, marginBottom: 12, lineHeight: 18 },
+  onDemandBadge: { backgroundColor: 'rgba(201,162,39,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  onDemandText: { fontSize: 11, fontWeight: '600', color: gold },
+
+  // Who's home chips
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
+  memberChip: { backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  memberChipOff: { backgroundColor: '#F3F4F6' },
+  memberChipTxt: { fontSize: 12, fontWeight: '600', color: '#166534' },
+  memberChipTxtOff: { color: '#9CA3AF', textDecorationLine: 'line-through' },
+  whoHomeChip: { backgroundColor: 'rgba(27,58,92,0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  whoHomeTxt: { fontSize: 12, fontWeight: '600', color: navy },
+
+  // Meal slots
+  slotsRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  slotBox: { flex: 1, backgroundColor: 'rgba(27,58,92,0.04)', borderRadius: 12, padding: 10, alignItems: 'center', gap: 4 },
+  slotIcon: { fontSize: 20 },
+  slotLabel: { fontSize: 11, fontWeight: '700', color: navy },
+  slotDish: { fontSize: 10, color: textSec, fontStyle: 'italic' },
+
+  generateBtn: { backgroundColor: navy, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  generateBtnTxt: { color: white, fontSize: 14, fontWeight: '700' },
+
+  // Weekly plan dots
+  dotRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
+  dotCol: { alignItems: 'center', gap: 4 },
+  dayDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  dayDotTxt: { fontSize: 11, fontWeight: '800', color: white },
+  dayDotTxtDark: { fontSize: 11, fontWeight: '800', color: navy },
+  dayDotLabel: { fontSize: 10, color: textSec, fontWeight: '500' },
+
+  groceryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  groceryLabel: { fontSize: 13, color: textSec },
+  emailPdfBtn: { backgroundColor: gold, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  emailPdfTxt: { fontSize: 12, fontWeight: '700', color: navy },
+
+  // Festival strip
+  festivalStrip: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 14, padding: 14, marginBottom: 14,
+    borderLeftWidth: 3, borderLeftColor: gold,
+    borderWidth: 1, borderColor: 'rgba(27,58,92,0.08)',
   },
-  iconWrap:  { width:36, height:36, borderRadius:10, alignItems:'center', justifyContent:'center', marginBottom:6 },
-  iconEmoji: { fontSize:18 },
-  cardTitle: { fontSize:12, fontWeight:'800', marginBottom:4, lineHeight:18 },
-  cardDesc:  { fontSize:10, color:textSec, lineHeight:16 },
-  accentBar: { position:'absolute', bottom:0, left:0, right:0, height:3 },
+  festivalLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  festivalIcon: { fontSize: 24 },
+  festivalName: { fontSize: 14, fontWeight: '700', color: navy },
+  festivalDays: { fontSize: 12, color: textSec },
+  festivalPlan: { fontSize: 13, fontWeight: '700', color: gold },
 
-  footer:      { flexDirection:'row', alignItems:'center', justifyContent:'center', gap:10, paddingVertical:10, marginTop:4, borderTopWidth:1, borderTopColor:'rgba(27,58,92,0.08)', backgroundColor:'rgba(255,255,255,0.6)' },
-  footerLine:  { display:'none' } as any,
-  footerLogo:  { width:70, height:24 },
-  footerName:  { fontSize:10, color:textSec, fontWeight:'600' },
-  footerUrl:   { fontSize:10, color:'#1A6B5C', fontWeight:'500' },
+  // More label
+  moreLabel: { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 1, marginBottom: 10, marginTop: 4 },
 
-  fab: {
-    position:'absolute', bottom: Platform.OS === 'web' ? 20 : 28,
-    left:16, right:16, backgroundColor:navy, borderRadius:30,
-    flexDirection:'row', alignItems:'center',
-    paddingVertical:15, paddingHorizontal:20, gap:10,
-    shadowColor:navy, shadowOffset:{width:0,height:6},
-    shadowOpacity:0.4, shadowRadius:16, elevation:8,
+  // Quick grid
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  quickCard: {
+    backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 12, padding: 12,
+    alignItems: 'center', borderWidth: 1, borderColor: 'rgba(27,58,92,0.1)',
+    overflow: 'hidden', minHeight: 80, justifyContent: 'center',
   },
-  fabIcon:  { width:36, height:36 },
-  fabLabel: { flex:1, fontSize:15, fontWeight:'800', color:white, textAlign:'center' },
-  fabMic:   { fontSize:20 },
+  quickIcon: { fontSize: 22, marginBottom: 6 },
+  quickLabel: { fontSize: 11, fontWeight: '700', color: navy, textAlign: 'center' },
+  quickAccent: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3 },
+
+  // Ask Maharaj bar
+  askBar: {
+    backgroundColor: navy, borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  askLogoWrap: {
+    width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: gold,
+    backgroundColor: white, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  askLogo: { width: 32, height: 32 },
+  askTitle: { fontSize: 15, fontWeight: '800', color: white },
+  askSub: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+  askMic: { backgroundColor: gold, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  askMicTxt: { fontSize: 12, fontWeight: '800', color: navy },
+
+  // Bottom tab bar
+  tabBar: {
+    flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)', borderTopWidth: 1, borderTopColor: 'rgba(27,58,92,0.1)',
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'android' ? 8 : Platform.OS === 'ios' ? 24 : 8,
+  },
+  tabItem: { alignItems: 'center', gap: 2, minWidth: 56 },
+  tabIcon: { fontSize: 20 },
+  tabLabel: { fontSize: 10, color: textSec, fontWeight: '500' },
+  tabLabelActive: { color: navy, fontWeight: '700' },
 });
