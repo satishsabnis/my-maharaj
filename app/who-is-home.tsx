@@ -5,10 +5,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
+import { session } from '../lib/session';
 import { navy, gold, white, textSec, border } from '../theme/colors';
-
-// Module-level export — read by home screen
-export let presentMemberIds: string[] = [];
 
 interface Member {
   id: string;
@@ -45,7 +43,7 @@ export default function WhoIsHomeScreen() {
   }
 
   function confirm() {
-    presentMemberIds = [...selected];
+    session.presentMemberIds = [...selected];
     router.back();
   }
 
