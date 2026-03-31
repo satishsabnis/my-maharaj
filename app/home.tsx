@@ -12,7 +12,7 @@ import { loadOrDetectLocation } from '../lib/location';
 import { TICKER_TEXT } from '../lib/constants';
 import { useLang } from '../lib/LanguageProvider';
 import { navy, gold, white, textSec, border, mint } from '../theme/colors';
-import { presentMemberIds } from './who-is-home';
+import { session } from '../lib/session';
 
 // ─── Festival data ────────────────────────────────────────────────────────────
 
@@ -51,7 +51,8 @@ const WDAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Sat
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function formatDate(d: Date): string {
-  return `${WDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${WDAYS[d.getDay()]} \u00B7 ${d.getDate()}-${m[d.getMonth()]}-${d.getFullYear()}`;
 }
 
 // ─── Quick grid cards ─────────────────────────────────────────────────────────
@@ -131,7 +132,8 @@ export default function HomeScreen() {
 
         // Grocery day
         const gd = await AsyncStorage.getItem('maharaj_grocery_day');
-        if (gd) setGroceryDay(gd);
+        if (gd) { setGroceryDay(gd); session.groceryDay = gd; }
+        else { setGroceryDay(session.groceryDay); }
       }
       void load();
       loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
@@ -215,7 +217,7 @@ export default function HomeScreen() {
             {/* Who's home chips */}
             <View style={s.chipRow}>
               {familyMembers.map(m => {
-                const isHome = presentMemberIds.length === 0 || presentMemberIds.includes(m.id);
+                const isHome = session.presentMemberIds.length === 0 || session.presentMemberIds.includes(m.id);
                 return (
                   <View key={m.id} style={[s.memberChip, !isHome && s.memberChipOff]}>
                     <Text style={[s.memberChipTxt, !isHome && s.memberChipTxtOff]}>{m.name}</Text>

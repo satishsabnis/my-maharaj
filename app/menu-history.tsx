@@ -27,7 +27,7 @@ interface MenuRecord {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function fmtDate(d: string): string {
   const dt = new Date(d);
-  return `${dt.getDate()} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
+  return `${dt.getDate()}-${MONTHS[dt.getMonth()]}-${dt.getFullYear()}`;
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────

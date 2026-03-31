@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { GROCERY_DAYS } from '../lib/constants';
+import { session } from '../lib/session';
 import { navy, gold, white, textSec, border, errorRed } from '../theme/colors';
 
 interface SettingsItem {
@@ -30,6 +31,7 @@ export default function SettingsScreen() {
 
   async function saveGroceryDay(day: string) {
     setGroceryDay(day);
+    session.groceryDay = day;
     setShowGroceryModal(false);
     await AsyncStorage.setItem('maharaj_grocery_day', day);
     try {

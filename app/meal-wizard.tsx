@@ -6,6 +6,7 @@ import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlag
 import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
+import DeliveryAppsSection from '../components/DeliveryApps';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
 
@@ -41,7 +42,11 @@ function getWeekRange(offset: 0 | 1) {
 const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTHS_L = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-function fmt(d: Date)  { return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function fmt(d: Date)  { return `${d.getDate()}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`; }
+function fmtDate(d: string): string {
+  const dt = new Date(d);
+  return `${dt.getDate()}-${MONTHS[dt.getMonth()]}-${dt.getFullYear()}`;
+}
 function fmtL(d: Date) { return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS_L[d.getMonth()]} ${d.getFullYear()}`; }
 
 // ─── Grocery helpers ──────────────────────────────────────────────────────────
@@ -1054,8 +1059,8 @@ export default function MealWizardScreen() {
                   onPress={() => setActiveDay(idx)}
                   activeOpacity={0.8}
                 >
-                  <Text style={{fontSize:12,fontWeight:'700',color: isActive ? white : '#5A7A8A'}}>{dn}</Text>
-                  <Text style={{fontSize:16,fontWeight:'800',color: isActive ? white : navy}}>{dd}</Text>
+                  <Text style={{fontSize:11,fontWeight:'700',color: isActive ? white : '#5A7A8A'}}>{dn}</Text>
+                  <Text style={{fontSize:13,fontWeight:'800',color: isActive ? white : navy}}>{fmtDate(d.date)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1063,25 +1068,31 @@ export default function MealWizardScreen() {
         </ScrollView>
 
         {/* Active day's slots */}
-        <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:8}}>{day.day}, {day.date}</Text>
+        <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:8}}>{day.day}, {fmtDate(day.date)}</Text>
 
         {visibleSlots.map(({ key, icon, label }) => {
           const slotData = day[key];
           if (!slotData || slotData.options.length === 0) return null;
           return (
-            <View key={key} style={{marginBottom:14}}>
-              <Text style={{fontSize:13,fontWeight:'700',color:'#5A7A8A',marginBottom:6}}>{icon} {label}</Text>
+            <View key={key} style={{marginBottom:12}}>
+              {/* Slot header bar */}
+              <View style={{backgroundColor:navy,borderRadius:10,paddingHorizontal:14,paddingVertical:8,marginBottom:8,flexDirection:'row',alignItems:'center',gap:8}}>
+                <Text style={{fontSize:16}}>{icon}</Text>
+                <Text style={{fontSize:14,fontWeight:'700',color:white}}>{label}</Text>
+              </View>
               {slotData.options.map((opt, optIdx) => {
                 const isSel = selections[activeDay]?.[key] === optIdx;
-                const isThali = opt.name.toLowerCase().includes('thali');
+                const hasPipe = opt.description && opt.description.includes(' | ');
+                const summaryLine = hasPipe
+                  ? opt.description!.split(' | ')[0].trim()
+                  : (opt.description || '');
                 return (
                   <TouchableOpacity
                     key={optIdx}
                     style={{
-                      flexDirection:'row',alignItems:'flex-start',gap:10,
-                      backgroundColor: isSel ? 'rgba(27,58,92,0.06)' : 'rgba(255,255,255,0.95)',
+                      backgroundColor: isSel ? '#EEF3FA' : '#FAFAFA',
                       borderRadius:14,padding:14,marginBottom:8,
-                      borderWidth:2,borderColor: isSel ? navy : '#E5E7EB',
+                      borderWidth:2,borderColor: isSel ? '#1B3A5C' : 'rgba(27,58,92,0.1)',
                     }}
                     onPress={() => setSelections((prev) => ({
                       ...prev,
@@ -1089,23 +1100,51 @@ export default function MealWizardScreen() {
                     }))}
                     activeOpacity={0.8}
                   >
-                    <View style={{width:24,height:24,borderRadius:12,borderWidth:2.5,borderColor: isSel ? navy : '#D1D5DB',alignItems:'center',justifyContent:'center',marginTop:2}}>
-                      {isSel && <View style={{width:13,height:13,borderRadius:7,backgroundColor:navy}} />}
+                    {/* Top row: radio + name + number */}
+                    <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+                      <View style={{width:22,height:22,borderRadius:11,borderWidth:2.5,borderColor: isSel ? navy : '#D1D5DB',alignItems:'center',justifyContent:'center'}}>
+                        {isSel && <View style={{width:12,height:12,borderRadius:6,backgroundColor:navy}} />}
+                      </View>
+                      <Text style={{flex:1,fontSize:16,fontWeight:'700',color:navy,lineHeight:22}}>{opt.name}</Text>
+                      <Text style={{fontSize:12,fontWeight:'700',color:'#9CA3AF'}}>#{optIdx + 1}</Text>
                     </View>
-                    <View style={{flex:1}}>
-                      <Text style={{fontSize:16,fontWeight:'700',color: isSel ? navy : '#1F2937',lineHeight:22}}>{opt.name}</Text>
-                      {isThali && opt.description && opt.description.includes(' | ') && (
-                        <ThaliDetails description={opt.description} />
-                      )}
-                      {opt.tags.length > 0 && (
-                        <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:4}}>
-                          {opt.tags.slice(0,4).map(tag => (
-                            <Text key={tag} style={{fontSize:10,fontWeight:'600',color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:7,paddingVertical:2,borderRadius:8}}>{tag}</Text>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{fontSize:13,fontWeight:'700',color: isSel ? navy : '#9CA3AF',marginTop:2}}>#{optIdx + 1}</Text>
+                    {/* Expanded details for selected card */}
+                    {isSel && hasPipe && (
+                      <View style={{marginTop:6,marginLeft:32}}>
+                        {opt.description!.split(' | ').map((comp, ci) => {
+                          const [lbl, ...rest] = comp.split(':');
+                          const val = rest.join(':').trim();
+                          return (
+                            <Text key={ci} style={{fontSize:12,color:'#374151',lineHeight:18}}>
+                              <Text style={{fontWeight:'700',color:'#1B3A5C'}}>{lbl.trim()}</Text>
+                              {val ? `: ${val}` : ''}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                    )}
+                    {isSel && !hasPipe && opt.description && (
+                      <Text style={{fontSize:12,color:'#5A7A8A',marginTop:4,marginLeft:32}}>{opt.description}</Text>
+                    )}
+                    {/* Summary for unselected */}
+                    {!isSel && summaryLine && (
+                      <Text style={{fontSize:12,color:'#9CA3AF',marginTop:2,marginLeft:32}} numberOfLines={1}>{summaryLine}</Text>
+                    )}
+                    {/* Tags */}
+                    {opt.tags.length > 0 && (
+                      <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:6,marginLeft:32}}>
+                        {opt.tags.slice(0,4).map(tag => {
+                          const isNonVeg = tag.toLowerCase().includes('non-veg');
+                          const isVeg = !isNonVeg && tag.toLowerCase().includes('vegetarian');
+                          return (
+                            <Text key={tag} style={{fontSize:10,fontWeight:'600',paddingHorizontal:7,paddingVertical:2,borderRadius:8,
+                              color: isNonVeg ? '#DC2626' : isVeg ? '#166534' : '#1D4ED8',
+                              backgroundColor: isNonVeg ? '#FEE2E2' : isVeg ? '#DCFCE7' : '#DBEAFE',
+                            }}>{tag}</Text>
+                          );
+                        })}
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -1275,43 +1314,13 @@ export default function MealWizardScreen() {
   }
 
   function renderDeliveryApps() {
-    const apps = ['Amazon','Careem','Fresh to Home','Noon'];
-    const rows: string[][] = [];
-    for (let i = 0; i < apps.length; i += 2) rows.push(apps.slice(i, i + 2));
-
     return (
       <View>
         <Text style={s.stepTitle}>Where would you like to order from?</Text>
 
-        {/* Banner 1: Integration */}
-        <View style={{flexDirection:'row',gap:8,alignItems:'flex-start',backgroundColor:'rgba(201,162,39,0.12)',borderRadius:12,padding:12,marginTop:12,borderWidth:1,borderColor:'rgba(201,162,39,0.3)',width:'100%'}}>
-          <Text style={{fontSize:14}}>🔗</Text>
-          <Text style={{flex:1,fontSize:12,color:'#78350F',lineHeight:18}}>Direct ordering integration coming soon — we are working with these platforms to enable one-tap ordering from your meal plan</Text>
-        </View>
+        <DeliveryAppsSection country="UAE" compact={true} />
 
-        {/* Banner 2: Smart shopping */}
-        <View style={{backgroundColor:navy,borderRadius:12,padding:14,marginTop:10,width:'100%'}}>
-          <Text style={{fontSize:12,fontWeight:'600',color:white,lineHeight:18}}>Coming soon. Maharaj is learning the art of smart shopping. Soon, he will compare prices across prominent stores in your area — finding you the best deals, seasonal offers and bulk savings before you step into the store.</Text>
-        </View>
-
-        {/* 2-column pill grid */}
         <View style={{gap:10,marginTop:16}}>
-          {rows.map((row, ri) => (
-            <View key={ri} style={{flexDirection:'row',gap:10}}>
-              {row.map(name => (
-                <View key={name} style={{flex:1,backgroundColor:'rgba(27,58,92,0.06)',borderWidth:1,borderColor:'rgba(27,58,92,0.2)',borderRadius:20,paddingHorizontal:16,paddingVertical:10,alignItems:'center'}}>
-                  <Text style={{fontSize:13,fontWeight:'600',color:navy}}>{name}</Text>
-                </View>
-              ))}
-              {row.length < 2 && <View style={{flex:1}} />}
-            </View>
-          ))}
-        </View>
-
-        {/* Disclaimer */}
-        <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',paddingVertical:12,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
-
-        <View style={{gap:10,marginTop:8}}>
           <Button title="Done — Continue" onPress={() => advance('feedback')} />
           <TouchableOpacity style={{paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',alignItems:'center'}} onPress={() => advance('feedback')}>
             <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Skip</Text>
@@ -1481,8 +1490,8 @@ export default function MealWizardScreen() {
 
         {/* Header */}
         <View style={{alignItems:'center',marginBottom:16}}>
-          <Text style={{fontSize:22,fontWeight:'800',color:navy}}>My Maharaj — Weekly Meal Plan</Text>
-          <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4}}>{dateRange}{servingsCount > 0 ? ` · Cooking for ${servingsCount} people` : ''}</Text>
+          <Text style={{fontSize:20,fontWeight:'800',color:navy,textAlign:'center'}}>My Maharaj — Weekly Meal Plan</Text>
+          <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4,textAlign:'center'}}>{dateRange}{servingsCount > 0 ? ` · Cooking for ${servingsCount} people` : ''}</Text>
         </View>
 
         {/* Print button */}
@@ -1497,12 +1506,11 @@ export default function MealWizardScreen() {
           <View style={{borderWidth:1,borderColor:BORDER,borderRadius:4,overflow:'hidden'}}>
             {/* Header row */}
             <View style={{flexDirection:'row'}}>
-              <View style={{width:90,padding:10,backgroundColor:BORDER,justifyContent:'center'}}>
+              <View style={{width:90,padding:10,backgroundColor:BORDER,justifyContent:'center',alignItems:'center'}}>
                 <Text style={{fontSize:12,fontWeight:'800',color:white}}>Meal</Text>
               </View>
               {generatedPlan.map((day) => {
-                const d = new Date(day.date);
-                const label = `${day.day.substring(0,3)} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+                const label = `${day.day.substring(0,3)} ${fmtDate(day.date)}`;
                 return (
                   <View key={day.date} style={{width:COL_W,padding:10,backgroundColor:BORDER,borderLeftWidth:1,borderLeftColor:'rgba(255,255,255,0.2)'}}>
                     <Text style={{fontSize:11,fontWeight:'700',color:white,textAlign:'center'}}>{label}</Text>
@@ -1514,20 +1522,20 @@ export default function MealWizardScreen() {
             {/* Data rows */}
             {slotsToShow.map(({ key, label }, slotIdx) => (
               <View key={key} style={{flexDirection:'row',borderTopWidth:1,borderTopColor:BORDER}}>
-                <View style={{width:90,padding:10,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,justifyContent:'center',borderRightWidth:1,borderRightColor:BORDER}}>
-                  <Text style={{fontSize:11,fontWeight:'800',color:navy}}>{label}</Text>
+                <View style={{width:90,padding:10,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,justifyContent:'center',alignItems:'center',borderRightWidth:1,borderRightColor:BORDER}}>
+                  <Text style={{fontSize:11,fontWeight:'600',color:navy,textAlign:'center'}}>{label}</Text>
                 </View>
                 {generatedPlan.map((day, dayIdx) => {
                   const opt = getOpt(dayIdx, key);
-                  const isThali = opt?.name?.toLowerCase().includes('thali');
-                  const thaliSummary = isThali && opt?.description?.includes(' | ')
-                    ? opt.description.split(' | ').map(c => c.split(':')[0].trim()).join(' · ')
+                  const hasPipe = opt?.description?.includes(' | ');
+                  const valueSummary = hasPipe
+                    ? opt!.description!.split(' | ').map(c => { const parts = c.split(':'); return parts.length > 1 ? parts.slice(1).join(':').trim() : parts[0].trim(); }).join(' · ')
                     : null;
                   return (
-                    <View key={day.date} style={{width:COL_W,padding:8,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,borderLeftWidth:1,borderLeftColor:'#D1D5DB'}}>
-                      <Text style={{fontSize:11,fontWeight:'700',color:'#1F2937',lineHeight:15}}>{opt?.name ?? '—'}</Text>
-                      {thaliSummary && (
-                        <Text style={{fontSize:9,color:'#5A7A8A',marginTop:2,lineHeight:12}}>{thaliSummary}</Text>
+                    <View key={day.date} style={{width:COL_W,padding:8,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,borderLeftWidth:1,borderLeftColor:'#D1D5DB',justifyContent:'center',alignItems:'center'}}>
+                      <Text style={{fontSize:11,fontWeight:'700',color:'#1F2937',lineHeight:15,textAlign:'center'}}>{opt?.name ?? '—'}</Text>
+                      {valueSummary && (
+                        <Text style={{fontSize:9,color:'#5A7A8A',marginTop:2,lineHeight:12,textAlign:'center'}}>{valueSummary}</Text>
                       )}
                     </View>
                   );

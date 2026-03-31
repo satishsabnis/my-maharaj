@@ -208,10 +208,27 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
   }
 
   const slotRules: Record<string, string> = {
-    breakfast: 'BREAKFAST: Light morning meal. Examples: Pohe, Upma, Idli, Thepla, Paratha, Eggs, Fruits, Smoothie. NEVER suggest rice-based lunch dishes or heavy curries.',
-    lunch: 'LUNCH: Main meal of the day. Can be substantial. Full Thali is appropriate here.',
-    dinner: 'DINNER: Moderate evening meal. Lighter than lunch but not as light as snack. Dal-rice, roti-sabzi, biryani etc.',
-    snack: 'EVENING SNACK: Very light. Tea, coffee, biscuits, chaat, sandwich, fruit only. NOT a meal.',
+    breakfast: `BREAKFAST RULES:
+- Light morning meal only
+- ALLOWED: Pohe, Upma, Idli, Dosa, Uttapam, Thepla, Paratha, Besan Chilla, Moong Dal Chilla, Sabudana Khichdi, Sheera, Bread Upma, Oats, Eggs, Fruits, Smoothie, Puri Bhaji
+- BANNED from breakfast: Biryani, Rajma, Chole, Dal Makhani, any rice+curry combination, any dish that is a lunch or dinner staple
+- Dosa varieties are ONLY for breakfast — NEVER dinner`,
+
+    lunch: `LUNCH RULES:
+- Main substantial meal of the day
+- ALLOWED: Dal+Rice, Roti+Sabzi, Biryani, Pulao, Chole Bhature, Rajma Chawal, Full Thali, Pav Bhaji
+- Full Thali is APPROPRIATE here`,
+
+    dinner: `DINNER RULES:
+- Moderate evening meal — lighter than lunch
+- ALLOWED: Dal+Roti, Khichdi, Sabzi+Roti, light Biryani, soups, Dal+Rice
+- BANNED: Dosa, Idli, Upma, Pohe, any breakfast item
+- GRAIN RULE: NEVER repeat same grain in two components. If Ragi Roti → dessert must NOT be Ragi Halwa. If rice in dal → bread must be wheat-based`,
+
+    snack: `SNACK RULES:
+- Very light only — NOT a meal
+- ALLOWED: Chai, Coffee, Biscuits, Namkeen, Chaat, Sandwich, Fruit, Smoothie, Vada, Pakora
+- BANNED: Any full meal, biryani, dal-rice, thali`,
   };
   const slotRule = slotRules[mealType] ?? '';
 
@@ -243,6 +260,9 @@ IMPORTANT RULES:
 - MANDATORY: Each option MUST include a non-empty "ing" array with 6-15 ingredients. Format: "[item] [qty][unit]" e.g. "Basmati rice 200g", "Onion 2 medium", "Coriander leaves 1 bunch". An empty ingredients array is INVALID and will be rejected.
 - Include 4-6 clear cooking steps
 - Tags: vegetarian/non-vegetarian, plus relevant health tags
+- GRAIN REPETITION RULE: Within a single meal, NEVER use the same grain twice. If bread is Ragi Roti, dessert must NOT contain ragi. If rice is a side, do not serve another rice dish.
+- INGREDIENT VARIETY RULE: Within a Full Thali, ALL 9 components must use DIFFERENT primary ingredients.
+- EVERYDAY DISHES RULE: Suggest only dishes a middle-class Indian family cooks at home. NEVER suggest restaurant-style luxury dishes for daily meals. Pohe, Upma, Dal Tadka, Rajma, Sabzi, Khichdi, Pulao, Roti are correct. Truffle, Quinoa, Gourmet, Continental are WRONG.
 
 Reply ONLY with this JSON (no other text, no markdown):
 {"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
