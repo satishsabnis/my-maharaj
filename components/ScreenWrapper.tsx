@@ -37,16 +37,19 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
           </TouchableOpacity>
           <Image source={require("../assets/logo.png")} style={sw.maharajLogo} resizeMode="contain" />
           <View style={sw.headerRight}>
-            {lang !== 'en' && (
-              <TouchableOpacity onPress={toggleEnglish} style={[sw.langToggle, isEnglish && sw.langToggleActive]}>
-                <Text style={[sw.langToggleTxt, isEnglish && sw.langToggleTxtActive]}>EN</Text>
-              </TouchableOpacity>
-            )}
-            {showHome && (
-              <TouchableOpacity onPress={() => router.push("/home" as never)} style={sw.homeBtn}>
-                <Text style={sw.homeTxt}>Home</Text>
-              </TouchableOpacity>
-            )}
+            <Image source={require("../assets/blueflute-logo.png")} style={sw.bfLogoHeader} resizeMode="contain" />
+            <View style={{flexDirection:"row",alignItems:"center",gap:6}}>
+              {lang !== 'en' && (
+                <TouchableOpacity onPress={toggleEnglish} style={[sw.langToggle, isEnglish && sw.langToggleActive]}>
+                  <Text style={[sw.langToggleTxt, isEnglish && sw.langToggleTxtActive]}>EN</Text>
+                </TouchableOpacity>
+              )}
+              {showHome && (
+                <TouchableOpacity onPress={() => router.push("/home" as never)} style={sw.homeBtn}>
+                  <Text style={sw.homeTxt}>Home</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
         <View style={sw.ticker}>
@@ -69,7 +72,8 @@ const sw = StyleSheet.create({
   backBtn:      { paddingRight: 8, minWidth: 60 },
   backTxt:      { fontSize: 15, color: "#1B3A5C", fontWeight: "600" },
   maharajLogo:  { flex: 1, height: 60, maxWidth: 220 },
-  headerRight:  { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "flex-end" },
+  headerRight:  { alignItems: "flex-end", gap: 4, minWidth: 80, justifyContent: "center" },
+  bfLogoHeader: { width: 80, height: 28 },
   langToggle:       { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.3)", backgroundColor: "rgba(255,255,255,0.8)" },
   langToggleActive: { backgroundColor: "#1B3A5C", borderColor: "#1B3A5C" },
   langToggleTxt:    { fontSize: 11, fontWeight: "700", color: "#1B3A5C" },

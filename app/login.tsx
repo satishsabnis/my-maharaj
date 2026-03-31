@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
@@ -48,7 +48,7 @@ export default function LoginScreen() {
           <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Welcome Back</Text>
-        <View style={{ width: 40 }} />
+        <Image source={require('../assets/blueflute-logo.png')} style={{width:80,height:28}} resizeMode="contain" />
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

@@ -112,7 +112,7 @@ export default function SettingsScreen() {
             <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
             <Image source={require('../assets/blueflute-logo.png')} style={s.bfLogo} resizeMode="contain" />
           </View>
-          <View style={{ width: 50 }} />
+          <Image source={require('../assets/blueflute-logo.png')} style={s.bfLogoHeader} resizeMode="contain" />
         </View>
 
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -194,6 +194,7 @@ const s = StyleSheet.create({
   headerCenter: { alignItems: 'center', flex: 1 },
   logo: { width: 140, height: 46 },
   bfLogo: { width: 80, height: 16, marginTop: 2 },
+  bfLogoHeader: { width: 80, height: 28 },
   scroll: { padding: 20, paddingBottom: 48 },
   title: { fontSize: 22, fontWeight: '800', color: navy, marginBottom: 20 },
   section: { marginBottom: 20 },
