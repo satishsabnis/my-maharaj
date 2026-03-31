@@ -5,6 +5,7 @@ import {
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as Speech from 'expo-speech';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border, errorRed, mint } from '../theme/colors';
 
@@ -150,16 +151,15 @@ Always respond in the same language the user writes in. If they write in Marathi
       const assistantMsg: Message = { role: 'assistant', content: cleanResponse };
       setMessages(prev => [...prev, assistantMsg]);
       // Speak response if triggered by voice
-      if (wasVoice && typeof window !== 'undefined' && window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance(cleanResponse.slice(0, 500));
-        utterance.lang = 'en-IN';
-        utterance.rate = 0.9;
-        const voices = window.speechSynthesis.getVoices();
-        const maleVoice = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('Rishi') || v.name.toLowerCase().includes('male')) || voices.find(v => v.lang.startsWith('en'));
-        utterance.voice = maleVoice || null;
-        utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
+      if (wasVoice) {
+        Speech.stop();
         setIsSpeaking(true); setIsPaused(false);
-        window.speechSynthesis.speak(utterance);
+        Speech.speak(cleanResponse.slice(0, 500), {
+          language: 'en-IN',
+          rate: 0.85,
+          onDone: () => { setIsSpeaking(false); setIsPaused(false); },
+          onStopped: () => { setIsSpeaking(false); setIsPaused(false); },
+        });
       }
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
@@ -275,12 +275,12 @@ Always respond in the same language the user writes in. If they write in Marathi
                 </Text>
                 {msg.role === 'assistant' && (
                   <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:6,gap:6}}>
-                    <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(msg.content.slice(0,500)); u.lang = 'en-IN'; u.rate = 0.9; const voices = window.speechSynthesis.getVoices(); const mv = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('Rishi') || v.name.toLowerCase().includes('male')) || voices.find(v => v.lang.startsWith('en')); u.voice = mv || null; u.onend = () => { setIsSpeaking(false); setIsPaused(false); }; setIsSpeaking(true); setIsPaused(false); window.speechSynthesis.speak(u); } }}>
+                    <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { Speech.stop(); setIsSpeaking(true); setIsPaused(false); Speech.speak(msg.content.slice(0,500), { language: 'en-IN', rate: 0.85, onDone: () => { setIsSpeaking(false); setIsPaused(false); }, onStopped: () => { setIsSpeaking(false); setIsPaused(false); } }); }}>
                       <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Speak</Text>
                     </TouchableOpacity>
                     {isSpeaking && (
-                      <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); } else { window.speechSynthesis.pause(); setIsPaused(true); } } }}>
-                        <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>{isPaused ? 'Resume' : 'Pause'}</Text>
+                      <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (isSpeaking && !isPaused) { Speech.stop(); setIsSpeaking(false); setIsPaused(false); } }}>
+                        <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Stop</Text>
                       </TouchableOpacity>
                     )}
                   </View>
