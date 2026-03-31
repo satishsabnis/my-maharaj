@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { navy, white } from '../theme/colors';
 
@@ -20,14 +21,15 @@ export default function SplashScreen() {
       setNavigated(true);
 
       // Always check disclaimer first
-      const disclaimerAccepted = typeof window !== 'undefined'
-        ? window.localStorage?.getItem('maharaj_disclaimer_accepted')
-        : null;
+      const disclaimerAccepted = await AsyncStorage.getItem('maharaj_disclaimer_accepted');
 
       if (!disclaimerAccepted) {
         router.replace('/disclaimer');
         return;
       }
+
+      // Small delay to let AsyncStorage-backed Supabase session hydrate
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Check auth state
       const { data: { session } } = await supabase.auth.getSession();
@@ -38,9 +40,7 @@ export default function SplashScreen() {
       }
 
       // Check language set
-      const langSet = typeof window !== 'undefined'
-        ? window.localStorage?.getItem('maharaj_lang_set')
-        : null;
+      const langSet = await AsyncStorage.getItem('maharaj_lang_set');
 
       if (!langSet) {
         router.replace('/language-select');

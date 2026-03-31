@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 
 const SECTIONS = [
@@ -32,18 +34,15 @@ export default function DisclaimerScreen() {
   const [viewOnly, setViewOnly] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const accepted = window.localStorage?.getItem('maharaj_disclaimer_accepted');
-      if (accepted) setViewOnly(true);
-    }
+    AsyncStorage.getItem('maharaj_disclaimer_accepted').then(val => {
+      if (val) setViewOnly(true);
+    });
   }, []);
 
-  function accept() {
+  async function accept() {
     setAccepting(true);
-    if (typeof window !== 'undefined') {
-      window.localStorage?.setItem('maharaj_disclaimer_accepted', 'true');
-    }
-    const langSet = typeof window !== 'undefined' ? window.localStorage?.getItem('maharaj_lang_set') : null;
+    await AsyncStorage.setItem('maharaj_disclaimer_accepted', 'true');
+    const langSet = await AsyncStorage.getItem('maharaj_lang_set');
     if (langSet) {
       router.replace('/home');
     } else {
@@ -51,11 +50,13 @@ export default function DisclaimerScreen() {
     }
   }
 
-  function exitApp() {
-    if (Platform.OS === 'web') {
-      window.close();
-    } else {
+  async function exitApp() {
+    await supabase.auth.signOut();
+    await AsyncStorage.removeItem('maharaj_disclaimer_accepted');
+    if (Platform.OS === 'android') {
       BackHandler.exitApp();
+    } else if (typeof window !== 'undefined') {
+      window.close();
     }
   }
 

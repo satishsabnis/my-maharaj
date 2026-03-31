@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, white, textSec } from '../theme/colors';
 
-const APPS = ['Amazon','Barakat','Careem','Deliveroo','elGrocer','Fresh to Home','Instashop','Keeta','Noon','Smiles','Talabat'];
+const APPS = ['Amazon','Careem','Fresh to Home','Noon'];
 
 export default function OrderOutScreen() {
   const rows: string[][] = [];
