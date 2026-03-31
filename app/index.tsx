@@ -3,6 +3,7 @@ import { Animated, Image, Platform, SafeAreaView, StyleSheet, Text, View } from 
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { DISCLAIMER_VERSION } from '../lib/constants';
 import { navy, white } from '../theme/colors';
 
 export default function SplashScreen() {
@@ -20,19 +21,21 @@ export default function SplashScreen() {
       if (navigated) return;
       setNavigated(true);
 
-      // Always check disclaimer first
-      const disclaimerAccepted = await AsyncStorage.getItem('maharaj_disclaimer_accepted');
+      // Always check disclaimer first (versioned key)
+      const disclaimerAccepted = await AsyncStorage.getItem('maharaj_disclaimer_v' + DISCLAIMER_VERSION);
 
       if (!disclaimerAccepted) {
         router.replace('/disclaimer');
         return;
       }
 
-      // Small delay to let AsyncStorage-backed Supabase session hydrate
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Check auth state
-      const { data: { session } } = await supabase.auth.getSession();
+      // Wait for AsyncStorage-backed Supabase session to hydrate
+      let session = null;
+      for (let i = 0; i < 10; i++) {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) { session = data.session; break; }
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
       if (!session) {
         router.replace('/login');

@@ -3,7 +3,10 @@ import { BackHandler, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Tex
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { DISCLAIMER_VERSION } from '../lib/constants';
 import { navy, gold, white, textSec, border } from '../theme/colors';
+
+const DISCLAIMER_KEY = 'maharaj_disclaimer_v' + DISCLAIMER_VERSION;
 
 const SECTIONS = [
   {
@@ -26,6 +29,10 @@ const SECTIONS = [
     title: 'Lab Report Disclaimer',
     body: 'Lab report analysis is AI-generated and indicative only. It does not constitute medical advice. Always consult your doctor.',
   },
+  {
+    title: 'Health & Beverage Data',
+    body: 'My Maharaj stores your family health conditions and beverage preferences to personalise meal planning. This data is stored securely, never shared with third parties, and is protected under UAE Personal Data Protection Law (PDPL). You may delete your data at any time by contacting info@bluefluteconsulting.com.',
+  },
 ];
 
 export default function DisclaimerScreen() {
@@ -34,14 +41,14 @@ export default function DisclaimerScreen() {
   const [viewOnly, setViewOnly] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('maharaj_disclaimer_accepted').then(val => {
+    AsyncStorage.getItem(DISCLAIMER_KEY).then(val => {
       if (val) setViewOnly(true);
     });
   }, []);
 
   async function accept() {
     setAccepting(true);
-    await AsyncStorage.setItem('maharaj_disclaimer_accepted', 'true');
+    await AsyncStorage.setItem(DISCLAIMER_KEY, 'true');
     const langSet = await AsyncStorage.getItem('maharaj_lang_set');
     if (langSet) {
       router.replace('/home');
@@ -52,7 +59,7 @@ export default function DisclaimerScreen() {
 
   async function exitApp() {
     await supabase.auth.signOut();
-    await AsyncStorage.removeItem('maharaj_disclaimer_accepted');
+    await AsyncStorage.removeItem(DISCLAIMER_KEY);
     if (Platform.OS === 'android') {
       BackHandler.exitApp();
     } else if (typeof window !== 'undefined') {
