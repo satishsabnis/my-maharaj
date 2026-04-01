@@ -16,7 +16,7 @@ import { navy, gold, peacock, textSec, errorRed, white, border, surface, textCol
 
 type WizardStep =
   | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'nutrition' | 'cuisine-confirm'
-  | 'generating' | 'generating-error' | 'selection' | 'plan-summary'
+  | 'generating' | 'generating-error' | 'selection' | 'confirmed-menu' | 'plan-summary'
   | 'cook-or-order' | 'recipes' | 'grocery' | 'delivery-apps' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -161,6 +161,7 @@ export default function MealWizardScreen() {
   const [feedbacks,    setFeedbacks]    = useState<FeedbackEntry[]>([]);
   const [feedbackDone, setFeedbackDone] = useState(false);
   const [regenCount,   setRegenCount]   = useState(0);
+  const [menuDay,      setMenuDay]      = useState(0);
 
   // Load today's regen count on mount
   useEffect(() => {
@@ -614,7 +615,8 @@ export default function MealWizardScreen() {
       'nutrition': isSingleDay ? 'unwell' : 'veg-days',
       'cuisine-confirm': 'nutrition',
       'selection': 'cuisine-confirm',
-      'plan-summary': 'selection',
+      'confirmed-menu': 'selection',
+      'plan-summary': 'confirmed-menu',
       'cook-or-order': 'plan-summary',
       'recipes': 'cook-or-order',
       'grocery': 'recipes',
@@ -700,9 +702,9 @@ export default function MealWizardScreen() {
               <TouchableOpacity style={{width:40,height:40,borderRadius:20,backgroundColor:startDayOffset>0?navy:'#D1D5DB',alignItems:'center',justifyContent:'center'}} onPress={()=>setStartDayOffset(Math.max(0,startDayOffset-1))} disabled={startDayOffset===0}>
                 <Text style={{color:white,fontSize:20,fontWeight:'700'}}>-</Text>
               </TouchableOpacity>
-              <View style={{alignItems:'center',minWidth:160}}>
-                <Text style={{fontSize:16,fontWeight:'700',color:navy}}>{startDayOffset===0?'Today':startDayOffset===1?'Tomorrow':`+${startDayOffset} days`}</Text>
-                <Text style={{fontSize:12,color:'#5A7A8A',marginTop:2}}>{fmtShort(startDate)}</Text>
+              <View style={{alignItems:'center',minWidth:180}}>
+                <Text style={{fontSize:16,fontWeight:'700',color:navy}}>{startDayOffset===0?'Today':startDayOffset===1?'Tomorrow':WEEKDAYS[startDate.getDay()]}</Text>
+                <Text style={{fontSize:12,color:'#5A7A8A',marginTop:2}}>({fmtShort(startDate)})</Text>
               </View>
               <TouchableOpacity style={{width:40,height:40,borderRadius:20,backgroundColor:startDayOffset<6?navy:'#D1D5DB',alignItems:'center',justifyContent:'center'}} onPress={()=>setStartDayOffset(Math.min(6,startDayOffset+1))} disabled={startDayOffset>=6}>
                 <Text style={{color:white,fontSize:20,fontWeight:'700'}}>+</Text>
@@ -725,12 +727,19 @@ export default function MealWizardScreen() {
             <View style={{flexDirection:'row',gap:4,marginBottom:12}}>
               {Array.from({length:7}).map((_,i)=>{
                 const d = addDays(today, i);
-                const inRange = i >= startDayOffset && i < startDayOffset + numDays;
+                const endIdx = Math.min(startDayOffset + numDays - 1, 6);
                 const isStart = i === startDayOffset;
-                const isEnd = i === startDayOffset + numDays - 1;
+                const isEnd = i === endIdx && endIdx !== startDayOffset;
+                const inRange = i >= startDayOffset && i <= endIdx;
+                let bg = '#F3F4F6';
+                let fg = '#9CA3AF';
+                if (isStart) { bg = navy; fg = white; }
+                else if (isEnd) { bg = '#C9A227'; fg = '#1B2A0C'; }
+                else if (inRange) { bg = 'rgba(27,58,92,0.15)'; fg = navy; }
                 return (
-                  <View key={i} style={{flex:1,height:32,borderRadius:8,backgroundColor:isStart?navy:isEnd?gold:inRange?'rgba(27,58,92,0.15)':'#F3F4F6',alignItems:'center',justifyContent:'center'}}>
-                    <Text style={{fontSize:10,fontWeight:'700',color:isStart||isEnd?white:inRange?navy:'#9CA3AF'}}>{WEEKDAYS[d.getDay()].substring(0,3)}</Text>
+                  <View key={i} style={{flex:1,height:40,borderRadius:8,backgroundColor:bg,alignItems:'center',justifyContent:'center'}}>
+                    <Text style={{fontSize:9,fontWeight:'700',color:fg}}>{WEEKDAYS[d.getDay()].substring(0,3)}</Text>
+                    <Text style={{fontSize:11,fontWeight:'800',color:fg}}>{d.getDate()}</Text>
                   </View>
                 );
               })}
@@ -1209,7 +1218,7 @@ export default function MealWizardScreen() {
               );
             })}
           </View>
-          <TouchableOpacity style={{backgroundColor:allSelected()?navy:'rgba(27,58,92,0.3)',borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>{void saveHistory();setRecipeDishes([]);setExtraCuisines([]);setPerDayCuisine({});setRemovedCuisines([]);advance('plan-summary');}} disabled={!allSelected()}>
+          <TouchableOpacity style={{backgroundColor:allSelected()?navy:'rgba(27,58,92,0.3)',borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>{void saveHistory();setRecipeDishes([]);setExtraCuisines([]);setPerDayCuisine({});setRemovedCuisines([]);setMenuDay(0);advance('confirmed-menu');}} disabled={!allSelected()}>
             <Text style={{fontSize:14,fontWeight:'700',color:white}}>{allSelected()?`Confirm Meal Plan \u00B7 ${selectedCount()} of ${total} selected`:'Select all meals to confirm'}</Text>
           </TouchableOpacity>
           <View style={{flexDirection:'row',gap:8,marginTop:8}}>
@@ -1504,6 +1513,93 @@ export default function MealWizardScreen() {
     );
   }
 
+  function renderConfirmedMenu() {
+    if (!generatedPlan) return null;
+    const slotsToShow: { key: MealSlotKey; label: string }[] = [
+      { key: 'breakfast', label: 'Breakfast' },
+      { key: 'lunch', label: 'Lunch' },
+      { key: 'snack', label: 'Evening Snack' },
+      { key: 'dinner', label: 'Dinner' },
+    ].filter(sl => (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) && (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))) as { key: MealSlotKey; label: string }[];
+    const day = generatedPlan[menuDay];
+    if (!day) return null;
+    const dateRange = selectedFrom && selectedTo
+      ? `${fmt(selectedFrom)} ${'\u2192'} ${fmt(selectedTo)} ${'\u00B7'} ${generatedPlan.length} day${generatedPlan.length>1?'s':''}`
+      : '';
+
+    return (
+      <View style={{flex:1}}>
+        {/* Header */}
+        <View style={{backgroundColor:navy,borderRadius:12,padding:16,marginBottom:12}}>
+          <Text style={{fontSize:18,fontWeight:'800',color:white}}>Your Meal Plan</Text>
+          <Text style={{fontSize:12,color:'rgba(255,255,255,0.65)',marginTop:4}}>{dateRange}{servingsCount > 0 ? ` ${'\u00B7'} ${servingsCount} people` : ''}</Text>
+        </View>
+
+        {/* Day tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:44,marginBottom:12}}>
+          <View style={{flexDirection:'row',gap:6}}>
+            {generatedPlan.map((d,idx) => (
+              <TouchableOpacity key={d.date} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:10,backgroundColor:menuDay===idx?gold:'rgba(255,255,255,0.85)'}} onPress={()=>setMenuDay(idx)} activeOpacity={0.8}>
+                <Text style={{fontSize:12,fontWeight:'700',color:menuDay===idx?'#1B2A0C':navy}}>{d.day.substring(0,3)} {fmtDate(d.date)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        {/* Meal cards */}
+        {slotsToShow.map(({key,label}) => {
+          const selIdx = selections[menuDay]?.[key] ?? 0;
+          const dish = day[key]?.options[selIdx];
+          if (!dish) return null;
+          const hasPipe = dish.description && dish.description.includes(' | ');
+          return (
+            <View key={key} style={{marginBottom:10,borderRadius:12,overflow:'hidden',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
+              <View style={{backgroundColor:navy,paddingHorizontal:14,paddingVertical:6}}>
+                <Text style={{fontSize:12,fontWeight:'700',color:white}}>{label}</Text>
+              </View>
+              <View style={{backgroundColor:'rgba(255,255,255,0.95)',padding:14}}>
+                <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:4}}>{dish.name}</Text>
+                {hasPipe ? dish.description!.split(' | ').map((comp,ci) => {
+                  const [lbl,...rest] = comp.split(':');
+                  const val = rest.join(':').trim();
+                  return <Text key={ci} style={{fontSize:12,color:'#374151',lineHeight:20}}><Text style={{fontWeight:'700',color:'#1B3A5C'}}>{lbl.trim()}</Text>{val?`: ${val}`:''}</Text>;
+                }) : dish.description ? <Text style={{fontSize:12,color:'#5A7A8A',lineHeight:20}}>{dish.description}</Text> : null}
+                {dish.tags.length > 0 && (
+                  <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:6}}>
+                    {dish.tags.slice(0,4).map(tag => {
+                      const nv = tag.toLowerCase().includes('non-veg');
+                      const vg = !nv && tag.toLowerCase().includes('vegetarian');
+                      return <Text key={tag} style={{fontSize:10,fontWeight:'600',paddingHorizontal:7,paddingVertical:2,borderRadius:8,color:nv?'#DC2626':vg?'#166534':'#1D4ED8',backgroundColor:nv?'#FEE2E2':vg?'#DCFCE7':'#DBEAFE'}}>{tag}</Text>;
+                    })}
+                  </View>
+                )}
+              </View>
+            </View>
+          );
+        })}
+
+        {/* Footer buttons */}
+        <View style={{marginTop:12,gap:8}}>
+          <TouchableOpacity style={{backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Back to Home</Text>
+          </TouchableOpacity>
+          <View style={{flexDirection:'row',gap:8}}>
+            <TouchableOpacity style={{flex:1,paddingVertical:11,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={async()=>{if(await tryRegenerate()){setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}}>
+              <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+              <Text style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>{regenCount}/5 today</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{flex:1,paddingVertical:11,borderRadius:12,borderWidth:1.5,borderColor:navy,backgroundColor:white,alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setSelectedFrom(null);setSelectedTo(null);setFoodPref(null);setIsMixed(false);setSelectedSlots([]);setGuestCount(0);setHasGuests(false);setGuestCuisine('');setBfPrefs([]);setLnPrefs([]);setDnPrefs([]);setSnPrefs([]);setUnwellIds([]);setEveryoneWell(true);setVegFastDays({});setNutritionGoals([]);setRemovedCuisines([]);setExtraCuisines([]);setPerDayCuisine({});setIncludeDessert(false);setFeedbacks([]);setFeedbackDone(false);session.presentMemberIds=[];setStep('period');}}>
+              <Text style={{fontSize:12,fontWeight:'600',color:navy}}>Modify Settings</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{flex:1,paddingVertical:11,borderRadius:12,backgroundColor:'#C9A227',alignItems:'center'}} onPress={()=>advance('plan-summary')}>
+              <Text style={{fontSize:12,fontWeight:'600',color:'#1B2A0C'}}>Print / PDF</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   function renderPlanSummary() {
     if (!generatedPlan) return null;
     const SLOT_LABELS: { key: MealSlotKey; label: string }[] = [
@@ -1540,17 +1636,17 @@ export default function MealWizardScreen() {
         )}
 
         {/* Header */}
-        <View style={{alignItems:'center',marginBottom:16}}>
-          <Text style={{fontSize:20,fontWeight:'800',color:navy,textAlign:'center'}}>My Maharaj — Weekly Meal Plan</Text>
-          <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4,textAlign:'center'}}>{dateRange}{servingsCount > 0 ? ` · Cooking for ${servingsCount} people` : ''}</Text>
-        </View>
-
-        {/* Print button */}
-        {Platform.OS === 'web' && (
-          <TouchableOpacity style={{position:'absolute',top:0,right:0,paddingHorizontal:14,paddingVertical:8,borderRadius:8,backgroundColor:'rgba(27,58,92,0.1)'}} onPress={doPrint}>
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,paddingHorizontal:12,marginBottom:16}}>
+          <View style={{flex:1,flexShrink:1}}>
+            <Text style={{fontSize:20,fontWeight:'800',color:navy,textAlign:'center'}}>My Maharaj — Weekly Meal Plan</Text>
+            <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4,textAlign:'center'}}>{dateRange}{servingsCount > 0 ? ` · Cooking for ${servingsCount} people` : ''}</Text>
+          </View>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity style={{flexShrink:0,minWidth:80,paddingHorizontal:14,paddingVertical:8,borderRadius:8,backgroundColor:'rgba(27,58,92,0.1)'}} onPress={doPrint}>
             <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Print / PDF</Text>
           </TouchableOpacity>
-        )}
+          )}
+        </View>
 
         {/* Table */}
         <ScrollView horizontal showsHorizontalScrollIndicator={true}>
@@ -1737,6 +1833,7 @@ export default function MealWizardScreen() {
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
+    'confirmed-menu':   renderConfirmedMenu,
     'plan-summary':     renderPlanSummary,
     'guest-cuisine':    renderGuestCuisine,
     'veg-days':         renderVegDays,

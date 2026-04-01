@@ -50,12 +50,12 @@ const LANGUAGES = [
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
 const ALL_CUISINES = [
-  'Afghan','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese',
+  'Afghan','Andhra','Arabic','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese',
   'Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan',
-  'Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Italian','Japanese','Kashmiri',
-  'Konkani','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian',
+  'Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Italian','Jain','Japanese','Kashmiri',
+  'Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian','Malvani',
   'Mediterranean','Mexican','Moroccan','Nepali','Nigerian','Odia','Omani','Pakistani',
-  'Palestinian','Persian','Punjabi','Rajasthani','Saudi','Singaporean','South African',
+  'Palestinian','Persian','Punjabi','Rajasthani','Singaporean','South African',
   'South Indian','Spanish','Sri Lankan','Syrian','Tamil','Telugu','Thai','Turkish',
   'Udupi','Vietnamese','Yemeni',
 ].sort();
@@ -187,7 +187,7 @@ export default function DietaryProfileScreen() {
   };
 
   return (
-    <ScreenWrapper title="Family Profile">
+    <ScreenWrapper title="Family Profile" onBack={() => router.push('/settings' as never)}>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Family Members */}
