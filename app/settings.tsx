@@ -80,11 +80,6 @@ export default function SettingsScreen() {
         { label: 'Family Members', route: '/dietary-profile' },
         { label: 'Lab Reports', route: '/lab-report' },
         { label: 'Cuisine Preferences', route: '/cuisine-selection' },
-      ],
-    },
-    {
-      title: 'Preferences',
-      items: [
         { label: 'Grocery Day', right: groceryDay, onPress: () => setShowGroceryModal(true) },
       ],
     },
