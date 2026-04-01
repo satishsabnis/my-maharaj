@@ -1362,7 +1362,7 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>View Shopping List</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setStep('confirmed-menu')}>
-            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Back to Plan</Text>
+            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Back to Menu</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1381,9 +1381,16 @@ export default function MealWizardScreen() {
         </View>
 
         {shoppingLoading ? (
-          <View style={{alignItems:'center',paddingVertical:40}}>
-            <ActivityIndicator color={navy} size="large" />
-            <Text style={{fontSize:14,color:'#5A7A8A',marginTop:12}}>Maharaj is preparing your shopping list...</Text>
+          <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:40}}>
+            <ActivityIndicator size="large" color={navy} />
+            <Text style={{marginTop:16,fontSize:14,color:'#1B3A5C',textAlign:'center'}}>Maharaj is preparing your shopping list...</Text>
+          </View>
+        ) : shoppingList.length === 0 ? (
+          <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:40}}>
+            <Text style={{fontSize:14,color:'#6B7280',textAlign:'center',marginBottom:20}}>Could not generate shopping list.</Text>
+            <TouchableOpacity style={{backgroundColor:'#1B3A5C',borderRadius:12,paddingVertical:14,paddingHorizontal:24}} onPress={()=>{void generateShoppingList();}}>
+              <Text style={{color:white,fontWeight:'700',fontSize:14}}>Try Again</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <>
@@ -1891,7 +1898,7 @@ export default function MealWizardScreen() {
   const isFullScreen = ['generating','generating-error'].includes(step);
 
   return (
-    <ImageBackground source={require('../assets/background.png')} style={{flex:1}} resizeMode="cover">
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       {/* Header */}
       {!isFullScreen && (

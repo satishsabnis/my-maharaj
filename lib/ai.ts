@@ -340,7 +340,7 @@ IMPORTANT RULES:
 - Full Thali is NEVER appropriate for Breakfast — only for Lunch or Dinner
 - For breakfast, suggest light dishes: pohe, upma, idli, dosa, thepla, paratha, eggs, fruits, smoothies
 - ALL 3 options must be COMPLETELY DIFFERENT dishes from each other
-- DISH VARIETY RULE: The 3 options must be COMPLETELY DIFFERENT dishes — not variations of the same dish. Pohe, Kanda Pohe and Batata Pohe are NOT 3 different options — they are the same dish. Each option must have a different primary ingredient or cooking method. WRONG: Pohe / Kanda Pohe / Batata Pohe. RIGHT: Pohe / Upma / Idli Sambhar.
+- DISH VARIETY RULE — CRITICAL: The 3 options MUST be completely different dishes with different PRIMARY ingredients. This is NON-NEGOTIABLE. BANNED combinations: Pohe + Kanda Pohe + Batata Pohe (same dish), Dal Khichdi + Moong Dal Khichdi + Masala Khichdi (same dish), any 3 variations of the same base dish. REQUIRED: Each option must have a DIFFERENT primary ingredient AND different cooking method. Test: if you remove the adjective, are all 3 the same dish? If yes = REJECTED. CORRECT: Breakfast: Pohe / Upma / Idli Sambhar. Lunch: Rajma Chawal / Roti Sabzi / Chole Bhature. Dinner: Dal Tadka Roti / Paneer Sabzi Rice / Khichdi Kadhi.
 - NEVER repeat any dish that appears in the history list above
 - The ${mealType} options must be DIFFERENT from what would be served at other meals today
 - For fasting: breakfast dishes (sabudana khichdi, fruit bowl, rajgira paratha) must differ from lunch (sama rice, vrat ki sabzi, kuttu paratha) and dinner (sabudana vada, makhana kheer, singhare ki puri)
@@ -352,25 +352,27 @@ IMPORTANT RULES:
 - EVERYDAY DISHES RULE: Suggest ONLY dishes a middle-class Indian family cooks at home on a weekday. Test: would a homemaker in Dubai cook this on a Tuesday? If no, reject. CORRECT: Pohe, Upma, Dal Tadka, Rajma, Sabzi, Khichdi, Pulao, Roti, Fish Curry, Chicken Curry, Egg Bhurji, Mutton Curry. WRONG: Steamed Fish with Ginger and Soy, Truffle Risotto, Quinoa Bowl, Gourmet anything, Continental, fusion dishes, restaurant-style plated dishes. If a dish name sounds like a restaurant menu item, replace it with a home-cooked version.
 
 Reply ONLY with this JSON (no other text, no markdown):
-{"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
+{"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}
+
+${mandatoryInstruction ? '⚠️ FINAL REMINDER: ' + mandatoryInstruction : ''}`;
 
   try {
     const text = await askClaude(prompt);
     const raw = JSON.parse(text) as {
-      options: Array<{ name: string; desc?: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
+      options: Array<{ name?: string; desc?: string; description?: string; veg?: boolean; vegetarian?: boolean; tags?: string[]; ing?: string[]; ingredients?: string[]; steps?: string[] }>;
     };
-    const opts = (raw.options ?? []).map((o) => {
-      let ingredients = o.ing ?? [];
+    const opts = (raw.options ?? []).map((o: any) => {
+      let ingredients = o.ingredients ?? o.ing ?? [];
       if (ingredients.length === 0) {
         console.warn(`[generateOneMeal] Empty ingredients for "${o.name}" — adding placeholders`);
         ingredients = ['Oil 2 tbsp', 'Salt to taste', 'Onion 2 medium', 'Tomato 2 medium', 'Green chilli 2', 'Ginger-garlic paste 1 tbsp'];
       }
       return {
         name: o.name ?? '',
-        description: o.desc ?? undefined,
-        vegetarian: o.veg ?? true,
+        description: o.description ?? o.desc ?? '',
+        vegetarian: o.vegetarian ?? o.veg ?? true,
         tags: o.tags ?? [],
-        ingredients,
+        ingredients: ingredients.map((i: any) => typeof i === 'string' ? i : `${i.item || i.name || ''} ${i.qty || ''}${i.unit || ''}`.trim()),
         steps: o.steps ?? [],
       };
     });
@@ -507,8 +509,8 @@ export async function generateMealPlan(
     }
     const parts: string[] = [];
     if (prefs.includes('Full Thali')) parts.push('Generate a FULL THALI with ALL components: Dal, Sabzi, Rice or Roti, Raita, Papad or Pickle, one Dessert, one Drink. ONE complete thali entry.');
-    if (prefs.includes('Rice based')) parts.push('Generate rice dish only, no bread/roti.');
-    if (prefs.includes('Roti based')) parts.push('Generate roti/bread dish only, no rice.');
+    if (prefs.includes('Rice based')) parts.push('⚠️ RICE BASED MANDATORY: ALL 3 options MUST be rice-based dishes. Examples: Dal Chawal, Rajma Chawal, Chole Chawal, Biryani, Pulao, Khichdi, Sambar Rice, Curd Rice. NO roti. NO paratha. NO bread. Rice must be the PRIMARY carbohydrate in every option.');
+    if (prefs.includes('Roti based')) parts.push('⚠️ ROTI BASED MANDATORY: ALL 3 options MUST be roti/bread-based dishes. Examples: Roti+Sabzi, Paratha, Thepla, Chapati+Dal, Puri+Bhaji, Naan+Curry, Phulka+Sabzi. NO rice dishes. NO khichdi. NO pulao. NO biryani. Bread must be the PRIMARY carbohydrate in every option.');
     if (prefs.includes('Light only')) parts.push('Light meals only — soup, khichdi or salad. No heavy curries.');
     if (prefs.includes('Fruits') || prefs.includes('Fruit/Juice')) parts.push('Fruit-based meal only.');
     if (slot === 'snack') parts.push('Evening snack ONLY — chai, snack, chaat, sandwich. NOT a full meal.');
