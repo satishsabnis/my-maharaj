@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ImageBackground, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { navy, gold, white, midGray } from '../theme/colors';
 
 export default function MealPlanWizardScreen() {
   return (
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>Back</Text></TouchableOpacity>
-        <Text style={s.headerTitle}>Generate Meal Plan</Text>
+        <Text style={s.headerTitle}>Plan with Maharaj</Text>
         <View style={{ width: 60 }} />
       </View>
       <View style={s.center}>
@@ -20,11 +21,12 @@ export default function MealPlanWizardScreen() {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F4F6FB' },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   header: { backgroundColor: navy, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 14, paddingBottom: 16 },
   backText: { color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: '500', width: 60 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: white },

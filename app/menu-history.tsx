@@ -86,7 +86,7 @@ export default function MenuHistoryScreen() {
             <Text style={s.emptyTitle}>No meal plans yet</Text>
             <Text style={s.emptySub}>Generate your first plan to see it here</Text>
             <TouchableOpacity style={s.ctaBtn} onPress={() => router.push('/meal-wizard')} activeOpacity={0.85}>
-              <Text style={s.ctaBtnText}>Generate Meal Plan →</Text>
+              <Text style={s.ctaBtnText}>Plan with Maharaj {'\u2192'}</Text>
             </TouchableOpacity>
           </View>
         ) : (

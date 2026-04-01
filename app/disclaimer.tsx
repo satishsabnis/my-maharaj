@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BackHandler, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, Image, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -68,6 +68,7 @@ export default function DisclaimerScreen() {
   }
 
   return (
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       <View style={s.disclaimerHeader}>
         <View style={{width:80}} />
@@ -103,11 +104,12 @@ export default function DisclaimerScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const s = StyleSheet.create({
-  safe:     { flex: 1, backgroundColor: white },
+  safe:     { flex: 1, backgroundColor: 'transparent' },
   disclaimerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 25 : Platform.OS === 'web' ? 14 : 8, paddingBottom: 8 },
   scroll:   { padding: 24, paddingBottom: 48 },
   logo:     { width: 180, height: 60 },

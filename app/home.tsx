@@ -245,47 +245,15 @@ export default function HomeScreen() {
             </View>
 
             <TouchableOpacity style={s.generateBtn} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.88}>
-              <Text style={s.generateBtnTxt}>Generate today's plan  {'\u2192'}</Text>
+              <Text style={s.generateBtnTxt}>Plan with Maharaj  {'\u2192'}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* ── 2. WEEKLY PLAN CARD ── */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Weekly plan — Sunday to Saturday</Text>
-            <Text style={s.cardSub}>Auto-generated before your grocery day</Text>
-
-            {/* Day dots */}
-            <View style={s.dotRow}>
-              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => {
-                const isToday = i === todayIdx;
-                const isGrocery = i === groceryDayIdx;
-                let dotBg = mint;
-                if (isToday) dotBg = navy;
-                if (isGrocery) dotBg = gold;
-                return (
-                  <View key={d} style={s.dotCol}>
-                    <View style={[s.dayDot, { backgroundColor: dotBg }]}>
-                      {isToday && <Text style={s.dayDotTxt}>T</Text>}
-                      {isGrocery && !isToday && <Text style={s.dayDotTxtDark}>G</Text>}
-                    </View>
-                    <Text style={s.dayDotLabel}>{d}</Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Grocery row */}
-            <View style={s.groceryRow}>
-              <Text style={s.groceryLabel}>Grocery day: <Text style={{ fontWeight: '700' }}>{groceryDay}</Text></Text>
-              <TouchableOpacity
-                style={s.emailPdfBtn}
-                onPress={() => Alert.alert('Coming soon', 'Weekly email PDF feature is under development.')}
-                activeOpacity={0.8}
-              >
-                <Text style={s.emailPdfTxt}>Email PDF  {'\u2192'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          {/* ── 2. PLAN WITH MAHARAJ CARD ── */}
+          <TouchableOpacity style={s.planCard} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.88}>
+            <Text style={s.planCardTitle}>Plan with Maharaj</Text>
+            <Text style={s.planCardSub}>Custom plan or full week — Maharaj decides the rest</Text>
+          </TouchableOpacity>
 
           {/* ── 3. FESTIVAL STRIP ── */}
           {nextFest && (
@@ -443,18 +411,10 @@ const s = StyleSheet.create({
   generateBtn: { backgroundColor: navy, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   generateBtnTxt: { color: white, fontSize: 14, fontWeight: '700' },
 
-  // Weekly plan dots
-  dotRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
-  dotCol: { alignItems: 'center', gap: 4 },
-  dayDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  dayDotTxt: { fontSize: 11, fontWeight: '800', color: white },
-  dayDotTxtDark: { fontSize: 11, fontWeight: '800', color: navy },
-  dayDotLabel: { fontSize: 10, color: textSec, fontWeight: '500' },
-
-  groceryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  groceryLabel: { fontSize: 13, color: textSec },
-  emailPdfBtn: { backgroundColor: gold, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
-  emailPdfTxt: { fontSize: 12, fontWeight: '700', color: navy },
+  // Plan with Maharaj card
+  planCard: { backgroundColor: '#1B3A5C', borderRadius: 16, padding: 20, marginBottom: 14 },
+  planCardTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
+  planCardSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 18 },
 
   // Festival strip
   festivalStrip: {
