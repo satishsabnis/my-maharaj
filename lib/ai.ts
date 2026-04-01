@@ -140,7 +140,15 @@ async function generateOneMeal(
   mealConstraint?: string,
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
-  const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
+  let foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
+
+  // Override vegetarian foodNote when a protein constraint is active
+  if (mealConstraint) {
+    if (mealConstraint.includes('EGG DISHES ONLY')) foodNote = 'Non-vegetarian — eggs allowed and required';
+    else if (mealConstraint.includes('CHICKEN DISHES ONLY')) foodNote = 'Non-vegetarian — chicken required';
+    else if (mealConstraint.includes('FISH DISHES ONLY')) foodNote = 'Non-vegetarian — fish/seafood required';
+    else if (mealConstraint.includes('MUTTON DISHES ONLY')) foodNote = 'Non-vegetarian — mutton/lamb required';
+  }
   const hasThali = mealPrefs && mealPrefs.some(p => p.toLowerCase().includes('thali'));
   const thaliNote = hasThali ? 'Full Thali means a complete traditional Indian thali plate with dal, sabzi, rice or roti, papad, pickle, raita, and dessert. Generate ONE complete thali description, not individual dishes.' : '';
   const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}. ${thaliNote}` : '';
