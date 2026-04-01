@@ -105,15 +105,28 @@ const REAL_DISHES: Record<string, string[][]> = {
   ],
 };
 
-function fallbackSlot(mealType: string, idx: number): MealSlot {
+const VEG_DINNER_DISHES: string[][] = [
+  ['Dal Makhani', 'Slow Cooked Dal Makhani', 'Black Dal'],
+  ['Paneer Butter Masala', 'Shahi Paneer', 'Kadai Paneer'],
+  ['Veg Biryani', 'Hyderabadi Veg Dum Biryani', 'Veg Pulao'],
+  ['Aloo Gobi Roti', 'Aloo Matar with Chapati', 'Gobi Paratha'],
+  ['Palak Paneer', 'Saag Paneer', 'Methi Paneer'],
+  ['Chole with Rice', 'Chana Masala Roti', 'Kabuli Chana'],
+  ['Bhindi Masala Roti', 'Okra Sabzi with Chapati', 'Bhindi Fry'],
+];
+
+function fallbackSlot(mealType: string, idx: number, foodPref?: string): MealSlot {
+  const isVeg = foodPref ? (foodPref.toLowerCase().includes('veg') && !foodPref.toLowerCase().includes('non-veg')) : false;
   const key = mealType as keyof typeof REAL_DISHES;
-  const arr = REAL_DISHES[key] ?? REAL_DISHES['lunch'];
+  let arr = REAL_DISHES[key] ?? REAL_DISHES['lunch'];
+  if (mealType === 'dinner' && isVeg) arr = VEG_DINNER_DISHES;
   const pick = arr[idx % arr.length];
+  const veg = mealType !== 'dinner' || isVeg;
   return {
     options: [
-      { name: pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
-      { name: pick[1] ?? pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
-      { name: pick[2] ?? pick[0], vegetarian: mealType !== 'dinner', tags: [], ingredients: [], steps: [] },
+      { name: pick[0], vegetarian: veg, tags: [], ingredients: [], steps: [] },
+      { name: pick[1] ?? pick[0], vegetarian: veg, tags: [], ingredients: [], steps: [] },
+      { name: pick[2] ?? pick[0], vegetarian: veg, tags: [], ingredients: [], steps: [] },
     ],
   };
 }
@@ -341,32 +354,32 @@ Reply ONLY with this JSON (no other text, no markdown):
         steps: o.steps ?? [],
       };
     });
-    if (opts.length === 0) return fallbackSlot(mealType, dayIdx);
+    if (opts.length === 0) return fallbackSlot(mealType, dayIdx, foodNote);
 
     // Validate protein constraint — if AI ignored it, force fallback
     if (mealConstraint) {
       const names = opts.map(o => o.name.toLowerCase()).join(' ');
       if (mealConstraint.includes('Egg') && !names.includes('egg') && !names.includes('anda') && !names.includes('omelette')) {
         console.warn('[generateOneMeal] AI ignored egg constraint — falling back');
-        return fallbackSlot(mealType, dayIdx);
+        return fallbackSlot(mealType, dayIdx, foodNote);
       }
       if (mealConstraint.includes('Chicken') && !names.includes('chicken') && !names.includes('murgh')) {
         console.warn('[generateOneMeal] AI ignored chicken constraint — falling back');
-        return fallbackSlot(mealType, dayIdx);
+        return fallbackSlot(mealType, dayIdx, foodNote);
       }
       if (mealConstraint.includes('Fish') && !names.includes('fish') && !names.includes('machli') && !names.includes('prawn') && !names.includes('seafood')) {
         console.warn('[generateOneMeal] AI ignored fish constraint — falling back');
-        return fallbackSlot(mealType, dayIdx);
+        return fallbackSlot(mealType, dayIdx, foodNote);
       }
       if (mealConstraint.includes('Mutton') && !names.includes('mutton') && !names.includes('lamb') && !names.includes('keema') && !names.includes('gosht')) {
         console.warn('[generateOneMeal] AI ignored mutton constraint — falling back');
-        return fallbackSlot(mealType, dayIdx);
+        return fallbackSlot(mealType, dayIdx, foodNote);
       }
     }
 
     return { options: opts };
   } catch {
-    return fallbackSlot(mealType, dayIdx);
+    return fallbackSlot(mealType, dayIdx, foodNote);
   }
 }
 

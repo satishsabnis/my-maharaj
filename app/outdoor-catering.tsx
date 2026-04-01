@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { loadOrDetectLocation } from '../lib/location';
-import { navy, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
+import { navy, gold, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
 const EVENT_TYPES  = ['Picnic','Corporate Outing','Beach Party','Garden Party','Sports Day','School Trip','Family Reunion','Camping'];
 const FOOD_TYPES   = ['Vegetarian','Non-Vegetarian','Mixed'];
@@ -41,6 +41,7 @@ export default function OutdoorCateringScreen() {
   const [weather,   setWeather]   = useState('Hot & Sunny');
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
+  const [includeAlcohol, setIncludeAlcohol] = useState(false);
   const [menu,      setMenu]      = useState<OutdoorMenu | null>(null);
   const [loc,       setLoc]       = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
 
@@ -58,6 +59,7 @@ export default function OutdoorCateringScreen() {
       setWeather('Hot & Sunny');
       setError('');
       setLoading(false);
+      setIncludeAlcohol(false);
     }, [])
   );
 
@@ -93,7 +95,10 @@ Include 3-5 items per section.`;
 
       // Call 2: separate beverages call
       try {
-        const bevPrompt = `Generate exactly 4 refreshing beverages suitable for an outdoor ${eventType} with ${g} guests in ${weather} weather in ${loc.city}. Return ONLY this JSON array: [{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."}]`;
+        const alcNote = includeAlcohol
+          ? 'Include a mix of alcoholic options (Beer, Wine, Cocktails) and non-alcoholic options (Mocktails, Juices, Lassi). Label each clearly.'
+          : 'Non-alcoholic beverages only — no alcohol.';
+        const bevPrompt = `Generate exactly 4 refreshing beverages suitable for an outdoor ${eventType} with ${g} guests in ${weather} weather in ${loc.city}. ${alcNote} Return ONLY this JSON array: [{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."}]`;
         const bevRaw = await callClaude(bevPrompt);
         const bevMatch = bevRaw.match(/\[[\s\S]*\]/);
         parsed.beverages = bevMatch ? JSON.parse(bevMatch[0]) : [];
@@ -171,6 +176,14 @@ Include 3-5 items per section.`;
               ))}
             </View>
 
+            <Text style={s.label}>BEVERAGES</Text>
+            <TouchableOpacity style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:includeAlcohol?navy:'rgba(255,255,255,0.9)',borderRadius:12,padding:14,borderWidth:1.5,borderColor:includeAlcohol?navy:'#D1D5DB'}} onPress={()=>setIncludeAlcohol(v=>!v)} activeOpacity={0.8}>
+              <Text style={{fontSize:14,fontWeight:'600',color:includeAlcohol?white:darkGray}}>Include alcoholic beverages?</Text>
+              <View style={{width:40,height:22,borderRadius:11,backgroundColor:includeAlcohol?gold:'#D1D5DB',padding:2}}>
+                <View style={{width:18,height:18,borderRadius:9,backgroundColor:white,transform:[{translateX:includeAlcohol?18:0}]}} />
+              </View>
+            </TouchableOpacity>
+
             <Text style={s.label}>SERVING SETUP</Text>
             <View style={s.chips}>
               {SETUP_STYLES.map(ss => (
@@ -204,7 +217,7 @@ Include 3-5 items per section.`;
           <View style={s.container}>
             <View style={s.resultHeader}>
               <Text style={s.resultTitle}>{eventType} Menu</Text>
-              <Text style={s.resultMeta}>{guests} guests · {foodType} · {setup} · AED {budget}/head</Text>
+              <Text style={s.resultMeta}>{guests} guests · {foodType} · {setup} · AED {budget}/head{includeAlcohol ? ' · Alcoholic available' : ''}</Text>
               <Text style={s.resultMeta}>Weather: {weather}</Text>
             </View>
 

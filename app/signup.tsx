@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
@@ -51,6 +51,7 @@ export default function SignupScreen() {
   }
 
   return (
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
@@ -96,6 +97,7 @@ export default function SignupScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
