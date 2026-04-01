@@ -5,7 +5,8 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { navy, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
+import { navy, gold, textSec, errorRed, white, border, surface, successGreen, darkGray } from '../theme/colors';
+import { NON_ALCOHOLIC_BEVERAGES, ALCOHOLIC_BEVERAGES } from '../lib/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,9 @@ interface MemberForm {
   nativeLanguage: string;
   healthConditions: string[];
   notes: string;
+  nonAlcoholicFavs: string[];
+  alcoholicFavs: string[];
+  drinksAlcohol: boolean;
 }
 
 const NATIONALITIES = [
@@ -57,18 +61,28 @@ const ALL_CUISINES = [
 ].sort();
 
 function formToNotes(form: MemberForm): string {
-  return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
+  const parts = [...form.healthConditions, form.notes.trim()].filter(Boolean);
+  if (form.nonAlcoholicFavs.length > 0) parts.push('Drinks: ' + form.nonAlcoholicFavs.join(', '));
+  if (form.alcoholicFavs.length > 0) parts.push('Alcohol: ' + form.alcoholicFavs.join(', '));
+  return parts.join(', ');
 }
 
 function emptyForm(): MemberForm {
-  return { name: '', age: '', nationality: '', nativeLanguage: '', healthConditions: [], notes: '' };
+  return { name: '', age: '', nationality: '', nativeLanguage: '', healthConditions: [], notes: '', nonAlcoholicFavs: [], alcoholicFavs: [], drinksAlcohol: false };
 }
 
 function memberToForm(m: Member): MemberForm {
   const notes = m.health_notes ?? '';
   const conds = HEALTH_PILLS.filter((p) => notes.toLowerCase().includes(p.toLowerCase()));
-  const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
-  return { name: m.name, age: String(m.age || ''), healthConditions: conds, notes: others };
+  let others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
+  // Parse beverage prefs
+  const drinksMatch = others.match(/Drinks:\s*([^,]+(,\s*[^,]+)*)/);
+  const nonAlcoholicFavs = drinksMatch ? drinksMatch[1].split(',').map(s => s.trim()).filter(s => NON_ALCOHOLIC_BEVERAGES.includes(s)) : [];
+  const alcMatch = others.match(/Alcohol:\s*([^,]+(,\s*[^,]+)*)/);
+  const alcoholicFavs = alcMatch ? alcMatch[1].split(',').map(s => s.trim()).filter(s => ALCOHOLIC_BEVERAGES.includes(s)) : [];
+  // Remove parsed beverage strings from notes
+  others = others.replace(/,?\s*Drinks:\s*[^,]+(,\s*[^,]+)*/g, '').replace(/,?\s*Alcohol:\s*[^,]+(,\s*[^,]+)*/g, '').replace(/^,+|,+$/g, '').trim();
+  return { name: m.name, age: String(m.age || ''), healthConditions: conds, notes: others, nonAlcoholicFavs, alcoholicFavs, drinksAlcohol: alcoholicFavs.length > 0 };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -330,6 +344,35 @@ export default function DietaryProfileScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              <Text style={s.sectionLabel}>BEVERAGE PREFERENCES</Text>
+              <Text style={{fontSize:12,color:textSec,marginBottom:8}}>Non-alcoholic favourites</Text>
+              <View style={s.pillRow}>
+                {NON_ALCOHOLIC_BEVERAGES.map((bev) => (
+                  <TouchableOpacity key={bev} onPress={() => setForm(p => ({...p, nonAlcoholicFavs: p.nonAlcoholicFavs.includes(bev) ? p.nonAlcoholicFavs.filter(x=>x!==bev) : [...p.nonAlcoholicFavs, bev]}))} activeOpacity={0.75}
+                    style={[s.cuisinePill, form.nonAlcoholicFavs.includes(bev) && s.cuisinePillActive]}>
+                    <Text style={[s.cuisinePillTxt, form.nonAlcoholicFavs.includes(bev) && s.cuisinePillTxtActive]}>{bev}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:form.drinksAlcohol?navy:'rgba(255,255,255,0.9)',borderRadius:12,padding:14,marginTop:12,borderWidth:1.5,borderColor:form.drinksAlcohol?navy:'#D1D5DB'}} onPress={()=>setForm(p=>({...p, drinksAlcohol:!p.drinksAlcohol, alcoholicFavs:!p.drinksAlcohol?p.alcoholicFavs:[]}))} activeOpacity={0.8}>
+                <Text style={{fontSize:14,fontWeight:'600',color:form.drinksAlcohol?white:(darkGray ?? textSec)}}>Consumes alcohol?</Text>
+                <View style={{width:40,height:22,borderRadius:11,backgroundColor:form.drinksAlcohol?gold:'#D1D5DB',padding:2}}>
+                  <View style={{width:18,height:18,borderRadius:9,backgroundColor:white,transform:[{translateX:form.drinksAlcohol?18:0}]}} />
+                </View>
+              </TouchableOpacity>
+              {form.drinksAlcohol && (
+                <View style={{marginTop:12}}>
+                  <Text style={{fontSize:12,color:textSec,marginBottom:8}}>Alcoholic preferences</Text>
+                  <View style={s.pillRow}>
+                    {ALCOHOLIC_BEVERAGES.map((bev) => (
+                      <TouchableOpacity key={bev} onPress={() => setForm(p => ({...p, alcoholicFavs: p.alcoholicFavs.includes(bev) ? p.alcoholicFavs.filter(x=>x!==bev) : [...p.alcoholicFavs, bev]}))} activeOpacity={0.75}
+                        style={[s.cuisinePill, form.alcoholicFavs.includes(bev) && s.cuisinePillActive]}>
+                        <Text style={[s.cuisinePillTxt, form.alcoholicFavs.includes(bev) && s.cuisinePillTxtActive]}>{bev}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
               <Input label="Medical Notes (optional)" value={form.notes} onChangeText={(v) => setForm((p) => ({ ...p, notes: v }))}
                 placeholder="e.g. Low salt, no fried food..." multiline numberOfLines={3} />
               {formError ? <Text style={s.formError}>{formError}</Text> : null}
