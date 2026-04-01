@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
+import { router } from 'expo-router';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, gold, white, midGray } from '../theme/colors';
 
@@ -90,7 +91,9 @@ export default function FestivalsScreen() {
         </View>
         {!isPast && (
           <View style={s.toggleWrap}>
-            <Text style={s.toggleLabel}>Adjust{'\n'}meals</Text>
+            <TouchableOpacity style={s.planBtn} onPress={() => router.push({ pathname: '/meal-wizard', params: { festivalName: f.name, festivalDate: f.date, autoStart: 'true' } } as never)} activeOpacity={0.8}>
+              <Text style={s.planBtnTxt}>Plan</Text>
+            </TouchableOpacity>
             <Switch
               value={f.adjustMeals}
               onValueChange={v => toggle(globalIdx, v)}
@@ -143,4 +146,6 @@ const s = StyleSheet.create({
   soonBadgeTxt: { color: navy, fontSize: 11, fontWeight: '600' },
   toggleWrap:   { alignItems: 'center', gap: 4 },
   toggleLabel:  { fontSize: 10, color: midGray, textAlign: 'center' },
+  planBtn:      { backgroundColor: gold, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  planBtnTxt:   { fontSize: 11, fontWeight: '700', color: '#1B2A0C' },
 });

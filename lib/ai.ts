@@ -168,6 +168,21 @@ async function generateOneMeal(
   if (mealConstraint && mealConstraint.includes('MUTTON DISHES ONLY')) {
     foodNote = 'Non-vegetarian — MUTTON ONLY. User has explicitly requested mutton dishes. Mutton overrides all dietary restrictions for this meal.';
   }
+
+  // Strip vegetarian health restrictions when protein constraint is active
+  let healthInfoFinal = healthInfo;
+  if (mealConstraint && (
+    mealConstraint.includes('EGG DISHES ONLY') ||
+    mealConstraint.includes('CHICKEN DISHES ONLY') ||
+    mealConstraint.includes('FISH DISHES ONLY') ||
+    mealConstraint.includes('MUTTON DISHES ONLY')
+  )) {
+    healthInfoFinal = healthInfo
+      .replace(/strictly vegetarian/gi, '').replace(/no eggs/gi, '').replace(/no meat/gi, '')
+      .replace(/no fish/gi, '').replace(/no chicken/gi, '').replace(/no mutton/gi, '')
+      .replace(/vegetarian only/gi, '').replace(/pure veg/gi, '').trim();
+  }
+
   const hasThali = mealPrefs && mealPrefs.some(p => p.toLowerCase().includes('thali'));
   const thaliNote = hasThali ? 'Full Thali means a complete traditional Indian thali plate with dal, sabzi, rice or roti, papad, pickle, raita, and dessert. Generate ONE complete thali description, not individual dishes.' : '';
   const prefsNote = mealPrefs && mealPrefs.length > 0 ? `Include: ${mealPrefs.join(', ')}. ${thaliNote}` : '';
@@ -188,10 +203,14 @@ ${forbidden.length > 0 ? `${forbidden.join(', ')} are FORBIDDEN. Do not use them
 If only Eggs selected - ONLY egg dishes. If only Fish - ONLY fish dishes. If only Chicken - ONLY chicken. If only Mutton - ONLY mutton. No protein outside this list.`;
   }
 
-  const nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
+  let nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
     ['chicken','fish','egg','mutton'].some((w) => foodNote.toLowerCase().includes(w))
     ? ' CRITICAL: At least one option MUST be a real non-veg dish with the allowed proteins only.'
     : '';
+  // Clear nonVegCritical when protein override is active (it's redundant and may confuse)
+  if (mealConstraint && (mealConstraint.includes('EGG DISHES ONLY') || mealConstraint.includes('CHICKEN DISHES ONLY') || mealConstraint.includes('FISH DISHES ONLY') || mealConstraint.includes('MUTTON DISHES ONLY'))) {
+    nonVegCritical = '';
+  }
 
   // Build strict mandatory constraint from page 4 prefs
   let mandatoryInstruction = '';
@@ -311,7 +330,7 @@ IMPORTANT: Generate completely different dishes from any previous response. Do n
 
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
-Health considerations: ${healthInfo}.
+Health considerations: ${healthInfoFinal}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}
 
@@ -321,6 +340,7 @@ IMPORTANT RULES:
 - Full Thali is NEVER appropriate for Breakfast — only for Lunch or Dinner
 - For breakfast, suggest light dishes: pohe, upma, idli, dosa, thepla, paratha, eggs, fruits, smoothies
 - ALL 3 options must be COMPLETELY DIFFERENT dishes from each other
+- DISH VARIETY RULE: The 3 options must be COMPLETELY DIFFERENT dishes — not variations of the same dish. Pohe, Kanda Pohe and Batata Pohe are NOT 3 different options — they are the same dish. Each option must have a different primary ingredient or cooking method. WRONG: Pohe / Kanda Pohe / Batata Pohe. RIGHT: Pohe / Upma / Idli Sambhar.
 - NEVER repeat any dish that appears in the history list above
 - The ${mealType} options must be DIFFERENT from what would be served at other meals today
 - For fasting: breakfast dishes (sabudana khichdi, fruit bowl, rajgira paratha) must differ from lunch (sama rice, vrat ki sabzi, kuttu paratha) and dinner (sabudana vada, makhana kheer, singhare ki puri)
@@ -329,7 +349,7 @@ IMPORTANT RULES:
 - Tags: vegetarian/non-vegetarian, plus relevant health tags
 - GRAIN REPETITION RULE: Within a single meal, NEVER use the same grain twice. If bread is Ragi Roti, dessert must NOT contain ragi. If rice is a side, do not serve another rice dish.
 - INGREDIENT VARIETY RULE: Within a Full Thali, ALL 9 components must use DIFFERENT primary ingredients.
-- EVERYDAY DISHES RULE: Suggest only dishes a middle-class Indian family cooks at home. NEVER suggest restaurant-style luxury dishes for daily meals. Pohe, Upma, Dal Tadka, Rajma, Sabzi, Khichdi, Pulao, Roti are correct. Truffle, Quinoa, Gourmet, Continental are WRONG.
+- EVERYDAY DISHES RULE: Suggest ONLY dishes a middle-class Indian family cooks at home on a weekday. Test: would a homemaker in Dubai cook this on a Tuesday? If no, reject. CORRECT: Pohe, Upma, Dal Tadka, Rajma, Sabzi, Khichdi, Pulao, Roti, Fish Curry, Chicken Curry, Egg Bhurji, Mutton Curry. WRONG: Steamed Fish with Ginger and Soy, Truffle Risotto, Quinoa Bowl, Gourmet anything, Continental, fusion dishes, restaurant-style plated dishes. If a dish name sounds like a restaurant menu item, replace it with a home-cooked version.
 
 Reply ONLY with this JSON (no other text, no markdown):
 {"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
