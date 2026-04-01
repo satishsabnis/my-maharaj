@@ -272,9 +272,6 @@ If you suggest even one non-egg dish this response will be rejected and regenera
   };
   const slotRule = slotRules[mealType] ?? '';
 
-  console.log('[DEBUG generateOneMeal] mealType:', mealType);
-  console.log('[DEBUG generateOneMeal] mealConstraint received:', mealConstraint);
-  console.log('[DEBUG generateOneMeal] mandatoryInstruction built:', mandatoryInstruction?.slice(0, 100));
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
   const prompt = `${mandatoryInstruction ? mandatoryInstruction + '\n\n' : ''}You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
 STRICT RULE: Do NOT suggest a breakfast item for lunch/dinner. Do NOT suggest a lunch item for evening snack. Each meal type has its own appropriate dishes.
@@ -473,8 +470,6 @@ export async function generateMealPlan(
   const bfConstraint = buildConstraint(bfPrefs, 'breakfast');
   const lnConstraint = buildConstraint(lnPrefs, 'lunch');
   const dnConstraint = buildConstraint(dnPrefs, 'dinner');
-  console.log(`[DEBUG buildConstraint] bfPrefs=${JSON.stringify(bfPrefs)} bfConstraint=${bfConstraint?.substring(0,80)}`);
-  console.log(`[DEBUG buildConstraint] lnPrefs=${JSON.stringify(lnPrefs)} lnConstraint=${lnConstraint?.substring(0,80)}`);
   const snConstraint = buildConstraint(snPrefs, 'snack') || 'Evening snack ONLY — chai, biscuits, sandwiches, fruits, chaat, namkeen. NOT a full meal.';
 
   // For mixed: breakfast is always veg, proteins only for lunch/dinner

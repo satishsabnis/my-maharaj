@@ -259,12 +259,6 @@ export default function MealWizardScreen() {
       const slotsToUse = selectedSlots.length > 0 ? selectedSlots : ['breakfast', 'lunch', 'dinner'];
       console.log('[MealWizard] slotsToUse:', slotsToUse);
 
-      console.log('[DEBUG] bfPrefs:', JSON.stringify(bfPrefs));
-      console.log('[DEBUG] lnPrefs:', JSON.stringify(lnPrefs));
-      console.log('[DEBUG] dnPrefs:', JSON.stringify(dnPrefs));
-      console.log('[DEBUG] selectedSlots:', JSON.stringify(slotsToUse));
-      console.log('[DEBUG] breakfastPrefs being passed:', JSON.stringify(bfPrefs.length > 0 ? bfPrefs : 'undefined'));
-
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
         userId,
@@ -322,7 +316,7 @@ export default function MealWizardScreen() {
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
-  }, [step]);
+  }, [step, runGeneration]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
