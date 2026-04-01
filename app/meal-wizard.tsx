@@ -167,6 +167,12 @@ export default function MealWizardScreen() {
   const [cookOrOrder,  setCookOrOrder]  = useState<Record<number, 'cook'|'order'>>({});
   const [shoppingList, setShoppingList] = useState<{title:string;items:string[]}[]>([]);
   const [shoppingLoading, setShoppingLoading] = useState(false);
+  const [skippedSlots, setSkippedSlots] = useState<Record<number, MealSlotKey[]>>({});
+
+  function isSkipped(dayIdx: number, slot: MealSlotKey): boolean { return (skippedSlots[dayIdx] ?? []).includes(slot); }
+  function toggleSkip(dayIdx: number, slot: MealSlotKey) {
+    setSkippedSlots(prev => { const cur = prev[dayIdx] ?? []; return { ...prev, [dayIdx]: cur.includes(slot) ? cur.filter(s => s !== slot) : [...cur, slot] }; });
+  }
 
   // Load today's regen count on mount
   useEffect(() => {
@@ -191,12 +197,13 @@ export default function MealWizardScreen() {
     if (!generatedPlan) return;
     setShoppingLoading(true);
     try {
-      const cookDays = generatedPlan.filter((_, idx) => (cookOrOrder[idx] ?? 'cook') === 'cook');
-      const confirmedDishes = cookDays.map(day => {
-        const dayIdx = generatedPlan.indexOf(day);
-        return { date: day.date, breakfast: day.breakfast?.options[selections[dayIdx]?.breakfast ?? 0]?.name, lunch: day.lunch?.options[selections[dayIdx]?.lunch ?? 0]?.name, snack: day.snack?.options[selections[dayIdx]?.snack ?? 0]?.name, dinner: day.dinner?.options[selections[dayIdx]?.dinner ?? 0]?.name };
-      });
-      const prompt = `Generate a categorised shopping list for these meals for ${servingsCount || 2} people:\n${JSON.stringify(confirmedDishes)}\nReturn ONLY this JSON array:\n[{"title":"Dairy & Protein","items":["Paneer 500g"]},{"title":"Grains & Staples","items":["Rice 1kg"]},{"title":"Vegetables & Produce","items":["Tomatoes 1kg"]},{"title":"Spices & Condiments","items":["Garam masala 50g"]},{"title":"Beverages","items":["Mineral water 12pk"]}]\nScale quantities for ${servingsCount || 2} people. Merge duplicate ingredients across days.`;
+      const cookDayData = generatedPlan.map((day, idx) => ({ day, idx })).filter(({ idx }) => (cookOrOrder[idx] ?? 'cook') === 'cook');
+      const confirmedDishes = cookDayData.map(({ day, idx }) => {
+        const sel = selections[idx] ?? {};
+        const skip = skippedSlots[idx] ?? [];
+        return { date: day.date, day: day.day, breakfast: skip.includes('breakfast') ? null : (day.breakfast?.options[sel.breakfast ?? 0]?.name ?? null), lunch: skip.includes('lunch') ? null : (day.lunch?.options[sel.lunch ?? 0]?.name ?? null), snack: skip.includes('snack') ? null : (day.snack?.options[sel.snack ?? 0]?.name ?? null), dinner: skip.includes('dinner') ? null : (day.dinner?.options[sel.dinner ?? 0]?.name ?? null) };
+      }).filter(d => d.breakfast || d.lunch || d.snack || d.dinner);
+      const prompt = `Generate a MERGED shopping list for ALL ${confirmedDishes.length} cook days combined.\nMeals: ${JSON.stringify(confirmedDishes)}\nInclude ingredients for every non-null meal. Exclude any null meals — they are skipped.\nReturn ONLY this JSON array:\n[{"title":"Dairy & Protein","items":["Paneer 500g"]},{"title":"Grains & Staples","items":["Rice 1kg"]},{"title":"Vegetables & Produce","items":["Tomatoes 1kg"]},{"title":"Spices & Condiments","items":["Garam masala 50g"]},{"title":"Beverages","items":["Mineral water 12pk"]}]\nScale all quantities for ${servingsCount || 2} people across all days combined. Merge duplicate ingredients.`;
       const base = 'https://my-maharaj.vercel.app';
       const res = await fetch(`${base}/api/claude`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }) });
       const data = await res.json();
@@ -1207,7 +1214,7 @@ export default function MealWizardScreen() {
                     )}
                     {/* Summary for unselected */}
                     {!isSel && summaryLine && (
-                      <Text style={{fontSize:12,color:'#9CA3AF',marginTop:2,marginLeft:32}} numberOfLines={1}>{summaryLine}</Text>
+                      <Text style={{fontSize:12,color:'#9CA3AF',marginTop:2,marginLeft:32,lineHeight:18}} numberOfLines={2}>{summaryLine}</Text>
                     )}
                     {/* Tags */}
                     {opt.tags.length > 0 && (
@@ -1316,8 +1323,15 @@ export default function MealWizardScreen() {
               ))}
             </View>
 
+            {/* Skip toggle */}
+            <TouchableOpacity style={{alignSelf:'flex-end',marginBottom:8,paddingHorizontal:12,paddingVertical:5,borderRadius:20,borderWidth:1.5,borderColor:isSkipped(recipeDay,recipeSlot)?'#DC2626':'#D1D5DB',backgroundColor:isSkipped(recipeDay,recipeSlot)?'#FEE2E2':'rgba(255,255,255,0.9)'}} onPress={()=>toggleSkip(recipeDay,recipeSlot)}>
+              <Text style={{fontSize:11,fontWeight:'600',color:isSkipped(recipeDay,recipeSlot)?'#DC2626':'#6B7280'}}>{isSkipped(recipeDay,recipeSlot)?'Skipped — tap to include':'Skip this meal'}</Text>
+            </TouchableOpacity>
+
             {/* Recipe content */}
-            {dish ? (
+            {isSkipped(recipeDay,recipeSlot) ? (
+              <Text style={{fontSize:14,color:'#9CA3AF',textAlign:'center',fontStyle:'italic',marginVertical:20}}>This meal is skipped for {day?.day ?? 'this day'}</Text>
+            ) : dish ? (
               <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
                 <Text style={{fontSize:18,fontWeight:'800',color:navy,marginBottom:4}}>{dish.name}</Text>
                 {dish.tags.length > 0 && (
@@ -1484,14 +1498,12 @@ export default function MealWizardScreen() {
         <TouchableOpacity onPress={()=>router.push('/home' as never)} style={{borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:12,paddingVertical:12,alignItems:'center',marginBottom:12}}><Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text></TouchableOpacity>
         <Text style={s.stepTitle}>Any guests joining?</Text>
         <Text style={s.stepSub}>Add a special cuisine for your guests</Text>
-        <View style={s.foodCards}>
-          <TouchableOpacity style={[s.foodCard, !hasGuests && s.foodCardActive]} onPress={()=>{setHasGuests(false);setGuestCuisine('');}} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, !hasGuests && s.foodCardLabelActive]}>Just my family</Text>
+        <View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:12}}>
+          <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:!hasGuests?'#1B3A5C':'#D1D5DB',backgroundColor:!hasGuests?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>{setHasGuests(false);setGuestCuisine('');}}>
+            <Text style={{fontSize:13,fontWeight:'600',color:!hasGuests?white:'#6B7280'}}>Just my family</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.foodCard, hasGuests && s.foodCardActive]} onPress={()=>setHasGuests(true)} activeOpacity={0.8}>
-            <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, hasGuests && s.foodCardLabelActive]}>We have guests</Text>
+          <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:hasGuests?'#1B3A5C':'#D1D5DB',backgroundColor:hasGuests?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setHasGuests(true)}>
+            <Text style={{fontSize:13,fontWeight:'600',color:hasGuests?white:'#6B7280'}}>We have guests</Text>
           </TouchableOpacity>
         </View>
         {hasGuests && (<View>
@@ -1640,8 +1652,7 @@ export default function MealWizardScreen() {
       { key: 'dinner', label: 'Dinner' },
     ];
     const slotsToShow = SLOT_LABELS.filter(sl =>
-      (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) &&
-      (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
+      selectedSlots.length === 0 || selectedSlots.includes(sl.key)
     );
     const COL_W = 130;
     const BORDER = '#1B3A5C';
@@ -1706,7 +1717,8 @@ export default function MealWizardScreen() {
                   <Text style={{fontSize:11,fontWeight:'600',color:navy,textAlign:'center'}}>{label}</Text>
                 </View>
                 {generatedPlan.map((day, dayIdx) => {
-                  const opt = getOpt(dayIdx, key);
+                  const skipped = isSkipped(dayIdx, key);
+                  const opt = skipped ? null : getOpt(dayIdx, key);
                   const hasPipe = opt?.description?.includes(' | ');
                   const valueSummary = hasPipe
                     ? opt!.description!.split(' | ').map(c => { const parts = c.split(':'); return parts.length > 1 ? parts.slice(1).join(':').trim() : parts[0].trim(); }).join(' · ')
@@ -1737,12 +1749,18 @@ export default function MealWizardScreen() {
         <View style={{flexDirection:'row',gap:8}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={async()=>{if(await tryRegenerate()){setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}}>
             <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
-            <Text style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{regenCount}/5 used today</Text>
+            <Text style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{regenCount}/5 today</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
-            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Back to Home</Text>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,backgroundColor:white,alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setSelectedFrom(null);setSelectedTo(null);setFoodPref(null);setIsMixed(false);setSelectedSlots([]);setGuestCount(0);setHasGuests(false);setGuestCuisine('');setBfPrefs([]);setLnPrefs([]);setDnPrefs([]);setSnPrefs([]);setUnwellIds([]);setEveryoneWell(true);setVegFastDays({});setNutritionGoals([]);setRemovedCuisines([]);setExtraCuisines([]);setPerDayCuisine({});setIncludeDessert(false);setFeedbacks([]);setFeedbackDone(false);setSkippedSlots({});session.presentMemberIds=[];setStep('period');}}>
+            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Modify</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={()=>advance('recipes')}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>View Recipes</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={{paddingVertical:10,alignItems:'center',marginTop:4}} onPress={()=>setStep('confirmed-menu')}>
+          <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Back to Plan</Text>
+        </TouchableOpacity>
       </View>
     );
   }
