@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { Alert, Platform, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -36,6 +36,8 @@ export default function PartyMenuScreen() {
   const [error,    setError]    = useState('');
   const [includeAlcohol, setIncludeAlcohol] = useState(false);
   const [menu,     setMenu]     = useState<PartyMenu | null>(null);
+  const [shoppingList, setShoppingList] = useState<any[]>([]);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [loc,      setLoc]      = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
 
   useEffect(() => { loadOrDetectLocation().then(setLoc); }, []);
@@ -102,6 +104,17 @@ Include 3-5 items per section.`);
 
       setMenu(parsed);
       setStep('result');
+
+      // Generate categorised shopping list
+      try {
+        const shopPrompt = `Based on this party menu for ${g} guests, generate a categorised shopping list. Menu: ${JSON.stringify(parsed)}
+Return ONLY this JSON array — no other text:
+[{"title":"Dairy & Protein","items":["Paneer 500g","Yogurt 500g"]},{"title":"Grains & Staples","items":["Basmati rice 1kg"]},{"title":"Vegetables & Produce","items":["Tomatoes 1kg"]},{"title":"Spices & Condiments","items":["Garam masala 50g"]},{"title":"Beverages","items":["Mineral water 12pk","Soft drinks 6pk"]}]
+Scale quantities for ${g} guests. Always include Mineral water and Soft drinks in Beverages.`;
+        const shopRaw = await callClaude(shopPrompt);
+        const shopMatch = shopRaw.match(/\[[\s\S]*\]/);
+        if (shopMatch) setShoppingList(JSON.parse(shopMatch[0]));
+      } catch { setShoppingList([{title:'Groceries',items:['Please check individual items from the menu above']}]); }
     } catch (err) { console.error('[PartyMenu] generateMenu error:', err); setError('Failed to generate. Please try again.'); }
     finally { setLoading(false); }
   }
@@ -179,6 +192,19 @@ Include 3-5 items per section.`);
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>Regenerate</Text>}
               </TouchableOpacity>
             </View>
+            {menu && <TouchableOpacity style={s.confirmBtn} disabled={generatingPdf} onPress={async () => {
+              setGeneratingPdf(true);
+              try {
+                const res = await fetch('https://my-maharaj.vercel.app/api/generate-menu-pdf', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ menu, eventDetails: { occasion, guests, foodType, budget, includeAlcohol, date: new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) }, shoppingList }),
+                });
+                const html = await res.text();
+                if (Platform.OS === 'web' && typeof window !== 'undefined') { const blob = new Blob([html], {type:'text/html'}); window.open(URL.createObjectURL(blob), '_blank'); }
+                else { Alert.alert('PDF', 'PDF download is available on the web version at my-maharaj.vercel.app'); }
+              } catch { Alert.alert('Error', 'Could not generate PDF. Please try again.'); }
+              finally { setGeneratingPdf(false); }
+            }}>{generatingPdf ? <ActivityIndicator color={white} /> : <Text style={s.confirmBtnTxt}>Confirm Menu & Download PDF</Text>}</TouchableOpacity>}
             {menu && <>
               <Section title="Starters"    items={menu.starters}    />
               <Section title="Main Course"  items={menu.main_course} />
@@ -238,6 +264,8 @@ const s = StyleSheet.create({
   modifyBtnTxt: { color: ACCENT, fontWeight: '700', fontSize: 14 },
   regenBtn: { flex: 1, backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   regenBtnTxt: { color: white, fontWeight: '700', fontSize: 14 },
+  confirmBtn: { backgroundColor: '#C9A227', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginBottom: 12 },
+  confirmBtnTxt: { color: '#1B2A0C', fontSize: 15, fontWeight: '700' },
   section: { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, padding: 16, marginBottom: 12 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: navy, marginBottom: 12 },
   item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
