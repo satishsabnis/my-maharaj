@@ -130,10 +130,13 @@ export default function HomeScreen() {
           }
         }
 
-        // Grocery day
-        const gd = await AsyncStorage.getItem('maharaj_grocery_day');
-        if (gd) { setGroceryDay(gd); session.groceryDay = gd; }
-        else { setGroceryDay(session.groceryDay); }
+        // Grocery day — read from Supabase first, fallback to AsyncStorage
+        // MANUAL MIGRATION REQUIRED: ALTER TABLE profiles ADD COLUMN IF NOT EXISTS grocery_day TEXT DEFAULT 'Saturday';
+        try {
+          const { data: prof } = await supabase.from('profiles').select('grocery_day').eq('id', user.id).maybeSingle();
+          if (prof?.grocery_day) { setGroceryDay(prof.grocery_day); session.groceryDay = prof.grocery_day; await AsyncStorage.setItem('maharaj_grocery_day', prof.grocery_day); }
+          else { const gd = await AsyncStorage.getItem('maharaj_grocery_day'); if (gd) { setGroceryDay(gd); session.groceryDay = gd; } }
+        } catch { const gd = await AsyncStorage.getItem('maharaj_grocery_day'); if (gd) { setGroceryDay(gd); session.groceryDay = gd; } }
       }
       void load();
       loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
