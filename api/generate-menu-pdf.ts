@@ -54,7 +54,7 @@ function generateMenuHTML(menu: any, eventDetails: any, shoppingList: any[]) {
 .note-box{background:rgba(201,162,39,0.1);border:0.5px solid rgba(201,162,39,0.3);border-radius:8px;padding:10px 14px;margin-top:16px}.note-txt{font-size:11px;color:#854F0B;line-height:1.6}
 .print-btn{display:block;margin:20px auto;padding:12px 40px;background:#1B3A5C;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer}
 </style>
-<script>window.onload=function(){window.print();}</script>
+<script>window.onload=function(){setTimeout(function(){window.print();},800);}</script>
 </head><body>
 <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
 <div class="page">
