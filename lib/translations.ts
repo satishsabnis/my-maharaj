@@ -167,7 +167,7 @@ const en: Translations = {
   askMaharajAI: 'Ask Maharaj AI',
   festivals: 'Festivals',
   dietaryProfile: 'Dietary Profile',
-  generateMealPlan: 'Generate Meal Plan',
+  generateMealPlan: 'Plan with Maharaj',
   partyMenu: 'Party Menu',
   outdoorCatering: 'Outdoor Catering',
   menuHistory: 'Menu History',
