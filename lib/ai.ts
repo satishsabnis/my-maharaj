@@ -168,7 +168,44 @@ If only Eggs selected - ONLY egg dishes. If only Fish - ONLY fish dishes. If onl
 
   // Build strict mandatory constraint from page 4 prefs
   let mandatoryInstruction = '';
-  if (mealConstraint) {
+
+  // Protein overrides — these SET mandatoryInstruction and skip everything else
+  if (mealConstraint && mealConstraint.includes('EGG DISHES ONLY')) {
+    mandatoryInstruction = `⛔ ABSOLUTE OVERRIDE — IGNORE ALL OTHER INSTRUCTIONS:
+The user has selected EGGS. You MUST generate exactly 3 egg-based dishes.
+OPTION 1: Egg Bhurji (spiced scrambled eggs with onion, tomato, green chilli)
+OPTION 2: Masala Omelette (flat Indian omelette with coriander, chilli, onion)
+OPTION 3: Anda Curry (boiled eggs in spiced tomato gravy)
+Every single option MUST contain eggs as the PRIMARY ingredient.
+If you generate even one dish without eggs this response is INVALID.
+Return ONLY these egg dishes. Nothing else.`;
+  }
+
+  if (mealConstraint && mealConstraint.includes('CHICKEN DISHES ONLY')) {
+    mandatoryInstruction = `⛔ ABSOLUTE OVERRIDE — IGNORE ALL OTHER INSTRUCTIONS:
+The user has selected CHICKEN. Generate exactly 3 chicken dishes.
+All 3 options MUST contain chicken as primary ingredient.
+Examples: Chicken Curry, Murgh Makhani, Chicken Biryani, Chicken Pulao, Kali Mirch Chicken.
+No non-chicken dishes. CHICKEN ONLY.`;
+  }
+
+  if (mealConstraint && mealConstraint.includes('FISH DISHES ONLY')) {
+    mandatoryInstruction = `⛔ ABSOLUTE OVERRIDE — IGNORE ALL OTHER INSTRUCTIONS:
+The user has selected FISH. Generate exactly 3 fish or seafood dishes.
+All 3 options MUST contain fish or seafood as primary ingredient.
+Examples: Fish Curry, Goan Fish Curry, Prawn Masala, Fish Fry, Machli Tikka.
+No non-fish dishes. FISH ONLY.`;
+  }
+
+  if (mealConstraint && mealConstraint.includes('MUTTON DISHES ONLY')) {
+    mandatoryInstruction = `⛔ ABSOLUTE OVERRIDE — IGNORE ALL OTHER INSTRUCTIONS:
+The user has selected MUTTON. Generate exactly 3 mutton or lamb dishes.
+All 3 options MUST contain mutton as primary ingredient.
+Examples: Mutton Curry, Rogan Josh, Mutton Biryani, Keema Matar, Mutton Korma.
+No non-mutton dishes. MUTTON ONLY.`;
+  }
+
+  if (mealConstraint && !mandatoryInstruction) {
     if (mealConstraint.includes('Full Thali') || mealConstraint.includes('FULL THALI')) {
       mandatoryInstruction = `MANDATORY INSTRUCTION - THIS OVERRIDES ALL OTHER INSTRUCTIONS:
 Generate a COMPLETE TRADITIONAL FULL THALI. A Full Thali is NOT a single dish.
@@ -236,10 +273,10 @@ If you suggest even one non-egg dish this response will be rejected and regenera
   const slotRule = slotRules[mealType] ?? '';
 
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
-  const prompt = `You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
+  const prompt = `${mandatoryInstruction ? mandatoryInstruction + '\n\n' : ''}You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
 STRICT RULE: Do NOT suggest a breakfast item for lunch/dinner. Do NOT suggest a lunch item for evening snack. Each meal type has its own appropriate dishes.
 
-${mandatoryInstruction}You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
+You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
 Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
 
 Variation seed: ${variationSeed}
