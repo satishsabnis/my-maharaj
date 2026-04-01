@@ -93,7 +93,7 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: white },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,

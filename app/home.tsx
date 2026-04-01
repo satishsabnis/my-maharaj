@@ -208,7 +208,7 @@ export default function HomeScreen() {
           {/* ── 1. TODAY'S MEAL PLAN CARD ── */}
           <View style={s.card}>
             <View style={s.cardHeaderRow}>
-              <Text style={s.cardTitle}>Today's meal plan</Text>
+              <Text style={s.cardTitle}>What do you want to eat?</Text>
               <View style={s.onDemandBadge}>
                 <Text style={s.onDemandText}>On demand</Text>
               </View>
@@ -229,24 +229,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Meal slots */}
-            <View style={s.slotsRow}>
-              {[
-                { icon: '\uD83C\uDF05', label: 'Breakfast' },
-                { icon: '\u2600\uFE0F', label: 'Lunch' },
-                { icon: '\uD83C\uDF19', label: 'Dinner' },
-              ].map(slot => (
-                <View key={slot.label} style={s.slotBox}>
-                  <Text style={s.slotIcon}>{slot.icon}</Text>
-                  <Text style={s.slotLabel}>{slot.label}</Text>
-                  <Text style={s.slotDish}>Tap to plan</Text>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity style={s.generateBtn} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.88}>
-              <Text style={s.generateBtnTxt}>Plan with Maharaj  {'\u2192'}</Text>
-            </TouchableOpacity>
           </View>
 
           {/* ── 2. PLAN WITH MAHARAJ CARD ── */}

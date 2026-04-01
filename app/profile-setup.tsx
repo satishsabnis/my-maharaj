@@ -398,7 +398,7 @@ const sr = StyleSheet.create({
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:  { flex: 1, backgroundColor: white },
+  safe:  { flex: 1, backgroundColor: 'transparent' },
   scroll:{ paddingBottom: 48 },
   body:  { paddingHorizontal: 20, paddingTop: 8, maxWidth: 640, width: '100%', alignSelf: 'center' },
 

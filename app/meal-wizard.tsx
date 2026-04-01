@@ -371,8 +371,9 @@ export default function MealWizardScreen() {
 
   function selectedCount(): number {
     if (!generatedPlan) return 0;
+    const slotsToCheck = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner','snack'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
     return generatedPlan.reduce((acc, _, i) =>
-      acc + (['breakfast','lunch','dinner'] as MealSlotKey[]).filter((slot) => selections[i]?.[slot] !== undefined).length,
+      acc + slotsToCheck.filter((slot) => selections[i]?.[slot] !== undefined).length,
     0);
   }
 
@@ -740,7 +741,7 @@ export default function MealWizardScreen() {
         )}
 
         <View style={{marginTop:20}}>
-          <Button title="Next \u2192" onPress={handleNext} />
+          <Button title="Next" onPress={handleNext} />
         </View>
       </View>
     );
@@ -754,42 +755,19 @@ export default function MealWizardScreen() {
           <Text style={s.stepSub}>{fmtL(selectedFrom)}{selectedTo && selectedTo.getTime() !== selectedFrom.getTime() ? ` – ${fmtL(selectedTo)}` : ''}</Text>
         )}
 
-        {/* Dessert toggle */}
-        <TouchableOpacity style={[s.toggleRow, includeDessert && s.toggleRowOn]} onPress={() => setIncludeDessert((v) => !v)} activeOpacity={0.8}>
-          <Text style={s.toggleIcon}></Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.toggleLabel}>Include Desserts</Text>
-            <Text style={s.toggleSub}>Sunday sweets · Weekday quick treats</Text>
-          </View>
-          <View style={[s.switchTrack, includeDessert && s.switchTrackOn]}>
-            <View style={[s.switchKnob, includeDessert && s.switchKnobOn]} />
-          </View>
-        </TouchableOpacity>
-
-        <View style={s.foodCards}>
-          <TouchableOpacity
-            style={[s.foodCard, foodPref === 'veg' && !isMixed && s.foodCardActive]}
-            onPress={() => { setFoodPref('veg'); setVegType(null); setIsMixed(false); }}
-            activeOpacity={0.8}
-          >
-            <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, foodPref === 'veg' && !isMixed && s.foodCardLabelActive]}>Vegetarian</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.foodCard, foodPref === 'nonveg' && !isMixed && s.foodCardActive]}
-            onPress={() => { setFoodPref('nonveg'); setVegType(null); setIsMixed(false); }}
-            activeOpacity={0.8}
-          >
-            <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, foodPref === 'nonveg' && !isMixed && s.foodCardLabelActive]}>Non-Vegetarian</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.foodCard, isMixed && s.foodCardActive]}
-            onPress={() => { setFoodPref('nonveg'); setVegType(null); setIsMixed(true); }} activeOpacity={0.85}>
-            <Text style={s.foodCardIcon}></Text>
-            <Text style={[s.foodCardLabel, isMixed && s.foodCardLabelActive]}>Mixed</Text>
-            <Text style={{fontSize:11,color:'#5A7A8A',marginTop:2}}>Veg breakfast + non-veg meals</Text>
-          </TouchableOpacity>
+        <View style={{flexDirection:'row',gap:8,marginBottom:16}}>
+          {[
+            {label:'Vegetarian', val:'veg' as const, mix:false},
+            {label:'Non-Vegetarian', val:'nonveg' as const, mix:false},
+            {label:'Mixed', val:'nonveg' as const, mix:true},
+          ].map(opt => {
+            const active = opt.mix ? isMixed : (foodPref === opt.val && !isMixed);
+            return (
+              <TouchableOpacity key={opt.label} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:20,borderWidth:1.5,borderColor:active?'#1B3A5C':'#D1D5DB',backgroundColor:active?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>{setFoodPref(opt.val);setVegType(null);setIsMixed(opt.mix);}} activeOpacity={0.8}>
+                <Text style={{fontSize:13,fontWeight:'600',color:active?'#FFFFFF':'#1B3A5C'}}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Meal slots */}
@@ -802,27 +780,6 @@ export default function MealWizardScreen() {
               <Text style={{fontSize:13,fontWeight:'600',color:selectedSlots.includes(k)?'#FFFFFF':'#1B3A5C'}}>{i} {l}</Text>
             </TouchableOpacity>
           ))}
-        </View>
-
-        {/* Present members - who is home */}
-        <View style={{marginBottom:12}}>
-          <Text style={s.sectionLabel}>WHO IS HOME FOR MEALS?</Text>
-          {familyMembers.length > 0 ? (
-            <>
-              <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
-                {familyMembers.map(m=>(
-                  <TouchableOpacity key={m.id}
-                    style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:presentMembers.includes(m.id)?'#1B3A5C':'#D4EDE5',backgroundColor:presentMembers.includes(m.id)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
-                    onPress={()=>setPresentMembers(prev=>prev.includes(m.id)?prev.filter(x=>x!==m.id):[...prev,m.id])}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:presentMembers.includes(m.id)?'#FFFFFF':'#1B3A5C'}}>{m.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={{fontSize:11,color:'#9CA3AF',marginTop:4}}>Leave all unselected = cook for everyone</Text>
-            </>
-          ) : (
-            <Text style={{fontSize:13,color:'#9CA3AF',fontStyle:'italic',marginTop:4}}>Add family members in Family Profile to use this feature</Text>
-          )}
         </View>
 
         {/* Additional guests */}
@@ -871,7 +828,7 @@ export default function MealWizardScreen() {
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => {
+            <Button title="Next" onPress={() => {
               if (!foodPref) { setError('Please select a food preference'); return; }
               if (foodPref === 'nonveg' && nonVegOpts.length === 0) { setError('Please select at least one non-veg option'); return; }
               advance('meal-prefs');
@@ -919,7 +876,7 @@ export default function MealWizardScreen() {
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => advance('unwell')} />
+            <Button title="Next" onPress={() => advance('unwell')} />
           </View>
         </View>
       </View>
@@ -963,7 +920,7 @@ export default function MealWizardScreen() {
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => {
+            <Button title="Next" onPress={() => {
               const dates = selectedFrom && selectedTo ? getDates(selectedFrom, selectedTo) : [];
               if (dates.length > 1) advance('veg-days');
               else advance('nutrition');
@@ -995,7 +952,7 @@ export default function MealWizardScreen() {
         </View>
 
         <View style={{gap:10,marginTop:20}}>
-          <Button title="Continue \u2192" onPress={() => advance('cuisine-confirm')} />
+          <Button title="Next" onPress={() => advance('cuisine-confirm')} />
           <View style={{flexDirection:'row',gap:10}}>
             <View style={{flex:1}}><Button title="Back" onPress={goBack} variant="outline" /></View>
             <View style={{flex:1}}>
@@ -1285,7 +1242,7 @@ export default function MealWizardScreen() {
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title={recipeDishes.length > 0 ? 'Save & Continue →' : 'Skip Recipes →'} onPress={() => {
+            <Button title={recipeDishes.length > 0 ? 'Save & Next' : 'Skip Recipes →'} onPress={() => {
               setFeedbacks(buildFeedbackEntries()); advance('grocery');
             }} />
           </View>
@@ -1357,7 +1314,7 @@ export default function MealWizardScreen() {
             <Button title="Back" onPress={goBack} variant="outline" />
           </View>
           <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => advance('delivery-apps')} />
+            <Button title="Next" onPress={() => advance('delivery-apps')} />
           </View>
         </View>
       </View>
@@ -1468,7 +1425,7 @@ export default function MealWizardScreen() {
         </View>)}
         <View style={s.btnRow}>
           <View style={{flex:1,marginRight:12}}><Button title="Back" onPress={goBack} variant="outline" /></View>
-          <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('meal-prefs')} /></View>
+          <View style={{flex:2}}><Button title="Next" onPress={()=>advance('meal-prefs')} /></View>
         </View>
       </View>
     );
@@ -1498,7 +1455,7 @@ export default function MealWizardScreen() {
         })}
         <View style={s.btnRow}>
           <View style={{flex:1,marginRight:12}}><Button title="Back" onPress={goBack} variant="outline" /></View>
-          <View style={{flex:2}}><Button title="Continue →" onPress={()=>advance('nutrition')} /></View>
+          <View style={{flex:2}}><Button title="Next" onPress={()=>advance('nutrition')} /></View>
         </View>
       </View>
     );
@@ -1797,7 +1754,7 @@ const chip = StyleSheet.create({
 // ─── Main styles ─────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: white },
+  safe:   { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: Platform.OS === 'web' ? 16 : 10, paddingBottom: 14,
