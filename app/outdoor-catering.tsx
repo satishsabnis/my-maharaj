@@ -62,6 +62,8 @@ export default function OutdoorCateringScreen() {
       setError('');
       setLoading(false);
       setIncludeAlcohol(false);
+      setShoppingList([]);
+      setGeneratingPdf(false);
     }, [])
   );
 

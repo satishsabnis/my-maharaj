@@ -576,7 +576,7 @@ const s = StyleSheet.create({
   saveBtn:      { backgroundColor: navy, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   saveBtnTxt:   { color: white, fontWeight: '700', fontSize: 15 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalBox:     { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '80%', maxWidth: '95%', width: '95%', alignSelf: 'center' },
+  modalBox:     { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '80%', width: '90%', maxWidth: 400, alignSelf: 'center', marginHorizontal: 16 },
   modalTitle:   { fontSize: 17, fontWeight: '800', color: navy, marginBottom: 8 },
   modalSub:     { fontSize: 14, color: textSec, lineHeight: 22, marginBottom: 16 },
   inputLabel:   { fontSize: 12, fontWeight: '600', color: textSec, marginBottom: 6, textTransform: 'uppercase' },

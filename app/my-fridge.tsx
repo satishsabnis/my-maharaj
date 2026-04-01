@@ -430,7 +430,7 @@ const s = StyleSheet.create({
   deleteTxt:   { fontSize: 14, color: errorRed, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalBox:     { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%', maxWidth: '95%', width: '95%', alignSelf: 'center' },
+  modalBox:     { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%', width: '90%', maxWidth: 400, alignSelf: 'center', marginHorizontal: 16 },
   modalTitle:   { fontSize: 17, fontWeight: '800', color: navy, marginBottom: 16 },
   scanItem:     { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: border },
   scanItemName: { fontSize: 14, color: navy, fontWeight: '500', flex: 1 },

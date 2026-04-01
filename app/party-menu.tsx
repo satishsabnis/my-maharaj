@@ -53,6 +53,8 @@ export default function PartyMenuScreen() {
       setError('');
       setLoading(false);
       setIncludeAlcohol(false);
+      setShoppingList([]);
+      setGeneratingPdf(false);
     }, [])
   );
 
