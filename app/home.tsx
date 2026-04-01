@@ -245,7 +245,7 @@ export default function HomeScreen() {
             </View>
 
             <TouchableOpacity style={s.generateBtn} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.88}>
-              <Text style={s.generateBtnTxt}>Generate today's plan  &rarr;</Text>
+              <Text style={s.generateBtnTxt}>Generate today's plan  {'\u2192'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -282,7 +282,7 @@ export default function HomeScreen() {
                 onPress={() => Alert.alert('Coming soon', 'Weekly email PDF feature is under development.')}
                 activeOpacity={0.8}
               >
-                <Text style={s.emailPdfTxt}>Email PDF  &rarr;</Text>
+                <Text style={s.emailPdfTxt}>Email PDF  {'\u2192'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -299,7 +299,7 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={s.festivalPlan}>Plan  &rarr;</Text>
+              <Text style={s.festivalPlan}>Plan  {'\u2192'}</Text>
             </TouchableOpacity>
           )}
 
