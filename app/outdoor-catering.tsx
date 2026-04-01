@@ -221,10 +221,13 @@ Include 3-5 items per section.`;
               <Text style={s.resultMeta}>Weather: {weather}</Text>
             </View>
 
-            {/* Cancel before Regenerate */}
+            {/* Cancel / Modify / Regenerate */}
             <View style={s.actionRow}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => router.push('/home' as never)}>
                 <Text style={s.cancelBtnTxt}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modifyBtn} onPress={() => { setStep('form'); setMenu(null); setEventType('Picnic'); setGuests('15'); setFoodType('Vegetarian'); setBudget('25'); setSetup('Finger Food'); setWeather('Hot & Sunny'); setIncludeAlcohol(false); setError(''); }}>
+                <Text style={s.modifyBtnTxt}>Modify Settings</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>Regenerate</Text>}
@@ -290,6 +293,8 @@ const s = StyleSheet.create({
   actionRow:   { flexDirection: 'row', gap: 10, marginBottom: 16 },
   cancelBtn:   { flex: 1, borderWidth: 1.5, borderColor: 'rgba(26,107,60,0.3)', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   cancelBtnTxt:{ color: ACCENT, fontWeight: '700', fontSize: 14 },
+  modifyBtn:   { flex: 1, borderWidth: 1.5, borderColor: ACCENT, borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)' },
+  modifyBtnTxt:{ color: ACCENT, fontWeight: '700', fontSize: 14 },
   regenBtn:    { flex: 1, backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   regenBtnTxt: { color: white, fontWeight: '700', fontSize: 14 },
   section:     { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, padding: 16, marginBottom: 12 },
