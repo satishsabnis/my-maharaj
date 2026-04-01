@@ -162,6 +162,11 @@ export default function MealWizardScreen() {
   const [feedbackDone, setFeedbackDone] = useState(false);
   const [regenCount,   setRegenCount]   = useState(0);
   const [menuDay,      setMenuDay]      = useState(0);
+  const [recipeDay,    setRecipeDay]    = useState(0);
+  const [recipeSlot,   setRecipeSlot]   = useState<MealSlotKey>('breakfast');
+  const [cookOrOrder,  setCookOrOrder]  = useState<Record<number, 'cook'|'order'>>({});
+  const [shoppingList, setShoppingList] = useState<{title:string;items:string[]}[]>([]);
+  const [shoppingLoading, setShoppingLoading] = useState(false);
 
   // Load today's regen count on mount
   useEffect(() => {
@@ -181,6 +186,28 @@ export default function MealWizardScreen() {
     setRegenCount(next);
     return true;
   }
+
+  async function generateShoppingList() {
+    if (!generatedPlan) return;
+    setShoppingLoading(true);
+    try {
+      const cookDays = generatedPlan.filter((_, idx) => (cookOrOrder[idx] ?? 'cook') === 'cook');
+      const confirmedDishes = cookDays.map(day => {
+        const dayIdx = generatedPlan.indexOf(day);
+        return { date: day.date, breakfast: day.breakfast?.options[selections[dayIdx]?.breakfast ?? 0]?.name, lunch: day.lunch?.options[selections[dayIdx]?.lunch ?? 0]?.name, snack: day.snack?.options[selections[dayIdx]?.snack ?? 0]?.name, dinner: day.dinner?.options[selections[dayIdx]?.dinner ?? 0]?.name };
+      });
+      const prompt = `Generate a categorised shopping list for these meals for ${servingsCount || 2} people:\n${JSON.stringify(confirmedDishes)}\nReturn ONLY this JSON array:\n[{"title":"Dairy & Protein","items":["Paneer 500g"]},{"title":"Grains & Staples","items":["Rice 1kg"]},{"title":"Vegetables & Produce","items":["Tomatoes 1kg"]},{"title":"Spices & Condiments","items":["Garam masala 50g"]},{"title":"Beverages","items":["Mineral water 12pk"]}]\nScale quantities for ${servingsCount || 2} people. Merge duplicate ingredients across days.`;
+      const base = 'https://my-maharaj.vercel.app';
+      const res = await fetch(`${base}/api/claude`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }) });
+      const data = await res.json();
+      const text = (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) setShoppingList(JSON.parse(match[0]));
+    } catch { setShoppingList([{ title: 'All Items', items: ['Could not generate — please check your meal selections'] }]); }
+    finally { setShoppingLoading(false); }
+  }
+
+  useEffect(() => { if (step === 'grocery' && shoppingList.length === 0) { void generateShoppingList(); } }, [step]);
 
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: true }); }, [step]);
@@ -1238,136 +1265,140 @@ export default function MealWizardScreen() {
   function renderRecipes() {
     if (!generatedPlan) return null;
     const slotsForRecipes = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
-    const allDishes: string[] = [];
-    generatedPlan.forEach((_, i) =>
-      slotsForRecipes.forEach((slot) => {
-        const opt = getOpt(i, slot);
-        if (opt && !allDishes.includes(opt.name)) allDishes.push(opt.name);
-      })
-    );
-    const selected = allDishes.filter((d) => recipeDishes.includes(d));
+    const day = generatedPlan[recipeDay];
+    const isOrder = (cookOrOrder[recipeDay] ?? 'cook') === 'order';
+    const selIdx = day ? (selections[recipeDay]?.[recipeSlot] ?? 0) : 0;
+    const dish = day?.[recipeSlot]?.options?.[selIdx];
+    const dateRange = selectedFrom && selectedTo ? `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : '';
 
     return (
-      <View>
-        <Text style={s.stepTitle}>Full Recipes</Text>
-        <Text style={s.stepSub}>For your selected meals</Text>
-
-        <View style={{ marginBottom: 16 }}>
-          {allDishes.map((dish) => (
-            <TouchableOpacity
-              key={dish}
-              style={[s.dishCheckRow, recipeDishes.includes(dish) && s.dishCheckRowActive]}
-              onPress={() => setRecipeDishes((prev) => prev.includes(dish) ? prev.filter((d) => d !== dish) : [...prev, dish])}
-              activeOpacity={0.8}
-            >
-              <View style={[s.checkbox, recipeDishes.includes(dish) && s.checkboxActive]}>
-                {recipeDishes.includes(dish) && <Text style={s.checkmark}>✓</Text>}
-              </View>
-              <Text style={s.dishCheckName}>{dish}</Text>
-            </TouchableOpacity>
-          ))}
+      <View style={{flex:1}}>
+        {/* Header */}
+        <View style={{backgroundColor:navy,borderRadius:12,padding:16,marginBottom:12}}>
+          <Text style={{fontSize:18,fontWeight:'800',color:white}}>Recipes</Text>
+          <Text style={{fontSize:12,color:'rgba(255,255,255,0.65)',marginTop:4}}>{dateRange}</Text>
         </View>
 
-        {selected.length > 0 && generatedPlan.flatMap((day, dayIdx) =>
-          slotsForRecipes.map((slot) => {
-            const opt = getOpt(dayIdx, slot);
-            if (!opt || !selected.includes(opt.name)) return null;
-            return (
-              <View key={`${dayIdx}-${slot}`} style={s.recipeCard}>
-                <Text style={s.recipeCardName}>{opt.name}</Text>
-                {opt.tags.length > 0 && <Text style={s.recipeCardTags}>{opt.tags.join(' · ')}</Text>}
-                <Text style={s.recipeSection}>Ingredients</Text>
-                {opt.ingredients.map((ing, i) => <Text key={i} style={s.recipeItem}>• {ing}</Text>)}
-                {opt.steps.length > 0 && (
+        {/* Day tabs + cook/order toggle */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:70,marginBottom:8}}>
+          <View style={{flexDirection:'row',gap:6}}>
+            {generatedPlan.map((d,idx) => (
+              <View key={d.date} style={{alignItems:'center',gap:4}}>
+                <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:6,borderRadius:10,backgroundColor:recipeDay===idx?gold:'rgba(255,255,255,0.85)'}} onPress={()=>{setRecipeDay(idx);if(slotsForRecipes.length>0)setRecipeSlot(slotsForRecipes[0] as MealSlotKey);}} activeOpacity={0.8}>
+                  <Text style={{fontSize:11,fontWeight:'700',color:recipeDay===idx?'#1B2A0C':navy}}>{d.day.substring(0,3)} {fmtDate(d.date)}</Text>
+                </TouchableOpacity>
+                <View style={{flexDirection:'row',gap:2}}>
+                  <TouchableOpacity style={{paddingHorizontal:6,paddingVertical:2,borderRadius:6,backgroundColor:(cookOrOrder[idx]??'cook')==='cook'?navy:'transparent'}} onPress={()=>setCookOrOrder(p=>({...p,[idx]:'cook'}))}>
+                    <Text style={{fontSize:8,fontWeight:'700',color:(cookOrOrder[idx]??'cook')==='cook'?white:'#9CA3AF'}}>Cook</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{paddingHorizontal:6,paddingVertical:2,borderRadius:6,backgroundColor:(cookOrOrder[idx]??'cook')==='order'?gold:'transparent'}} onPress={()=>setCookOrOrder(p=>({...p,[idx]:'order'}))}>
+                    <Text style={{fontSize:8,fontWeight:'700',color:(cookOrOrder[idx]??'cook')==='order'?'#1B2A0C':'#9CA3AF'}}>Order</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+
+        {isOrder ? (
+          <View style={{padding:16}}>
+            <Text style={{fontSize:16,fontWeight:'700',color:navy,marginBottom:12}}>Order Out</Text>
+            <DeliveryAppsSection country="UAE" compact={true} />
+          </View>
+        ) : (
+          <>
+            {/* Slot tabs */}
+            <View style={{flexDirection:'row',gap:6,marginBottom:12}}>
+              {slotsForRecipes.map(sl => (
+                <TouchableOpacity key={sl} style={{paddingHorizontal:12,paddingVertical:6,borderRadius:8,backgroundColor:recipeSlot===sl?navy:'rgba(255,255,255,0.85)',borderWidth:1,borderColor:recipeSlot===sl?navy:'#D4EDE5'}} onPress={()=>setRecipeSlot(sl as MealSlotKey)}>
+                  <Text style={{fontSize:12,fontWeight:'600',color:recipeSlot===sl?white:'#5A7A8A'}}>{sl.charAt(0).toUpperCase()+sl.slice(1)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Recipe content */}
+            {dish ? (
+              <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
+                <Text style={{fontSize:18,fontWeight:'800',color:navy,marginBottom:4}}>{dish.name}</Text>
+                {dish.tags.length > 0 && (
+                  <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginBottom:12}}>
+                    {dish.tags.slice(0,4).map(tag => {
+                      const nv = tag.toLowerCase().includes('non-veg');
+                      const vg = !nv && tag.toLowerCase().includes('vegetarian');
+                      return <Text key={tag} style={{fontSize:10,fontWeight:'600',paddingHorizontal:7,paddingVertical:2,borderRadius:8,color:nv?'#DC2626':vg?'#166534':'#1D4ED8',backgroundColor:nv?'#FEE2E2':vg?'#DCFCE7':'#DBEAFE'}}>{tag}</Text>;
+                    })}
+                  </View>
+                )}
+                <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:6}}>Ingredients</Text>
+                {dish.ingredients.length > 0 ? dish.ingredients.map((ing,i) => <Text key={i} style={{fontSize:13,color:'#374151',lineHeight:22}}>• {ing}</Text>) : <Text style={{fontSize:13,color:'#9CA3AF',fontStyle:'italic'}}>No ingredients available</Text>}
+                {dish.steps.length > 0 && (
                   <>
-                    <Text style={s.recipeSection}>Method</Text>
-                    {opt.steps.map((st, i) => <Text key={i} style={s.recipeItem}>{i + 1}. {st}</Text>)}
+                    <Text style={{fontSize:13,fontWeight:'700',color:navy,marginTop:12,marginBottom:6}}>Method</Text>
+                    {dish.steps.map((st,i) => <Text key={i} style={{fontSize:13,color:'#374151',lineHeight:22}}>{i+1}. {st}</Text>)}
                   </>
                 )}
               </View>
-            );
-          })
+            ) : <Text style={{fontSize:14,color:'#9CA3AF',textAlign:'center',marginTop:20}}>No dish selected for this slot</Text>}
+          </>
         )}
 
-        <View style={s.btnRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button title={recipeDishes.length > 0 ? 'Save & Next' : 'Skip Recipes →'} onPress={() => {
-              setFeedbacks(buildFeedbackEntries()); advance('grocery');
-            }} />
-          </View>
+        {/* Footer */}
+        <View style={{marginTop:16,gap:8}}>
+          <TouchableOpacity style={{backgroundColor:'#C9A227',borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>{setShoppingList([]);advance('grocery');}}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>View Shopping List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setStep('confirmed-menu')}>
+            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Back to Plan</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
   function renderGrocery() {
-    const grocery = buildGrocery();
-    const totalItems = CAT_ORDER.reduce((acc, cat) => acc + (grocery[cat]?.length ?? 0), 0);
+    const cookDayCount = generatedPlan ? generatedPlan.filter((_,idx) => (cookOrOrder[idx] ?? 'cook') === 'cook').length : 0;
 
     return (
-      <View>
-        <Text style={s.stepTitle}>Your Shopping List</Text>
-        <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo
-          ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`
-          : 'your plan'}
-        </Text>
-
-        <View style={s.groceryActions}>
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => void copyGrocery()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>Copy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => void shareWhatsApp()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>WhatsApp</Text>
-          </TouchableOpacity>
-          {Platform.OS === 'web' && (
-            <TouchableOpacity style={s.groceryActionBtn} onPress={() => void downloadGrocery()} activeOpacity={0.8}>
-              <Text style={s.groceryActionText}>Print / PDF</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => setStep('recipes')} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>View Recipes</Text>
-          </TouchableOpacity>
+      <View style={{flex:1}}>
+        {/* Header */}
+        <View style={{backgroundColor:navy,borderRadius:12,padding:16,marginBottom:12}}>
+          <Text style={{fontSize:18,fontWeight:'800',color:white}}>Shopping List</Text>
+          <Text style={{fontSize:12,color:'rgba(255,255,255,0.65)',marginTop:4}}>Cook days only {'\u00B7'} {cookDayCount} day{cookDayCount !== 1 ? 's' : ''}</Text>
         </View>
 
-        {totalItems === 0 ? (
-          <View style={s.emptyBox}>
-            <Text style={s.emptyText}>No ingredients found. Please select meals first.</Text>
+        {shoppingLoading ? (
+          <View style={{alignItems:'center',paddingVertical:40}}>
+            <ActivityIndicator color={navy} size="large" />
+            <Text style={{fontSize:14,color:'#5A7A8A',marginTop:12}}>Maharaj is preparing your shopping list...</Text>
           </View>
         ) : (
-          CAT_ORDER.map((cat) => {
-            const items = grocery[cat];
-            if (!items?.length) return null;
-            return (
-              <View key={cat} style={s.groceryCat}>
-                <Text style={s.groceryCatTitle}>{cat}</Text>
-                <View style={s.groceryCatDivider} />
-                <View style={{flexDirection:'row',paddingVertical:4,paddingHorizontal:4,borderBottomWidth:1,borderBottomColor:'#E5E7EB'}}>
-                  <Text style={{width:30,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>#</Text>
-                  <Text style={{flex:1,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>ITEM</Text>
-                  <Text style={{width:80,fontSize:11,fontWeight:'700',color:'#9CA3AF',textAlign:'right'}}>QTY</Text>
+          <>
+            {shoppingList.map((cat, ci) => (
+              <View key={ci} style={{marginBottom:14}}>
+                <Text style={{fontSize:11,fontWeight:'700',color:'#C9A227',letterSpacing:0.5,marginBottom:8,paddingBottom:4,borderBottomWidth:1.5,borderBottomColor:'#C9A227'}}>{cat.title}</Text>
+                <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+                  {cat.items.map((item, ii) => (
+                    <View key={ii} style={{backgroundColor:'rgba(255,255,255,0.9)',borderWidth:1,borderColor:'rgba(27,58,92,0.15)',borderRadius:20,paddingHorizontal:12,paddingVertical:5}}>
+                      <Text style={{fontSize:11,color:navy}}>{item}</Text>
+                    </View>
+                  ))}
                 </View>
-                {items.map((item, i) => (
-                  <View key={i} style={{flexDirection:'row',paddingVertical:8,paddingHorizontal:4,borderBottomWidth:i<items.length-1?1:0,borderBottomColor:'#F3F4F6',alignItems:'center'}}>
-                    <Text style={{width:30,fontSize:13,color:'#9CA3AF'}}>{i+1}.</Text>
-                    <Text style={{flex:1,fontSize:14,color:'#1B3A5C',fontWeight:'500'}}>{item.name}</Text>
-                    <Text style={{width:80,fontSize:13,color:'#1A6B5C',fontWeight:'600',textAlign:'right'}}>{item.qty ? `${item.qty}${item.unit||''}` : '—'}</Text>
-                  </View>
-                ))}
               </View>
-            );
-          })
+            ))}
+            <View style={{backgroundColor:'rgba(201,162,39,0.1)',borderWidth:0.5,borderColor:'rgba(201,162,39,0.3)',borderRadius:8,padding:12,marginTop:8}}>
+              <Text style={{fontSize:11,color:'#854F0B',lineHeight:18}}>Tip from Maharaj: Shop at Carrefour or Spinneys for best freshness. Buy dairy and fresh produce the day before cooking.</Text>
+            </View>
+          </>
         )}
 
-        <View style={s.btnRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button title="Next" onPress={() => advance('delivery-apps')} />
-          </View>
+        {/* Footer */}
+        <View style={{marginTop:16,gap:8}}>
+          <TouchableOpacity style={{backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>{setShoppingList([]);router.push('/home' as never);}}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Back to Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={()=>setStep('recipes')}>
+            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Back to Recipes</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1580,8 +1611,8 @@ export default function MealWizardScreen() {
 
         {/* Footer buttons */}
         <View style={{marginTop:12,gap:8}}>
-          <TouchableOpacity style={{backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
-            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Back to Home</Text>
+          <TouchableOpacity style={{backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={()=>{setRecipeDay(0);setRecipeSlot(selectedSlots[0] as MealSlotKey || 'breakfast');advance('recipes');}}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>View Recipes & Shopping List</Text>
           </TouchableOpacity>
           <View style={{flexDirection:'row',gap:8}}>
             <TouchableOpacity style={{flex:1,paddingVertical:11,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={async()=>{if(await tryRegenerate()){setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}}>
@@ -1697,26 +1728,19 @@ export default function MealWizardScreen() {
         {/* Watermark */}
         <Text style={{textAlign:'center',fontSize:10,color:'#D1D5DB',marginTop:12,fontStyle:'italic'}}>Generated by My Maharaj</Text>
 
+        {/* Shopping list button */}
+        <TouchableOpacity style={{backgroundColor:'#C9A227',borderRadius:12,paddingVertical:14,alignItems:'center',marginTop:16,marginBottom:8}} onPress={()=>{setShoppingList([]);advance('grocery');}}>
+          <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>View Shopping List</Text>
+        </TouchableOpacity>
+
         {/* Action buttons */}
-        <View style={{flexDirection:'row',gap:8,marginTop:20}}>
-          <TouchableOpacity
-            style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}}
-            onPress={async()=>{if(await tryRegenerate()){setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}}
-          >
+        <View style={{flexDirection:'row',gap:8}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={async()=>{if(await tryRegenerate()){setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}}>
             <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
             <Text style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{regenCount}/5 used today</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,backgroundColor:white,alignItems:'center'}}
-            onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setSelectedFrom(null);setSelectedTo(null);setFoodPref(null);setIsMixed(false);setSelectedSlots([]);setPresentMembers([]);setGuestCount(0);setHasGuests(false);setGuestCuisine('');setBfPrefs([]);setLnPrefs([]);setDnPrefs([]);setSnPrefs([]);setUnwellIds([]);setEveryoneWell(true);setVegFastDays({});setNutritionGoals([]);setRemovedCuisines([]);setExtraCuisines([]);setPerDayCuisine({});setIncludeDessert(false);setFeedbacks([]);setFeedbackDone(false);session.presentMemberIds=[];setStep('period');}}
-          >
-            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Modify Settings</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}}
-            onPress={() => advance('cook-or-order')}
-          >
-            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Continue</Text>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={()=>router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Back to Home</Text>
           </TouchableOpacity>
         </View>
       </View>
