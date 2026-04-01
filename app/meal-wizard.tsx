@@ -7,6 +7,7 @@ import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
 import DeliveryAppsSection from '../components/DeliveryApps';
+import { session } from '../lib/session';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 
 
@@ -1558,6 +1559,12 @@ export default function MealWizardScreen() {
             onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}
           >
             <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,backgroundColor:white,alignItems:'center'}}
+            onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setSelectedFrom(null);setSelectedTo(null);setFoodPref(null);setIsMixed(false);setSelectedSlots([]);setPresentMembers([]);setGuestCount(0);setHasGuests(false);setGuestCuisine('');setBfPrefs([]);setLnPrefs([]);setDnPrefs([]);setSnPrefs([]);setUnwellIds([]);setEveryoneWell(true);setVegFastDays({});setNutritionGoals([]);setRemovedCuisines([]);setExtraCuisines([]);setPerDayCuisine({});setIncludeDessert(false);setFeedbacks([]);setFeedbackDone(false);session.presentMemberIds=[];setStep('period');}}
+          >
+            <Text style={{fontSize:13,fontWeight:'600',color:navy}}>Modify Settings</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}}
