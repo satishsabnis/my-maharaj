@@ -113,7 +113,7 @@ export default function AskMaharajScreen() {
       const profileCtx = await getProfileContext();
       const isMealRequest = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
 
-      const systemPrompt = `CRITICAL RULE 1: You MUST respond in the EXACT same language the user writes in. If English respond in English only. If Hindi respond in Hindi only. Never switch languages.
+      const systemPrompt = `Always respond in the same language the user used in their message. If the user writes in Hindi, respond in Hindi. If Marathi, respond in Marathi. If English, respond in English. Default to English if unclear.
 
 You are Maharaj, a wise and authoritative Indian culinary AI mentor for the My Maharaj app. You are deeply knowledgeable about Indian regional cuisines, Ayurvedic nutrition, and the cultural history of food.
 
@@ -121,7 +121,7 @@ ${profileCtx ? `HOUSEHOLD PROFILE:\n${profileCtx}\n` : ''}
 
 PERSONALITY:
 - Address the user warmly and professionally
-- Provide culturally rich context ("In the traditional kitchens of Maharashtra...")  
+- Provide culturally rich context ("In the traditional kitchens of Maharashtra...")
 - Root guidance in Ayurvedic wisdom and modern nutrition
 - Be specific, practical and actionable
 
@@ -130,8 +130,7 @@ MEAL_JSON_START
 {"title":"...", "meals":[{"slot":"Breakfast","name":"...","description":"..."},{"slot":"Lunch","name":"...","description":"..."},{"slot":"Dinner","name":"...","description":"..."}],"tips":["tip1","tip2"]}
 MEAL_JSON_END` : ''}
 
-Always track health conditions from the profile when suggesting food. Never repeat dishes within the same response.
-Always respond in the same language the user writes in. If they write in Marathi, respond in Marathi. If Hindi, respond in Hindi. If English, respond in English. Match the user's language exactly.`;
+Always track health conditions from the profile when suggesting food. Never repeat dishes within the same response.`;
 
       const response = await callClaude(
         newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -218,7 +217,7 @@ Always respond in the same language the user writes in. If they write in Marathi
             <Text style={s.backTxt}>Back</Text>
           </TouchableOpacity>
           <View style={s.headerCenter}>
-            <Text style={s.headerTitle}>Ask Maharaj AI</Text>
+            <Text style={s.headerTitle}>Ask Maharaj</Text>
             <Text style={s.headerSub}>Your Wise Nutrition Mentor</Text>
           </View>
           <View style={{alignItems:'flex-end',gap:4}}>
@@ -254,13 +253,15 @@ Always respond in the same language the user writes in. If they write in Marathi
                     'What should I cook for dinner tonight?',
                     'Suggest a diabetic-friendly meal plan',
                     'What is the history of biryani?',
-                    'Plan a Ram Navami festive menu',
                   ].map((s_) => (
                     <TouchableOpacity key={s_} style={s.suggChip} onPress={() => setInput(s_)}>
                       <Text style={s.suggTxt}>{s_}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
+                <TouchableOpacity style={{borderWidth:1.5,borderColor:gold,borderRadius:20,paddingHorizontal:12,paddingVertical:6,alignSelf:'center',marginTop:12}} onPress={() => { setInput('Plan a Ram Navami festive menu'); void send(); }}>
+                  <Text style={{fontSize:12,fontWeight:'600',color:navy}}>Plan a Ram Navami festive menu</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -279,8 +280,8 @@ Always respond in the same language the user writes in. If they write in Marathi
                       <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Speak</Text>
                     </TouchableOpacity>
                     {isSpeaking && (
-                      <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (isSpeaking && !isPaused) { Speech.stop(); setIsSpeaking(false); setIsPaused(false); } }}>
-                        <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>Stop</Text>
+                      <TouchableOpacity style={{paddingHorizontal:8,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(220,38,38,0.1)'}} onPress={() => { Speech.stop(); setIsSpeaking(false); setIsPaused(false); }}>
+                        <Text style={{fontSize:11,color:'#DC2626',fontWeight:'600'}}>Stop</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -352,7 +353,7 @@ Always respond in the same language the user writes in. If they write in Marathi
               style={[s.voiceBtn, listening && s.voiceBtnActive]}
               onPress={startVoice}
             >
-              <Text style={s.voiceIcon}>{listening ? 'Stop' : 'Mic'}</Text>
+              <Text style={{fontSize:20,color:listening?white:'#1B3A5C'}}>{listening ? '\u25A0' : '\uD83C\uDFA4'}</Text>
             </TouchableOpacity>
             <TextInput
               style={s.input}
@@ -427,8 +428,8 @@ const s = StyleSheet.create({
     backgroundColor:'rgba(255,255,255,0.92)',
     borderTopWidth:1, borderTopColor:'rgba(27,58,92,0.1)',
   },
-  voiceBtn:       { width:44, height:44, borderRadius:22, backgroundColor:'rgba(27,58,92,0.08)', alignItems:'center', justifyContent:'center' },
-  voiceBtnActive: { backgroundColor:'rgba(220,38,38,0.12)' },
+  voiceBtn:       { width:44, height:44, borderRadius:22, backgroundColor:navy, alignItems:'center', justifyContent:'center' },
+  voiceBtnActive: { backgroundColor:'#DC2626' },
   voiceIcon:      { fontSize:20 },
   input: {
     flex:1, borderWidth:1.5, borderColor:border, borderRadius:16,
