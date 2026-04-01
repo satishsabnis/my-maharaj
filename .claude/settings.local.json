@@ -11,7 +11,8 @@
       "Bash(grep -E '\"\"name\"\"|\"\"slug\"\"|\"\"package\"\"|\"\"version\"\"' app.json)",
       "Bash(grep -A3 '\"\"preview\"\"' eas.json)",
       "Bash(git pull:*)",
-      "Bash(npx expo:*)"
+      "Bash(npx expo:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8083)"
     ]
   }
 }
