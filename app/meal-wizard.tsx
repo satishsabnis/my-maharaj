@@ -200,19 +200,20 @@ export default function MealWizardScreen() {
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
       const cookDays = generatedPlan.map((day, idx) => ({ day, idx })).filter(({ idx }) => (cookOrOrder[idx] ?? 'cook') === 'cook');
-      const dishNames = cookDays.map(({ day, idx }) => {
+      const confirmedDishes = cookDays.map(({ day, idx }) => {
         const s = selections[idx] ?? {};
-        const skip = skippedSlots[idx] ?? [];
-        return { date: day.date, meals: [
-          !skip.includes('breakfast') && day.breakfast?.options[s.breakfast ?? 0]?.name,
-          !skip.includes('lunch') && day.lunch?.options[s.lunch ?? 0]?.name,
-          !skip.includes('snack') && day.snack?.options[s.snack ?? 0]?.name,
-          !skip.includes('dinner') && day.dinner?.options[s.dinner ?? 0]?.name,
-        ].filter(Boolean) };
+        const skipped = skippedSlots[idx] ?? [];
+        const meals: string[] = [];
+        if (!skipped.includes('breakfast') && day.breakfast?.options?.length) { const n = day.breakfast.options[s.breakfast ?? 0]?.name; if (n) meals.push(`Breakfast: ${n}`); }
+        if (!skipped.includes('lunch') && day.lunch?.options?.length) { const n = day.lunch.options[s.lunch ?? 0]?.name; if (n) meals.push(`Lunch: ${n}`); }
+        if (!skipped.includes('snack') && day.snack?.options?.length) { const n = day.snack.options[s.snack ?? 0]?.name; if (n) meals.push(`Snack: ${n}`); }
+        if (!skipped.includes('dinner') && day.dinner?.options?.length) { const n = day.dinner.options[s.dinner ?? 0]?.name; if (n) meals.push(`Dinner: ${n}`); }
+        return { date: day.date, meals };
       }).filter(d => d.meals.length > 0);
-      const prompt = `Shopping list for ${servingsCount || 2} people for these meals:\n${dishNames.map(d => `${d.date}: ${d.meals.join(', ')}`).join('\n')}\n\nReturn ONLY valid JSON array:\n[{"title":"Vegetables & Produce","items":["Onion 1kg","Tomato 500g"]},{"title":"Dairy & Protein","items":["Paneer 500g","Curd 500g"]},{"title":"Grains & Staples","items":["Rice 1kg","Atta 1kg"]},{"title":"Spices & Condiments","items":["Salt","Turmeric 100g"]},{"title":"Beverages","items":["Mineral water 6pk"]}]`;
+      console.log('[Shopping] confirmedDishes:', JSON.stringify(confirmedDishes));
+      const prompt = `Generate a shopping list for ${servingsCount || 3} people for these meals:\n${confirmedDishes.map(d => `${d.date}: ${d.meals.join(', ')}`).join('\n')}\n\nReturn ONLY a JSON array with these categories:\n[{"title":"Vegetables & Produce","items":["Onion 1kg","Tomato 500g"]},{"title":"Dairy & Protein","items":["Paneer 500g","Curd 500g"]},{"title":"Grains & Staples","items":["Rice 1kg","Atta 1kg"]},{"title":"Spices & Condiments","items":["Garam masala","Turmeric 100g"]},{"title":"Beverages","items":["Mineral water 6pk"]}]\nScale quantities for ${servingsCount || 3} people. Include ALL ingredients needed.`;
       console.log('[Shopping] prompt:', prompt.substring(0, 200));
-      console.log('[Shopping] servingsCount:', servingsCount, 'cookDays:', dishNames.length);
+      console.log('[Shopping] servingsCount:', servingsCount, 'cookDays:', confirmedDishes.length);
       const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
       const res = await fetch(`${base}/api/claude`, { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }) });
       clearTimeout(timeout);
@@ -1184,9 +1185,9 @@ export default function MealWizardScreen() {
               {slotData.options.map((opt, optIdx) => {
                 const isSel = selections[activeDay]?.[key] === optIdx;
                 const hasPipe = opt.description && opt.description.includes(' | ');
-                const summaryLine = hasPipe
-                  ? opt.description!.split(' | ')[0].trim()
-                  : (opt.description || '');
+                const summaryLine = opt.description
+                  ? (hasPipe ? opt.description.split(' | ')[0].trim() : opt.description.substring(0, 100))
+                  : opt.name;
                 return (
                   <TouchableOpacity
                     key={optIdx}
@@ -1290,8 +1291,11 @@ export default function MealWizardScreen() {
     const slotsForRecipes = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
     const day = generatedPlan[recipeDay];
     const isOrder = (cookOrOrder[recipeDay] ?? 'cook') === 'order';
-    const selIdx = day ? (selections[recipeDay]?.[recipeSlot] ?? 0) : 0;
-    const dish = day?.[recipeSlot]?.options?.[selIdx];
+    // Auto-select first available slot if current is invalid
+    const availableSlots = slotsForRecipes.filter(s => !isSkipped(recipeDay, s as MealSlotKey) && day?.[s as MealSlotKey]?.options?.length);
+    const activeRecipeSlot = availableSlots.includes(recipeSlot) ? recipeSlot : (availableSlots[0] as MealSlotKey ?? 'breakfast');
+    const selIdx = day ? (selections[recipeDay]?.[activeRecipeSlot] ?? 0) : 0;
+    const dish = day?.[activeRecipeSlot]?.options?.[selIdx];
     const dateRange = selectedFrom && selectedTo ? `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : '';
 
     return (
@@ -1333,19 +1337,19 @@ export default function MealWizardScreen() {
             {/* Slot tabs */}
             <View style={{flexDirection:'row',gap:6,marginBottom:12}}>
               {slotsForRecipes.map(sl => (
-                <TouchableOpacity key={sl} style={{paddingHorizontal:12,paddingVertical:6,borderRadius:8,backgroundColor:recipeSlot===sl?navy:'rgba(255,255,255,0.85)',borderWidth:1,borderColor:recipeSlot===sl?navy:'#D4EDE5'}} onPress={()=>setRecipeSlot(sl as MealSlotKey)}>
-                  <Text style={{fontSize:12,fontWeight:'600',color:recipeSlot===sl?white:'#5A7A8A'}}>{sl.charAt(0).toUpperCase()+sl.slice(1)}</Text>
+                <TouchableOpacity key={sl} style={{paddingHorizontal:12,paddingVertical:6,borderRadius:8,backgroundColor:activeRecipeSlot===sl?navy:'rgba(255,255,255,0.85)',borderWidth:1,borderColor:activeRecipeSlot===sl?navy:'#D4EDE5'}} onPress={()=>setRecipeSlot(sl as MealSlotKey)}>
+                  <Text style={{fontSize:12,fontWeight:'600',color:activeRecipeSlot===sl?white:'#5A7A8A'}}>{sl.charAt(0).toUpperCase()+sl.slice(1)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* Skip toggle */}
-            <TouchableOpacity style={{alignSelf:'flex-end',marginBottom:8,paddingHorizontal:12,paddingVertical:5,borderRadius:20,borderWidth:1.5,borderColor:isSkipped(recipeDay,recipeSlot)?'#DC2626':'#D1D5DB',backgroundColor:isSkipped(recipeDay,recipeSlot)?'#FEE2E2':'rgba(255,255,255,0.9)'}} onPress={()=>toggleSkip(recipeDay,recipeSlot)}>
-              <Text style={{fontSize:11,fontWeight:'600',color:isSkipped(recipeDay,recipeSlot)?'#DC2626':'#6B7280'}}>{isSkipped(recipeDay,recipeSlot)?'Skipped — tap to include':'Skip this meal'}</Text>
+            <TouchableOpacity style={{alignSelf:'flex-end',marginBottom:8,paddingHorizontal:12,paddingVertical:5,borderRadius:20,borderWidth:1.5,borderColor:isSkipped(recipeDay,activeRecipeSlot)?'#DC2626':'#D1D5DB',backgroundColor:isSkipped(recipeDay,activeRecipeSlot)?'#FEE2E2':'rgba(255,255,255,0.9)'}} onPress={()=>toggleSkip(recipeDay,activeRecipeSlot)}>
+              <Text style={{fontSize:11,fontWeight:'600',color:isSkipped(recipeDay,activeRecipeSlot)?'#DC2626':'#6B7280'}}>{isSkipped(recipeDay,activeRecipeSlot)?'Skipped — tap to include':'Skip this meal'}</Text>
             </TouchableOpacity>
 
             {/* Recipe content */}
-            {isSkipped(recipeDay,recipeSlot) ? (
+            {isSkipped(recipeDay,activeRecipeSlot) ? (
               <Text style={{fontSize:14,color:'#9CA3AF',textAlign:'center',fontStyle:'italic',marginVertical:20}}>This meal is skipped for {day?.day ?? 'this day'}</Text>
             ) : dish ? (
               <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>

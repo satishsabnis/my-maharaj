@@ -180,7 +180,8 @@ async function generateOneMeal(
     healthInfoFinal = healthInfo
       .replace(/strictly vegetarian/gi, '').replace(/no eggs/gi, '').replace(/no meat/gi, '')
       .replace(/no fish/gi, '').replace(/no chicken/gi, '').replace(/no mutton/gi, '')
-      .replace(/vegetarian only/gi, '').replace(/pure veg/gi, '').trim();
+      .replace(/vegetarian only/gi, '').replace(/pure veg/gi, '').replace(/zero non-veg/gi, '').trim();
+    if (!healthInfoFinal) healthInfoFinal = 'No specific restrictions';
   }
 
   const hasThali = mealPrefs && mealPrefs.some(p => p.toLowerCase().includes('thali'));
@@ -341,6 +342,7 @@ IMPORTANT RULES:
 - For breakfast, suggest light dishes: pohe, upma, idli, dosa, thepla, paratha, eggs, fruits, smoothies
 - ALL 3 options must be COMPLETELY DIFFERENT dishes from each other
 - DISH VARIETY RULE — CRITICAL: The 3 options MUST be completely different dishes with different PRIMARY ingredients. This is NON-NEGOTIABLE. BANNED combinations: Pohe + Kanda Pohe + Batata Pohe (same dish), Dal Khichdi + Moong Dal Khichdi + Masala Khichdi (same dish), any 3 variations of the same base dish. REQUIRED: Each option must have a DIFFERENT primary ingredient AND different cooking method. Test: if you remove the adjective, are all 3 the same dish? If yes = REJECTED. CORRECT: Breakfast: Pohe / Upma / Idli Sambhar. Lunch: Rajma Chawal / Roti Sabzi / Chole Bhature. Dinner: Dal Tadka Roti / Paneer Sabzi Rice / Khichdi Kadhi.
+- HISTORY RULE: These dishes have ALREADY been planned and MUST NOT appear again: ${weekDishHistory?.length ? weekDishHistory.join(', ') : 'none yet'}. Generate completely DIFFERENT dishes from this list. Even similar dishes are not allowed.
 - NEVER repeat any dish that appears in the history list above
 - The ${mealType} options must be DIFFERENT from what would be served at other meals today
 - For fasting: breakfast dishes (sabudana khichdi, fruit bowl, rajgira paratha) must differ from lunch (sama rice, vrat ki sabzi, kuttu paratha) and dinner (sabudana vada, makhana kheer, singhare ki puri)
@@ -554,27 +556,29 @@ export async function generateMealPlan(
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
       ? `${foodPref}. Use ONLY allowed proteins.`
       : foodPref;
-    const dayCuisine = cuisinePerDay && cuisinePerDay[i] ? cuisinePerDay[i] : cuisine;
+    const dayCuisine = cuisinePerDay?.[i] || cuisine || params.cuisine || 'Konkani';
+    console.log(`[AI] Day ${i} cuisine:`, dayCuisine);
     return { date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i };
   });
 
   let completed = 0;
-  const weekHistory = [...(params.dishHistory ?? [])].slice(0, 30);
-  
+  const generatedDishNames: string[] = [...(params.dishHistory ?? [])].slice(0, 30);
+
   // Process in batches of 2 days to prevent mobile browser connection limits
   const BATCH_SIZE = 2;
   const dayResults: MealPlanDay[] = [];
-  
+
   for (let batchStart = 0; batchStart < dayMeta.length; batchStart += BATCH_SIZE) {
     const batch = dayMeta.slice(batchStart, batchStart + BATCH_SIZE);
+    const currentHistory = [...generatedDishNames].slice(-30);
     const batchResults = await Promise.all(
       batch.map(async ({ date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i }) => {
         const emptySlot: MealSlot = { options: [] };
         const [breakfast, lunch, dinner, snack] = await Promise.all([
-          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
-          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint) : Promise.resolve(emptySlot),
-          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint) : Promise.resolve(emptySlot),
-          slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint) : Promise.resolve(undefined),
+          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, currentHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
+          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, currentHistory, cityName, storeNames, ldProteins, lnConstraint) : Promise.resolve(emptySlot),
+          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, currentHistory, cityName, storeNames, ldProteins, dnConstraint) : Promise.resolve(emptySlot),
+          slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, currentHistory, cityName, storeNames, undefined, snConstraint) : Promise.resolve(undefined),
         ]);
         completed++;
         onProgress?.(completed, total);
@@ -583,6 +587,12 @@ export async function generateMealPlan(
         return day;
       })
     );
+    // Accumulate dish names from this batch for next batch
+    batchResults.forEach(day => {
+      [day.breakfast, day.lunch, day.dinner, day.snack].forEach(slot => {
+        slot?.options?.forEach((opt: any) => { if (opt?.name) generatedDishNames.push(opt.name); });
+      });
+    });
     dayResults.push(...batchResults);
   }
 
