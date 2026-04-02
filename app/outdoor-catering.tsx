@@ -12,7 +12,7 @@ const SETUP_STYLES = ['Finger Food','Buffet','Packed Boxes','BBQ / Grill','Thali
 const WEATHER_OPTS = ['Hot & Sunny','Evening / Cooler','Indoor Backup'];
 
 async function callClaude(prompt: string): Promise<string> {
-  const base = 'https://my-maharaj.vercel.app';
+  const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }),
@@ -252,7 +252,8 @@ Scale quantities for ${g} guests. Include ice and disposable plates/cups for out
             {menu && <TouchableOpacity style={s.confirmBtn} disabled={generatingPdf} onPress={async () => {
               setGeneratingPdf(true);
               try {
-                const res = await fetch('https://my-maharaj.vercel.app/api/generate-outdoor-pdf', {
+                const pdfBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
+                const res = await fetch(`${pdfBase}/api/generate-outdoor-pdf`, {
                   method: 'POST', headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ menu, eventDetails: { eventType, guests, foodType, budget, setup, weather, includeAlcohol, date: new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) }, shoppingList }),
                 });
