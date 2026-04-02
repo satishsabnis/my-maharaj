@@ -565,7 +565,7 @@ export async function generateMealPlan(
   const generatedDishNames: string[] = [...(params.dishHistory ?? [])].slice(0, 30);
 
   // Process in batches of 2 days to prevent mobile browser connection limits
-  const BATCH_SIZE = 2;
+  const BATCH_SIZE = 1; // Sequential per day to ensure dish history accumulates correctly
   const dayResults: MealPlanDay[] = [];
 
   for (let batchStart = 0; batchStart < dayMeta.length; batchStart += BATCH_SIZE) {
