@@ -1,12 +1,11 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { email, planData, weekLabel } = req.body;
 
   try {
     // Resend integration — requires RESEND_API_KEY env var
+    // @ts-ignore — resend is optional, installed on Vercel only
     const { Resend } = await import('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
 

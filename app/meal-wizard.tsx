@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -151,7 +151,7 @@ export default function MealWizardScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Selection
-  const [selections,      setSelections]      = useState<Record<number, Record<MealSlotKey, number>>>({});
+  const [selections,      setSelections]      = useState<Record<number, Partial<Record<MealSlotKey, number>>>>({});
   const [expandedDays,    setExpandedDays]    = useState<Record<number, boolean>>({ 0: true });
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
   const [activeDay,       setActiveDay]       = useState(0);
@@ -386,7 +386,7 @@ export default function MealWizardScreen() {
         selectedSlots: slotsToUse,
       }, (current, total) => setGeneratingProgress({ current, total }));
 
-      const defaultSel: Record<number, Record<MealSlotKey, number>> = {};
+      const defaultSel: Record<number, Partial<Record<MealSlotKey, number>>> = {};
       plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
       setGeneratedPlan(plan.days);
       setSelections(defaultSel);

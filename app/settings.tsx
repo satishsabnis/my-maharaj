@@ -60,7 +60,7 @@ export default function SettingsScreen() {
         <Text style={[s.rowLabel, item.danger && s.rowLabelDanger]}>{item.label}</Text>
         <View style={s.rowRight}>
           {item.right ? <Text style={s.rowRightText}>{item.right}</Text> : null}
-          {!item.danger && <Text style={s.chevron}>></Text>}
+          {!item.danger && <Text style={s.chevron}>{'\u203A'}</Text>}
         </View>
       </TouchableOpacity>
     );
