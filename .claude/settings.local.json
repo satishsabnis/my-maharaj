@@ -15,7 +15,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8083)",
       "Bash(ls -1 C:/Users/satis/documents/my-maharaj/app/*.tsx)",
       "Bash(xargs -I{} basename {})",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -7,6 +7,7 @@
   const apiKey = process.env.CLAUDE_KEY;
   if (!apiKey) { res.status(500).json({ error: 'CLAUDE_KEY environment variable is not set on the server. Please configure it in Vercel dashboard.' }); return; }
   try {
+    console.log('[claude.js] request body:', JSON.stringify(req.body).substring(0, 300));
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -17,6 +18,8 @@
       body: JSON.stringify(req.body)
     });
     const data = await response.json();
+    console.log('[claude.js] response status:', response.status);
+    console.log('[claude.js] response body:', JSON.stringify(data).substring(0, 500));
     if (!response.ok) {
       console.error('[claude.js] API error:', response.status, JSON.stringify(data));
       res.status(response.status).json({ error: data?.error?.message ?? `Claude API error (${response.status})` });
