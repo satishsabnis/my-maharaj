@@ -331,7 +331,7 @@ IMPORTANT: Generate completely different dishes from any previous response. Do n
 Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
 Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
 Health considerations: ${healthInfoFinal}.
-Food preference: ${foodNote}. Language for dish names: ${language}.
+Food preference: ${foodNote}. ${mandatoryInstruction ? 'OVERRIDE: ' + mandatoryInstruction : ''}Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}
 
 IMPORTANT RULES:
@@ -519,11 +519,17 @@ export async function generateMealPlan(
   const bfConstraint = buildConstraint(bfPrefs, 'breakfast');
   const lnConstraint = buildConstraint(lnPrefs, 'lunch');
   const dnConstraint = buildConstraint(dnPrefs, 'dinner');
+
   const snConstraint = buildConstraint(snPrefs, 'snack') || 'Evening snack ONLY — chai, biscuits, sandwiches, fruits, chaat, namkeen. NOT a full meal.';
 
   // For mixed: breakfast is always veg, proteins only for lunch/dinner
-  const bfProteins = isMixed ? undefined : allowedProteins;
+  let bfProteins = isMixed ? undefined : allowedProteins;
   const ldProteins = allowedProteins;
+  // Override proteins when meal-level constraint demands a specific protein
+  if (bfConstraint.includes('EGG DISHES ONLY')) bfProteins = ['Eggs'];
+  else if (bfConstraint.includes('CHICKEN DISHES ONLY')) bfProteins = ['Chicken'];
+  else if (bfConstraint.includes('FISH DISHES ONLY')) bfProteins = ['Fish'];
+  else if (bfConstraint.includes('MUTTON DISHES ONLY')) bfProteins = ['Mutton'];
   const slots = params.selectedSlots ?? ['breakfast', 'lunch', 'dinner'];
   if (slots.length === 0) throw new Error('No meal slots selected. Please select at least one meal slot.');
 
@@ -537,7 +543,12 @@ export async function generateMealPlan(
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
     const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
-    const bfFoodPref = isMixed && !isVegDay ? 'Strictly Vegetarian — Mixed mode: breakfast is always vegetarian' : foodPref;
+    let bfFoodPref = isMixed && !isVegDay ? 'Strictly Vegetarian — Mixed mode: breakfast is always vegetarian' : foodPref;
+    // Override breakfast foodPref when protein constraint is active
+    if (bfConstraint.includes('EGG DISHES ONLY')) bfFoodPref = 'Non-vegetarian — EGGS ONLY for breakfast';
+    else if (bfConstraint.includes('CHICKEN DISHES ONLY')) bfFoodPref = 'Non-vegetarian — CHICKEN ONLY for breakfast';
+    else if (bfConstraint.includes('FISH DISHES ONLY')) bfFoodPref = 'Non-vegetarian — FISH ONLY for breakfast';
+    else if (bfConstraint.includes('MUTTON DISHES ONLY')) bfFoodPref = 'Non-vegetarian — MUTTON ONLY for breakfast';
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
       ? `${foodPref}. Use ONLY allowed proteins.`
       : foodPref;

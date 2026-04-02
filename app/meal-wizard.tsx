@@ -196,22 +196,34 @@ export default function MealWizardScreen() {
   async function generateShoppingList() {
     if (!generatedPlan) return;
     setShoppingLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-      const cookDayData = generatedPlan.map((day, idx) => ({ day, idx })).filter(({ idx }) => (cookOrOrder[idx] ?? 'cook') === 'cook');
-      const confirmedDishes = cookDayData.map(({ day, idx }) => {
-        const sel = selections[idx] ?? {};
+      const cookDays = generatedPlan.map((day, idx) => ({ day, idx })).filter(({ idx }) => (cookOrOrder[idx] ?? 'cook') === 'cook');
+      const dishNames = cookDays.map(({ day, idx }) => {
+        const s = selections[idx] ?? {};
         const skip = skippedSlots[idx] ?? [];
-        return { date: day.date, day: day.day, breakfast: skip.includes('breakfast') ? null : (day.breakfast?.options[sel.breakfast ?? 0]?.name ?? null), lunch: skip.includes('lunch') ? null : (day.lunch?.options[sel.lunch ?? 0]?.name ?? null), snack: skip.includes('snack') ? null : (day.snack?.options[sel.snack ?? 0]?.name ?? null), dinner: skip.includes('dinner') ? null : (day.dinner?.options[sel.dinner ?? 0]?.name ?? null) };
-      }).filter(d => d.breakfast || d.lunch || d.snack || d.dinner);
-      const prompt = `Generate a MERGED shopping list for ALL ${confirmedDishes.length} cook days combined.\nMeals: ${JSON.stringify(confirmedDishes)}\nInclude ingredients for every non-null meal. Exclude any null meals — they are skipped.\nReturn ONLY this JSON array:\n[{"title":"Dairy & Protein","items":["Paneer 500g"]},{"title":"Grains & Staples","items":["Rice 1kg"]},{"title":"Vegetables & Produce","items":["Tomatoes 1kg"]},{"title":"Spices & Condiments","items":["Garam masala 50g"]},{"title":"Beverages","items":["Mineral water 12pk"]}]\nScale all quantities for ${servingsCount || 2} people across all days combined. Merge duplicate ingredients.`;
+        return { date: day.date, meals: [
+          !skip.includes('breakfast') && day.breakfast?.options[s.breakfast ?? 0]?.name,
+          !skip.includes('lunch') && day.lunch?.options[s.lunch ?? 0]?.name,
+          !skip.includes('snack') && day.snack?.options[s.snack ?? 0]?.name,
+          !skip.includes('dinner') && day.dinner?.options[s.dinner ?? 0]?.name,
+        ].filter(Boolean) };
+      }).filter(d => d.meals.length > 0);
+      const prompt = `Shopping list for ${servingsCount || 2} people for these meals:\n${dishNames.map(d => `${d.date}: ${d.meals.join(', ')}`).join('\n')}\n\nReturn ONLY valid JSON array:\n[{"title":"Vegetables & Produce","items":["Onion 1kg","Tomato 500g"]},{"title":"Dairy & Protein","items":["Paneer 500g","Curd 500g"]},{"title":"Grains & Staples","items":["Rice 1kg","Atta 1kg"]},{"title":"Spices & Condiments","items":["Salt","Turmeric 100g"]},{"title":"Beverages","items":["Mineral water 6pk"]}]`;
       const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
-      const res = await fetch(`${base}/api/claude`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }) });
+      const res = await fetch(`${base}/api/claude`, { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }) });
+      clearTimeout(timeout);
       const data = await res.json();
       const text = (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
       const match = text.match(/\[[\s\S]*\]/);
       if (match) setShoppingList(JSON.parse(match[0]));
-    } catch { setShoppingList([{ title: 'All Items', items: ['Could not generate — please check your meal selections'] }]); }
-    finally { setShoppingLoading(false); }
+      else setShoppingList([{ title: 'Could not generate automatically', items: ['Please tap Try Again or note ingredients from the recipes above'] }]);
+    } catch (e: any) {
+      clearTimeout(timeout);
+      console.error('[Shopping]', e.name === 'AbortError' ? 'Timeout' : 'Error:', e);
+      setShoppingList([{ title: 'Could not generate automatically', items: ['Please tap Try Again or note ingredients from the recipes above'] }]);
+    } finally { setShoppingLoading(false); }
   }
 
   useEffect(() => { if (step === 'grocery' && shoppingList.length === 0) { void generateShoppingList(); } }, [step]);
@@ -1344,13 +1356,13 @@ export default function MealWizardScreen() {
                   </View>
                 )}
                 <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:6}}>Ingredients</Text>
-                {dish.ingredients.length > 0 ? dish.ingredients.map((ing,i) => <Text key={i} style={{fontSize:13,color:'#374151',lineHeight:22}}>• {ing}</Text>) : <Text style={{fontSize:13,color:'#9CA3AF',fontStyle:'italic'}}>No ingredients available</Text>}
-                {dish.steps.length > 0 && (
+                {dish.ingredients && dish.ingredients.length > 0 ? dish.ingredients.map((ing: any,i: number) => <Text key={i} style={{fontSize:13,color:'#374151',paddingVertical:3,lineHeight:20}}>{'\u2022'} {typeof ing === 'string' ? ing : `${ing.item||''} ${ing.qty||''}${ing.unit||''}`.trim()}</Text>) : <Text style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>Ingredients not available for this dish</Text>}
+                {dish.steps && dish.steps.length > 0 ? (
                   <>
                     <Text style={{fontSize:13,fontWeight:'700',color:navy,marginTop:12,marginBottom:6}}>Method</Text>
-                    {dish.steps.map((st,i) => <Text key={i} style={{fontSize:13,color:'#374151',lineHeight:22}}>{i+1}. {st}</Text>)}
+                    {dish.steps.map((st: any,i: number) => <Text key={i} style={{fontSize:13,color:'#374151',paddingVertical:3,lineHeight:20}}>{i+1}. {typeof st === 'string' ? st : st.description || st}</Text>)}
                   </>
-                )}
+                ) : <Text style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic',marginTop:8}}>Steps not available for this dish</Text>}
               </View>
             ) : <Text style={{fontSize:14,color:'#9CA3AF',textAlign:'center',marginTop:20}}>No dish selected for this slot</Text>}
           </>
