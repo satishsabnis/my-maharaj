@@ -57,7 +57,7 @@ export const emptyHealthFlags = (): HealthFlags => ({
 // ─── Core API call — uses /api/claude proxy (works on Vercel, no browser key needed) ──
 
 async function askClaude(prompt: string): Promise<string> {
-  const base = 'https://my-maharaj.vercel.app';
+  const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

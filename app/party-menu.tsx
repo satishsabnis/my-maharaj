@@ -10,7 +10,7 @@ const OCCASIONS = ['Birthday','Anniversary','Festival','Get-together','Dinner Pa
 const FOOD_TYPES = ['Vegetarian','Non-Vegetarian','Mixed'];
 
 async function callClaude(prompt: string): Promise<string> {
-  const base = 'https://my-maharaj.vercel.app';
+  const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }),
@@ -197,7 +197,8 @@ Scale quantities for ${g} guests. Always include Mineral water and Soft drinks i
             {menu && <TouchableOpacity style={s.confirmBtn} disabled={generatingPdf} onPress={async () => {
               setGeneratingPdf(true);
               try {
-                const res = await fetch('https://my-maharaj.vercel.app/api/generate-menu-pdf', {
+                const pdfBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
+                const res = await fetch(`${pdfBase}/api/generate-menu-pdf`, {
                   method: 'POST', headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ menu, eventDetails: { occasion, guests, foodType, budget, includeAlcohol, date: new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) }, shoppingList }),
                 });

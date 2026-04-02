@@ -6,7 +6,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
 import { navy, white, textSec, border, errorRed } from '../theme/colors';
 
-const base = 'https://my-maharaj.vercel.app';
+const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
 
 async function callClaude(prompt: string): Promise<string> {
   const res = await fetch(`${base}/api/claude`, {
