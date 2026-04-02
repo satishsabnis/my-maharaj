@@ -517,6 +517,8 @@ export async function generateMealPlan(
     return parts.join(' ');
   }
   const bfConstraint = buildConstraint(bfPrefs, 'breakfast');
+  console.log('[AI] bfPrefs received:', params.breakfastPrefs);
+  console.log('[AI] bfConstraint built:', bfConstraint?.substring(0, 80));
   const lnConstraint = buildConstraint(lnPrefs, 'lunch');
   const dnConstraint = buildConstraint(dnPrefs, 'dinner');
 

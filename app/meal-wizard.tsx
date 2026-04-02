@@ -211,10 +211,14 @@ export default function MealWizardScreen() {
         ].filter(Boolean) };
       }).filter(d => d.meals.length > 0);
       const prompt = `Shopping list for ${servingsCount || 2} people for these meals:\n${dishNames.map(d => `${d.date}: ${d.meals.join(', ')}`).join('\n')}\n\nReturn ONLY valid JSON array:\n[{"title":"Vegetables & Produce","items":["Onion 1kg","Tomato 500g"]},{"title":"Dairy & Protein","items":["Paneer 500g","Curd 500g"]},{"title":"Grains & Staples","items":["Rice 1kg","Atta 1kg"]},{"title":"Spices & Condiments","items":["Salt","Turmeric 100g"]},{"title":"Beverages","items":["Mineral water 6pk"]}]`;
+      console.log('[Shopping] prompt:', prompt.substring(0, 200));
+      console.log('[Shopping] servingsCount:', servingsCount, 'cookDays:', dishNames.length);
       const base = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'https://my-maharaj.vercel.app';
       const res = await fetch(`${base}/api/claude`, { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }) });
       clearTimeout(timeout);
       const data = await res.json();
+      console.log('[Shopping] API response:', JSON.stringify(data).substring(0, 200));
+      console.log('[Shopping] text:', data?.content?.[0]?.text?.substring(0, 100));
       const text = (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
       const match = text.match(/\[[\s\S]*\]/);
       if (match) setShoppingList(JSON.parse(match[0]));
@@ -1114,11 +1118,11 @@ export default function MealWizardScreen() {
 
   function renderSelection() {
     if (!generatedPlan) return null;
-    const allSlots: { key: MealSlotKey; icon: string; label: string }[] = [
-      { key: 'breakfast', icon: '🌅', label: 'Breakfast' },
-      { key: 'lunch',     icon: '☀️', label: 'Lunch'     },
-      { key: 'snack',     icon: '🍵', label: 'Snack'     },
-      { key: 'dinner',    icon: '🌙', label: 'Dinner'    },
+    const allSlots: { key: MealSlotKey; label: string }[] = [
+      { key: 'breakfast', label: 'Breakfast' },
+      { key: 'lunch',     label: 'Lunch'     },
+      { key: 'snack',     label: 'Snack'     },
+      { key: 'dinner',    label: 'Dinner'    },
     ];
     const visibleSlots = allSlots.filter(sl =>
       (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) &&
@@ -1163,7 +1167,7 @@ export default function MealWizardScreen() {
         {/* Active day's slots */}
         <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:8,textAlign:'center',width:'100%'}}>{day.day} · {fmtDate(day.date)}</Text>
 
-        {visibleSlots.map(({ key, icon, label }) => {
+        {visibleSlots.map(({ key, label }) => {
           const slotData = day[key];
           if (!slotData || slotData.options.length === 0) return null;
           return (
