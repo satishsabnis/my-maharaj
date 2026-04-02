@@ -82,7 +82,7 @@ function memberToForm(m: Member): MemberForm {
   const alcoholicFavs = alcMatch ? alcMatch[1].split(',').map(s => s.trim()).filter(s => ALCOHOLIC_BEVERAGES.includes(s)) : [];
   // Remove parsed beverage strings from notes
   others = others.replace(/,?\s*Drinks:\s*[^,]+(,\s*[^,]+)*/g, '').replace(/,?\s*Alcohol:\s*[^,]+(,\s*[^,]+)*/g, '').replace(/^,+|,+$/g, '').trim();
-  return { name: m.name, age: String(m.age || ''), healthConditions: conds, notes: others, nonAlcoholicFavs, alcoholicFavs, drinksAlcohol: alcoholicFavs.length > 0 };
+  return { name: m.name, age: String(m.age || ''), nationality: '', nativeLanguage: '', healthConditions: conds, notes: others, nonAlcoholicFavs, alcoholicFavs, drinksAlcohol: alcoholicFavs.length > 0 };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────

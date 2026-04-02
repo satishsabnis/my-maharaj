@@ -1,9 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
 // MANUAL MIGRATION REQUIRED in Supabase:
 // ALTER TABLE profiles ADD COLUMN IF NOT EXISTS grocery_day TEXT DEFAULT 'Saturday';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
