@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -51,6 +51,7 @@ export default function SplashScreen() {
   }, []);
 
   return (
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       <View style={s.container}>
         <Animated.View style={[s.content, { opacity }]}>
@@ -64,11 +65,12 @@ export default function SplashScreen() {
         </Animated.View>
       </View>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const s = StyleSheet.create({
-  safe:      { flex: 1, backgroundColor: white },
+  safe:      { flex: 1, backgroundColor: 'transparent' },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content:   { alignItems: 'center' },
   logo:      { width: 240, height: 100, marginBottom: 16 },
