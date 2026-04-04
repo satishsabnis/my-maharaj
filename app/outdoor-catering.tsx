@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -222,6 +222,12 @@ Include 3-5 items per section.`);
               {menu.packing_tips?.length > 0 && (<View style={s.section}><Text style={s.sectionTitle}>Packing & Serving Tips</Text>{menu.packing_tips.map((t,i) => <Text key={i} style={s.tipTxt}>{'\u2022'} {t}</Text>)}</View>)}
               {menu.shopping_list?.length > 0 && (<View style={s.section}><Text style={s.sectionTitle}>Shopping List</Text><View style={s.shopGrid}>{menu.shopping_list.map((item,i) => (<View key={i} style={s.shopChip}><Text style={s.shopChipTxt}>{item}</Text></View>))}</View></View>)}
             </>}
+            {/* QR Code */}
+            <View style={{alignItems:'center',marginTop:16}}>
+              <Image source={{uri:`https://chart.googleapis.com/chart?cht=qr&chs=120x120&chl=${encodeURIComponent('https://my-maharaj.vercel.app')}&choe=UTF-8`}} style={{width:100,height:100}} />
+              <Text style={{fontSize:9,color:'#6B7280',marginTop:4,textAlign:'center'}}>Download My Maharaj</Text>
+              <Text style={{fontSize:8,color:'#9CA3AF',textAlign:'center'}}>Scan to get the app</Text>
+            </View>
             <View style={{height:40}} />
           </View>
         </ScrollView>

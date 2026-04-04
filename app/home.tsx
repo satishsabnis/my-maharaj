@@ -227,7 +227,7 @@ export default function HomeScreen() {
                 <Text style={s.festDays}>In {nextFest.daysAway} day{nextFest.daysAway !== 1 ? 's' : ''} \u00B7 {nextFest.dateLabel}</Text>
               </View>
               <View style={{alignItems:'center'}}>
-                <Text style={{fontSize:9,color:textSec}}>Plan reminder</Text>
+                <Text style={{fontSize:9,color:textSec}}>48h reminder</Text>
                 <Switch value={planReminder} onValueChange={setPlanReminder} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
                 {planReminder && <Text style={{fontSize:8,color:gold,fontWeight:'600'}}>48h alert on</Text>}
               </View>
@@ -242,8 +242,8 @@ export default function HomeScreen() {
 
           {/* Grid Row 1 */}
           <View style={s.gridRow}>
-            <GridCard label="Meal Prep" onPress={() => router.push('/meal-prep' as never)} />
-            <GridCard label="My Fridge" onPress={() => router.push('/my-fridge' as never)} />
+            <GridCard label="Meal Prep" onPress={() => router.push('/meal-prep' as never)} goldBorder />
+            <GridCard label="My Fridge" onPress={() => router.push('/my-fridge' as never)} goldBorder />
           </View>
 
           {/* Grid Row 2 */}
