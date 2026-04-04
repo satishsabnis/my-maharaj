@@ -105,14 +105,21 @@ export default function DietaryProfileScreen() {
   // Load household settings on mount
   useEffect(() => {
     async function loadHousehold() {
-      const [tier, exp, ins, insExp, ref, fast, store, del, cook, bud] = await Promise.all([
-        AsyncStorage.getItem('subscription_tier'), AsyncStorage.getItem('subscription_expires'),
+      // Load subscription from Supabase profiles
+      try {
+        const user = await getSessionUser();
+        if (user) {
+          const { data: prof } = await supabase.from('profiles').select('subscription_tier, subscription_expires_at').eq('id', user.id).maybeSingle();
+          if (prof?.subscription_tier) setSubTier(prof.subscription_tier);
+          if (prof?.subscription_expires_at) setSubExpiry(new Date(prof.subscription_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+        }
+      } catch {}
+      const [ins, insExp, ref, fast, store, del, cook, bud] = await Promise.all([
         AsyncStorage.getItem('household_insurance'), AsyncStorage.getItem('insurance_expiry'),
         AsyncStorage.getItem('referral_consent'), AsyncStorage.getItem('fasting_days'),
         AsyncStorage.getItem('store_prefs'), AsyncStorage.getItem('delivery_prefs'),
         AsyncStorage.getItem('cooking_skill'), AsyncStorage.getItem('budget_pref'),
       ]);
-      if (tier) setSubTier(tier); if (exp) setSubExpiry(exp);
       if (ins === 'true') setHasInsurance(true); if (insExp) setInsuranceExpiry(insExp);
       if (ref === 'true') setReferralConsent(true);
       if (fast) try { setFastingDays(JSON.parse(fast)); } catch {}
