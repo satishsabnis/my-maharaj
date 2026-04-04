@@ -231,6 +231,18 @@ Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}
 
+CRITICAL COOKING RULES:
+- All dishes must be everyday middle-class Indian home cooking that a normal family cooks on a weekday. Simple ingredients, simple methods.
+- Option 1: Simple quick everyday dish.
+- Option 2: Different everyday dish, different primary ingredient from option 1.
+- Option 3: Slightly elevated home cooking — a little special but NOT restaurant style, NOT expensive ingredients.
+- ZERO dish repetition across the entire week. Every dish name must be unique across all days.
+- Naturally mention 1-2 superfoods or health benefits in the dish description.
+- Family health conditions OVERRIDE all other preferences. Apply strictly.
+- Jain members: NO onion, NO garlic, NO root vegetables (potato, carrot, beetroot, radish).
+- Scale all ingredient quantities to exact number of people eating.
+${nutritionGoals ? `NUTRITION GOALS FOR THIS PLAN: ${nutritionGoals}. Every dish must support these goals where possible.` : ''}
+
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"

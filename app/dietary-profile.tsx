@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { navy, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
+import { navy, gold, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +71,7 @@ function memberToForm(m: Member): MemberForm {
   const notes = m.health_notes ?? '';
   const conds = HEALTH_PILLS.filter((p) => notes.toLowerCase().includes(p.toLowerCase()));
   const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
-  return { name: m.name, age: String(m.age || ''), healthConditions: conds, notes: others };
+  return { name: m.name, age: String(m.age || ''), nationality: '', nativeLanguage: '', healthConditions: conds, notes: others };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -86,6 +89,57 @@ export default function DietaryProfileScreen() {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSaving,    setCuisineSaving]    = useState(false);
   const [cuisineSearch,    setCuisineSearch]    = useState('');
+
+  // Household settings
+  const [subTier, setSubTier] = useState('Free');
+  const [subExpiry, setSubExpiry] = useState('—');
+  const [hasInsurance, setHasInsurance] = useState(false);
+  const [insuranceExpiry, setInsuranceExpiry] = useState('');
+  const [referralConsent, setReferralConsent] = useState(false);
+  const [fastingDays, setFastingDays] = useState<string[]>([]);
+  const [storePrefs, setStorePrefs] = useState<string[]>([]);
+  const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
+  const [cookingSkill, setCookingSkill] = useState('');
+  const [budgetPref, setBudgetPref] = useState('');
+
+  // Load household settings on mount
+  useEffect(() => {
+    async function loadHousehold() {
+      const [tier, exp, ins, insExp, ref, fast, store, del, cook, bud] = await Promise.all([
+        AsyncStorage.getItem('subscription_tier'), AsyncStorage.getItem('subscription_expires'),
+        AsyncStorage.getItem('household_insurance'), AsyncStorage.getItem('insurance_expiry'),
+        AsyncStorage.getItem('referral_consent'), AsyncStorage.getItem('fasting_days'),
+        AsyncStorage.getItem('store_prefs'), AsyncStorage.getItem('delivery_prefs'),
+        AsyncStorage.getItem('cooking_skill'), AsyncStorage.getItem('budget_pref'),
+      ]);
+      if (tier) setSubTier(tier); if (exp) setSubExpiry(exp);
+      if (ins === 'true') setHasInsurance(true); if (insExp) setInsuranceExpiry(insExp);
+      if (ref === 'true') setReferralConsent(true);
+      if (fast) try { setFastingDays(JSON.parse(fast)); } catch {}
+      if (store) try { setStorePrefs(JSON.parse(store)); } catch {}
+      if (del) try { setDeliveryPrefs(JSON.parse(del)); } catch {}
+      if (cook) setCookingSkill(cook); if (bud) setBudgetPref(bud);
+    }
+    void loadHousehold();
+  }, []);
+
+  async function saveHousehold() {
+    await Promise.all([
+      AsyncStorage.setItem('household_insurance', hasInsurance ? 'true' : 'false'),
+      AsyncStorage.setItem('insurance_expiry', insuranceExpiry),
+      AsyncStorage.setItem('referral_consent', referralConsent ? 'true' : 'false'),
+      AsyncStorage.setItem('fasting_days', JSON.stringify(fastingDays)),
+      AsyncStorage.setItem('store_prefs', JSON.stringify(storePrefs)),
+      AsyncStorage.setItem('delivery_prefs', JSON.stringify(deliveryPrefs)),
+      AsyncStorage.setItem('cooking_skill', cookingSkill),
+      AsyncStorage.setItem('budget_pref', budgetPref),
+    ]);
+    Alert.alert('Saved', 'Profile saved successfully');
+  }
+
+  function toggleArr(arr: string[], set: React.Dispatch<React.SetStateAction<string[]>>, val: string) {
+    set(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,6 +229,18 @@ export default function DietaryProfileScreen() {
   return (
     <ScreenWrapper title="Family Profile">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* Subscription Card */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderLeftWidth:2,borderLeftColor:gold,borderWidth:1,borderColor:'rgba(27,58,92,0.08)'}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:6}}>
+            <Text style={{fontSize:12,color:textSec}}>Plan</Text>
+            <Text style={{fontSize:12,fontWeight:'700',color:subTier==='Pro'?gold:subTier==='Family'?successGreen:textSec}}>{subTier}</Text>
+          </View>
+          <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+            <Text style={{fontSize:12,color:textSec}}>Valid until</Text>
+            <Text style={{fontSize:12,fontWeight:'600',color:navy}}>{subExpiry}</Text>
+          </View>
+        </View>
 
         {/* Family Members */}
         {loading ? (
@@ -271,6 +337,97 @@ export default function DietaryProfileScreen() {
             <Button title={cuisineSaving ? 'Saving...' : '✓ Save Cuisine Preferences'} onPress={() => void saveCuisines()} loading={cuisineSaving} />
           </View>
         </View>
+
+        {/* Household Settings */}
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Household Settings</Text>
+
+        {/* Insurance */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+            <Text style={{fontSize:11,color:navy}}>Family insurance</Text>
+            <Switch value={hasInsurance} onValueChange={v=>{setHasInsurance(v);}} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+          </View>
+          {hasInsurance && (
+            <View style={{marginTop:8}}>
+              <TextInput style={{borderWidth:1,borderColor:border,borderRadius:8,paddingHorizontal:10,paddingVertical:8,fontSize:12,color:navy}} placeholder="DD/MM/YYYY" placeholderTextColor={textSec} value={insuranceExpiry} onChangeText={setInsuranceExpiry} />
+              <Text style={{fontSize:8,color:textSec,marginTop:4}}>Maharaj will remind you 1 week before expiry</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Referral Consent */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+            <Text style={{fontSize:11,color:navy,flex:1}}>Allow specialist referrals</Text>
+            <Switch value={referralConsent} onValueChange={setReferralConsent} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+          </View>
+          <Text style={{fontSize:8,color:textSec,marginTop:4}}>Maharaj may suggest connecting you with a partner health professional when lab reports show values needing attention. You confirm before anything is shared.</Text>
+        </View>
+
+        {/* Fasting */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Regular fasting days</Text>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+            {['Ekadashi','Monday fast','Navratri','Ramadan','No fasting'].map(f => (
+              <TouchableOpacity key={f} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:fastingDays.includes(f)?navy:'#D1D5DB',backgroundColor:fastingDays.includes(f)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(fastingDays,setFastingDays,f)}>
+                <Text style={{fontSize:11,fontWeight:'500',color:fastingDays.includes(f)?white:navy}}>{f}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Store Prefs */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Preferred supermarkets</Text>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+            {['Lulu','Carrefour','Spinneys','Nesto','Al Adil'].map(st => (
+              <TouchableOpacity key={st} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:storePrefs.includes(st)?navy:'#D1D5DB',backgroundColor:storePrefs.includes(st)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(storePrefs,setStorePrefs,st)}>
+                <Text style={{fontSize:11,fontWeight:'500',color:storePrefs.includes(st)?white:navy}}>{st}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Delivery Prefs */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Preferred delivery apps</Text>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+            {['Talabat','Deliveroo','Noon Food','Careem Food'].map(d => (
+              <TouchableOpacity key={d} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:deliveryPrefs.includes(d)?navy:'#D1D5DB',backgroundColor:deliveryPrefs.includes(d)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(deliveryPrefs,setDeliveryPrefs,d)}>
+                <Text style={{fontSize:11,fontWeight:'500',color:deliveryPrefs.includes(d)?white:navy}}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Cooking Skill */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Cooking style</Text>
+          <View style={{flexDirection:'row',gap:6}}>
+            {['Quick & easy','Moderate','Elaborate'].map(sk => (
+              <TouchableOpacity key={sk} style={{flex:1,paddingVertical:8,borderRadius:14,borderWidth:1.5,borderColor:cookingSkill===sk?navy:'#D1D5DB',backgroundColor:cookingSkill===sk?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setCookingSkill(sk)}>
+                <Text style={{fontSize:10,fontWeight:'600',color:cookingSkill===sk?white:navy}}>{sk}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Budget */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Weekly budget</Text>
+          <View style={{flexDirection:'row',gap:6}}>
+            {['Everyday','Moderate','Occasional indulgence'].map(b => (
+              <TouchableOpacity key={b} style={{flex:1,paddingVertical:8,borderRadius:14,borderWidth:1.5,borderColor:budgetPref===b?navy:'#D1D5DB',backgroundColor:budgetPref===b?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setBudgetPref(b)}>
+                <Text style={{fontSize:10,fontWeight:'600',color:budgetPref===b?white:navy}}>{b}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Save button */}
+        <TouchableOpacity style={{backgroundColor:gold,borderRadius:12,paddingVertical:14,alignItems:'center',marginTop:8,marginBottom:24}} onPress={saveHousehold}>
+          <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Save Profile</Text>
+        </TouchableOpacity>
 
       </ScrollView>
 
