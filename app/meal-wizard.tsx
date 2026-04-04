@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Image, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
@@ -12,8 +13,9 @@ import { navy, gold, peacock, textSec, errorRed, white, border, surface, textCol
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
-  | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'nutrition' | 'cuisine-confirm'
-  | 'generating' | 'generating-error' | 'selection' | 'plan-summary'
+  | 'members' | 'days-meals' | 'nutrition'
+  | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'cuisine-confirm'
+  | 'generating' | 'generating-error' | 'selection' | 'confirmed-menu' | 'plan-summary'
   | 'cook-or-order' | 'recipes' | 'grocery' | 'delivery-apps' | 'feedback';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -65,14 +67,14 @@ const CAT_ORDER: GroceryCat[] = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pa
 
 // ─── Wizard progress ──────────────────────────────────────────────────────────
 
-const USER_STEPS: WizardStep[] = ['period','food-pref','guest-cuisine','meal-prefs','unwell','veg-days','nutrition','cuisine-confirm'];
+const USER_STEPS: WizardStep[] = ['members','days-meals','nutrition'];
 function stepNum(step: WizardStep): number { return USER_STEPS.indexOf(step) + 1; }
 function totalUserSteps(): number { return USER_STEPS.length; }
 
 // ─── Main Wizard ──────────────────────────────────────────────────────────────
 
 export default function MealWizardScreen() {
-  const [step, setStep] = useState<WizardStep>('period');
+  const [step, setStep] = useState<WizardStep>('members');
   const [error, setError] = useState('');
 
   // Step 1
@@ -125,7 +127,7 @@ export default function MealWizardScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Selection
-  const [selections,      setSelections]      = useState<Record<number, Record<MealSlotKey, number>>>({});
+  const [selections,      setSelections]      = useState<Record<number, Partial<Record<MealSlotKey, number>>>>({});
   const [expandedDays,    setExpandedDays]    = useState<Record<number, boolean>>({ 0: true });
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
   const [activeDay,       setActiveDay]       = useState(0);
@@ -151,6 +153,42 @@ export default function MealWizardScreen() {
       loadOrDetectLocation().then(setUserLocation);
     }
     void load();
+  }, []);
+
+  // New wizard states
+  const [checkedMembers, setCheckedMembers] = useState<Record<string, boolean>>({});
+  const [hasGuestsWiz, setHasGuestsWiz] = useState(false);
+  const [guestCountWiz, setGuestCountWiz] = useState('');
+  const [guestCuisineMode, setGuestCuisineMode] = useState<'same'|'different'>('same');
+  const [guestCuisines, setGuestCuisines] = useState<string[]>([]);
+  const [numDaysWiz, setNumDaysWiz] = useState(3);
+  const [selectedMeals, setSelectedMeals] = useState<string[]>(['breakfast','lunch','dinner']);
+  const [weekExtras, setWeekExtras] = useState<string[]>([]);
+  const [selectedCuisinesWiz, setSelectedCuisinesWiz] = useState<string[]>([]);
+  const [nutritionGoalsWiz, setNutritionGoalsWiz] = useState<string[]>([]);
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  const ALL_CUISINES_WIZ = ['Afghan','Andhra','Arabic','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Italian','Jain','Japanese','Kashmiri','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian','Malvani','Mediterranean','Mexican','Moroccan','Nepali','Nigerian','Odia','Omani','Pakistani','Palestinian','Persian','Punjabi','Rajasthani','Singaporean','South African','South Indian','Spanish','Sri Lankan','Syrian','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese','Yemeni'].sort();
+
+  // Load members + cuisines on mount
+  useEffect(() => {
+    async function loadWiz() {
+      const user = await getSessionUser();
+      if (!user) return;
+      const { data } = await supabase.from('family_members').select('id, name, age, health_notes').eq('user_id', user.id);
+      const members = (data ?? []) as DBMember[];
+      setFamilyMembers(members);
+      const checked: Record<string, boolean> = {};
+      members.forEach(m => { checked[m.id] = true; });
+      setCheckedMembers(checked);
+      // Load saved cuisines
+      const { data: cuisineData } = await supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false);
+      const saved = (cuisineData ?? []).map((c: any) => c.cuisine_name);
+      setSelectedCuisinesWiz(saved);
+      setSavedCuisines(saved);
+    }
+    void loadWiz();
+    loadOrDetectLocation().then(setUserLocation);
   }, []);
 
   // ── Pulse animation ──────────────────────────────────────────────────────
@@ -297,7 +335,7 @@ export default function MealWizardScreen() {
         selectedSlots: slotsToUse,
       }, (current, total) => setGeneratingProgress({ current, total }));
 
-      const defaultSel: Record<number, Record<MealSlotKey, number>> = {};
+      const defaultSel: Record<number, Partial<Record<MealSlotKey, number>>> = {};
       plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
       setGeneratedPlan(plan.days);
       setSelections(defaultSel);
@@ -569,6 +607,241 @@ export default function MealWizardScreen() {
     const prev = backMap[step];
     if (prev) setStep(prev);
     else router.back();
+  }
+
+  // ── NEW STEP RENDERS ──────────────────────────────────────────────────────
+
+  function renderMembers() {
+    return (
+      <View>
+        <Text style={s.stepTitle}>Who's eating this week?</Text>
+        <Text style={s.stepSub}>Select family members for the meal plan</Text>
+        {familyMembers.length === 0 ? (
+          <View style={{alignItems:'center',paddingVertical:30}}>
+            <Text style={{fontSize:14,color:textSec,textAlign:'center',marginBottom:16}}>No family members added yet.{'\n'}Please set up your Family Profile first.</Text>
+            <TouchableOpacity style={{backgroundColor:gold,borderRadius:12,paddingVertical:12,paddingHorizontal:24}} onPress={() => router.push('/dietary-profile' as never)}>
+              <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Go to Family Profile</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          familyMembers.map(m => (
+            <TouchableOpacity key={m.id} style={{flexDirection:'row',alignItems:'center',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:12,marginBottom:8,borderWidth:1,borderColor:'rgba(27,58,92,0.08)'}} onPress={() => setCheckedMembers(prev => ({...prev,[m.id]:!prev[m.id]}))} activeOpacity={0.8}>
+              <View style={{width:32,height:32,borderRadius:16,backgroundColor:navy,alignItems:'center',justifyContent:'center',marginRight:10}}>
+                <Text style={{fontSize:13,fontWeight:'800',color:gold}}>{m.name?.[0]?.toUpperCase() ?? '?'}</Text>
+              </View>
+              <View style={{flex:1}}>
+                <Text style={{fontSize:13,fontWeight:'700',color:navy}}>{m.name}</Text>
+                {m.age > 0 && <Text style={{fontSize:10,color:textSec}}>{m.age} yrs</Text>}
+              </View>
+              <View style={{width:22,height:22,borderRadius:6,borderWidth:2,borderColor:checkedMembers[m.id]?navy:'#D1D5DB',backgroundColor:checkedMembers[m.id]?navy:white,alignItems:'center',justifyContent:'center'}}>
+                {checkedMembers[m.id] && <Text style={{fontSize:13,color:white,fontWeight:'800'}}>{'\u2713'}</Text>}
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+        {familyMembers.length > 0 && (
+          <>
+            <Text style={{fontSize:11,fontWeight:'700',color:navy,marginTop:16,marginBottom:8}}>Any guests this week?</Text>
+            <View style={{flexDirection:'row',gap:8,marginBottom:8}}>
+              <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:!hasGuestsWiz?navy:'#D1D5DB',backgroundColor:!hasGuestsWiz?navy:'rgba(255,255,255,0.9)'}} onPress={() => setHasGuestsWiz(false)}>
+                <Text style={{fontSize:13,fontWeight:'600',color:!hasGuestsWiz?white:'#6B7280'}}>Just family</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{paddingHorizontal:16,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:hasGuestsWiz?navy:'#D1D5DB',backgroundColor:hasGuestsWiz?navy:'rgba(255,255,255,0.9)'}} onPress={() => setHasGuestsWiz(true)}>
+                <Text style={{fontSize:13,fontWeight:'600',color:hasGuestsWiz?white:'#6B7280'}}>+ Guests</Text>
+              </TouchableOpacity>
+            </View>
+            {hasGuestsWiz && (
+              <View style={{marginBottom:8}}>
+                <TextInput style={{borderWidth:1.5,borderColor:border,borderRadius:10,paddingHorizontal:14,paddingVertical:10,fontSize:14,color:navy,backgroundColor:'rgba(255,255,255,0.9)',width:140}} keyboardType="numeric" placeholder="Number of guests" placeholderTextColor={textSec} value={guestCountWiz} onChangeText={setGuestCountWiz} />
+                <View style={{flexDirection:'row',gap:8,marginTop:8}}>
+                  <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:guestCuisineMode==='same'?navy:'#D1D5DB',backgroundColor:guestCuisineMode==='same'?navy:'rgba(255,255,255,0.9)'}} onPress={() => setGuestCuisineMode('same')}>
+                    <Text style={{fontSize:12,fontWeight:'600',color:guestCuisineMode==='same'?white:'#6B7280'}}>Same cuisine as family</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:guestCuisineMode==='different'?navy:'#D1D5DB',backgroundColor:guestCuisineMode==='different'?navy:'rgba(255,255,255,0.9)'}} onPress={() => setGuestCuisineMode('different')}>
+                    <Text style={{fontSize:12,fontWeight:'600',color:guestCuisineMode==='different'?white:'#6B7280'}}>Different cuisine</Text>
+                  </TouchableOpacity>
+                </View>
+                {guestCuisineMode === 'different' && (
+                  <View style={{marginTop:8}}>
+                    <Text style={{fontSize:10,color:textSec,marginBottom:6}}>Guest cuisine preference</Text>
+                    <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+                      {['North Indian','South Indian','Punjabi','Bengali','Gujarati','Continental','Chinese','Arabic'].map(c => (
+                        <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:guestCuisines.includes(c)?gold:'#D1D5DB',backgroundColor:guestCuisines.includes(c)?gold:'rgba(255,255,255,0.9)'}} onPress={() => setGuestCuisines(prev => prev.includes(c) ? prev.filter(x=>x!==c) : [...prev,c])}>
+                          <Text style={{fontSize:11,fontWeight:'600',color:guestCuisines.includes(c)?'#1B2A0C':navy}}>{c}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+          </>
+        )}
+        <View style={{flexDirection:'row',gap:10,marginTop:20}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={() => setStep('days-meals')}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  function renderDaysMeals() {
+    const today = new Date();
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const todayDow = (today.getDay() + 6) % 7; // 0=Mon
+    return (
+      <View>
+        <Text style={s.stepTitle}>Plan your week</Text>
+        <Text style={[s.sectionLabel,{marginTop:8}]}>HOW MANY DAYS?</Text>
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:16,marginBottom:12}}>
+          <TouchableOpacity style={{width:32,height:32,borderRadius:16,borderWidth:2,borderColor:navy,alignItems:'center',justifyContent:'center'}} onPress={() => setNumDaysWiz(Math.max(1,numDaysWiz-1))} disabled={numDaysWiz<=1}>
+            <Text style={{fontSize:18,color:navy,fontWeight:'700'}}>-</Text>
+          </TouchableOpacity>
+          <Text style={{fontSize:14,color:navy,minWidth:60,textAlign:'center'}}>{numDaysWiz} day{numDaysWiz>1?'s':''}</Text>
+          <TouchableOpacity style={{width:32,height:32,borderRadius:16,backgroundColor:navy,alignItems:'center',justifyContent:'center'}} onPress={() => setNumDaysWiz(Math.min(7,numDaysWiz+1))} disabled={numDaysWiz>=7}>
+            <Text style={{fontSize:18,color:gold,fontWeight:'700'}}>+</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{flexDirection:'row',gap:4,marginBottom:16}}>
+          {dayNames.map((d,i) => {
+            const active = i >= todayDow && i < todayDow + numDaysWiz;
+            return (
+              <View key={d} style={{flex:1,height:32,borderRadius:8,backgroundColor:active?navy:'#E5E7EB',alignItems:'center',justifyContent:'center'}}>
+                <Text style={{fontSize:10,fontWeight:'700',color:active?white:'#9CA3AF'}}>{d}</Text>
+              </View>
+            );
+          })}
+        </View>
+        <Text style={s.sectionLabel}>WHICH MEALS?</Text>
+        <View style={{flexDirection:'row',gap:6,marginBottom:16}}>
+          {[{k:'breakfast',l:'Breakfast'},{k:'lunch',l:'Lunch'},{k:'snack',l:'Snack'},{k:'dinner',l:'Dinner'}].map(({k,l}) => (
+            <TouchableOpacity key={k} style={{flex:1,paddingVertical:9,borderRadius:16,borderWidth:1.5,borderColor:selectedMeals.includes(k)?navy:'#D1D5DB',backgroundColor:selectedMeals.includes(k)?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setSelectedMeals(prev => prev.includes(k)?prev.filter(x=>x!==k):[...prev,k])}>
+              <Text style={{fontSize:11,fontWeight:'600',color:selectedMeals.includes(k)?white:navy}}>{l}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={s.sectionLabel}>ANYTHING DIFFERENT THIS WEEK?</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
+          {['Veg days','Someone unwell','Festival'].map(e => (
+            <TouchableOpacity key={e} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:weekExtras.includes(e)?navy:'#D1D5DB',backgroundColor:weekExtras.includes(e)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setWeekExtras(prev => prev.includes(e)?prev.filter(x=>x!==e):[...prev,e])}>
+              <Text style={{fontSize:12,fontWeight:'600',color:weekExtras.includes(e)?white:navy}}>{e}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={s.sectionLabel}>CUISINE</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
+          {ALL_CUISINES_WIZ.map(c => (
+            <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:selectedCuisinesWiz.includes(c)?navy:'#D4EDE5',backgroundColor:selectedCuisinesWiz.includes(c)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setSelectedCuisinesWiz(prev => prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}>
+              <Text style={{fontSize:11,fontWeight:'500',color:selectedCuisinesWiz.includes(c)?white:navy}}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={{flexDirection:'row',gap:8,marginTop:8}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('members')}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{paddingVertical:14,paddingHorizontal:20,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={() => setStep('nutrition')}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  function renderNutritionNew() {
+    const groups: {label:string;items:string[]}[] = [
+      {label:'WEIGHT & BODY',items:['Weight loss','Weight gain','Muscle gain','Maintain weight']},
+      {label:'CARBS & ENERGY',items:['Keto','Low carb','High carb','Low GI']},
+      {label:'PROTEIN & FAT',items:['High protein','Low fat','Healthy fats']},
+      {label:'FIBRE & GUT',items:['High fibre','Low fibre','Gut friendly']},
+      {label:'HEALTH CONDITIONS',items:['Diabetic-friendly','Heart healthy','Low sodium','PCOS support','Anti-inflammatory','Thyroid support']},
+      {label:'VITAMINS & MINERALS',items:['Iron-rich','Calcium','Vitamin D','B12','Omega-3','Zinc']},
+      {label:'NO SPECIFIC GOAL',items:['Everyday balanced']},
+    ];
+    function toggleGoal(g: string) {
+      if (g === 'Everyday balanced') { setNutritionGoalsWiz(['Everyday balanced']); return; }
+      setNutritionGoalsWiz(prev => {
+        const next = prev.filter(x => x !== 'Everyday balanced');
+        return next.includes(g) ? next.filter(x => x !== g) : [...next, g];
+      });
+    }
+    // Wire up generation: compute dates and set from/to, then start
+    function startGeneration() {
+      const today = startOfDay(new Date());
+      const from = today;
+      const to = addDays(today, numDaysWiz - 1);
+      setSelectedFrom(from); setSelectedTo(to);
+      setSelectedSlots(selectedMeals);
+      if (!foodPref) setFoodPref('veg');
+      setStep('generating');
+    }
+    return (
+      <View>
+        <Text style={s.stepTitle}>Nutrition & diet goals</Text>
+        <Text style={s.stepSub}>Select all that apply. Maharaj will tailor every dish accordingly.</Text>
+        {groups.map(g => (
+          <View key={g.label} style={{marginBottom:12}}>
+            <Text style={{fontSize:9,fontWeight:'700',color:textSec,letterSpacing:1,marginBottom:6}}>{g.label}</Text>
+            <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+              {g.items.map(item => {
+                const active = nutritionGoalsWiz.includes(item);
+                return (
+                  <TouchableOpacity key={item} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:active?navy:'#D1D5DB',backgroundColor:active?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleGoal(item)}>
+                    <Text style={{fontSize:11,fontWeight:'600',color:active?white:navy}}>{item}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+        <View style={{flexDirection:'row',gap:8,marginTop:12}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('days-meals')}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{paddingVertical:14,paddingHorizontal:20,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={startGeneration}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Generate</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  function renderCookOrOrderNew() {
+    return (
+      <View style={{alignItems:'center',paddingVertical:30}}>
+        <Text style={s.stepTitle}>What next?</Text>
+        <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:24}}>
+          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { Alert.alert('Meal Prep', "We'd love for you to visit Meal Prep to plan your cooking session.", [{text:'Visit Meal Prep',onPress:()=>router.push('/meal-prep' as never)},{text:'Skip'}]); }}>
+            <Text style={{fontSize:32,marginBottom:8}}>{'\uD83C\uDFE0'}</Text>
+            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Cook at Home</Text>
+            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Order groceries from your preferred store</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => router.push('/order-out' as never)}>
+            <Text style={{fontSize:32,marginBottom:8}}>{'\uD83D\uDEF5'}</Text>
+            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Order Out</Text>
+            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Order from a restaurant tonight</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{flexDirection:'row',gap:10,width:'100%'}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={goBack}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   // ── Pill helper ───────────────────────────────────────────────────────────
@@ -1660,19 +1933,22 @@ export default function MealWizardScreen() {
   }
 
   const STEP_RENDER: Record<WizardStep, () => React.ReactNode> = {
+    'members':          renderMembers,
+    'days-meals':       renderDaysMeals,
+    'nutrition':        renderNutritionNew,
     'period':           renderPeriod,
     'food-pref':        renderFoodPref,
     'meal-prefs':       renderMealPrefs,
     'unwell':           renderUnwell,
-    'nutrition':        renderNutrition,
     'cuisine-confirm':  renderCuisineConfirm,
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
+    'confirmed-menu':   () => null,
     'plan-summary':     renderPlanSummary,
     'guest-cuisine':    renderGuestCuisine,
     'veg-days':         renderVegDays,
-    'cook-or-order':    renderCookOrOrder,
+    'cook-or-order':    renderCookOrOrderNew,
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
     'delivery-apps':    renderDeliveryApps,
@@ -1684,6 +1960,7 @@ export default function MealWizardScreen() {
   const isFullScreen = ['generating','generating-error'].includes(step);
 
   return (
+    <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">
     <SafeAreaView style={s.safe}>
       {/* Header */}
       {!isFullScreen && (
@@ -1712,6 +1989,7 @@ export default function MealWizardScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
