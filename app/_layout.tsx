@@ -3,6 +3,7 @@ import { Platform, View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { requestNotificationPermissions } from '../lib/notifications';
 import Logo from '../components/Logo';
 import { white } from '../theme/colors';
 import { LanguageProvider } from '../lib/LanguageProvider';
@@ -32,6 +33,7 @@ export default function Layout() {
   useBrowserBackGuard();
 
   useEffect(() => {
+    requestNotificationPermissions();
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
