@@ -93,6 +93,7 @@ export default function DietaryProfileScreen() {
   // Household settings
   const [subTier, setSubTier] = useState('Free');
   const [subExpiry, setSubExpiry] = useState('—');
+  const [isFirstSetup, setIsFirstSetup] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(false);
   const [insuranceExpiry, setInsuranceExpiry] = useState('');
   const [referralConsent, setReferralConsent] = useState(false);
@@ -147,6 +148,9 @@ export default function DietaryProfileScreen() {
       if (nl !== null) setNotifLabReports(nl !== 'false');
       if (ni !== null) setNotifInsurance(ni !== 'false');
       if (phone) setPhoneNumber(phone);
+      // Check first setup
+      const profileDone = await AsyncStorage.getItem('profile_setup_complete');
+      if (!profileDone) setIsFirstSetup(true);
       // Load user info
       const user = await getSessionUser();
       if (user) {
@@ -174,7 +178,13 @@ export default function DietaryProfileScreen() {
       AsyncStorage.setItem('notif_insurance_reminders', String(notifInsurance)),
       AsyncStorage.setItem('phone_number', phoneNumber),
     ]);
-    Alert.alert('Saved', 'Profile saved successfully');
+    await AsyncStorage.setItem('profile_setup_complete', 'true');
+    if (isFirstSetup) {
+      setIsFirstSetup(false);
+      router.replace('/home');
+    } else {
+      Alert.alert('Saved', 'Profile saved successfully.');
+    }
   }
 
   function toggleArr(arr: string[], set: React.Dispatch<React.SetStateAction<string[]>>, val: string) {
@@ -269,6 +279,14 @@ export default function DietaryProfileScreen() {
   return (
     <ScreenWrapper title="Family Profile Settings">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* Welcome banner for first setup */}
+        {isFirstSetup && (
+          <View style={{backgroundColor:'#FFF8E7',borderRadius:10,padding:14,marginBottom:14,borderWidth:1,borderColor:'rgba(201,162,39,0.3)'}}>
+            <Text style={{fontSize:12,fontWeight:'700',color:'#854F0B',marginBottom:4}}>Welcome to My Maharaj Beta</Text>
+            <Text style={{fontSize:10,color:'#854F0B',lineHeight:16}}>Set up your family profile so Maharaj can personalise your meal plans. Add family members, health conditions and cuisine preferences below.</Text>
+          </View>
+        )}
 
         {/* Subscription Card */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderLeftWidth:2,borderLeftColor:gold,borderWidth:1,borderColor:'rgba(27,58,92,0.08)'}}>
