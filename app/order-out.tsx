@@ -1,52 +1,90 @@
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, white, textSec } from '../theme/colors';
 
-const APPS = ['Amazon','Careem','Fresh to Home','Noon'];
+const DELIVERY_APPS = [
+  { name: 'Talabat',    emoji: '\uD83D\uDFE0' },
+  { name: 'Deliveroo',  emoji: '\uD83D\uDD35' },
+  { name: 'Noon Food',  emoji: '\uD83D\uDD34' },
+  { name: 'Careem Food', emoji: '\uD83D\uDFE2' },
+];
+
+function buildDietaryNotes(members: any[]): string {
+  const notes: string[] = [];
+  const hasJain = members.some((m: any) => (m.health_notes ?? '').toLowerCase().includes('jain'));
+  const hasDiabetic = members.some((m: any) => (m.health_notes ?? '').toLowerCase().includes('diabet'));
+  const hasLowSodium = members.some((m: any) => { const h = (m.health_notes ?? '').toLowerCase(); return h.includes('sodium') || h.includes('hypertension') || h.includes('blood pressure'); });
+  const hasVeg = members.some((m: any) => (m.health_notes ?? '').toLowerCase().includes('vegetarian'));
+  if (hasJain) notes.push('Jain food — no onion, no garlic, no root vegetables');
+  if (hasDiabetic) notes.push('Diabetic-friendly — low sugar, no refined carbs');
+  if (hasLowSodium) notes.push('Low sodium for one family member');
+  if (hasVeg) notes.push('Vegetarian preferred');
+  return notes.length > 0 ? notes.join('. ') + '.' : 'No specific dietary restrictions.';
+}
 
 export default function OrderOutScreen() {
-  const rows: string[][] = [];
-  for (let i = 0; i < APPS.length; i += 2) rows.push(APPS.slice(i, i + 2));
+  const [members, setMembers] = useState<any[]>([]);
+  const [dietaryNotes, setDietaryNotes] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const raw = await AsyncStorage.getItem('family_members');
+        const mems = raw ? JSON.parse(raw) : [];
+        setMembers(mems);
+        setDietaryNotes(buildDietaryNotes(mems));
+      } catch {
+        setDietaryNotes('No specific dietary restrictions.');
+      }
+    }
+    void load();
+  }, []);
 
   return (
     <ScreenWrapper title="Order Out" onBack={() => router.back()}>
       <ScrollView contentContainerStyle={{padding:16,paddingBottom:40}} showsVerticalScrollIndicator={false}>
 
+        {/* Coming Soon Banner */}
+        <View style={{backgroundColor:'#FFF0F0',borderRadius:8,padding:10,marginBottom:12,borderWidth:0.5,borderColor:'rgba(153,27,27,0.19)'}}>
+          <Text style={{fontSize:10,fontWeight:'500',color:'#991B1B',textAlign:'center'}}>Maharaj is learning and will connect you soon</Text>
+          <Text style={{fontSize:9,color:'rgba(153,27,27,0.5)',textAlign:'center',marginTop:3}}>Maharaj will soon suggest restaurants matching your family's dietary needs and cuisine preferences.</Text>
+        </View>
+
         <Text style={{fontSize:20,fontWeight:'800',color:navy,marginBottom:12}}>Where would you like to order from?</Text>
 
-        {/* Banner 1: Integration */}
-        <View style={{flexDirection:'row',gap:8,alignItems:'flex-start',backgroundColor:'rgba(201,162,39,0.12)',borderRadius:12,padding:14,marginBottom:12,borderWidth:1,borderColor:'rgba(201,162,39,0.3)',width:'100%'}}>
-          <Text style={{fontSize:14}}>🔗</Text>
-          <Text style={{flex:1,fontSize:12,color:'#78350F',lineHeight:18}}>Direct ordering integration coming soon — we are working with these platforms to enable one-tap ordering from your meal plan</Text>
-        </View>
-
-        {/* Banner 2: Smart shopping */}
-        <View style={{backgroundColor:navy,borderRadius:12,padding:14,marginBottom:16,width:'100%'}}>
-          <Text style={{fontSize:12,fontWeight:'600',color:white,lineHeight:18}}>Coming soon. Maharaj is learning the art of smart shopping. Soon, he will compare prices across prominent stores in your area — finding you the best deals, seasonal offers and bulk savings before you step into the store.</Text>
-        </View>
-
-        {/* 2-column pill grid */}
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:10,width:'100%'}}>
-          {APPS.map(name => (
-            <View key={name} style={{flexGrow:1,flexBasis:'45%',minWidth:0,backgroundColor:'rgba(27,58,92,0.06)',borderWidth:1,borderColor:'rgba(27,58,92,0.2)',borderRadius:20,paddingHorizontal:16,paddingVertical:10,alignItems:'center'}}>
-              <Text style={{fontSize:13,fontWeight:'600',color:navy}}>{name}</Text>
-            </View>
+        {/* 2x2 Delivery App Grid */}
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:16}}>
+          {DELIVERY_APPS.map(app => (
+            <TouchableOpacity key={app.name} style={{flexGrow:1,flexBasis:'45%',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',padding:12,alignItems:'center',opacity:0.65}} onPress={() => Alert.alert('Coming Soon', 'Maharaj is learning and will connect you soon')}>
+              <Text style={{fontSize:28,marginBottom:4}}>{app.emoji}</Text>
+              <Text style={{fontSize:9,fontWeight:'700',color:navy}}>{app.name}</Text>
+              <Text style={{fontSize:8,color:'#9CA3AF',marginTop:2}}>Coming soon</Text>
+            </TouchableOpacity>
           ))}
         </View>
 
+        {/* Dietary Notes Card */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,padding:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',marginBottom:16}}>
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Show this to the restaurant:</Text>
+          <Text style={{fontSize:10,color:'#374151',lineHeight:16}}>{dietaryNotes}</Text>
+          <Text style={{fontSize:8,color:'#9CA3AF',marginTop:4}}>Copy and paste this when ordering</Text>
+        </View>
+
         {/* Disclaimer */}
-        <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',paddingVertical:12,lineHeight:14,width:'100%'}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
+        <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',paddingVertical:12,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
 
-        {/* Buttons - stacked vertically */}
-        <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center',marginBottom:10}} onPress={() => router.back()}>
-          <Text style={{fontSize:15,fontWeight:'700',color:navy}}>Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={{width:'100%',backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
-          <Text style={{fontSize:15,fontWeight:'700',color:white}}>Back to Home</Text>
-        </TouchableOpacity>
-
+        {/* Buttons */}
+        <View style={{flexDirection:'row',gap:10}}>
+          <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={() => router.back()}>
+            <Text style={{fontSize:15,fontWeight:'700',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:15,fontWeight:'700',color:white}}>Home</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </ScreenWrapper>
   );

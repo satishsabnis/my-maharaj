@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image, ImageBackground, KeyboardAvoidingView, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border, errorRed, mint } from '../theme/colors';
 
@@ -53,6 +54,29 @@ export default function AskMaharajScreen() {
   const [isSpeaking,  setIsSpeaking]  = useState(false);
   const [isPaused,    setIsPaused]    = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const [familyCount, setFamilyCount] = useState(0);
+  const [hasPlan, setHasPlan] = useState(false);
+  const [familyContextStr, setFamilyContextStr] = useState('');
+
+  useEffect(() => {
+    async function loadFamilyContext() {
+      try {
+        const user = await getSessionUser();
+        if (!user) return;
+        const { data: members } = await supabase.from('family_members').select('name, age, health_notes').eq('user_id', user.id);
+        const mems = members ?? [];
+        setFamilyCount(mems.length);
+        const storePref = await AsyncStorage.getItem('store_prefs');
+        const cookSkill = await AsyncStorage.getItem('cooking_skill');
+        const fastDays = await AsyncStorage.getItem('fasting_days');
+        const memberSummary = mems.map((m: any) => `${m.name} (${m.age || 'adult'}): health: ${m.health_notes || 'none'}`).join('\n');
+        setFamilyContextStr(memberSummary ? `\nFAMILY PROFILE CONTEXT:\n${memberSummary}\nPreferred stores: ${storePref || 'any'}\nCooking skill: ${cookSkill || 'moderate'}\nFasting days: ${fastDays || 'none'}\nAlways consider this family context when answering questions about food, recipes, nutrition and meal planning.\n` : '');
+        const plan = await AsyncStorage.getItem('maharaj_plan_ready');
+        if (plan) setHasPlan(true);
+      } catch {}
+    }
+    void loadFamilyContext();
+  }, []);
 
   // ── Load dietary profile for context ───────────────────────────────────────
 
@@ -112,9 +136,8 @@ export default function AskMaharajScreen() {
       const profileCtx = await getProfileContext();
       const isMealRequest = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
 
-      const systemPrompt = `CRITICAL RULE 1: You MUST respond in the EXACT same language the user writes in. If English respond in English only. If Hindi respond in Hindi only. Never switch languages.
-
-You are Maharaj, a wise and authoritative Indian culinary AI mentor for the My Maharaj app. You are deeply knowledgeable about Indian regional cuisines, Ayurvedic nutrition, and the cultural history of food.
+      const systemPrompt = `${familyContextStr}
+You are Maharaj, a culturally intelligent Indian family meal planning assistant. Answer questions about food, recipes, nutrition, ingredients and meal planning. Be warm, practical and specific to this family's needs. Always respond in the same language the user writes in.
 
 ${profileCtx ? `HOUSEHOLD PROFILE:\n${profileCtx}\n` : ''}
 
@@ -369,6 +392,7 @@ Always respond in the same language the user writes in. If they write in Marathi
               <Text style={s.sendTxt}>↑</Text>
             </TouchableOpacity>
           </View>
+          <Text style={{fontSize:9,color:'#9CA3AF',textAlign:'center',paddingVertical:3}}>{familyCount > 0 ? `Maharaj knows your ${familyCount} family members` : 'Add family members in Family Profile for personalised answers'}{hasPlan ? ' · Active plan loaded' : ''}</Text>
         </KeyboardAvoidingView>
 
       </SafeAreaView>

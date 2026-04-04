@@ -9,7 +9,20 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navy, gold, white, textSec, border, errorRed, successGreen } from '../theme/colors';
+
+// ─── Sync utility — called from meal-wizard when shopping list is confirmed ──
+
+export const syncFridgeWithShoppingList = async (shoppingList: { title: string; items: string[] }[]) => {
+  try {
+    const existing = JSON.parse(await AsyncStorage.getItem('fridge_inventory') || '[]');
+    const allShoppingItems = shoppingList.flatMap(cat => cat.items);
+    const updated = existing.filter((fi: any) => !allShoppingItems.some((si: string) => si.toLowerCase().includes(fi.name?.toLowerCase()?.split(' ')[0])));
+    await AsyncStorage.setItem('fridge_inventory', JSON.stringify(updated));
+    await AsyncStorage.setItem('last_plan_sync', new Date().toISOString());
+  } catch {}
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
