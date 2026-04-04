@@ -208,7 +208,6 @@ export default function MealWizardScreen() {
   // ── Generation ────────────────────────────────────────────────────────────
 
   const runGeneration = useCallback(async () => {
-    console.log('[MealWizard] Generation started. selectedFrom:', selectedFrom, 'selectedTo:', selectedTo, 'selectedSlots:', selectedSlots);
     if (!selectedFrom || !selectedTo) return;
     if (!foodPref) {
       setError('Please select a food preference before generating.');
@@ -285,12 +284,10 @@ export default function MealWizardScreen() {
       const familyCount = members?.length ?? 1;
       const presentCount = presentMembers.length > 0 ? presentMembers.length : familyCount;
       const totalServings = Number(presentCount) + Number(guestCount);
-      console.log('[MealWizard] totalServings:', totalServings, typeof totalServings);
       setServingsCount(totalServings);
 
       // Ensure slots is never empty - default to breakfast/lunch/dinner
       const slotsToUse = selectedSlots.length > 0 ? selectedSlots : ['breakfast', 'lunch', 'dinner'];
-      console.log('[MealWizard] slotsToUse:', slotsToUse);
 
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
@@ -415,7 +412,6 @@ export default function MealWizardScreen() {
         });
       });
     });
-    console.log(`[buildGrocery] ${totalIngs} ingredients found across ${slotsToUse.join(',')} slots, ${Object.keys(itemMap).length} unique items`);
     const grouped = {} as Record<GroceryCat, { name: string; qty?: number; unit?: string }[]>;
     Object.values(itemMap).forEach(({ baseName, qty, unit, cat }) => {
       if (!grouped[cat]) grouped[cat] = [];
@@ -472,14 +468,10 @@ export default function MealWizardScreen() {
         dinner:    getOpt(i, 'dinner'),
       })) },
     };
-    console.log('[saveHistory] Saving menu_history:', JSON.stringify(menuPayload).substring(0, 500));
-    console.log('[saveHistory] Saving dish_history rows:', dishRows.length);
     const [menuRes, dishRes] = await Promise.all([
       supabase.from('menu_history').insert(menuPayload),
       dishRows.length > 0 ? supabase.from('dish_history').insert(dishRows) : Promise.resolve({ error: null }),
     ]);
-    console.log('[saveHistory] menu_history result:', menuRes.error ? `ERROR: ${menuRes.error.message}` : 'SUCCESS');
-    console.log('[saveHistory] dish_history result:', dishRes.error ? `ERROR: ${dishRes.error.message}` : 'SUCCESS');
     // Deduct ingredients from fridge
     await deductFromFridge();
   }

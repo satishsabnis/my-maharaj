@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { navy, white, textSec } from '../theme/colors';
 
@@ -32,12 +32,14 @@ export default function OrderOutScreen() {
   useEffect(() => {
     async function load() {
       try {
-        const raw = await AsyncStorage.getItem('family_members');
-        const mems = raw ? JSON.parse(raw) : [];
+        const user = await getSessionUser();
+        if (!user) { setDietaryNotes('No dietary restrictions on file.'); return; }
+        const { data } = await supabase.from('family_members').select('name, age, health_notes').eq('user_id', user.id);
+        const mems = data ?? [];
         setMembers(mems);
-        setDietaryNotes(buildDietaryNotes(mems));
+        setDietaryNotes(mems.length > 0 ? buildDietaryNotes(mems) : 'No dietary restrictions on file.');
       } catch {
-        setDietaryNotes('No specific dietary restrictions.');
+        setDietaryNotes('No dietary restrictions on file.');
       }
     }
     void load();
