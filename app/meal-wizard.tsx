@@ -1450,28 +1450,48 @@ export default function MealWizardScreen() {
               <View key={`${dayIdx}-${slot}`} style={s.recipeCard}>
                 <Text style={s.recipeCardName}>{opt.name}</Text>
                 {opt.tags.length > 0 && <Text style={s.recipeCardTags}>{opt.tags.join(' · ')}</Text>}
-                <Text style={s.recipeSection}>Ingredients</Text>
-                {opt.ingredients.map((ing, i) => <Text key={i} style={s.recipeItem}>• {ing}</Text>)}
+                <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:6}}>Ingredients</Text>
+                <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',paddingHorizontal:10,paddingVertical:4}}>
+                  {opt.ingredients.map((ing: any, i: number) => {
+                    const isStr = typeof ing === 'string';
+                    const name = isStr ? ing : (ing.item || ing.name || '');
+                    const qty = isStr ? '' : `${ing.qty || ''} ${ing.unit || ''}`.trim();
+                    return (
+                      <View key={i} style={{flexDirection:'row',paddingVertical:4,borderBottomWidth:i<opt.ingredients.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.08)'}}>
+                        <View style={{width:6,height:6,borderRadius:3,backgroundColor:navy,marginRight:8,marginTop:5}} />
+                        <Text style={{flex:1,fontSize:11,color:'#1B3A5C'}}>{name}</Text>
+                        {qty ? <Text style={{fontSize:11,color:'#6B7280'}}>{qty}</Text> : null}
+                      </View>
+                    );
+                  })}
+                </View>
                 {opt.steps.length > 0 && (
                   <>
-                    <Text style={s.recipeSection}>Method</Text>
-                    {opt.steps.map((st, i) => <Text key={i} style={s.recipeItem}>{i + 1}. {st}</Text>)}
+                    <Text style={{fontSize:11,fontWeight:'700',color:navy,marginTop:10,marginBottom:6}}>Method</Text>
+                    {opt.steps.map((st: any, i: number) => <Text key={i} style={s.recipeItem}>{i + 1}. {typeof st === 'string' ? st : st}</Text>)}
                   </>
+                )}
+                {opt.description && /diabetic|protein|iron|calcium|vitamin|omega|fibre|gut|anti-inflammatory/i.test(opt.description) && (
+                  <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:8,marginTop:10}}>
+                    <Text style={{fontSize:8,fontWeight:'700',color:'#854F0B',marginBottom:3}}>Maharaj's health note</Text>
+                    <Text style={{fontSize:8,color:'#854F0B',lineHeight:12}}>{opt.description}</Text>
+                  </View>
                 )}
               </View>
             );
           })
         )}
 
-        <View style={s.btnRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button title={recipeDishes.length > 0 ? 'Save & Continue →' : 'Skip Recipes →'} onPress={() => {
-              setFeedbacks(buildFeedbackEntries()); advance('grocery');
-            }} />
-          </View>
+        <View style={{flexDirection:'row',gap:8,marginTop:16}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('plan-summary')}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{paddingVertical:14,paddingHorizontal:20,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={() => { setFeedbacks(buildFeedbackEntries()); advance('grocery'); }}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Shopping List</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1484,50 +1504,27 @@ export default function MealWizardScreen() {
     return (
       <View>
         <Text style={s.stepTitle}>Your Shopping List</Text>
-        <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo
-          ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`
-          : 'your plan'}
-        </Text>
+        <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : 'your plan'}</Text>
 
-        <View style={s.groceryActions}>
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => void copyGrocery()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>Copy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => void shareWhatsApp()} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>WhatsApp</Text>
-          </TouchableOpacity>
-          {Platform.OS === 'web' && (
-            <TouchableOpacity style={s.groceryActionBtn} onPress={() => void downloadGrocery()} activeOpacity={0.8}>
-              <Text style={s.groceryActionText}>Print / PDF</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={s.groceryActionBtn} onPress={() => setStep('recipes')} activeOpacity={0.8}>
-            <Text style={s.groceryActionText}>View Recipes</Text>
-          </TouchableOpacity>
+        {/* Fridge tip */}
+        <View style={{backgroundColor:'#E8F4F8',borderRadius:8,padding:8,marginBottom:12,flexDirection:'row',gap:6,alignItems:'flex-start'}}>
+          <Text style={{fontSize:12}}>{'\u2139\uFE0F'}</Text>
+          <Text style={{fontSize:9,color:'#0C447C',flex:1,lineHeight:14}}>Items already in your fridge are marked below. Your fridge inventory will update when you confirm this plan.</Text>
         </View>
 
         {totalItems === 0 ? (
-          <View style={s.emptyBox}>
-            <Text style={s.emptyText}>No ingredients found. Please select meals first.</Text>
-          </View>
+          <View style={s.emptyBox}><Text style={s.emptyText}>No ingredients found. Please select meals first.</Text></View>
         ) : (
           CAT_ORDER.map((cat) => {
             const items = grocery[cat];
             if (!items?.length) return null;
             return (
-              <View key={cat} style={s.groceryCat}>
-                <Text style={s.groceryCatTitle}>{cat}</Text>
-                <View style={s.groceryCatDivider} />
-                <View style={{flexDirection:'row',paddingVertical:4,paddingHorizontal:4,borderBottomWidth:1,borderBottomColor:'#E5E7EB'}}>
-                  <Text style={{width:30,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>#</Text>
-                  <Text style={{flex:1,fontSize:11,fontWeight:'700',color:'#9CA3AF'}}>ITEM</Text>
-                  <Text style={{width:80,fontSize:11,fontWeight:'700',color:'#9CA3AF',textAlign:'right'}}>QTY</Text>
-                </View>
+              <View key={cat} style={{marginBottom:14}}>
+                <Text style={{fontSize:11,fontWeight:'700',color:gold,letterSpacing:0.5,paddingBottom:4,marginBottom:6,borderBottomWidth:1.5,borderBottomColor:gold}}>{cat}</Text>
                 {items.map((item, i) => (
-                  <View key={i} style={{flexDirection:'row',paddingVertical:8,paddingHorizontal:4,borderBottomWidth:i<items.length-1?1:0,borderBottomColor:'#F3F4F6',alignItems:'center'}}>
-                    <Text style={{width:30,fontSize:13,color:'#9CA3AF'}}>{i+1}.</Text>
-                    <Text style={{flex:1,fontSize:14,color:'#1B3A5C',fontWeight:'500'}}>{item.name}</Text>
-                    <Text style={{width:80,fontSize:13,color:'#1A6B5C',fontWeight:'600',textAlign:'right'}}>{item.qty ? `${item.qty}${item.unit||''}` : '—'}</Text>
+                  <View key={i} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5,borderBottomWidth:i<items.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.08)'}}>
+                    <Text style={{fontSize:11,color:'#1B3A5C',flex:1}}>{item.name}</Text>
+                    <Text style={{fontSize:11,color:'#6B7280'}}>{item.qty ? `${item.qty}${item.unit||''}` : ''}</Text>
                   </View>
                 ))}
               </View>
@@ -1535,13 +1532,21 @@ export default function MealWizardScreen() {
           })
         )}
 
-        <View style={s.btnRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button title="Back" onPress={goBack} variant="outline" />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button title="Continue →" onPress={() => advance('delivery-apps')} />
-          </View>
+        {/* Download PDF */}
+        <TouchableOpacity style={{backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center',marginTop:8,marginBottom:8}} onPress={() => void downloadGrocery()}>
+          <Text style={{fontSize:13,fontWeight:'700',color:white}}>Download Shopping List</Text>
+        </TouchableOpacity>
+
+        <View style={{flexDirection:'row',gap:8,marginTop:4}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('recipes')}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{paddingVertical:14,paddingHorizontal:20,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={() => advance('cook-or-order')}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Next</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1813,19 +1818,29 @@ export default function MealWizardScreen() {
         {/* Watermark */}
         <Text style={{textAlign:'center',fontSize:10,color:'#D1D5DB',marginTop:12,fontStyle:'italic'}}>Generated by My Maharaj</Text>
 
+        {/* Download PDF */}
+        <TouchableOpacity style={{borderWidth:1.5,borderColor:gold,borderRadius:12,paddingVertical:12,alignItems:'center',marginTop:12}} onPress={() => void downloadGrocery()}>
+          <Text style={{fontSize:10,fontWeight:'700',color:gold}}>Download Meal Plan PDF</Text>
+        </TouchableOpacity>
+
         {/* Action buttons */}
-        <View style={{flexDirection:'row',gap:8,marginTop:20}}>
-          <TouchableOpacity
-            style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}}
-            onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}
-          >
+        <View style={{flexDirection:'row',gap:8,marginTop:12}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}>
             <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}}
-            onPress={() => advance('cook-or-order')}
-          >
-            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Done — Continue</Text>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={async () => {
+            // Auto-save to menu history
+            if (generatedPlan) {
+              try {
+                const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
+                const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange: `${selectedFrom?.toLocaleDateString('en-GB')} — ${selectedTo?.toLocaleDateString('en-GB')}`, members: servingsCount, plan: generatedPlan.map((day, idx) => ({ date: day.date, breakfast: day.breakfast?.options[selections[idx]?.breakfast ?? 0]?.name, lunch: day.lunch?.options[selections[idx]?.lunch ?? 0]?.name, snack: day.snack?.options[selections[idx]?.snack ?? 0]?.name, dinner: day.dinner?.options[selections[idx]?.dinner ?? 0]?.name })) };
+                await AsyncStorage.setItem('menu_history', JSON.stringify([newEntry, ...existing].slice(0, 20)));
+                await AsyncStorage.setItem('maharaj_plan_ready', 'true');
+              } catch {}
+            }
+            advance('recipes');
+          }}>
+            <Text style={{fontSize:14,fontWeight:'700',color:white}}>View Recipes</Text>
           </TouchableOpacity>
         </View>
       </View>
