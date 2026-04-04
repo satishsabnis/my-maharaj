@@ -107,6 +107,8 @@ export async function getLipidStatus(userId: string): Promise<LipidStatus> {
 
 export async function scheduleLabReportReminder(memberName: string, uploadDate: Date): Promise<void> {
   if (Platform.OS === 'web') return;
+  const enabled = await AsyncStorage.getItem('notif_lab_reports');
+  if (enabled === 'false') return;
   const reminderDate = new Date(uploadDate);
   reminderDate.setDate(reminderDate.getDate() + 75);
   if (reminderDate <= new Date()) return;
@@ -121,6 +123,8 @@ export async function scheduleLabReportReminder(memberName: string, uploadDate: 
 
 export async function scheduleInsuranceReminder(expiryDate: Date): Promise<void> {
   if (Platform.OS === 'web') return;
+  const enabled = await AsyncStorage.getItem('notif_insurance_reminders');
+  if (enabled === 'false') return;
   const reminderDate = new Date(expiryDate);
   reminderDate.setDate(reminderDate.getDate() - 7);
   if (reminderDate <= new Date()) return;
@@ -135,6 +139,8 @@ export async function scheduleInsuranceReminder(expiryDate: Date): Promise<void>
 
 export async function scheduleFestivalReminder(festivalName: string, festivalDate: Date): Promise<void> {
   if (Platform.OS === 'web') return;
+  const enabled = await AsyncStorage.getItem('notif_festivals');
+  if (enabled === 'false') return;
   const reminderDate = new Date(festivalDate);
   reminderDate.setDate(reminderDate.getDate() - 2);
   if (reminderDate <= new Date()) return;

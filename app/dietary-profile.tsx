@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -101,6 +101,15 @@ export default function DietaryProfileScreen() {
   const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
   const [cookingSkill, setCookingSkill] = useState('');
   const [budgetPref, setBudgetPref] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [languageSearch, setLanguageSearch] = useState('');
+  const [dateFormat, setDateFormat] = useState('DD/MMM/YY');
+  const [notifFestivals, setNotifFestivals] = useState(true);
+  const [notifLabReports, setNotifLabReports] = useState(true);
+  const [notifInsurance, setNotifInsurance] = useState(true);
+  const [fullName, setFullName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   // Load household settings on mount
   useEffect(() => {
@@ -126,6 +135,24 @@ export default function DietaryProfileScreen() {
       if (store) try { setStorePrefs(JSON.parse(store)); } catch {}
       if (del) try { setDeliveryPrefs(JSON.parse(del)); } catch {}
       if (cook) setCookingSkill(cook); if (bud) setBudgetPref(bud);
+      // New fields
+      const [lang, df, nf, nl, ni, phone] = await Promise.all([
+        AsyncStorage.getItem('app_language'), AsyncStorage.getItem('date_format'),
+        AsyncStorage.getItem('notif_festivals'), AsyncStorage.getItem('notif_lab_reports'),
+        AsyncStorage.getItem('notif_insurance_reminders'), AsyncStorage.getItem('phone_number'),
+      ]);
+      if (lang) setSelectedLanguage(lang);
+      if (df) setDateFormat(df);
+      if (nf !== null) setNotifFestivals(nf !== 'false');
+      if (nl !== null) setNotifLabReports(nl !== 'false');
+      if (ni !== null) setNotifInsurance(ni !== 'false');
+      if (phone) setPhoneNumber(phone);
+      // Load user info
+      const user = await getSessionUser();
+      if (user) {
+        setFullName((user.user_metadata?.full_name ?? '') as string);
+        setUserEmail(user.email ?? '');
+      }
     }
     void loadHousehold();
   }, []);
@@ -140,6 +167,12 @@ export default function DietaryProfileScreen() {
       AsyncStorage.setItem('delivery_prefs', JSON.stringify(deliveryPrefs)),
       AsyncStorage.setItem('cooking_skill', cookingSkill),
       AsyncStorage.setItem('budget_pref', budgetPref),
+      AsyncStorage.setItem('app_language', selectedLanguage),
+      AsyncStorage.setItem('date_format', dateFormat),
+      AsyncStorage.setItem('notif_festivals', String(notifFestivals)),
+      AsyncStorage.setItem('notif_lab_reports', String(notifLabReports)),
+      AsyncStorage.setItem('notif_insurance_reminders', String(notifInsurance)),
+      AsyncStorage.setItem('phone_number', phoneNumber),
     ]);
     Alert.alert('Saved', 'Profile saved successfully');
   }
@@ -234,7 +267,7 @@ export default function DietaryProfileScreen() {
   };
 
   return (
-    <ScreenWrapper title="Family Profile">
+    <ScreenWrapper title="Family Profile Settings">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Subscription Card */}
@@ -375,7 +408,7 @@ export default function DietaryProfileScreen() {
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
           <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Regular fasting days</Text>
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-            {['Ekadashi','Monday fast','Navratri','Ramadan','No fasting'].map(f => (
+            {['Ekadashi','Monday fast','Tuesday fast','Thursday fast','Saturday fast','Navratri','Shravan','Karva Chauth','Ramadan','Lent','Jain Paryushana','Chaturthi','Pradosh Vrat','Purnima Vrat','Amavasya Vrat','No fasting'].map(f => (
               <TouchableOpacity key={f} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:fastingDays.includes(f)?navy:'#D1D5DB',backgroundColor:fastingDays.includes(f)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(fastingDays,setFastingDays,f)}>
                 <Text style={{fontSize:11,fontWeight:'500',color:fastingDays.includes(f)?white:navy}}>{f}</Text>
               </TouchableOpacity>
@@ -429,6 +462,93 @@ export default function DietaryProfileScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* ── LANGUAGE & DISPLAY ── */}
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Language & Display</Text>
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>App language</Text>
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:6}} value={languageSearch} onChangeText={setLanguageSearch} placeholder="Search language..." placeholderTextColor="#9CA3AF" />
+          {languageSearch.length > 0 && (
+            <View style={{backgroundColor:white,maxHeight:160,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',borderRadius:8,overflow:'hidden',marginBottom:6}}>
+              {['English','Hindi','Marathi','Gujarati','Punjabi','Tamil','Telugu','Kannada','Malayalam','Bengali','Urdu','Arabic','Odia','Assamese','Konkani','Sindhi','Kashmiri','Maithili','Santali','Dogri','Manipuri','Bodo','Sanskrit'].filter(l => l.toLowerCase().includes(languageSearch.toLowerCase())).map(l => (
+                <TouchableOpacity key={l} style={{paddingVertical:9,paddingHorizontal:12,borderBottomWidth:0.5,borderBottomColor:'rgba(27,58,92,0.08)'}} onPress={() => { setSelectedLanguage(l); setLanguageSearch(''); }}>
+                  <Text style={{fontSize:11,color:'#1B3A5C'}}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {selectedLanguage && (
+            <TouchableOpacity style={{backgroundColor:'#1B3A5C',borderRadius:6,paddingHorizontal:10,paddingVertical:4,alignSelf:'flex-start'}} onPress={() => setSelectedLanguage('')}>
+              <Text style={{fontSize:10,color:white}}>{selectedLanguage} {'\u2715'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>Date format</Text>
+          <View style={{flexDirection:'row',gap:6}}>
+            {['DD/MMM/YY','MM/DD/YYYY'].map(df => (
+              <TouchableOpacity key={df} style={{flex:1,paddingVertical:8,borderRadius:10,borderWidth:1.5,borderColor:dateFormat===df?navy:'#D1D5DB',backgroundColor:dateFormat===df?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setDateFormat(df)}>
+                <Text style={{fontSize:10,fontWeight:'600',color:dateFormat===df?white:navy}}>{df}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* ── NOTIFICATIONS ── */}
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Notifications</Text>
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4}}>
+            <View style={{flex:1}}><Text style={{fontSize:11,color:navy}}>Festival reminders</Text><Text style={{fontSize:8,color:'#9CA3AF'}}>48 hours before upcoming festivals</Text></View>
+            <Switch value={notifFestivals} onValueChange={setNotifFestivals} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+          </View>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4,marginTop:6}}>
+            <View style={{flex:1}}><Text style={{fontSize:11,color:navy}}>Lab report reminders</Text><Text style={{fontSize:8,color:'#9CA3AF'}}>1 week before 3-month report expiry</Text></View>
+            <Switch value={notifLabReports} onValueChange={setNotifLabReports} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+          </View>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4,marginTop:6}}>
+            <View style={{flex:1}}><Text style={{fontSize:11,color:navy}}>Insurance reminders</Text><Text style={{fontSize:8,color:'#9CA3AF'}}>1 week before policy expiry</Text></View>
+            <Switch value={notifInsurance} onValueChange={setNotifInsurance} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+          </View>
+        </View>
+
+        {/* ── ACCOUNT ── */}
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Account</Text>
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Full name</Text>
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:8}} value={fullName} onChangeText={setFullName} placeholder="Your full name" placeholderTextColor="#9CA3AF" />
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Email</Text>
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#9CA3AF',backgroundColor:'#F9FAFB',marginBottom:8}} value={userEmail} editable={false} />
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Phone number</Text>
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:8}} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="+971 XX XXX XXXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
+          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:8}} onPress={async () => { try { await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo: 'https://my-maharaj.vercel.app' }); Alert.alert('Password reset email sent to your email address.'); } catch { Alert.alert('Error', 'Could not send reset email.'); } }}>
+            <Text style={{fontSize:10,color:'#1B3A5C'}}>Change password</Text>
+            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── APP INFO ── */}
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>App Info</Text>
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
+          <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:10,marginBottom:8}}>
+            <Text style={{fontSize:10,color:'#854F0B',textAlign:'center'}}>My Maharaj has been upgraded to Beta. Thank you for being an early user.</Text>
+          </View>
+          <View style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}}>
+            <Text style={{fontSize:10,color:navy}}>Version</Text>
+            <Text style={{fontSize:10,color:'#6B7280'}}>2.0 Beta</Text>
+          </View>
+          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}} onPress={() => Alert.alert('My Maharaj', 'AI-powered family meal planning app by Blue Flute Consulting LLC-FZ, Dubai. Powered by Claude AI.\n\nVersion 2.0 Beta\nwww.bluefluteconsulting.com')}>
+            <Text style={{fontSize:10,color:navy}}>About My Maharaj</Text>
+            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}} onPress={() => router.push('/disclaimer' as never)}>
+            <Text style={{fontSize:10,color:navy}}>Privacy Policy</Text>
+            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}} onPress={() => Linking.openURL('mailto:info@bluefluteconsulting.com')}>
+            <Text style={{fontSize:10,color:navy}}>Contact support</Text>
+            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Save button */}

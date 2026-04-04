@@ -287,8 +287,7 @@ export default function HomeScreen() {
 
                 <ScrollView style={{maxHeight:'80%'}}>
                   <Text style={s.drawerSection}>PROFILE</Text>
-                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
-                  <DrawerRow icon={'\u2699\uFE0F'} label="Settings" onPress={() => { closeDrawer(); Alert.alert('Coming soon'); }} />
+                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile Settings" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
 
                   <Text style={s.drawerSection}>MY PLANS</Text>
                   <DrawerRow icon={'\uD83D\uDCCB'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
