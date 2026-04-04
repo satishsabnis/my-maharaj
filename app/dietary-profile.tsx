@@ -467,21 +467,6 @@ export default function DietaryProfileScreen() {
               ))}
             </View>
           )}
-          <Input label="Native Language" value={form.nativeLanguage}
-            onChangeText={v => {
-              setForm(p => ({ ...p, nativeLanguage: v }));
-              setLangSuggestions(v.length > 0 ? LANGUAGES.filter(l => l.toLowerCase().startsWith(v.toLowerCase())).slice(0,5) : []);
-            }}
-            placeholder="e.g. Hindi, Urdu, Tamil..." />
-          {langSuggestions.length > 0 && (
-            <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',marginBottom:8}}>
-              {langSuggestions.map(l => (
-                <TouchableOpacity key={l} style={{paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setForm(p=>({...p,nativeLanguage:l})); setLangSuggestions([]); }}>
-                  <Text style={{fontSize:14,color:navy}}>{l}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
           <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
               </View>
