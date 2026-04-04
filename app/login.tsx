@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
@@ -35,7 +36,12 @@ export default function LoginScreen() {
         password,
       });
       if (error) { setFormError('Invalid email or password. Please try again.'); return; }
-      router.replace('/home');
+      const profileDone = await AsyncStorage.getItem('profile_setup_complete');
+      if (!profileDone) {
+        router.replace('/dietary-profile');
+      } else {
+        router.replace('/home');
+      }
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Sign in failed. Please try again.');
     } finally {
@@ -54,11 +60,9 @@ export default function LoginScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {isUpgraded && (
-        <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:10,marginHorizontal:12,marginTop:8}}>
-          <Text style={{fontSize:10,color:'#854F0B',textAlign:'center'}}>Welcome back. My Maharaj has been upgraded with new features for your family.</Text>
-        </View>
-      )}
+      <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:10,marginHorizontal:12,marginTop:8}}>
+        <Text style={{fontSize:10,color:'#854F0B',textAlign:'center'}}>{isUpgraded ? 'Welcome back. My Maharaj has been upgraded with new features for your family.' : 'My Maharaj Beta \u00B7 AI-powered family meal planning'}</Text>
+      </View>
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={s.logoRow}><Logo size="small" /></View>

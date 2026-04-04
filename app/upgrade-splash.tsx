@@ -34,7 +34,7 @@ export default function UpgradeSplashScreen() {
           <Text style={s.upgradeTitle}>My Maharaj has been upgraded</Text>
           <Text style={s.upgradeBody}>We have made significant improvements to your experience. Please log in again to continue.</Text>
           <View style={s.badge}>
-            <Text style={s.badgeText}>Version 2.0</Text>
+            <Text style={s.badgeText}>Beta</Text>
           </View>
 
           {/* Bottom section */}
