@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SkeletonList } from '../components/Skeleton';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -48,7 +49,18 @@ export default function MenuHistoryScreen() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
-      setRecords((data as MenuRecord[]) ?? []);
+      const supaRecords = (data as MenuRecord[]) ?? [];
+      // Also load from AsyncStorage (local plans)
+      try {
+        const local = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]') as any[];
+        const localRecords: MenuRecord[] = local.map((l: any) => ({
+          id: l.id, created_at: l.createdAt, period_start: l.dateRange?.split(' — ')[0] ?? '', period_end: l.dateRange?.split(' — ')[1] ?? '',
+          cuisine: 'Various', food_pref: 'mixed', dietary_notes: null,
+          menu_json: { days: (l.plan ?? []).map((d: any) => ({ date: d.date, day: '', breakfast: d.breakfast ? { name: d.breakfast } : null, lunch: d.lunch ? { name: d.lunch } : null, dinner: d.dinner ? { name: d.dinner } : null })) },
+        }));
+        const merged = [...localRecords, ...supaRecords].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setRecords(merged);
+      } catch { setRecords(supaRecords); }
       setLoading(false);
     }
     void load();
