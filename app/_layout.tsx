@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform, View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { requestNotificationPermissions } from '../lib/notifications';
 import Logo from '../components/Logo';
@@ -34,10 +35,30 @@ export default function Layout() {
 
   useEffect(() => {
     requestNotificationPermissions();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+
+    // Force logout check via API
+    (async () => {
+      try {
+        const base = 'https://my-maharaj.vercel.app';
+        const resp = await fetch(`${base}/api/invalidate-sessions`);
+        const data = await resp.json();
+        const storedVersion = await AsyncStorage.getItem('app_version');
+        if (data.forceLogout && storedVersion !== data.version) {
+          await supabase.auth.signOut();
+          await AsyncStorage.clear();
+          await AsyncStorage.setItem('app_version', data.version);
+          router.replace('/upgrade-splash');
+          setLoading(false);
+          return;
+        }
+      } catch {}
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+      });
+    })();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
