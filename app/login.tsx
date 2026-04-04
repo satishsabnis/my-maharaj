@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
@@ -8,6 +8,8 @@ import Input from '../components/Input';
 import { navy, gold, textSec, errorRed, white, border } from '../theme/colors';
 
 export default function LoginScreen() {
+  const params = useLocalSearchParams<{ upgraded?: string }>();
+  const isUpgraded = params.upgraded === 'true';
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
@@ -51,6 +53,12 @@ export default function LoginScreen() {
         <Text style={s.headerTitle}>Welcome Back</Text>
         <View style={{ width: 40 }} />
       </View>
+
+      {isUpgraded && (
+        <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:10,marginHorizontal:12,marginTop:8}}>
+          <Text style={{fontSize:10,color:'#854F0B',textAlign:'center'}}>Welcome back. My Maharaj has been upgraded with new features for your family.</Text>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={s.logoRow}><Logo size="small" /></View>
