@@ -1,15 +1,28 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { loadOrDetectLocation } from '../lib/location';
-import { navy, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
+import { navy, gold, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
-const EVENT_TYPES  = ['Picnic','Corporate Outing','Beach Party','Garden Party','Sports Day','School Trip','Family Reunion','Camping'];
-const FOOD_TYPES   = ['Vegetarian','Non-Vegetarian','Mixed'];
+const FOOD_TYPES = ['Mixed','Veg only','Jain','Halal'];
 const SETUP_STYLES = ['Finger Food','Buffet','Packed Boxes','BBQ / Grill','Thali Style'];
 const WEATHER_OPTS = ['Hot & Sunny','Evening / Cooler','Indoor Backup'];
+
+function recogniseOccasion(text: string): string {
+  const t = text.toLowerCase();
+  if (t.includes('birthday') || t.includes('bday')) return 'Birthday celebration';
+  if (t.includes('anniversary')) return 'Anniversary';
+  if (t.includes('diwali') || t.includes('holi') || t.includes('eid') || t.includes('navratri') || t.includes('baisakhi') || t.includes('ganesh')) return 'Festival celebration';
+  if (t.includes('graduation')) return 'Graduation celebration';
+  if (t.includes('wedding') || t.includes('shaadi') || t.includes('engagement')) return 'Wedding function';
+  if (t.includes('office') || t.includes('corporate') || t.includes('team') || t.includes('company')) return 'Corporate event';
+  if (t.includes('baby shower') || t.includes('baby')) return 'Baby shower';
+  if (t.includes('farewell')) return 'Farewell party';
+  if (t.includes('picnic') || t.includes('outdoor')) return 'Outdoor gathering';
+  return 'Special gathering';
+}
 
 async function callClaude(prompt: string): Promise<string> {
   const base = 'https://my-maharaj.vercel.app';
@@ -23,111 +36,85 @@ async function callClaude(prompt: string): Promise<string> {
 }
 
 interface OutdoorMenu {
-  starters:      { name: string; description: string }[];
-  main_course:   { name: string; description: string }[];
-  desserts:      { name: string; description: string }[];
-  beverages:     { name: string; description: string }[];
-  packing_tips:  string[];
+  starters: { name: string; description: string }[];
+  main_course: { name: string; description: string }[];
+  desserts: { name: string; description: string }[];
+  beverages: { name: string; description: string }[];
+  packing_tips: string[];
   shopping_list: string[];
 }
 
 export default function OutdoorCateringScreen() {
   const [step,      setStep]      = useState<'form'|'result'>('form');
-  const [guests,    setGuests]    = useState('15');
+  const [occasionText, setOccasionText] = useState('');
+  const [foodType,  setFoodType]  = useState('Mixed');
+  const [guestCountText, setGuestCountText] = useState('15');
   const [budget,    setBudget]    = useState('25');
-  const [eventType, setEventType] = useState('Picnic');
-  const [foodType,  setFoodType]  = useState('Vegetarian');
   const [setup,     setSetup]     = useState('Finger Food');
   const [weather,   setWeather]   = useState('Hot & Sunny');
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const [menu,      setMenu]      = useState<OutdoorMenu | null>(null);
   const [loc,       setLoc]       = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
+  const [beverages, setBeverages] = useState({
+    mineralWater: true, nimbuPani: true, coldCoffee: false,
+    coconutWater: false, freshJuice: false, masalaChai: false, softDrinks: false, alcohol: false,
+  });
 
   useEffect(() => { loadOrDetectLocation().then(setLoc); }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setStep('form');
-      setMenu(null);
-      setEventType('Picnic');
-      setGuests('15');
-      setFoodType('Vegetarian');
-      setBudget('25');
-      setSetup('Finger Food');
-      setWeather('Hot & Sunny');
-      setError('');
-      setLoading(false);
-    }, [])
-  );
+  useFocusEffect(useCallback(() => {
+    setStep('form'); setMenu(null); setOccasionText(''); setFoodType('Mixed');
+    setGuestCountText('15'); setBudget('25'); setSetup('Finger Food');
+    setWeather('Hot & Sunny'); setError(''); setLoading(false);
+    setBeverages({ mineralWater:true, nimbuPani:true, coldCoffee:false, coconutWater:false, freshJuice:false, masalaChai:false, softDrinks:false, alcohol:false });
+  }, []));
+
+  const bevNames: Record<string,string> = { mineralWater:'Mineral water', nimbuPani:'Nimbu pani', coldCoffee:'Cold coffee', coconutWater:'Coconut water', freshJuice:'Fresh juice', masalaChai:'Masala chai', softDrinks:'Soft drinks' };
+  const selectedBevs = Object.entries(beverages).filter(([k,v]) => v && k !== 'alcohol').map(([k]) => bevNames[k]).filter(Boolean);
 
   async function generateMenu() {
-    setMenu(null);
-    setError('');
-    const g = parseInt(guests, 10);
+    setMenu(null); setError('');
+    const g = parseInt(guestCountText, 10);
     const b = parseInt(budget, 10);
     if (!g || g < 1) { setError('Enter a valid number of guests.'); return; }
     if (!b || b < 1) { setError('Enter a valid budget per head.'); return; }
+    if (!occasionText.trim()) { setError('Please describe the event.'); return; }
     setLoading(true);
     try {
-      // Call 1: menu without beverages
-      const prompt = `You are Maharaj, expert Indian chef specialising in outdoor catering.
+      const text = await callClaude(`You are Maharaj, expert Indian chef specialising in outdoor catering.
 Generate an outdoor catering menu for:
-- Event: ${eventType}, Guests: ${g}, Food: ${foodType}
-- Setup: ${setup}, Weather: ${weather}
+- Event: ${occasionText} (${recogniseOccasion(occasionText)})
+- Guests: ${g}, Food: ${foodType}, Setup: ${setup}, Weather: ${weather}
 - Budget: AED ${b} per head (Total: AED ${g * b})
 - ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
+- Beverages to include: ${selectedBevs.join(', ') || 'Water only'}
+${beverages.alcohol ? '- Include beer, wine and cocktail pairing suggestions appropriate for the occasion.' : '- No alcohol.'}
 Focus on food that travels well, stays fresh outdoors and suits the weather.
 Respond ONLY with this exact JSON structure - no other text, no markdown:
-{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":["string"]}
-Include 3-5 items per section.`;
-      const rawText = await callClaude(prompt);
-
+{"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":["string"]}
+Include 3-5 items per section.`);
       let parsed: OutdoorMenu;
-      try {
-        const match = rawText.match(/\{[\s\S]*\}/);
-        parsed = JSON.parse(match ? match[0] : rawText) as OutdoorMenu;
-      } catch(e) {
-        throw new Error('Failed to parse menu response');
-      }
-
-      // Call 2: separate beverages call
-      try {
-        const bevPrompt = `Generate exactly 4 refreshing beverages suitable for an outdoor ${eventType} with ${g} guests in ${weather} weather in ${loc.city}. Return ONLY this JSON array: [{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."}]`;
-        const bevRaw = await callClaude(bevPrompt);
-        const bevMatch = bevRaw.match(/\[[\s\S]*\]/);
-        parsed.beverages = bevMatch ? JSON.parse(bevMatch[0]) : [];
-      } catch { parsed.beverages = []; }
-
-      // Fallback if second call also failed
+      try { const match = text.match(/\{[\s\S]*\}/); parsed = JSON.parse(match ? match[0] : text) as OutdoorMenu; }
+      catch { throw new Error('Failed to parse menu response'); }
       if (!parsed.beverages || parsed.beverages.length === 0) {
-        parsed.beverages = [
-          { name: 'Fresh Lime Soda', description: 'Chilled with mint' },
-          { name: 'Mango Lassi', description: 'Sweet yogurt drink' },
-          { name: 'Mineral Water', description: 'Still and sparkling' },
-          { name: 'Masala Chai', description: 'Spiced Indian tea' },
-        ];
+        parsed.beverages = [{ name:'Mineral Water', description:'Still and sparkling' },{ name:'Nimbu Pani', description:'Chilled lemon water' }];
       }
-
-      setMenu(parsed);
-      setStep('result');
-    } catch (err) { console.error('[OutdoorCatering] generateMenu error:', err); setError('Failed to generate menu. Please try again.'); }
+      setMenu(parsed); setStep('result');
+    } catch (err) { console.error('[OutdoorCatering]', err); setError('Failed to generate. Please try again.'); }
     finally { setLoading(false); }
   }
 
   function Section({ title, items }: { title: string; items?: { name: string; description: string }[] }) {
     if (!items?.length) return null;
-    return (
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>{title}</Text>
-        {items.map((item, i) => (
-          <View key={i} style={[s.item, i === items.length - 1 && { borderBottomWidth: 0 }]}>
-            <Text style={s.itemName}>{item.name}</Text>
-            <Text style={s.itemDesc}>{item.description}</Text>
-          </View>
-        ))}
-      </View>
-    );
+    return (<View style={s.section}><Text style={s.sectionTitle}>{title}</Text>{items.map((item,i) => (<View key={i} style={[s.item, i===items.length-1 && {borderBottomWidth:0}]}><Text style={s.itemName}>{item.name}</Text><Text style={s.itemDesc}>{item.description}</Text></View>))}</View>);
+  }
+
+  function BevRow({ label, k }: { label: string; k: string }) {
+    return (<View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:6}}>
+      <Text style={{fontSize:12,color:navy}}>{label}</Text>
+      <Switch value={(beverages as any)[k]} onValueChange={v => setBeverages(prev => ({...prev,[k]:v}))} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+    </View>);
   }
 
   return (
@@ -138,112 +125,104 @@ Include 3-5 items per section.`;
             <Text style={s.pageTitle}>Plan Your Outdoor Event</Text>
             <Text style={s.pageSub}>Maharaj suggests food that travels well and stays fresh outdoors.</Text>
 
-            {/* Guests + Budget side by side */}
-            <View style={s.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.label}>GUESTS</Text>
-                <TextInput style={s.input} value={guests} onChangeText={setGuests} keyboardType="numeric" placeholder="20" placeholderTextColor={midGray} />
+            {/* Occasion */}
+            <Text style={s.label}>EVENT</Text>
+            <TextInput style={s.input} value={occasionText} onChangeText={setOccasionText} placeholder="Describe the outdoor event..." placeholderTextColor={midGray} />
+            {occasionText.length > 3 && (
+              <View style={{backgroundColor:'#E8F4F8',borderRadius:8,padding:8,marginTop:6,marginBottom:4}}>
+                <Text style={{fontSize:9,color:'#0C447C'}}>Recognised as: {recogniseOccasion(occasionText)}</Text>
               </View>
-              <View style={{ flex: 1 }}>
+            )}
+
+            {/* Guests + Budget */}
+            <View style={s.row}>
+              <View style={{flex:1}}>
+                <Text style={s.label}>GUESTS</Text>
+                <TextInput style={[s.input,{width:120}]} value={guestCountText} onChangeText={setGuestCountText} keyboardType="numeric" placeholder="Number of guests" placeholderTextColor={midGray} />
+              </View>
+              <View style={{flex:1}}>
                 <Text style={s.label}>BUDGET/HEAD (AED)</Text>
                 <TextInput style={s.input} value={budget} onChangeText={setBudget} keyboardType="numeric" placeholder="25" placeholderTextColor={midGray} />
               </View>
             </View>
-            {guests && budget && parseInt(guests) > 0 && parseInt(budget) > 0 && (
-              <Text style={s.totalBudget}>Total budget: AED {parseInt(guests) * parseInt(budget)}</Text>
+            {guestCountText && budget && parseInt(guestCountText) > 0 && parseInt(budget) > 0 && (
+              <Text style={s.totalBudget}>Total budget: AED {parseInt(guestCountText) * parseInt(budget)}</Text>
             )}
 
-            <Text style={s.label}>EVENT TYPE</Text>
+            {/* Food type */}
+            <Text style={s.label}>FOOD TYPE</Text>
             <View style={s.chips}>
-              {EVENT_TYPES.map(e => (
-                <TouchableOpacity key={e} style={[s.chip, eventType === e && s.chipOn]} onPress={() => setEventType(e)}>
-                  <Text style={[s.chipTxt, eventType === e && s.chipTxtOn]}>{e}</Text>
-                </TouchableOpacity>
-              ))}
+              {FOOD_TYPES.map(ft => {
+                const active = foodType === ft;
+                const isGold = ft === 'Mixed' && active;
+                return (<TouchableOpacity key={ft} style={[s.chip, active && (isGold ? {backgroundColor:gold,borderColor:gold} : s.chipOn)]} onPress={() => setFoodType(ft)}>
+                  <Text style={[s.chipTxt, active && (isGold ? {color:'#1B2A0C'} : s.chipTxtOn)]}>{ft}</Text>
+                </TouchableOpacity>);
+              })}
             </View>
 
-            <Text style={s.label}>FOOD PREFERENCE</Text>
-            <View style={s.chips}>
-              {FOOD_TYPES.map(ft => (
-                <TouchableOpacity key={ft} style={[s.chip, foodType === ft && s.chipOn]} onPress={() => setFoodType(ft)}>
-                  <Text style={[s.chipTxt, foodType === ft && s.chipTxtOn]}>{ft}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
+            {/* Setup + Weather */}
             <Text style={s.label}>SERVING SETUP</Text>
             <View style={s.chips}>
-              {SETUP_STYLES.map(ss => (
-                <TouchableOpacity key={ss} style={[s.chip, setup === ss && s.chipOn]} onPress={() => setSetup(ss)}>
-                  <Text style={[s.chipTxt, setup === ss && s.chipTxtOn]}>{ss}</Text>
-                </TouchableOpacity>
-              ))}
+              {SETUP_STYLES.map(ss => (<TouchableOpacity key={ss} style={[s.chip, setup===ss && s.chipOn]} onPress={() => setSetup(ss)}><Text style={[s.chipTxt, setup===ss && s.chipTxtOn]}>{ss}</Text></TouchableOpacity>))}
+            </View>
+            <Text style={s.label}>WEATHER</Text>
+            <View style={s.chips}>
+              {WEATHER_OPTS.map(w => (<TouchableOpacity key={w} style={[s.chip, weather===w && s.chipOn]} onPress={() => setWeather(w)}><Text style={[s.chipTxt, weather===w && s.chipTxtOn]}>{w}</Text></TouchableOpacity>))}
             </View>
 
-            <Text style={s.label}>WEATHER / CONDITIONS</Text>
-            <View style={s.chips}>
-              {WEATHER_OPTS.map(w => (
-                <TouchableOpacity key={w} style={[s.chip, weather === w && s.chipOn]} onPress={() => setWeather(w)}>
-                  <Text style={[s.chipTxt, weather === w && s.chipTxtOn]}>{w}</Text>
-                </TouchableOpacity>
-              ))}
+            {/* Beverages */}
+            <Text style={s.label}>BEVERAGES</Text>
+            <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',padding:10,marginBottom:12}}>
+              <BevRow label="Mineral water" k="mineralWater" />
+              <BevRow label="Nimbu pani" k="nimbuPani" />
+              <BevRow label="Cold coffee" k="coldCoffee" />
+              <BevRow label="Coconut water" k="coconutWater" />
+              <BevRow label="Fresh juice" k="freshJuice" />
+              <BevRow label="Masala chai" k="masalaChai" />
+              <BevRow label="Soft drinks" k="softDrinks" />
+              <View style={{height:0.5,backgroundColor:'rgba(27,58,92,0.2)',marginVertical:6}} />
+              <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4}}>
+                <Text style={{fontSize:11,color:'#6B7280'}}>Include alcohol?</Text>
+                <Switch value={beverages.alcohol} onValueChange={v => setBeverages(prev => ({...prev,alcohol:v}))} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+              </View>
+              {!beverages.alcohol && <Text style={{fontSize:8,color:'#9CA3AF',marginTop:3}}>Beer, wine, cocktail suggestions added to menu when on</Text>}
             </View>
 
             {error ? <Text style={s.error}>{error}</Text> : null}
-
-            <TouchableOpacity style={[s.genBtn, loading && { opacity: 0.6 }]} onPress={generateMenu} disabled={loading}>
-              {loading ? <ActivityIndicator color={white} /> : <Text style={s.genBtnTxt}>Generate Outdoor Menu</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={s.cancelLink} onPress={() => router.push('/home' as never)}>
-              <Text style={s.cancelLinkTxt}>Cancel</Text>
-            </TouchableOpacity>
+            <View style={{flexDirection:'row',gap:10,marginTop:8}}>
+              <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => router.back()}>
+                <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}, loading && {opacity:0.6}]} onPress={generateMenu} disabled={loading}>
+                {loading ? <ActivityIndicator color={'#1B2A0C'} /> : <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Generate</Text>}
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={s.scroll}>
           <View style={s.container}>
             <View style={s.resultHeader}>
-              <Text style={s.resultTitle}>{eventType} Menu</Text>
-              <Text style={s.resultMeta}>{guests} guests · {foodType} · {setup} · AED {budget}/head</Text>
+              <Text style={s.resultTitle}>{recogniseOccasion(occasionText)} Menu</Text>
+              <Text style={s.resultMeta}>{guestCountText} guests · {foodType} · {setup} · AED {budget}/head</Text>
               <Text style={s.resultMeta}>Weather: {weather}</Text>
             </View>
-
-            {/* Cancel before Regenerate */}
             <View style={s.actionRow}>
-              <TouchableOpacity style={s.cancelBtn} onPress={() => router.push('/home' as never)}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => router.push('/home' as never)}><Text style={s.cancelBtnTxt}>Home</Text></TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>Regenerate</Text>}
               </TouchableOpacity>
             </View>
-
             {menu && <>
-              <Section title="Starters"    items={menu.starters}    />
-              <Section title="Main Course"  items={menu.main_course} />
-              <Section title="Desserts"     items={menu.desserts}    />
-              <Section title="Beverages"    items={menu.beverages ?? (menu as any).drinks ?? []}   />
-              {!menu.beverages?.length && !(menu as any).drinks?.length && (
-                <View style={s.section}><Text style={s.sectionTitle}>Beverages</Text><Text style={{fontSize:13,color:'#5A7A8A',padding:8}}>No beverages returned — try regenerating.</Text></View>
-              )}
-              {menu.packing_tips?.length > 0 && (
-                <View style={s.section}>
-                  <Text style={s.sectionTitle}>Packing & Serving Tips</Text>
-                  {menu.packing_tips.map((t, i) => <Text key={i} style={s.tipTxt}>• {t}</Text>)}
-                </View>
-              )}
-              {menu.shopping_list?.length > 0 && (
-                <View style={s.section}>
-                  <Text style={s.sectionTitle}>Shopping List</Text>
-                  <View style={s.shopGrid}>
-                    {menu.shopping_list.map((item, i) => (
-                      <View key={i} style={s.shopChip}><Text style={s.shopChipTxt}>{item}</Text></View>
-                    ))}
-                  </View>
-                </View>
-              )}
+              <Section title="Starters" items={menu.starters} />
+              <Section title="Main Course" items={menu.main_course} />
+              <Section title="Desserts" items={menu.desserts} />
+              <Section title="Beverages" items={menu.beverages} />
+              {menu.packing_tips?.length > 0 && (<View style={s.section}><Text style={s.sectionTitle}>Packing & Serving Tips</Text>{menu.packing_tips.map((t,i) => <Text key={i} style={s.tipTxt}>{'\u2022'} {t}</Text>)}</View>)}
+              {menu.shopping_list?.length > 0 && (<View style={s.section}><Text style={s.sectionTitle}>Shopping List</Text><View style={s.shopGrid}>{menu.shopping_list.map((item,i) => (<View key={i} style={s.shopChip}><Text style={s.shopChipTxt}>{item}</Text></View>))}</View></View>)}
             </>}
-            <View style={{ height: 40 }} />
+            <View style={{height:40}} />
           </View>
         </ScrollView>
       )}
@@ -258,24 +237,20 @@ const s = StyleSheet.create({
   pageTitle:   { fontSize: 22, fontWeight: '800', color: navy, marginBottom: 4 },
   pageSub:     { fontSize: 13, color: midGray, marginBottom: 16, lineHeight: 20 },
   row:         { flexDirection: 'row', gap: 12 },
-  label:       { fontSize: 11, fontWeight: '700', color: darkGray, marginTop: 16, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 },
-  input:       { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111827', backgroundColor: 'rgba(255,255,255,0.9)' },
+  label:       { fontSize: 11, fontWeight: '700', color: darkGray, marginTop: 14, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 },
+  input:       { borderWidth: 1, borderColor: 'rgba(27,58,92,0.25)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: '#1B3A5C', backgroundColor: 'rgba(255,255,255,0.9)' },
   totalBudget: { fontSize: 13, color: '#16A34A', fontWeight: '600', marginTop: 6 },
   chips:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:        { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: 'rgba(255,255,255,0.9)' },
   chipOn:      { backgroundColor: ACCENT, borderColor: ACCENT },
   chipTxt:     { fontSize: 13, color: darkGray, fontWeight: '500' },
   chipTxtOn:   { color: white, fontWeight: '600' },
-  genBtn:      { backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
-  genBtnTxt:   { color: white, fontSize: 16, fontWeight: '700' },
-  cancelLink:  { alignItems: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: 'rgba(26,107,60,0.3)', borderRadius: 12, marginTop: 8 },
-  cancelLinkTxt: { fontSize: 14, color: ACCENT, fontWeight: '600' },
   error:       { color: errorRed, fontSize: 13, textAlign: 'center', marginTop: 14 },
   resultHeader: { backgroundColor: ACCENT, borderRadius: 14, padding: 20, marginBottom: 12 },
   resultTitle: { fontSize: 22, fontWeight: '800', color: white },
   resultMeta:  { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
   actionRow:   { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  cancelBtn:   { flex: 1, borderWidth: 1.5, borderColor: 'rgba(26,107,60,0.3)', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  cancelBtn:   { flex: 1, borderWidth: 1.5, borderColor: ACCENT, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   cancelBtnTxt:{ color: ACCENT, fontWeight: '700', fontSize: 14 },
   regenBtn:    { flex: 1, backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   regenBtnTxt: { color: white, fontWeight: '700', fontSize: 14 },
