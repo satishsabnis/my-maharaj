@@ -56,9 +56,16 @@ export const emptyHealthFlags = (): HealthFlags => ({
 
 // ─── Core API call — uses /api/claude proxy (works on Vercel, no browser key needed) ──
 
+const BASE = 'https://my-maharaj.vercel.app';
+
 async function askClaude(prompt: string): Promise<string> {
-  const base = 'https://my-maharaj.vercel.app';
-  const res = await fetch(`${base}/api/claude`, {
+  // Try streaming first for faster TTFB, fall back to non-streaming
+  try {
+    const text = await askClaudeStream(prompt);
+    if (text) return text;
+  } catch { /* fall through to non-streaming */ }
+
+  const res = await fetch(`${BASE}/api/claude`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -70,6 +77,39 @@ async function askClaude(prompt: string): Promise<string> {
   const data = await res.json();
   if (data?.error) throw new Error(data.error.message ?? data.error);
   const text = data?.content?.[0]?.text ?? '{}';
+  return text.replace(/```json|```/g, '').trim();
+}
+
+async function askClaudeStream(prompt: string): Promise<string> {
+  const res = await fetch(`${BASE}/api/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!res.ok || !res.body) throw new Error('Stream not available');
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    full += decoder.decode(value, { stream: true });
+  }
+  // Parse SSE events to extract text
+  const textParts: string[] = [];
+  for (const line of full.split('\n')) {
+    if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+    try {
+      const evt = JSON.parse(line.slice(6));
+      if (evt.type === 'content_block_delta' && evt.delta?.text) textParts.push(evt.delta.text);
+    } catch { /* skip unparseable lines */ }
+  }
+  const text = textParts.join('');
+  if (!text) throw new Error('No text in stream');
   return text.replace(/```json|```/g, '').trim();
 }
 
@@ -368,6 +408,8 @@ export async function generateMealPlan(
       : isMixed
         ? 'Mixed — Vegetarian for breakfast, non-veg allowed for lunch and dinner only'
         : `Non-vegetarian: ONLY use ${allowedProteins?.join(', ') || 'chicken, fish, eggs, mutton'}`;
+
+  console.log(`Dietary preference used in prompt: type=${params.foodPrefs.type}, isMixed=${isMixed}, baseFoodPref="${baseFoodPref}", allowedProteins=${JSON.stringify(allowedProteins)}`);
 
   const unwellNote = params.unwellMembers && params.unwellMembers.length > 0
     ? params.unwellMembers.join(', ')
