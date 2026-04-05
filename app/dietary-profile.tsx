@@ -50,15 +50,10 @@ const LANGUAGES = [
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
 const ALL_CUISINES = [
-  'Afghan','Andhra','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese',
-  'Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan',
-  'Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Italian','Japanese','Kashmiri',
-  'Konkani','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian',
-  'Mediterranean','Mexican','Moroccan','Nepali','Nigerian','Odia','Omani','Pakistani',
-  'Palestinian','Persian','Punjabi','Rajasthani','Saudi','Singaporean','South African',
-  'South Indian','Spanish','Sri Lankan','Syrian','Tamil','Telugu','Thai','Turkish',
-  'Udupi','Vietnamese','Yemeni',
-].sort();
+  'Arabic','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi','Jain',
+  'Kashmiri','Kerala','Maharashtrian','Malabar','Malvani','Mangalorean','Mughlai',
+  'Pakistani','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','UP / Awadhi',
+];
 
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
@@ -103,9 +98,9 @@ export default function DietaryProfileScreen() {
   const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
   const [cookingSkill, setCookingSkill] = useState('');
   const [budgetPref, setBudgetPref] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['English']);
   const [languageSearch, setLanguageSearch] = useState('');
-  const [dateFormat, setDateFormat] = useState('DD/MMM/YY');
+  const [fastingDaysText, setFastingDaysText] = useState('');
   const [notifFestivals, setNotifFestivals] = useState(true);
   const [notifLabReports, setNotifLabReports] = useState(true);
   const [notifInsurance, setNotifInsurance] = useState(true);
@@ -138,13 +133,13 @@ export default function DietaryProfileScreen() {
       if (del) try { setDeliveryPrefs(JSON.parse(del)); } catch {}
       if (cook) setCookingSkill(cook); if (bud) setBudgetPref(bud);
       // New fields
-      const [lang, df, nf, nl, ni, phone] = await Promise.all([
-        AsyncStorage.getItem('app_language'), AsyncStorage.getItem('date_format'),
+      const [langs, fText, nf, nl, ni, phone] = await Promise.all([
+        AsyncStorage.getItem('app_languages'), AsyncStorage.getItem('fasting_days_text'),
         AsyncStorage.getItem('notif_festivals'), AsyncStorage.getItem('notif_lab_reports'),
         AsyncStorage.getItem('notif_insurance_reminders'), AsyncStorage.getItem('phone_number'),
       ]);
-      if (lang) setSelectedLanguage(lang);
-      if (df) setDateFormat(df);
+      if (langs) try { setSelectedLanguages(JSON.parse(langs)); } catch {}
+      if (fText) setFastingDaysText(fText);
       if (nf !== null) setNotifFestivals(nf !== 'false');
       if (nl !== null) setNotifLabReports(nl !== 'false');
       if (ni !== null) setNotifInsurance(ni !== 'false');
@@ -167,13 +162,13 @@ export default function DietaryProfileScreen() {
       AsyncStorage.setItem('household_insurance', hasInsurance ? 'true' : 'false'),
       AsyncStorage.setItem('insurance_expiry', insuranceExpiry),
       AsyncStorage.setItem('referral_consent', referralConsent ? 'true' : 'false'),
-      AsyncStorage.setItem('fasting_days', JSON.stringify(fastingDays)),
+      AsyncStorage.setItem('fasting_days', JSON.stringify(fastingDays)), // legacy
       AsyncStorage.setItem('store_prefs', JSON.stringify(storePrefs)),
       AsyncStorage.setItem('delivery_prefs', JSON.stringify(deliveryPrefs)),
       AsyncStorage.setItem('cooking_skill', cookingSkill),
       AsyncStorage.setItem('budget_pref', budgetPref),
-      AsyncStorage.setItem('app_language', selectedLanguage),
-      AsyncStorage.setItem('date_format', dateFormat),
+      AsyncStorage.setItem('app_languages', JSON.stringify(selectedLanguages)),
+      AsyncStorage.setItem('fasting_days_text', fastingDaysText),
       AsyncStorage.setItem('notif_festivals', String(notifFestivals)),
       AsyncStorage.setItem('notif_lab_reports', String(notifLabReports)),
       AsyncStorage.setItem('notif_insurance_reminders', String(notifInsurance)),
@@ -185,6 +180,7 @@ export default function DietaryProfileScreen() {
       if (user) { await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, phone_number: phoneNumber, updated_at: new Date().toISOString() }, { onConflict: 'id' }); }
     } catch {}
     await AsyncStorage.setItem('profile_setup_complete', 'true');
+    console.log('profile_setup_complete set to true');
     if (isFirstSetup) {
       setIsFirstSetup(false);
       router.replace('/home');
@@ -430,14 +426,16 @@ export default function DietaryProfileScreen() {
 
         {/* Fasting */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Regular fasting days</Text>
-          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-            {['Ekadashi','Monday fast','Tuesday fast','Thursday fast','Saturday fast','Navratri','Shravan','Karva Chauth','Ramadan','Lent','Jain Paryushana','Chaturthi','Pradosh Vrat','Purnima Vrat','Amavasya Vrat','No fasting'].map(f => (
-              <TouchableOpacity key={f} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:fastingDays.includes(f)?navy:'#D1D5DB',backgroundColor:fastingDays.includes(f)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(fastingDays,setFastingDays,f)}>
-                <Text style={{fontSize:11,fontWeight:'500',color:fastingDays.includes(f)?white:navy}}>{f}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>Fasting days / observances</Text>
+          <TextInput
+            style={{backgroundColor:white,borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:10,fontSize:11,color:'#1B3A5C',minHeight:70,textAlignVertical:'top'}}
+            value={fastingDaysText}
+            onChangeText={setFastingDaysText}
+            placeholder="e.g. Ekadashi, Monday fast, Navratri, Ramadan..."
+            placeholderTextColor="#9CA3AF"
+            multiline
+            numberOfLines={3}
+          />
         </View>
 
         {/* Store Prefs */}
@@ -488,35 +486,33 @@ export default function DietaryProfileScreen() {
           </View>
         </View>
 
-        {/* ── LANGUAGE & DISPLAY ── */}
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Language & Display</Text>
+        {/* ── LANGUAGE ── */}
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Language</Text>
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>App language</Text>
+          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>App languages (max 3)</Text>
+          {selectedLanguages.length > 0 && (
+            <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:8}}>
+              {selectedLanguages.map(l => (
+                <TouchableOpacity key={l} style={{backgroundColor:navy,borderRadius:6,paddingHorizontal:10,paddingVertical:4,flexDirection:'row',alignItems:'center',gap:4}} onPress={() => setSelectedLanguages(prev => prev.filter(x => x !== l))}>
+                  <Text style={{fontSize:10,color:white}}>{l}</Text>
+                  <Text style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>{'\u2715'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:6}} value={languageSearch} onChangeText={setLanguageSearch} placeholder="Search language..." placeholderTextColor="#9CA3AF" />
           {languageSearch.length > 0 && (
             <View style={{backgroundColor:white,maxHeight:160,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',borderRadius:8,overflow:'hidden',marginBottom:6}}>
-              {['English','Hindi','Marathi','Gujarati','Punjabi','Tamil','Telugu','Kannada','Malayalam','Bengali','Urdu','Arabic','Odia','Assamese','Konkani','Sindhi','Kashmiri','Maithili','Santali','Dogri','Manipuri','Bodo','Sanskrit'].filter(l => l.toLowerCase().includes(languageSearch.toLowerCase())).map(l => (
-                <TouchableOpacity key={l} style={{paddingVertical:9,paddingHorizontal:12,borderBottomWidth:0.5,borderBottomColor:'rgba(27,58,92,0.08)'}} onPress={() => { setSelectedLanguage(l); setLanguageSearch(''); }}>
+              {['English','Hindi','Marathi','Gujarati','Punjabi','Tamil','Telugu','Kannada','Malayalam','Bengali','Urdu','Arabic','Odia','Assamese','Sindhi','Kashmiri','Maithili','Sanskrit'].filter(l => l.toLowerCase().includes(languageSearch.toLowerCase()) && !selectedLanguages.includes(l)).map(l => (
+                <TouchableOpacity key={l} style={{paddingVertical:9,paddingHorizontal:12,borderBottomWidth:0.5,borderBottomColor:'rgba(27,58,92,0.08)'}} onPress={() => {
+                  if (selectedLanguages.length >= 3) { Alert.alert('Maximum 3 languages', 'Remove a language before adding another.'); return; }
+                  setSelectedLanguages(prev => [...prev, l]); setLanguageSearch('');
+                }}>
                   <Text style={{fontSize:11,color:'#1B3A5C'}}>{l}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
-          {selectedLanguage && (
-            <TouchableOpacity style={{backgroundColor:'#1B3A5C',borderRadius:6,paddingHorizontal:10,paddingVertical:4,alignSelf:'flex-start'}} onPress={() => setSelectedLanguage('')}>
-              <Text style={{fontSize:10,color:white}}>{selectedLanguage} {'\u2715'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>Date format</Text>
-          <View style={{flexDirection:'row',gap:6}}>
-            {['DD/MMM/YY','MM/DD/YYYY'].map(df => (
-              <TouchableOpacity key={df} style={{flex:1,paddingVertical:8,borderRadius:10,borderWidth:1.5,borderColor:dateFormat===df?navy:'#D1D5DB',backgroundColor:dateFormat===df?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setDateFormat(df)}>
-                <Text style={{fontSize:10,fontWeight:'600',color:dateFormat===df?white:navy}}>{df}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         {/* ── NOTIFICATIONS ── */}

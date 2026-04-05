@@ -9,13 +9,13 @@ export default function UpgradeSplashScreen() {
   useEffect(() => {
     Animated.timing(barWidth, {
       toValue: 200,
-      duration: 3000,
+      duration: 5000,
       useNativeDriver: false,
     }).start();
 
     const timer = setTimeout(() => {
       router.replace('/login?upgraded=true');
-    }, 3000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);

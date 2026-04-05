@@ -60,8 +60,8 @@ export default function LoginScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:10,marginHorizontal:12,marginTop:8}}>
-        <Text style={{fontSize:10,color:'#854F0B',textAlign:'center'}}>{isUpgraded ? 'Welcome back. My Maharaj has been upgraded with new features for your family.' : 'My Maharaj Beta \u00B7 AI-powered family meal planning'}</Text>
+      <View style={{backgroundColor:'#FFF8E7',borderRadius:10,padding:10,paddingHorizontal:14,marginHorizontal:12,marginTop:8,marginBottom:16}}>
+        <Text style={{fontSize:11,color:'#854F0B',textAlign:'center',lineHeight:17}}>My Maharaj has been upgraded to Beta.{'\n'}Thank you for being an early user.</Text>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

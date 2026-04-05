@@ -1,9 +1,8 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { useLang } from "../lib/LanguageProvider";
-
-const TICKER_TEXT = "  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  This prototype is under testing phase · My Maharaj by Blue Flute Consulting · Feedback: info@bluefluteconsulting.com · Feedback welcome ·  ";
+import MarqueeTicker from "./MarqueeTicker";
 
 interface Props {
   title?: string;
@@ -14,20 +13,6 @@ interface Props {
 
 export default function ScreenWrapper({ title, children, onBack, showHome = true }: Props) {
   const { t, toggleEnglish, isEnglish, lang } = useLang();
-  const scrollX = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    scrollX.setValue(-600);
-    const anim = Animated.loop(
-      Animated.timing(scrollX, {
-        toValue: 0,
-        duration: 12000,
-        useNativeDriver: true,
-      })
-    );
-    anim.start();
-    return () => anim.stop();
-  }, []);
 
   return (
     <ImageBackground source={require("../assets/background.png")} style={{ flex: 1 }} resizeMode="cover">
@@ -50,11 +35,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
             )}
           </View>
         </View>
-        <View style={sw.ticker}>
-          <Animated.Text style={[sw.tickerTxt, { transform: [{ translateX: scrollX }] }]}>
-            {TICKER_TEXT}
-          </Animated.Text>
-        </View>
+        <MarqueeTicker />
         <View style={{ flex: 1 }}>{children}</View>
         <View style={sw.footer}>
           <Image source={require("../assets/blueflute-logo.png")} style={{ width: 56, height: 20 }} resizeMode="contain" />
@@ -77,7 +58,5 @@ const sw = StyleSheet.create({
   langToggleTxtActive: { color: "#FFFFFF" },
   homeBtn:      { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.25)", backgroundColor: "rgba(255,255,255,0.8)" },
   homeTxt:      { fontSize: 12, fontWeight: "700", color: "#1B3A5C" },
-  ticker:       { backgroundColor: "#F59E0B", overflow: "hidden", paddingVertical: 4 },
-  tickerTxt:    { fontSize: 11, color: "#FFFFFF", fontWeight: "600", width: 1200 },
   footer:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "rgba(255,255,255,0.7)", borderTopWidth: 1, borderTopColor: "rgba(27,58,92,0.08)" },
 });
