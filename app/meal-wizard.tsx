@@ -371,6 +371,23 @@ export default function MealWizardScreen() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  async function saveDishFeedback(dishName: string, feedback: 'up' | 'down') {
+    try {
+      const user = await getSessionUser();
+      if (!user) return;
+      await supabase.from('dish_feedback').insert({ user_id: user.id, dish_name: dishName, feedback });
+      console.log(`[Feedback] ${feedback} for "${dishName}"`);
+      // Auto-ban: if 10+ thumbs down across all users
+      if (feedback === 'down') {
+        const { count } = await supabase.from('dish_feedback').select('id', { count: 'exact', head: true }).eq('dish_name', dishName).eq('feedback', 'down');
+        if ((count ?? 0) >= 10) {
+          await supabase.from('dishes').update({ is_banned: true }).eq('name', dishName);
+          console.log(`[Feedback] "${dishName}" auto-banned (10+ thumbs down)`);
+        }
+      }
+    } catch (e) { console.log('[Feedback] save failed:', e); }
+  }
+
   function getOpt(dayIdx: number, slot: MealSlotKey): MealOption | null {
     if (!generatedPlan) return null;
     const optIdx = selections[dayIdx]?.[slot] ?? 0;
@@ -1412,7 +1429,10 @@ export default function MealWizardScreen() {
                       {isSel && <View style={{width:13,height:13,borderRadius:7,backgroundColor:navy}} />}
                     </View>
                     <View style={{flex:1}}>
-                      <Text style={{fontSize:16,fontWeight:'700',color: isSel ? navy : '#1F2937',lineHeight:22}}>{opt.name}</Text>
+                      <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+                        <Text style={{fontSize:16,fontWeight:'700',color: isSel ? navy : '#1F2937',lineHeight:22,flex:1}}>{opt.name}</Text>
+                        {opt.isTrending && <Text style={{fontSize:9,color:'#DC2626',backgroundColor:'#FEE2E2',paddingHorizontal:6,paddingVertical:1,borderRadius:6,fontWeight:'700'}}>{'\uD83D\uDD25'} Trending</Text>}
+                      </View>
                       {isThali && opt.description && opt.description.includes(' | ') && (
                         <ThaliDetails description={opt.description} />
                       )}
@@ -1427,7 +1447,17 @@ export default function MealWizardScreen() {
                         </View>
                       )}
                     </View>
-                    <Text style={{fontSize:13,fontWeight:'700',color: isSel ? navy : '#9CA3AF',marginTop:2}}>#{optIdx + 1}</Text>
+                    <View style={{alignItems:'center',gap:4}}>
+                      <Text style={{fontSize:13,fontWeight:'700',color: isSel ? navy : '#9CA3AF'}}>#{optIdx + 1}</Text>
+                      <View style={{flexDirection:'row',gap:4}}>
+                        <TouchableOpacity style={{padding:2}} onPress={(e) => { e.stopPropagation?.(); saveDishFeedback(opt.name, 'up'); }}>
+                          <Text style={{fontSize:14}}>{'\uD83D\uDC4D'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{padding:2}} onPress={(e) => { e.stopPropagation?.(); saveDishFeedback(opt.name, 'down'); }}>
+                          <Text style={{fontSize:14}}>{'\uD83D\uDC4E'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
