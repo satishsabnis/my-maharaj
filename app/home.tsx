@@ -35,7 +35,7 @@ function getNextFestival() {
     const [y, m, d] = f.date.split('-').map(Number);
     const fd = new Date(y, m - 1, d);
     const daysAway = Math.ceil((fd.getTime() - today.getTime()) / 86400000);
-    if (daysAway >= 0 && daysAway <= 30) {
+    if (daysAway >= 0 && daysAway <= 2) {
       const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       return { ...f, daysAway, dateLabel: `${fd.getDate()} ${mon[fd.getMonth()]}` };
     }

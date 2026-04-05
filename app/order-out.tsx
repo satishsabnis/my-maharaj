@@ -60,10 +60,9 @@ export default function OrderOutScreen() {
         {/* 2x2 Delivery App Grid */}
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:16}}>
           {DELIVERY_APPS.map(app => (
-            <TouchableOpacity key={app.name} style={{flexGrow:1,flexBasis:'45%',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',padding:12,alignItems:'center',opacity:0.65}} onPress={() => Alert.alert('Coming Soon', 'Maharaj is learning and will connect you soon')}>
-              <Text style={{fontSize:28,marginBottom:4}}>{app.emoji}</Text>
-              <Text style={{fontSize:9,fontWeight:'700',color:navy}}>{app.name}</Text>
-              <Text style={{fontSize:8,color:'#9CA3AF',marginTop:2}}>Coming soon</Text>
+            <TouchableOpacity key={app.name} style={{flexGrow:1,flexBasis:'45%',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',padding:12,alignItems:'center'}} onPress={() => Alert.alert('Coming Soon', 'Maharaj is learning and will connect you soon')}>
+              <Text style={{fontSize:10,fontWeight:'500',color:navy}}>{app.name}</Text>
+              <Text style={{fontSize:8,color:'#6B7280',marginTop:3}}>Coming soon</Text>
             </TouchableOpacity>
           ))}
         </View>

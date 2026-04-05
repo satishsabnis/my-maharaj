@@ -164,6 +164,7 @@ export default function MealWizardScreen() {
   const [numDaysWiz, setNumDaysWiz] = useState(3);
   const [selectedMeals, setSelectedMeals] = useState<string[]>(['breakfast','lunch','dinner']);
   const [weekExtras, setWeekExtras] = useState<string[]>([]);
+  const [weekFoodPref, setWeekFoodPref] = useState('As per family profile');
   const [selectedCuisinesWiz, setSelectedCuisinesWiz] = useState<string[]>([]);
   const [nutritionGoalsWiz, setNutritionGoalsWiz] = useState<string[]>([]);
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -729,6 +730,14 @@ export default function MealWizardScreen() {
           {ALL_CUISINES_WIZ.map(c => (
             <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:selectedCuisinesWiz.includes(c)?navy:'#D4EDE5',backgroundColor:selectedCuisinesWiz.includes(c)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setSelectedCuisinesWiz(prev => prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}>
               <Text style={{fontSize:11,fontWeight:'500',color:selectedCuisinesWiz.includes(c)?white:navy}}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={s.sectionLabel}>FOOD PREFERENCE THIS WEEK</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
+          {['As per family profile','Vegetarian this week','Non-vegetarian','Eggetarian','Mixed'].map(fp => (
+            <TouchableOpacity key={fp} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:weekFoodPref===fp?navy:'#D1D5DB',backgroundColor:weekFoodPref===fp?navy:'rgba(255,255,255,0.9)'}} onPress={() => setWeekFoodPref(fp)}>
+              <Text style={{fontSize:11,fontWeight:'500',color:weekFoodPref===fp?white:navy}}>{fp}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1834,13 +1843,21 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={async () => {
-            // Auto-save to menu history
+            // Auto-save confirmed plan + menu history + dish history
             if (generatedPlan) {
               try {
+                const confirmedPlan = generatedPlan.map((day, idx) => ({ date: day.date, dayName: day.day, breakfast: day.breakfast?.options[selections[idx]?.breakfast ?? 0], lunch: day.lunch?.options[selections[idx]?.lunch ?? 0], snack: day.snack?.options[selections[idx]?.snack ?? 0], dinner: day.dinner?.options[selections[idx]?.dinner ?? 0] }));
+                await AsyncStorage.setItem('confirmed_meal_plan', JSON.stringify(confirmedPlan));
+                await AsyncStorage.setItem('meal_plan_date', new Date().toISOString());
                 const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
-                const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange: `${selectedFrom?.toLocaleDateString('en-GB')} — ${selectedTo?.toLocaleDateString('en-GB')}`, members: servingsCount, plan: generatedPlan.map((day, idx) => ({ date: day.date, breakfast: day.breakfast?.options[selections[idx]?.breakfast ?? 0]?.name, lunch: day.lunch?.options[selections[idx]?.lunch ?? 0]?.name, snack: day.snack?.options[selections[idx]?.snack ?? 0]?.name, dinner: day.dinner?.options[selections[idx]?.dinner ?? 0]?.name })) };
+                const dateRange = `${selectedFrom?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo?.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+                const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange, days: confirmedPlan.map(d => ({ date: d.date, dayName: d.dayName, breakfast: d.breakfast?.name || '\u2014', lunch: d.lunch?.name || '\u2014', snack: d.snack?.name || '\u2014', dinner: d.dinner?.name || '\u2014' })) };
                 await AsyncStorage.setItem('menu_history', JSON.stringify([newEntry, ...existing].slice(0, 20)));
                 await AsyncStorage.setItem('maharaj_plan_ready', 'true');
+                // Save dish names to history for no-repeat across runs
+                const dishNames = confirmedPlan.flatMap(d => [d.breakfast?.name, d.lunch?.name, d.snack?.name, d.dinner?.name].filter(Boolean));
+                const oldDishHist = JSON.parse(await AsyncStorage.getItem('dish_history') || '[]');
+                await AsyncStorage.setItem('dish_history', JSON.stringify([...dishNames, ...oldDishHist].slice(0, 60)));
               } catch {}
             }
             advance('recipes');

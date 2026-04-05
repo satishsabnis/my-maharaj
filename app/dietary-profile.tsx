@@ -25,6 +25,7 @@ interface MemberForm {
   age: string;
   nationality: string;
   nativeLanguage: string;
+  foodPreference: string;
   healthConditions: string[];
   notes: string;
 }
@@ -64,14 +65,14 @@ function formToNotes(form: MemberForm): string {
 }
 
 function emptyForm(): MemberForm {
-  return { name: '', age: '', nationality: '', nativeLanguage: '', healthConditions: [], notes: '' };
+  return { name: '', age: '', nationality: '', nativeLanguage: '', foodPreference: 'Mixed', healthConditions: [], notes: '' };
 }
 
 function memberToForm(m: Member): MemberForm {
   const notes = m.health_notes ?? '';
   const conds = HEALTH_PILLS.filter((p) => notes.toLowerCase().includes(p.toLowerCase()));
   const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).replace(/^,+|,+$/g, '').trim();
-  return { name: m.name, age: String(m.age || ''), nationality: '', nativeLanguage: '', healthConditions: conds, notes: others };
+  return { name: m.name, age: String(m.age || ''), nationality: '', nativeLanguage: '', foodPreference: 'Mixed', healthConditions: conds, notes: others };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -178,6 +179,11 @@ export default function DietaryProfileScreen() {
       AsyncStorage.setItem('notif_insurance_reminders', String(notifInsurance)),
       AsyncStorage.setItem('phone_number', phoneNumber),
     ]);
+    // Save full name + phone to Supabase
+    try {
+      const user = await getSessionUser();
+      if (user) { await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, phone_number: phoneNumber, updated_at: new Date().toISOString() }, { onConflict: 'id' }); }
+    } catch {}
     await AsyncStorage.setItem('profile_setup_complete', 'true');
     if (isFirstSetup) {
       setIsFirstSetup(false);
@@ -607,6 +613,14 @@ export default function DietaryProfileScreen() {
           )}
           <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
+              </View>
+              <Text style={s.sectionLabel}>FOOD PREFERENCE</Text>
+              <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:12}}>
+                {['Vegetarian','Non-vegetarian','Eggetarian','Mixed'].map(fp => (
+                  <TouchableOpacity key={fp} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:form.foodPreference===fp?navy:'#D1D5DB',backgroundColor:form.foodPreference===fp?navy:'rgba(255,255,255,0.9)'}} onPress={() => setForm(p => ({...p,foodPreference:fp}))}>
+                    <Text style={{fontSize:11,fontWeight:'600',color:form.foodPreference===fp?white:navy}}>{fp}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
               <Text style={s.sectionLabel}>HEALTH CONDITIONS</Text>
               <View style={s.pillRow}>
