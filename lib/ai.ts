@@ -1,8 +1,11 @@
+import { getRelevantDishes, formatDishesForPrompt } from './dishRag';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface MealOption {
   name: string;
   description?: string;
+  isTrending?: boolean;
   vegetarian: boolean;
   tags: string[];
   ingredients: string[];
@@ -178,6 +181,7 @@ async function generateOneMeal(
   stores = 'Carrefour/Spinneys/Lulu',
   allowedProteins?: string[],
   mealConstraint?: string,
+  ragContext?: string,
 ): Promise<MealSlot> {
   const isSundayBreakfast = day === 'Sunday' && mealType === 'breakfast';
   const foodNote = isSundayBreakfast ? 'Elaborate festive thali' : foodPref;
@@ -303,6 +307,7 @@ IMPORTANT RULES:
 - MANDATORY: Each option MUST include a non-empty "ing" array with 6-15 ingredients. Format: "[item] [qty][unit]" e.g. "Basmati rice 200g", "Onion 2 medium", "Coriander leaves 1 bunch". An empty ingredients array is INVALID and will be rejected.
 - Include 4-6 clear cooking steps
 - Tags: vegetarian/non-vegetarian, plus relevant health tags
+${ragContext || ''}
 
 Reply ONLY with this JSON (no other text, no markdown):
 {"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
@@ -450,10 +455,28 @@ export async function generateMealPlan(
   const slots = params.selectedSlots ?? ['breakfast', 'lunch', 'dinner'];
   if (slots.length === 0) throw new Error('No meal slots selected. Please select at least one meal slot.');
 
+  // RAG: fetch relevant dishes from database
+  const ragHealthConditions: string[] = [];
+  if (hf.diabetic) ragHealthConditions.push('diabetic');
+  if (hf.bp) ragHealthConditions.push('low sodium');
+  if (hf.pcos) ragHealthConditions.push('pcos');
+  if (hf.cholesterol) ragHealthConditions.push('low cholesterol');
+  let ragDishPrompt = '';
+  try {
+    const ragDishes = await getRelevantDishes({
+      cuisines: [cuisine, ...(params.cuisinePerDay ?? [])].filter(Boolean),
+      dietaryPref: params.foodPrefs.type === 'veg' ? 'veg' : isMixed ? 'mixed' : 'nonveg',
+      healthConditions: ragHealthConditions,
+      excludeDishes: params.dishHistory ?? [],
+      limit: 20,
+    });
+    ragDishPrompt = formatDishesForPrompt(ragDishes);
+  } catch { /* RAG unavailable — proceed without */ }
+
   const total = params.dates.length;
   onProgress?.(0, total);
 
-  // Fire ALL meal API calls in parallel across all days (21 calls at once for 7 days)
+  // Process days sequentially so each day sees previous dishes
   // instead of sequentially day-by-day — reduces wait from ~60s to ~10s
   const cuisinePerDay = params.cuisinePerDay;
   const dayMeta = params.dates.map((date, i) => {
@@ -478,10 +501,10 @@ export async function generateMealPlan(
   for (const { date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i } of dayMeta) {
     const emptySlot: MealSlot = { options: [] };
     const [breakfast, lunch, dinner, snack] = await Promise.all([
-      slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
-      slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint) : Promise.resolve(emptySlot),
-      slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint) : Promise.resolve(emptySlot),
-      slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint) : Promise.resolve(undefined),
+      slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint, ragDishPrompt) : Promise.resolve(emptySlot),
+      slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint, ragDishPrompt) : Promise.resolve(emptySlot),
+      slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint, ragDishPrompt) : Promise.resolve(emptySlot),
+      slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint, ragDishPrompt) : Promise.resolve(undefined),
     ]);
     // Accumulate all dish names from this day into history for next day
     [breakfast, lunch, dinner, snack].forEach(slot => {
