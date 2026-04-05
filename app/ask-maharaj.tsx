@@ -71,6 +71,7 @@ export default function AskMaharajScreen() {
   const [familyCount, setFamilyCount] = useState(0);
   const [hasPlan, setHasPlan] = useState(false);
   const [familyContextStr, setFamilyContextStr] = useState('');
+  const [userLanguages, setUserLanguages] = useState<string[]>(['English']);
 
   useEffect(() => {
     async function loadFamilyContext() {
@@ -87,6 +88,8 @@ export default function AskMaharajScreen() {
         setFamilyContextStr(memberSummary ? `\nFAMILY PROFILE CONTEXT:\n${memberSummary}\nPreferred stores: ${storePref || 'any'}\nCooking skill: ${cookSkill || 'moderate'}\nFasting days: ${fastDays || 'none'}\nAlways consider this family context when answering questions about food, recipes, nutrition and meal planning.\n` : '');
         const plan = await AsyncStorage.getItem('maharaj_plan_ready');
         if (plan) setHasPlan(true);
+        const langs = await AsyncStorage.getItem('app_languages');
+        if (langs) try { setUserLanguages(JSON.parse(langs)); } catch {}
       } catch {}
     }
     void loadFamilyContext();
@@ -167,7 +170,7 @@ MEAL_JSON_START
 MEAL_JSON_END` : ''}
 
 Always track health conditions from the profile when suggesting food. Never repeat dishes within the same response.
-Always respond in the same language the user writes in. If they write in Marathi, respond in Marathi. If Hindi, respond in Hindi. If English, respond in English. Match the user's language exactly.`;
+LANGUAGE: The user's preferred language(s): ${userLanguages.join(', ')}. Respond in ${userLanguages[0] || 'English'} by default. If the user writes in a different language, match their language exactly.`;
 
       const response = await callClaude(
         newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -187,12 +190,21 @@ Always respond in the same language the user writes in. If they write in Marathi
       const assistantMsg: Message = { role: 'assistant', content: cleanResponse };
       setMessages(prev => [...prev, assistantMsg]);
       // Speak response if triggered by voice
+      // Maharaj = male voice. Maharani would be female.
       if (wasVoice && typeof window !== 'undefined' && window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(cleanResponse.slice(0, 500));
         utterance.lang = 'en-IN';
         utterance.rate = 0.9;
         const voices = window.speechSynthesis.getVoices();
-        const maleVoice = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('Rishi') || v.name.toLowerCase().includes('male')) || voices.find(v => v.lang.startsWith('en'));
+        // Prefer Indian English male, then any male, then any English
+        const maleVoice =
+          voices.find(v => v.name.includes('Rishi')) ||
+          voices.find(v => v.name.includes('Mohan')) ||
+          voices.find(v => v.name.includes('David')) ||
+          voices.find(v => v.name.toLowerCase().includes('male') && v.lang.startsWith('en')) ||
+          voices.find(v => v.name.includes('Google UK English Male')) ||
+          voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('male')) ||
+          voices.find(v => v.lang.startsWith('en'));
         utterance.voice = maleVoice || null;
         utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
         setIsSpeaking(true); setIsPaused(false);
@@ -380,6 +392,18 @@ Always respond in the same language the user writes in. If they write in Marathi
               </View>
             )}
           </ScrollView>
+
+          {/* TTS controls */}
+          {isSpeaking && (
+            <View style={{flexDirection:'row',justifyContent:'center',gap:10,paddingVertical:4,backgroundColor:'rgba(255,255,255,0.92)'}}>
+              <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); } else { window.speechSynthesis.pause(); setIsPaused(true); } } }}>
+                <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>{isPaused ? 'Resume' : 'Pause'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(220,38,38,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { window.speechSynthesis.cancel(); setIsSpeaking(false); setIsPaused(false); } }}>
+                <Text style={{fontSize:11,color:'#DC2626',fontWeight:'600'}}>Stop</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Input bar */}
           <View style={s.inputBar}>

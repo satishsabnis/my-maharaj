@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from './supabase';
 
 export interface UserLocation {
@@ -13,7 +14,6 @@ const DEFAULT_LOCATION: UserLocation = {
   stores: 'Carrefour/Spinneys/Lulu',
 };
 
-// Common grocery stores by country
 const STORES_BY_COUNTRY: Record<string, string> = {
   'UAE': 'Carrefour/Spinneys/Lulu',
   'United Arab Emirates': 'Carrefour/Spinneys/Lulu',
@@ -36,7 +36,30 @@ function getStores(country: string): string {
   return STORES_BY_COUNTRY[country] ?? 'local grocery stores';
 }
 
+const CACHE_KEY = 'cached_location';
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+async function getCachedLocation(): Promise<UserLocation | null> {
+  try {
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { loc, ts } = JSON.parse(raw);
+    if (Date.now() - ts < CACHE_TTL) return loc as UserLocation;
+  } catch {}
+  return null;
+}
+
+async function setCachedLocation(loc: UserLocation): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ loc, ts: Date.now() }));
+  } catch {}
+}
+
 export async function detectLocation(): Promise<UserLocation> {
+  // Check cache first — avoids repeated geolocation prompts
+  const cached = await getCachedLocation();
+  if (cached) return cached;
+
   try {
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.geolocation) {
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -44,29 +67,30 @@ export async function detectLocation(): Promise<UserLocation> {
       });
       const { latitude, longitude } = pos.coords;
 
-      // Reverse geocode using free API
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`,
-        { headers: { 'User-Agent': 'MyMaharajApp/1.0' } }
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
       );
       const data = await res.json();
       const city = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.state || 'Unknown';
       const country = data?.address?.country || 'Unknown';
       const stores = getStores(country);
-      return { city, country, stores };
+      const loc = { city, country, stores };
+      await setCachedLocation(loc);
+      return loc;
     }
   } catch {
-    // Geolocation denied or failed — fall back to saved profile or default
+    // Geolocation denied or failed — fall back to default
   }
+  await setCachedLocation(DEFAULT_LOCATION);
   return DEFAULT_LOCATION;
 }
 
 export async function loadOrDetectLocation(): Promise<UserLocation> {
-  try {
-    const user = await getSessionUser();
-    if (!user) return DEFAULT_LOCATION;
+  // Check cache first
+  const cached = await getCachedLocation();
+  if (cached) return cached;
 
-    // Detect location (user_city/user_country columns may not exist yet)
+  try {
     const loc = await detectLocation();
     return loc;
   } catch {

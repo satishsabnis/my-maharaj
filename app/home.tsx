@@ -220,17 +220,30 @@ export default function HomeScreen() {
         {/* ── SCROLL CONTENT ── */}
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-          {/* Weather card */}
+          {/* Ask Maharaj — prime slot */}
+          <TouchableOpacity style={{backgroundColor:navy,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:12}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
+            <Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" />
+            <View style={{flex:1}}>
+              <Text style={{fontSize:16,fontWeight:'700',color:white}}>Ask Maharaj</Text>
+              <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)'}}>Your wise nutrition mentor</Text>
+            </View>
+            <Text style={{fontSize:20,color:gold,fontWeight:'700'}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+
+          {/* Weather card — collapsible */}
           {weatherInfo && !weatherDismissed && (
-            <View style={{flexDirection:'row',alignItems:'center',backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:12,marginBottom:10,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',gap:10}}>
-              <Text style={{fontSize:28}}>{weatherInfo.icon}</Text>
-              <View style={{flex:1}}>
-                <Text style={{fontSize:14,fontWeight:'700',color:navy}}>{weatherInfo.temp}\u00B0C in {weatherInfo.city}</Text>
-                <Text style={{fontSize:12,color:textSec}}>{weatherInfo.description}</Text>
+            <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:12,marginBottom:10,borderWidth:1,borderColor:'rgba(27,58,92,0.12)'}}>
+              <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+                <Text style={{fontSize:28}}>{weatherInfo.icon}</Text>
+                <View style={{flex:1}}>
+                  <Text style={{fontSize:18,fontWeight:'800',color:navy}}>{weatherInfo.temp}{'\u00B0'}C</Text>
+                  <Text style={{fontSize:13,fontWeight:'600',color:navy}}>{weatherInfo.city}</Text>
+                  <Text style={{fontSize:11,color:textSec}}>{weatherInfo.description}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setWeatherDismissed(true)} style={{padding:4}}>
+                  <Text style={{fontSize:14,color:textSec,fontWeight:'700'}}>X</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => setWeatherDismissed(true)} style={{padding:4}}>
-                <Text style={{fontSize:14,color:textSec,fontWeight:'700'}}>X</Text>
-              </TouchableOpacity>
             </View>
           )}
 

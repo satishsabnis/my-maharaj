@@ -161,9 +161,10 @@ ${forbidden.length > 0 ? `${forbidden.join(', ')} are FORBIDDEN. Do not use them
 If only Eggs selected - ONLY egg dishes. If only Fish - ONLY fish dishes. If only Chicken - ONLY chicken. If only Mutton - ONLY mutton. No protein outside this list.`;
   }
 
-  const nonVegCritical = foodNote.toLowerCase().includes('non-veg') ||
-    ['chicken','fish','egg','mutton'].some((w) => foodNote.toLowerCase().includes(w))
-    ? ' CRITICAL: At least one option MUST be a real non-veg dish with the allowed proteins only.'
+  const isNonVeg = foodNote.toLowerCase().includes('non-veg') ||
+    ['chicken','fish','egg','mutton'].some((w) => foodNote.toLowerCase().includes(w));
+  const nonVegCritical = isNonVeg
+    ? ' CRITICAL: User is NON-VEGETARIAN. You MUST include meat/fish/eggs in at least one option. Never generate an all-vegetarian set for a non-vegetarian user. Use ONLY allowed proteins.'
     : '';
 
   // Build strict mandatory constraint from page 4 prefs
@@ -244,9 +245,9 @@ CRITICAL COOKING RULES:
 - Scale all ingredient quantities to exact number of people eating.
 ${nutritionGoals ? `NUTRITION GOALS FOR THIS PLAN: ${nutritionGoals}. Every dish must support these goals where possible.` : ''}
 
-ZERO REPETITION — MANDATORY:
-These dishes have been used recently and must NOT appear: ${weekDishHistory?.slice(0, 30).join(', ') || 'none yet'}.
-Every single dish across ALL days must have a UNIQUE name. No dish can appear more than once in the entire plan.
+ZERO REPETITION — MANDATORY (last 7 days):
+DO NOT repeat any dish that appeared in the last 7 days: ${weekDishHistory?.slice(0, 30).join(', ') || 'none yet'}.
+Every single dish across ALL days must have a UNIQUE name. No dish can appear more than once in the entire plan. If a dish name from the list above appears in your response, it will be REJECTED.
 
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)

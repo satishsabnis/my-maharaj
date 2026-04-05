@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Easing, Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -203,14 +203,18 @@ export default function MealWizardScreen() {
 
   useEffect(() => {
     if (step !== 'generating') return;
-    const anim = Animated.loop(
+    const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 0.5, duration: 800, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1.0, duration: 800, useNativeDriver: true }),
       ])
     );
-    anim.start();
-    return () => anim.stop();
+    const spin = Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true })
+    );
+    pulse.start();
+    spin.start();
+    return () => { pulse.stop(); spin.stop(); spinAnim.setValue(0); };
   }, [step]);
 
   // ── Generation ────────────────────────────────────────────────────────────
@@ -828,11 +832,11 @@ export default function MealWizardScreen() {
     return (
       <View style={{alignItems:'center',paddingVertical:30}}>
         <Text style={s.stepTitle}>What next?</Text>
-        <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:24}}>
-          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { Alert.alert('Cook at Home', 'View recipes and shopping list for your meal plan.', [{text:'View Recipes',onPress:()=>advance('recipes')},{text:'Meal Prep',onPress:()=>router.push('/meal-prep' as never)},{text:'Cancel',style:'cancel'}]); }}>
+        <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:12}}>
+          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { console.log('[CookAtHome] tapped — navigating to recipes'); setStep('recipes'); }}>
             <Text style={{fontSize:32,marginBottom:8}}>{'\uD83C\uDFE0'}</Text>
             <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Cook at Home</Text>
-            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Recipes, shopping list & meal prep</Text>
+            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>View recipes & shopping list</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => router.push('/order-out' as never)}>
             <Text style={{fontSize:32,marginBottom:8}}>{'\uD83D\uDEF5'}</Text>
@@ -840,6 +844,11 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Order from a restaurant tonight</Text>
           </TouchableOpacity>
         </View>
+        {/* Meal Prep button */}
+        <TouchableOpacity style={{width:'100%',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:14,alignItems:'center',borderWidth:1,borderColor:'rgba(201,162,39,0.3)',marginBottom:24}} onPress={() => { console.log('[MealPrep] tapped'); router.push('/meal-prep' as never); }}>
+          <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Meal Prep Planning</Text>
+          <Text style={{fontSize:9,color:textSec,marginTop:2}}>Plan your cooking session ahead</Text>
+        </TouchableOpacity>
         <View style={{flexDirection:'row',gap:10,width:'100%'}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={goBack}>
             <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
@@ -1235,13 +1244,19 @@ export default function MealWizardScreen() {
     );
   }
 
+  const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
   function renderGenerating() {
     return (
       <View style={s.genScreen}>
-        <Animated.Image
-          source={require('../assets/logo.png')}
-          style={{ width: 200, height: 140, resizeMode: 'contain', backgroundColor: 'transparent', opacity: pulseAnim }}
-        />
+        {/* Spinning ring with logo */}
+        <View style={{width:120,height:120,alignItems:'center',justifyContent:'center',marginBottom:20}}>
+          <Animated.View style={{position:'absolute',width:120,height:120,borderRadius:60,borderWidth:3,borderColor:'transparent',borderTopColor:gold,borderRightColor:navy,transform:[{rotate:spinInterpolate}]}} />
+          <Animated.Image
+            source={require('../assets/logo.png')}
+            style={{width:70,height:70,resizeMode:'contain',opacity:pulseAnim}}
+          />
+        </View>
         <Text style={s.genTitle}>Maharaj is preparing your meal plan...</Text>
         {servingsCount > 0 && (
           <Text style={[s.genSub, { fontWeight: '600', marginBottom: 4 }]}>Cooking for {servingsCount} people</Text>
