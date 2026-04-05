@@ -576,9 +576,9 @@ export default function MealWizardScreen() {
       items.forEach((it, i) => { html += '<tr><td>' + (i+1) + '</td><td>' + it.name + '</td><td class="qty">' + (it.qty ? it.qty + (it.unit||'') : '—') + '</td></tr>'; });
       html += '</table>';
     });
-    html += '<script>window.onload=function(){window.print()};</script></body></html>';
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
+    html += '</body></html>';
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'maharaj-shopping-list.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -829,10 +829,10 @@ export default function MealWizardScreen() {
       <View style={{alignItems:'center',paddingVertical:30}}>
         <Text style={s.stepTitle}>What next?</Text>
         <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:24}}>
-          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { Alert.alert('Plan your cooking', "We'd love for you to visit Meal Prep to plan your cooking session.", [{text:'Visit Meal Prep',onPress:()=>router.push('/meal-prep' as never)},{text:'Skip for now',onPress:()=>router.push('/home' as never)}]); }}>
+          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { Alert.alert('Cook at Home', 'View recipes and shopping list for your meal plan.', [{text:'View Recipes',onPress:()=>advance('recipes')},{text:'Meal Prep',onPress:()=>router.push('/meal-prep' as never)},{text:'Cancel',style:'cancel'}]); }}>
             <Text style={{fontSize:32,marginBottom:8}}>{'\uD83C\uDFE0'}</Text>
             <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Cook at Home</Text>
-            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Order groceries from your preferred store</Text>
+            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Recipes, shopping list & meal prep</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => router.push('/order-out' as never)}>
             <Text style={{fontSize:32,marginBottom:8}}>{'\uD83D\uDEF5'}</Text>
@@ -1378,10 +1378,13 @@ export default function MealWizardScreen() {
                       {isThali && opt.description && opt.description.includes(' | ') && (
                         <ThaliDetails description={opt.description} />
                       )}
+                      {opt.description && !opt.description.includes(' | ') && (
+                        <Text style={{fontSize:10,color:'#6B7280',marginTop:3,lineHeight:14}}>{opt.description}</Text>
+                      )}
                       {opt.tags.length > 0 && (
                         <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginTop:4}}>
                           {opt.tags.slice(0,4).map(tag => (
-                            <Text key={tag} style={{fontSize:10,fontWeight:'600',color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : '#F3F4F6',paddingHorizontal:7,paddingVertical:2,borderRadius:8}}>{tag}</Text>
+                            <Text key={tag} style={{fontSize:10,fontWeight:'600',color: tag.toLowerCase().includes('non-veg') ? '#DC2626' : tag.toLowerCase().includes('superfood') || tag.toLowerCase().includes('iron') || tag.toLowerCase().includes('protein') || tag.toLowerCase().includes('fibre') || tag.toLowerCase().includes('calcium') ? '#059669' : '#6B7280',backgroundColor: tag.toLowerCase().includes('non-veg') ? '#FEE2E2' : tag.toLowerCase().includes('superfood') || tag.toLowerCase().includes('iron') || tag.toLowerCase().includes('protein') || tag.toLowerCase().includes('fibre') || tag.toLowerCase().includes('calcium') ? '#ECFDF5' : '#F3F4F6',paddingHorizontal:7,paddingVertical:2,borderRadius:8}}>{tag}</Text>
                           ))}
                         </View>
                       )}
@@ -1417,45 +1420,42 @@ export default function MealWizardScreen() {
     );
   }
 
+  const [recipeDay, setRecipeDay] = useState(0);
+
   function renderRecipes() {
     if (!generatedPlan) return null;
     const slotsForRecipes = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
-    const allDishes: string[] = [];
-    generatedPlan.forEach((_, i) =>
-      slotsForRecipes.forEach((slot) => {
-        const opt = getOpt(i, slot);
-        if (opt && !allDishes.includes(opt.name)) allDishes.push(opt.name);
-      })
-    );
-    const selected = allDishes.filter((d) => recipeDishes.includes(d));
+    const day = generatedPlan[recipeDay];
+    if (!day) return null;
 
     return (
       <View>
         <Text style={s.stepTitle}>Full Recipes</Text>
-        <Text style={s.stepSub}>For your selected meals</Text>
+        <Text style={s.stepSub}>Tap a day to see recipes</Text>
 
-        <View style={{ marginBottom: 16 }}>
-          {allDishes.map((dish) => (
-            <TouchableOpacity
-              key={dish}
-              style={[s.dishCheckRow, recipeDishes.includes(dish) && s.dishCheckRowActive]}
-              onPress={() => setRecipeDishes((prev) => prev.includes(dish) ? prev.filter((d) => d !== dish) : [...prev, dish])}
-              activeOpacity={0.8}
-            >
-              <View style={[s.checkbox, recipeDishes.includes(dish) && s.checkboxActive]}>
-                {recipeDishes.includes(dish) && <Text style={s.checkmark}>✓</Text>}
-              </View>
-              <Text style={s.dishCheckName}>{dish}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Day tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:56,marginBottom:12}}>
+          <View style={{flexDirection:'row',gap:6,paddingHorizontal:4,paddingVertical:4}}>
+            {generatedPlan.map((d, idx) => {
+              const dn = d.day.substring(0, 3);
+              const dd = d.date.split('-')[2];
+              const isActive = idx === recipeDay;
+              return (
+                <TouchableOpacity key={d.date} style={{paddingHorizontal:16,paddingVertical:10,borderRadius:14,backgroundColor:isActive?navy:'rgba(255,255,255,0.9)',borderWidth:1.5,borderColor:isActive?navy:'#D4EDE5',alignItems:'center',minWidth:60}} onPress={() => setRecipeDay(idx)} activeOpacity={0.8}>
+                  <Text style={{fontSize:12,fontWeight:'700',color:isActive?white:'#5A7A8A'}}>{dn}</Text>
+                  <Text style={{fontSize:16,fontWeight:'800',color:isActive?white:navy}}>{dd}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
 
-        {selected.length > 0 && generatedPlan.flatMap((day, dayIdx) =>
-          slotsForRecipes.map((slot) => {
-            const opt = getOpt(dayIdx, slot);
-            if (!opt || !selected.includes(opt.name)) return null;
+        {/* Recipes for active day */}
+        {slotsForRecipes.map((slot) => {
+            const opt = getOpt(recipeDay, slot);
+            if (!opt) return null;
             return (
-              <View key={`${dayIdx}-${slot}`} style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
+              <View key={`${recipeDay}-${slot}`} style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
                 {/* Dish header */}
                 <View style={{backgroundColor:navy,padding:10}}>
                   <Text style={{fontSize:8,color:gold,textTransform:'uppercase',letterSpacing:0.5}}>{slot}</Text>
@@ -1490,7 +1490,7 @@ export default function MealWizardScreen() {
                   </View>
                 )}
                 {/* Health note */}
-                {opt.description && opt.description.length > 10 && (
+                {opt.description && opt.description.length > 3 && !opt.description.includes(' | ') && (
                   <View style={{backgroundColor:'#FFF8E7',padding:8}}>
                     <Text style={{fontSize:8,fontWeight:'700',color:'#854F0B',marginBottom:2}}>Maharaj's health note</Text>
                     <Text style={{fontSize:8,color:'#854F0B',lineHeight:12}}>{opt.description}</Text>
@@ -1498,8 +1498,7 @@ export default function MealWizardScreen() {
                 )}
               </View>
             );
-          })
-        )}
+          })}
 
         <View style={{flexDirection:'row',gap:8,marginTop:16}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('plan-summary')}>
@@ -1886,7 +1885,7 @@ export default function MealWizardScreen() {
           }).join('');
           const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:A4 landscape;margin:15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;-webkit-print-color-adjust:exact}.hd{background:#1B3A5C;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}.hd-l{color:white;font-size:18px;font-weight:bold}.hd-h{color:#C9A227;font-size:11px;margin-top:3px}.hd-r{color:#C9A227;font-size:11px;text-align:right}.gb{background:#C9A227;padding:10px 20px;text-align:center}.gb-t{font-size:14px;font-weight:bold;color:#1B2A0C}.gb-s{font-size:11px;color:#412402;margin-top:3px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#1B3A5C;color:white;padding:8px;font-size:11px;text-align:center;border:1px solid #1B3A5C}td{padding:8px;font-size:10px;border:1px solid #E5E7EB;text-align:center}tr:nth-child(even) td{background:#F9FAFB}.sl{font-weight:bold;color:#1B3A5C;text-align:left;width:80px}.ft{margin-top:20px;border-top:1px solid #E5E7EB;padding-top:10px;text-align:center;font-size:9px;color:#6B7280}.disc{margin-top:10px;background:#F5F7FA;border-radius:6px;padding:8px 12px;font-size:9px;color:#6B7280;text-align:center}</style></head><body><div class="hd"><div><div class="hd-l">My Maharaj</div><div class="hd-h">\u092E\u0947\u0930\u093E \u092E\u0939\u093E\u0930\u093E\u091C</div></div><div class="hd-r">blue flute<br>consulting</div></div><div class="gb"><div class="gb-t">Weekly Meal Plan</div><div class="gb-s">${dateRange} \u00B7 ${servingsCount} family members</div></div><table><tr><th class="sl">Meal</th>${dayHeaders}</tr>${mealRows}</table><div class="disc">Maharaj meal plans are recommendations only. Please consult your doctor or nutritionist.</div><div class="ft">Powered by Blue Flute Consulting LLC-FZ \u00B7 www.bluefluteconsulting.com</div><script>setTimeout(function(){window.print()},800)</script></body></html>`;
           const blob = new Blob([html], { type: 'text/html' });
-          window.open(URL.createObjectURL(blob), '_blank');
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'maharaj-meal-plan.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }}>
           <Text style={{fontSize:10,fontWeight:'700',color:gold}}>Download Meal Plan PDF</Text>
         </TouchableOpacity>
@@ -1943,7 +1942,6 @@ export default function MealWizardScreen() {
               <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Cook at Home</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Full recipes & step-by-step instructions</Text>
             </View>
-            <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#1B3A5C',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
             <View style={{width:64,height:30,backgroundColor:'#E3F2FD',borderRadius:10,alignItems:'center',justifyContent:'center'}}>
@@ -1953,7 +1951,6 @@ export default function MealWizardScreen() {
               <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Order Out</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Find delivery options near you</Text>
             </View>
-            <Text style={{fontSize:24,color:'#9CA3AF',fontWeight:'300'}}>›</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)',marginTop:16}} onPress={()=>router.push('/home' as never)}>
@@ -2043,7 +2040,7 @@ export default function MealWizardScreen() {
     'generating':       renderGenerating,
     'generating-error': renderGeneratingError,
     'selection':        renderSelection,
-    'confirmed-menu':   () => null,
+    'confirmed-menu':   renderPlanSummary,
     'plan-summary':     renderPlanSummary,
     'guest-cuisine':    renderGuestCuisine,
     'veg-days':         renderVegDays,
