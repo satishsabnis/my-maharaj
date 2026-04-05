@@ -242,7 +242,7 @@ CRITICAL COOKING RULES:
 - Naturally mention 1-2 superfoods or health benefits in the dish description.
 - Family health conditions OVERRIDE all other preferences. Apply strictly.
 - Jain members: NO onion, NO garlic, NO root vegetables (potato, carrot, beetroot, radish).
-- Scale all ingredient quantities to exact number of people eating.
+- Scale all ingredient quantities to exact number of people eating. This plan is for the full household including any guests.
 ${nutritionGoals ? `NUTRITION GOALS FOR THIS PLAN: ${nutritionGoals}. Every dish must support these goals where possible.` : ''}
 
 ZERO REPETITION — MANDATORY (last 7 days):
@@ -250,7 +250,9 @@ DO NOT repeat any dish that appeared in the last 7 days: ${weekDishHistory?.slic
 Every single dish across ALL days must have a UNIQUE name. No dish can appear more than once in the entire plan. If a dish name from the list above appears in your response, it will be REJECTED.
 
 IMPORTANT RULES:
-- Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
+- Use ONLY authentic Indian dish names (e.g. Poha, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Butter Chicken, Fish Curry, Dal Makhani, Pav Bhaji). NEVER use generic English names like 'lentil soup' or 'chickpea curry'.
+- MILLETS ARE BANNED. Do not suggest Ragi, Jowar, Bajra, or any millet-based dish unless explicitly requested. Most families do not eat millets daily.
+- Do NOT over-index on 'health foods'. A family that wants Butter Chicken and Pav Bhaji should get it. Balance health with what real families enjoy.
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
 - Full Thali is NEVER appropriate for Breakfast — only for Lunch or Dinner
 - For breakfast, suggest light dishes: pohe, upma, idli, dosa, thepla, paratha, eggs, fruits, smoothies
@@ -427,8 +429,8 @@ export async function generateMealPlan(
   let completed = 0;
   const weekHistory = [...(params.dishHistory ?? [])].slice(0, 30);
   
-  // Process in batches of 2 days to prevent mobile browser connection limits
-  const BATCH_SIZE = 2;
+  // Process all days in parallel for maximum speed
+  const BATCH_SIZE = 7;
   const dayResults: MealPlanDay[] = [];
   
   for (let batchStart = 0; batchStart < dayMeta.length; batchStart += BATCH_SIZE) {

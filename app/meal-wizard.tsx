@@ -693,33 +693,39 @@ export default function MealWizardScreen() {
     );
   }
 
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
   function renderDaysMeals() {
-    const today = new Date();
     const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    const todayDow = (today.getDay() + 6) % 7; // 0=Mon
+    const toggleDay = (d: string) => setSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : prev.length < 7 ? [...prev, d] : prev);
+    // Sync numDaysWiz with selectedDays
+    const effectiveDays = selectedDays.length || numDaysWiz;
     return (
       <View>
         <Text style={s.stepTitle}>Plan your week</Text>
-        <Text style={[s.sectionLabel,{marginTop:8}]}>HOW MANY DAYS?</Text>
-        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:16,marginBottom:12}}>
-          <TouchableOpacity style={{width:32,height:32,borderRadius:16,borderWidth:2,borderColor:navy,alignItems:'center',justifyContent:'center'}} onPress={() => setNumDaysWiz(Math.max(1,numDaysWiz-1))} disabled={numDaysWiz<=1}>
-            <Text style={{fontSize:18,color:navy,fontWeight:'700'}}>-</Text>
-          </TouchableOpacity>
-          <Text style={{fontSize:14,color:navy,minWidth:60,textAlign:'center'}}>{numDaysWiz} day{numDaysWiz>1?'s':''}</Text>
-          <TouchableOpacity style={{width:32,height:32,borderRadius:16,backgroundColor:navy,alignItems:'center',justifyContent:'center'}} onPress={() => setNumDaysWiz(Math.min(7,numDaysWiz+1))} disabled={numDaysWiz>=7}>
-            <Text style={{fontSize:18,color:gold,fontWeight:'700'}}>+</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={{flexDirection:'row',gap:4,marginBottom:16}}>
-          {dayNames.map((d,i) => {
-            const active = i >= todayDow && i < todayDow + numDaysWiz;
+        <Text style={[s.sectionLabel,{marginTop:8}]}>SELECT DAYS</Text>
+        <View style={{flexDirection:'row',gap:4,marginBottom:6}}>
+          {dayNames.map(d => {
+            const active = selectedDays.includes(d);
             return (
-              <View key={d} style={{flex:1,height:32,borderRadius:8,backgroundColor:active?navy:'#E5E7EB',alignItems:'center',justifyContent:'center'}}>
+              <TouchableOpacity key={d} style={{flex:1,height:36,borderRadius:8,backgroundColor:active?navy:'#E5E7EB',alignItems:'center',justifyContent:'center'}} onPress={() => toggleDay(d)}>
                 <Text style={{fontSize:10,fontWeight:'700',color:active?white:'#9CA3AF'}}>{d}</Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
+        <Text style={{fontSize:9,color:textSec,marginBottom:12}}>{selectedDays.length > 0 ? `${selectedDays.length} day${selectedDays.length>1?'s':''} selected` : 'Tap days to select, or use counter below'}</Text>
+        {selectedDays.length === 0 && (
+          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:16,marginBottom:12}}>
+            <TouchableOpacity style={{width:32,height:32,borderRadius:16,borderWidth:2,borderColor:navy,alignItems:'center',justifyContent:'center'}} onPress={() => setNumDaysWiz(Math.max(1,numDaysWiz-1))} disabled={numDaysWiz<=1}>
+              <Text style={{fontSize:18,color:navy,fontWeight:'700'}}>-</Text>
+            </TouchableOpacity>
+            <Text style={{fontSize:14,color:navy,minWidth:60,textAlign:'center'}}>{numDaysWiz} day{numDaysWiz>1?'s':''}</Text>
+            <TouchableOpacity style={{width:32,height:32,borderRadius:16,backgroundColor:navy,alignItems:'center',justifyContent:'center'}} onPress={() => setNumDaysWiz(Math.min(7,numDaysWiz+1))} disabled={numDaysWiz>=7}>
+              <Text style={{fontSize:18,color:gold,fontWeight:'700'}}>+</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <Text style={s.sectionLabel}>WHICH MEALS?</Text>
         <View style={{flexDirection:'row',gap:6,marginBottom:16}}>
           {[{k:'breakfast',l:'Breakfast'},{k:'lunch',l:'Lunch'},{k:'snack',l:'Snack'},{k:'dinner',l:'Dinner'}].map(({k,l}) => (
@@ -730,17 +736,9 @@ export default function MealWizardScreen() {
         </View>
         <Text style={s.sectionLabel}>ANYTHING DIFFERENT THIS WEEK?</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
-          {['Veg days','Someone unwell','Festival'].map(e => (
+          {['Veg days','Someone unwell','Festival','Chaat'].map(e => (
             <TouchableOpacity key={e} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:weekExtras.includes(e)?navy:'#D1D5DB',backgroundColor:weekExtras.includes(e)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setWeekExtras(prev => prev.includes(e)?prev.filter(x=>x!==e):[...prev,e])}>
               <Text style={{fontSize:12,fontWeight:'600',color:weekExtras.includes(e)?white:navy}}>{e}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <Text style={s.sectionLabel}>CUISINE</Text>
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
-          {ALL_CUISINES_WIZ.map(c => (
-            <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:selectedCuisinesWiz.includes(c)?navy:'#D4EDE5',backgroundColor:selectedCuisinesWiz.includes(c)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setSelectedCuisinesWiz(prev => prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}>
-              <Text style={{fontSize:11,fontWeight:'500',color:selectedCuisinesWiz.includes(c)?white:navy}}>{c}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -749,6 +747,14 @@ export default function MealWizardScreen() {
           {['As per family profile','Vegetarian this week','Non-vegetarian','Eggetarian','Mixed'].map(fp => (
             <TouchableOpacity key={fp} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:weekFoodPref===fp?navy:'#D1D5DB',backgroundColor:weekFoodPref===fp?navy:'rgba(255,255,255,0.9)'}} onPress={() => setWeekFoodPref(fp)}>
               <Text style={{fontSize:11,fontWeight:'500',color:weekFoodPref===fp?white:navy}}>{fp}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={s.sectionLabel}>CUISINE</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
+          {ALL_CUISINES_WIZ.map(c => (
+            <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:selectedCuisinesWiz.includes(c)?navy:'#D4EDE5',backgroundColor:selectedCuisinesWiz.includes(c)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setSelectedCuisinesWiz(prev => prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}>
+              <Text style={{fontSize:11,fontWeight:'500',color:selectedCuisinesWiz.includes(c)?white:navy}}>{c}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1244,18 +1250,17 @@ export default function MealWizardScreen() {
     );
   }
 
-  const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spinCW = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spinCCW = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] });
 
   function renderGenerating() {
     return (
       <View style={s.genScreen}>
-        {/* Spinning ring with logo */}
-        <View style={{width:120,height:120,alignItems:'center',justifyContent:'center',marginBottom:20}}>
-          <Animated.View style={{position:'absolute',width:120,height:120,borderRadius:60,borderWidth:3,borderColor:'transparent',borderTopColor:gold,borderRightColor:navy,transform:[{rotate:spinInterpolate}]}} />
-          <Animated.Image
-            source={require('../assets/logo.png')}
-            style={{width:70,height:70,resizeMode:'contain',opacity:pulseAnim}}
-          />
+        {/* Dual spinning rings — blue CW, gold CCW — with large Maharaj logo */}
+        <View style={{width:140,height:140,alignItems:'center',justifyContent:'center',marginBottom:20}}>
+          <Animated.View style={{position:'absolute',width:140,height:140,borderRadius:70,borderWidth:4,borderColor:'transparent',borderTopColor:navy,borderBottomColor:navy,transform:[{rotate:spinCW}]}} />
+          <Animated.View style={{position:'absolute',width:120,height:120,borderRadius:60,borderWidth:4,borderColor:'transparent',borderTopColor:gold,borderBottomColor:gold,transform:[{rotate:spinCCW}]}} />
+          <Image source={require('../assets/logo.png')} style={{width:80,height:80,resizeMode:'contain'}} />
         </View>
         <Text style={s.genTitle}>Maharaj is preparing your meal plan...</Text>
         {servingsCount > 0 && (
