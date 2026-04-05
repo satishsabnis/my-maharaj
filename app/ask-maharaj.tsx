@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -369,10 +370,36 @@ Always respond in the same language the user writes in. If they write in Marathi
           {/* Input bar */}
           <View style={s.inputBar}>
             <TouchableOpacity
-              style={[s.voiceBtn, listening && s.voiceBtnActive]}
               onPress={startVoice}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: listening ? gold : '#F0F5FA',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <Text style={{fontSize:18,color:listening?white:'#1B3A5C'}}>{listening ? '\u25A0' : '\uD83C\uDFA4'}</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24">
+                <Path
+                  d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+                  fill={listening ? 'white' : '#1B3A5C'}
+                />
+                <Path
+                  d="M19 10v2a7 7 0 0 1-14 0v-2"
+                  stroke={listening ? 'white' : '#1B3A5C'}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <Path
+                  d="M12 19v4M8 23h8"
+                  stroke={listening ? 'white' : '#1B3A5C'}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </Svg>
             </TouchableOpacity>
             <TextInput
               style={s.input}
