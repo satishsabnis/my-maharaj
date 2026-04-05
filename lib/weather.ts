@@ -12,8 +12,7 @@ export interface WeatherInfo {
 export async function fetchWeather(lat: number, lon: number, city: string): Promise<WeatherInfo | null> {
   try {
     const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`,
-      { headers: { 'User-Agent': 'MyMaharajApp/1.0' } }
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -31,15 +30,14 @@ export async function fetchWeather(lat: number, lon: number, city: string): Prom
  */
 export async function getCoords(): Promise<{ lat: number; lon: number; city: string }> {
   const DEFAULT = { lat: 25.2048, lon: 55.2708, city: 'Dubai' };
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return DEFAULT;
   try {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return DEFAULT;
     const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000 });
     });
     // Reverse geocode for city name
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json&accept-language=en`,
-      { headers: { 'User-Agent': 'MyMaharajApp/1.0' } }
+      `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json&accept-language=en`
     );
     const geo = await res.json();
     const city = geo?.address?.city || geo?.address?.town || geo?.address?.state || 'your area';

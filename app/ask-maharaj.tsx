@@ -433,7 +433,7 @@ Always respond in the same language the user writes in. If they write in Marathi
               <Text style={s.sendTxt}>↑</Text>
             </TouchableOpacity>
           </View>
-          <Text style={{fontSize:9,color:'#9CA3AF',textAlign:'center',paddingVertical:3}}>{familyCount > 0 ? `Maharaj knows your ${familyCount} family members` : 'Add family members in Family Profile for personalised answers'}{hasPlan ? ' · Active plan loaded' : ''}</Text>
+          <Text style={{fontSize:9,color:'#9CA3AF',textAlign:'center',paddingVertical:2,backgroundColor:'rgba(255,255,255,0.92)'}}>{familyCount > 0 ? `Maharaj knows your ${familyCount} family members` : 'Add family members in Family Profile for personalised answers'}{hasPlan ? ' · Active plan loaded' : ''}</Text>
         </KeyboardAvoidingView>
 
       </SafeAreaView>
@@ -460,18 +460,18 @@ const s = StyleSheet.create({
   headerCenter:{ flex:1, alignItems:'center' },
   headerTitle: { fontSize:17, fontWeight:'800', color:navy },
   headerSub:   { fontSize:10, color:textSec, marginTop:1 },
-  homeBtn:     { paddingLeft:8, paddingRight:4, paddingVertical:6, borderRadius:10, borderWidth:1.5, borderColor:'rgba(27,58,92,0.25)', backgroundColor:'rgba(255,255,255,0.8)' },
-  homeTxt:     { fontSize:18 },
+  homeBtn:     { paddingHorizontal:10, paddingVertical:6, borderRadius:10, borderWidth:1.5, borderColor:'rgba(27,58,92,0.25)', backgroundColor:'rgba(255,255,255,0.8)' },
+  homeTxt:     { fontSize:12, fontWeight:'700', color:'#1B3A5C' },
 
   chatScroll: { padding:16, paddingBottom:8 },
 
   welcome:       { alignItems:'center', paddingVertical:24, paddingHorizontal:16 },
-  welcomeLogo:   { width:180, height:72, marginBottom:12 },
+  welcomeLogo:   { width:100, height:48, marginBottom:12 },
   welcomeEmoji:  { fontSize:56, marginBottom:12 },
   welcomeTitle:  { fontSize:20, fontWeight:'800', color:navy, marginBottom:8 },
   welcomeText:   { fontSize:14, color:textSec, textAlign:'center', lineHeight:22, marginBottom:20 },
   suggestions:   { width:'100%', flexDirection:'row', flexWrap:'wrap', gap:8 },
-  suggChip:      { backgroundColor:'rgba(255,255,255,0.9)', borderRadius:12, padding:10, borderWidth:1, borderColor:border, width:'48%' },
+  suggChip:      { backgroundColor:'rgba(255,255,255,0.9)', borderRadius:12, padding:10, borderWidth:1, borderColor:border, flexBasis:'47%', flexGrow:0 },
   suggTxt:       { fontSize:13, color:navy, fontWeight:'500' },
 
   bubble:       { marginBottom:12, maxWidth:'85%' },
