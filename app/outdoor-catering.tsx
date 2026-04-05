@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { loadOrDetectLocation } from '../lib/location';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -112,23 +113,26 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
   }
 
   async function saveToHistory(m: OutdoorMenu) {
+    const today = new Date().toISOString().split('T')[0];
+    const b = parseInt(budget, 10) || 0;
+    const menuData = { type: 'outdoor' as const, occasion: occasionText, recognised: recogniseOccasion(occasionText), guests: guestCountText, budget, setup, weather, foodType, starters: m.starters, main_course: m.main_course, desserts: m.desserts, beverages: m.beverages, packing_tips: m.packing_tips, shopping_list: m.shopping_list };
     try {
       const user = await getSessionUser();
-      if (!user) return;
-      const today = new Date().toISOString().split('T')[0];
-      const g = parseInt(guestCountText, 10) || 0;
-      const b = parseInt(budget, 10) || 0;
-      await supabase.from('menu_history').insert({
-        user_id: user.id,
-        period_start: today,
-        period_end: today,
-        cuisine: 'Outdoor Catering',
-        food_pref: foodType,
-        dietary_notes: `${occasionText} — ${guestCountText} guests, ${setup}, AED ${b}/head`,
-        menu_json: { type: 'outdoor', occasion: occasionText, recognised: recogniseOccasion(occasionText), guests: guestCountText, budget, setup, weather, foodType, starters: m.starters, main_course: m.main_course, desserts: m.desserts, beverages: m.beverages, packing_tips: m.packing_tips, shopping_list: m.shopping_list },
-      });
-      setSaved(true);
-    } catch (e) { console.error('[OutdoorCatering] save error', e); }
+      if (user) {
+        await supabase.from('menu_history').insert({
+          user_id: user.id, period_start: today, period_end: today,
+          cuisine: 'Outdoor Catering', food_pref: foodType,
+          dietary_notes: `${occasionText} — ${guestCountText} guests, ${setup}, AED ${b}/head`,
+          menu_json: menuData,
+        });
+      }
+    } catch (e) { console.error('[OutdoorCatering] supabase save error', e); }
+    try {
+      const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
+      const entry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange: today, type: 'outdoor', occasion: occasionText, menu_json: menuData };
+      await AsyncStorage.setItem('menu_history', JSON.stringify([entry, ...existing].slice(0, 20)));
+    } catch {}
+    setSaved(true);
   }
 
   function downloadPDF() {
@@ -145,7 +149,7 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
     const tipsHTML = menu.packing_tips?.length ? `<h2>Packing & Serving Tips</h2><ul>${menu.packing_tips.map(t => `<li>${t}</li>`).join('')}</ul>` : '';
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:A4;margin:15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;-webkit-print-color-adjust:exact}.hd{background:#1A6B3C;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}.hd-l{color:white;font-size:18px;font-weight:bold}.hd-h{color:#C9A227;font-size:11px;margin-top:3px}.hd-r{color:#C9A227;font-size:11px;text-align:right}.gb{background:#C9A227;padding:10px 20px;text-align:center}.gb-t{font-size:14px;font-weight:bold;color:#1B2A0C}.gb-s{font-size:11px;color:#412402;margin-top:3px}h2{color:#1B3A5C;font-size:14px;margin:16px 20px 8px;border-bottom:1px solid #E5E7EB;padding-bottom:6px}table{width:calc(100% - 40px);margin:0 20px 12px;border-collapse:collapse}th{background:#1B3A5C;color:white;padding:8px;font-size:11px;text-align:left;border:1px solid #1B3A5C}td{padding:8px;font-size:11px;border:1px solid #E5E7EB}tr:nth-child(even) td{background:#F9FAFB}.qty{text-align:right;color:#1A6B5C;font-weight:600;width:100px}ul{margin:0 20px 12px 40px}li{font-size:12px;color:#374151;line-height:22px}.ft{margin-top:20px;border-top:1px solid #E5E7EB;padding-top:10px;text-align:center;font-size:9px;color:#6B7280}.disc{margin:10px 20px;background:#F5F7FA;border-radius:6px;padding:8px 12px;font-size:9px;color:#6B7280;text-align:center}</style></head><body><div class="hd"><div><div class="hd-l">My Maharaj</div><div class="hd-h">\u092E\u0947\u0930\u093E \u092E\u0939\u093E\u0930\u093E\u091C</div></div><div class="hd-r">blue flute<br>consulting</div></div><div class="gb"><div class="gb-t">${occasion} — Outdoor Catering</div><div class="gb-s">${occasionText} \u00B7 ${guestCountText} guests \u00B7 ${foodType} \u00B7 ${setup} \u00B7 AED ${b}/head</div></div>${sectionHTML('Starters', menu.starters)}${sectionHTML('Main Course', menu.main_course)}${sectionHTML('Desserts', menu.desserts)}${sectionHTML('Beverages', menu.beverages)}${tipsHTML}${shopHTML}<div class="disc">Maharaj outdoor menus are recommendations only. Please adjust for allergies and dietary needs.</div><div class="ft">Generated on ${today} \u00B7 Powered by Blue Flute Consulting LLC-FZ \u00B7 www.bluefluteconsulting.com</div><script>setTimeout(function(){window.print()},800)</script></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'maharaj-outdoor-menu.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   function Section({ title, items }: { title: string; items?: Item[] }) {

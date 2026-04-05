@@ -68,12 +68,35 @@ export default function MenuHistoryScreen() {
       // Also load from AsyncStorage (local plans)
       try {
         const local = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]') as any[];
-        const localRecords: MenuRecord[] = local.map((l: any) => ({
-          id: l.id, created_at: l.createdAt, period_start: l.dateRange?.split(' — ')[0] ?? '', period_end: l.dateRange?.split(' — ')[1] ?? '',
-          cuisine: 'Various', food_pref: 'mixed', dietary_notes: null,
-          menu_json: { days: (l.plan ?? []).map((d: any) => ({ date: d.date, day: '', breakfast: d.breakfast ? { name: d.breakfast } : null, lunch: d.lunch ? { name: d.lunch } : null, dinner: d.dinner ? { name: d.dinner } : null })) },
-        }));
-        const merged = [...localRecords, ...supaRecords].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const localRecords: MenuRecord[] = local.map((l: any) => {
+          // Party/outdoor entries saved from party-menu or outdoor-catering
+          if (l.menu_json?.type === 'party' || l.menu_json?.type === 'outdoor' || l.type === 'party' || l.type === 'outdoor') {
+            const mj = l.menu_json ?? l;
+            return {
+              id: l.id ?? Date.now().toString(), created_at: l.createdAt ?? new Date().toISOString(),
+              period_start: l.dateRange ?? '', period_end: l.dateRange ?? '',
+              cuisine: mj.type === 'party' ? 'Party Menu' : 'Outdoor Catering',
+              food_pref: mj.foodType ?? 'Mixed', dietary_notes: mj.occasion ?? null,
+              menu_json: mj,
+            };
+          }
+          // Regular weekly plan entries
+          const days = (l.days ?? l.plan ?? []).map((d: any) => ({
+            date: d.date, day: d.dayName || '',
+            breakfast: d.breakfast ? (typeof d.breakfast === 'string' ? { name: d.breakfast } : d.breakfast) : null,
+            lunch: d.lunch ? (typeof d.lunch === 'string' ? { name: d.lunch } : d.lunch) : null,
+            dinner: d.dinner ? (typeof d.dinner === 'string' ? { name: d.dinner } : d.dinner) : null,
+          }));
+          return {
+            id: l.id, created_at: l.createdAt, period_start: l.dateRange?.split(' — ')[0] ?? '', period_end: l.dateRange?.split(' — ')[1] ?? '',
+            cuisine: 'Various', food_pref: 'mixed', dietary_notes: null,
+            menu_json: { days },
+          };
+        });
+        // Deduplicate: skip local entries whose id already exists in supaRecords
+        const supaIds = new Set(supaRecords.map(r => r.id));
+        const uniqueLocal = localRecords.filter(r => !supaIds.has(r.id));
+        const merged = [...uniqueLocal, ...supaRecords].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setRecords(merged);
       } catch { setRecords(supaRecords); }
       setLoading(false);
@@ -179,16 +202,22 @@ export default function MenuHistoryScreen() {
 
                 {isExpanded && !menuType && days.length > 0 && (
                   <View style={s.expandedBody}>
-                    {days.map((day, idx) => (
-                      <View key={idx} style={[s.dayRow, idx < days.length - 1 && s.dayRowBorder]}>
-                        <Text style={s.dayName}>{day.day}</Text>
-                        <View style={s.mealsCol}>
-                          {day.breakfast && <Text style={s.mealText}>{day.breakfast.name}</Text>}
-                          {day.lunch     && <Text style={s.mealText}>{day.lunch.name}</Text>}
-                          {day.dinner    && <Text style={s.mealText}>{day.dinner.name}</Text>}
+                    {days.map((day, idx) => {
+                      const dayLabel = day.day || (day.date ? new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }) : `Day ${idx+1}`);
+                      const bfName = typeof day.breakfast === 'string' ? day.breakfast : day.breakfast?.name;
+                      const lnName = typeof day.lunch === 'string' ? day.lunch : day.lunch?.name;
+                      const dnName = typeof day.dinner === 'string' ? day.dinner : day.dinner?.name;
+                      return (
+                        <View key={idx} style={[s.dayRow, idx < days.length - 1 && s.dayRowBorder]}>
+                          <Text style={s.dayName}>{dayLabel}</Text>
+                          <View style={s.mealsCol}>
+                            {bfName ? <Text style={s.mealText}>B: {bfName}</Text> : null}
+                            {lnName ? <Text style={s.mealText}>L: {lnName}</Text> : null}
+                            {dnName ? <Text style={s.mealText}>D: {dnName}</Text> : null}
+                          </View>
                         </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 )}
               </TouchableOpacity>

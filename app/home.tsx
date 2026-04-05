@@ -135,14 +135,14 @@ export default function HomeScreen() {
     loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
   }, []);
 
-  // Weather check (when active plan exists)
+  // Weather check — always fetch, show on home
   useEffect(() => {
     async function checkWeather() {
-      const plan = await AsyncStorage.getItem('confirmed_meal_plan');
-      if (!plan) return;
-      const coords = await getCoords();
-      const info = await fetchWeather(coords.lat, coords.lon, coords.city);
-      if (info) setWeatherInfo(info);
+      try {
+        const coords = await getCoords();
+        const info = await fetchWeather(coords.lat, coords.lon, coords.city);
+        if (info) setWeatherInfo(info);
+      } catch (e) { console.log('[Weather] failed:', e); }
     }
     void checkWeather();
   }, []);
