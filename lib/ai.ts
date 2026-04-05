@@ -232,10 +232,11 @@ Food preference: ${foodNote}. Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}
 
 CRITICAL COOKING RULES:
-- All dishes must be everyday middle-class Indian home cooking that a normal family cooks on a weekday. Simple ingredients, simple methods.
-- Option 1: Simple quick everyday dish.
-- Option 2: Different everyday dish, different primary ingredient from option 1.
-- Option 3: Slightly elevated home cooking — a little special but NOT restaurant style, NOT expensive ingredients.
+- ALL dishes must be EVERYDAY HOME COOKING — dal, sabzi, roti, rice, paratha, khichdi, curd rice. Think of what a normal Indian family cooks on a weekday. NEVER suggest restaurant/party/fancy food like biryani every day, butter chicken daily, paneer tikka masala etc.
+- Option 1: Very simple quick everyday dish (e.g. dal chawal, aloo gobhi roti, pohe, upma).
+- Option 2: Different simple everyday dish, different primary ingredient from option 1 (e.g. moong dal, bhindi sabzi, methi thepla).
+- Option 3: Slightly different home dish — still simple but a different cuisine style. NOT restaurant style, NOT expensive ingredients.
+- Biryani, pulao, paneer dishes, and rich curries should appear at most 1-2 times per week, not daily.
 - ZERO dish repetition across the entire week. Every dish name must be unique across all days.
 - Naturally mention 1-2 superfoods or health benefits in the dish description.
 - Family health conditions OVERRIDE all other preferences. Apply strictly.
@@ -274,13 +275,17 @@ Reply ONLY with this JSON (no other text, no markdown):
         console.warn(`[generateOneMeal] Empty ingredients for "${o.name}" — adding placeholders`);
         ingredients = ['Oil 2 tbsp', 'Salt to taste', 'Onion 2 medium', 'Tomato 2 medium', 'Green chilli 2', 'Ginger-garlic paste 1 tbsp'];
       }
+      let steps = o.steps ?? [];
+      if (steps.length === 0) {
+        steps = ['Prep and chop all ingredients.', 'Heat oil in a pan, add spices and saut\u00e9.', 'Add main ingredients, cook until done.', 'Season to taste and serve hot.'];
+      }
       return {
         name: o.name ?? '',
         description: o.desc ?? undefined,
         vegetarian: o.veg ?? true,
         tags: o.tags ?? [],
         ingredients,
-        steps: o.steps ?? [],
+        steps,
       };
     });
     if (opts.length === 0) return fallbackSlot(mealType, dayIdx);
