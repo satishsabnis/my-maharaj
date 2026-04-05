@@ -84,15 +84,25 @@ export default function OutdoorCateringScreen() {
     if (!occasionText.trim()) { setError('Please describe the event.'); return; }
     setLoading(true);
     try {
+      // Occasion-aware context
+      const occ = occasionText.toLowerCase();
+      let occasionContext = 'General outdoor event — balanced menu.';
+      if (occ.includes('trek') || occ.includes('hik') || occ.includes('camp')) occasionContext = 'TREKKING/CAMPING: Lightweight, portable, high-energy food. Fewer courses, easy to eat on the go. Focus on wraps, energy bars, trail mix, sandwiches, dry snacks.';
+      else if (occ.includes('beach') || occ.includes('pool')) occasionContext = 'BEACH/POOL: Fresh, cold-friendly food. Grilled items, salads, cold beverages, finger food. Avoid heavy curries.';
+      else if (occ.includes('office') || occ.includes('corporate') || occ.includes('team')) occasionContext = 'CORPORATE: Formal buffet style. Neat presentation, variety, vegetarian options mandatory, individual portions if possible.';
+      else if (occ.includes('picnic') || occ.includes('park')) occasionContext = 'PICNIC: Easy to pack, eat without cutlery. Wraps, sandwiches, samosas, fruit, juice. No messy gravies.';
+      else if (occ.includes('sport') || occ.includes('match') || occ.includes('game')) occasionContext = 'SPORTS EVENT: Quick bites, high energy. Burgers, wraps, protein-rich snacks, hydrating drinks.';
+
       const text = await callClaude(`You are Maharaj, expert Indian chef specialising in outdoor catering.
 Generate an outdoor catering menu for:
 - Event: ${occasionText} (${recogniseOccasion(occasionText)})
+- ${occasionContext}
 - Guests: ${g}, Food: ${foodType}, Setup: ${setup}, Weather: ${weather}
 - Budget: AED ${b} per head (Total: AED ${g * b})
 - ${loc.city}, ${loc.country} — ingredients from ${loc.stores}
 - Beverages to include: ${selectedBevs.join(', ') || 'Water only'}
 ${beverages.alcohol ? '- Include beer, wine and cocktail pairing suggestions appropriate for the occasion.' : '- No alcohol.'}
-Focus on food that travels well, stays fresh outdoors and suits the weather.
+Focus on food that travels well, stays fresh outdoors and suits the weather. Adapt the menu to the specific occasion type.
 Respond ONLY with this exact JSON structure - no other text, no markdown:
 {"starters":[{"name":"string","description":"string"}],"main_course":[{"name":"string","description":"string"}],"desserts":[{"name":"string","description":"string"}],"beverages":[{"name":"string","description":"string"}],"packing_tips":["string"],"shopping_list":[{"item":"string","qty":"string"}]}
 Include 3-5 items per section. Shopping list must have quantity with units for ${g} guests.`);
@@ -265,10 +275,11 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
           <View style={s.container}>
             {/* Occasion Banner */}
             <View style={s.resultHeader}>
-              <Text style={s.resultTitle}>{recogniseOccasion(occasionText)} Menu</Text>
-              <Text style={{fontSize:14,color:'rgba(255,255,255,0.9)',marginTop:6,fontStyle:'italic'}}>"{occasionText}"</Text>
+              <Text style={{fontSize:12,color:'rgba(255,255,255,0.6)',textTransform:'uppercase',letterSpacing:0.5}}>Outdoor Catering</Text>
+              <Text style={s.resultTitle}>{occasionText}</Text>
               <Text style={s.resultMeta}>{guestCountText} guests · {foodType} · {setup} · AED {budget}/head</Text>
               <Text style={s.resultMeta}>Weather: {weather}</Text>
+              <Text style={s.resultMeta}>{menu ? `${(menu.starters?.length||0)+(menu.main_course?.length||0)+(menu.desserts?.length||0)+(menu.beverages?.length||0)} dishes planned` : ''}</Text>
             </View>
 
             {/* Saved indicator */}
