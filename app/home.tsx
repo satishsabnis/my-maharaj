@@ -10,6 +10,7 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import { loadOrDetectLocation } from '../lib/location';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 import { fetchWeather, getCoords, WeatherInfo } from '../lib/weather';
+import MarqueeTicker from '../components/MarqueeTicker';
 
 // ─── Festival data ────────────────────────────────────────────────────────────
 
@@ -214,9 +215,7 @@ export default function HomeScreen() {
         </View>
 
         {/* ── TICKER ── */}
-        <View style={{backgroundColor:navy,height:22,overflow:'hidden'}}>
-          <Animated.Text style={{transform:[{translateX:tickerAnim}],color:'rgba(201,162,39,0.75)',fontSize:9,lineHeight:22}} onLayout={e => { if (tickerContentWidth === 0) setTickerContentWidth(e.nativeEvent.layout.width); }} numberOfLines={1}>{TICKER_TEXT.repeat(3)}</Animated.Text>
-        </View>
+        <MarqueeTicker />
 
         {/* ── SCROLL CONTENT ── */}
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -448,11 +447,11 @@ const s = StyleSheet.create({
   footerLine2: { fontSize: 9, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 3 },
 
   // FAB
-  fab: { position: 'absolute', bottom: 20, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fabLabelWrap: { backgroundColor: 'rgba(27,58,92,0.9)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  fabLabel: { fontSize: 11, fontWeight: '700', color: white },
-  fabCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: navy, alignItems: 'center', justifyContent: 'center', shadowColor: navy, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  fabIcon: { width: 28, height: 28 },
+  fab: { position: 'absolute', bottom: 24, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fabLabelWrap: { backgroundColor: '#1B3A5C', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  fabLabel: { fontSize: 10, fontWeight: '700', color: white },
+  fabCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#1B3A5C', alignItems: 'center', justifyContent: 'center', shadowColor: navy, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  fabIcon: { width: 26, height: 26 },
 
   // Drawer overlay
   drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 999 },

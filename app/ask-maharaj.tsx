@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border, errorRed, mint } from '../theme/colors';
+import MarqueeTicker from '../components/MarqueeTicker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,18 @@ async function callClaude(messages: { role: string; content: string }[], systemP
   const data = await res.json();
   if (data?.error) throw new Error(data.error.message ?? data.error);
   return data?.content?.[0]?.text ?? '';
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/^\s*[-*+]\s/gm, '\u2022 ')
+    .replace(/^\s*\d+\.\s/gm, '')
+    .trim();
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -170,7 +183,7 @@ Always respond in the same language the user writes in. If they write in Marathi
         } catch {}
       }
 
-      const cleanResponse = response.replace(/MEAL_JSON_START[\s\S]*?MEAL_JSON_END/g, '').trim();
+      const cleanResponse = stripMarkdown(response.replace(/MEAL_JSON_START[\s\S]*?MEAL_JSON_END/g, '').trim());
       const assistantMsg: Message = { role: 'assistant', content: cleanResponse };
       setMessages(prev => [...prev, assistantMsg]);
       // Speak response if triggered by voice
@@ -242,19 +255,20 @@ Always respond in the same language the user writes in. If they write in Marathi
             <Text style={s.backTxt}>Back</Text>
           </TouchableOpacity>
           <View style={s.headerCenter}>
-            <Text style={s.headerTitle}>Ask Maharaj</Text>
-            <Text style={s.headerSub}>Your Wise Nutrition Mentor</Text>
+            <Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" />
+            <Text style={{fontSize:13,fontWeight:'500',color:navy,marginTop:2}}>Ask Maharaj</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
             <Text style={s.homeTxt}>Home</Text>
           </TouchableOpacity>
         </View>
+        <MarqueeTicker />
 
         {/* Chat area */}
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={80}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <ScrollView
             ref={scrollRef}

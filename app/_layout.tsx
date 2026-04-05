@@ -36,11 +36,14 @@ export default function Layout() {
   useEffect(() => {
     requestNotificationPermissions();
 
-    // Force logout check via API
+    // Force logout check via API + session + profile check
     (async () => {
       try {
         const base = 'https://my-maharaj.vercel.app';
-        const resp = await fetch(`${base}/api/invalidate-sessions`);
+        const resp = await fetch(`${base}/api/invalidate-sessions`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        });
         const data = await resp.json();
         const storedVersion = await AsyncStorage.getItem('app_version');
         if (data.forceLogout && storedVersion !== data.version) {
@@ -53,10 +56,24 @@ export default function Layout() {
         }
       } catch {}
 
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
+      // Session check
+      const { data: { session: sess } } = await supabase.auth.getSession();
+      if (!sess) {
+        setSession(null);
         setLoading(false);
-      });
+        return;
+      }
+      setSession(sess);
+
+      // Profile setup check
+      const profileSetup = await AsyncStorage.getItem('profile_setup_complete');
+      if (!profileSetup || profileSetup === 'false') {
+        router.replace('/dietary-profile?firstSetup=true' as never);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

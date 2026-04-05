@@ -8,6 +8,7 @@ import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
+import MarqueeTicker from '../components/MarqueeTicker';
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ export default function MealWizardScreen() {
   const [nutritionGoalsWiz, setNutritionGoalsWiz] = useState<string[]>([]);
   const spinAnim = useRef(new Animated.Value(0)).current;
 
-  const ALL_CUISINES_WIZ = ['Afghan','Andhra','Arabic','Assamese','Awadhi','Bangladeshi','Bengali','Bihari','Burmese','Chettinad','Chinese','Continental','Coorgi','Egyptian','Ethiopian','French','Goan','Greek','Gujarati','Hyderabadi','Indonesian','Iranian','Italian','Jain','Japanese','Kashmiri','Korean','Kuwaiti','Lebanese','Maharashtrian','Malabar','Malaysian','Malvani','Mediterranean','Mexican','Moroccan','Nepali','Nigerian','Odia','Omani','Pakistani','Palestinian','Persian','Punjabi','Rajasthani','Singaporean','South African','South Indian','Spanish','Sri Lankan','Syrian','Tamil','Telugu','Thai','Turkish','Udupi','Vietnamese','Yemeni'].sort();
+  const ALL_CUISINES_WIZ = ['Arabic','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi','Jain','Kashmiri','Kerala','Maharashtrian','Malabar','Malvani','Mangalorean','Mughlai','Pakistani','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','UP / Awadhi'];
 
   // Load members + cuisines on mount
   useEffect(() => {
@@ -2073,6 +2074,8 @@ export default function MealWizardScreen() {
           {!isUserStep && <View style={{ width: 50 }} />}
         </View>
       )}
+
+      {!isFullScreen && <MarqueeTicker />}
 
       {/* Progress bar */}
       {isUserStep && (
