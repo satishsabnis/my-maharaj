@@ -47,6 +47,35 @@ export async function getCoords(): Promise<{ lat: number; lon: number; city: str
   }
 }
 
+/**
+ * Returns a weather-aware meal suggestion prompt, or null if weather is unremarkable.
+ */
+export function getWeatherMealPrompt(info: WeatherInfo): { message: string; mealContext: string; icon: string } | null {
+  const { temp, description } = info;
+  const isRain = description.toLowerCase().includes('rain') || description.toLowerCase().includes('drizzle') || description.toLowerCase().includes('thunderstorm');
+  const isCold = temp < 22;
+  const isHot = temp > 38;
+
+  if (isRain) return {
+    message: `It's going to rain today \u2601\uFE0F \u2014 want Maharaj to suggest something warm for dinner?`,
+    mealContext: `Today's weather: ${description}, ${temp}\u00B0C. Adjust this meal to be warm and comforting \u2014 soups, hot curries, pakoras, chai.`,
+    icon: '\u2601\uFE0F',
+  };
+  if (isCold) return {
+    message: `Cool day at ${temp}\u00B0C \u2744\uFE0F \u2014 shall Maharaj plan something warm and hearty?`,
+    mealContext: `Today's weather: ${description}, ${temp}\u00B0C. Adjust this meal to be warm and hearty \u2014 thick dals, hot rotis, warm drinks.`,
+    icon: '\u2744\uFE0F',
+  };
+  if (isHot) return {
+    message: `Scorching ${temp}\u00B0C today \uD83C\uDF21\uFE0F \u2014 shall we make lunch lighter and cooling?`,
+    mealContext: `Today's weather: ${description}, ${temp}\u00B0C. Adjust this meal to be light and cooling \u2014 curd rice, raita, nimbu pani, salads.`,
+    icon: '\uD83C\uDF21\uFE0F',
+  };
+
+  // Unremarkable weather — no card
+  return null;
+}
+
 function weatherCodeToInfo(code: number): { description: string; icon: string } {
   if (code === 0) return { description: 'Clear sky', icon: '\u2600\uFE0F' };
   if (code <= 3) return { description: 'Partly cloudy', icon: '\u26C5' };

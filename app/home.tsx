@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { loadOrDetectLocation } from '../lib/location';
 import { navy, gold, white, textSec, border } from '../theme/colors';
-import { fetchWeather, getCoords, WeatherInfo } from '../lib/weather';
+import { fetchWeather, getCoords, getWeatherMealPrompt, WeatherInfo } from '../lib/weather';
 import MarqueeTicker from '../components/MarqueeTicker';
 
 // ─── Festival data ────────────────────────────────────────────────────────────
@@ -75,6 +75,7 @@ export default function HomeScreen() {
   const [privacyVisible, setPrivacyVisible] = useState(false);
   const [weatherInfo, setWeatherInfo] = useState<WeatherInfo | null>(null);
   const [weatherDismissed, setWeatherDismissed] = useState(false);
+  const [weatherPrompt, setWeatherPrompt] = useState<{ message: string; mealContext: string; icon: string } | null>(null);
 
   const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const tickerAnim = useRef(new Animated.Value(0)).current;
@@ -135,13 +136,17 @@ export default function HomeScreen() {
     loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
   }, []);
 
-  // Weather check — always fetch, show on home
+  // Weather check — fetch once, show prompt only if conditions are notable
   useEffect(() => {
     async function checkWeather() {
       try {
         const coords = await getCoords();
         const info = await fetchWeather(coords.lat, coords.lon, coords.city);
-        if (info) setWeatherInfo(info);
+        if (info) {
+          setWeatherInfo(info);
+          const prompt = getWeatherMealPrompt(info);
+          if (prompt) setWeatherPrompt(prompt);
+        }
       } catch (e) { console.log('[Weather] failed:', e); }
     }
     void checkWeather();
@@ -230,21 +235,18 @@ export default function HomeScreen() {
             <Text style={{fontSize:20,color:gold,fontWeight:'700'}}>{'\u203A'}</Text>
           </TouchableOpacity>
 
-          {/* Weather card — collapsible */}
-          {weatherInfo && !weatherDismissed && (
-            <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:12,marginBottom:10,borderWidth:1,borderColor:'rgba(27,58,92,0.12)'}}>
-              <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
-                <Text style={{fontSize:28}}>{weatherInfo.icon}</Text>
-                <View style={{flex:1}}>
-                  <Text style={{fontSize:18,fontWeight:'800',color:navy}}>{weatherInfo.temp}{'\u00B0'}C</Text>
-                  <Text style={{fontSize:13,fontWeight:'600',color:navy}}>{weatherInfo.city}</Text>
-                  <Text style={{fontSize:11,color:textSec}}>{weatherInfo.description}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setWeatherDismissed(true)} style={{padding:4}}>
-                  <Text style={{fontSize:14,color:textSec,fontWeight:'700'}}>X</Text>
-                </TouchableOpacity>
+          {/* Weather-aware meal prompt — only shows when conditions are notable */}
+          {weatherPrompt && !weatherDismissed && (
+            <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:12,marginBottom:10,borderWidth:1,borderColor:'rgba(201,162,39,0.25)',flexDirection:'row',alignItems:'center',gap:10}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
+              <Text style={{fontSize:24}}>{weatherPrompt.icon}</Text>
+              <View style={{flex:1}}>
+                <Text style={{fontSize:12,fontWeight:'600',color:navy,lineHeight:18}}>{weatherPrompt.message}</Text>
+                {weatherInfo && <Text style={{fontSize:10,color:textSec,marginTop:2}}>{weatherInfo.temp}{'\u00B0'}C in {weatherInfo.city}</Text>}
               </View>
-            </View>
+              <TouchableOpacity onPress={() => setWeatherDismissed(true)} style={{padding:4}}>
+                <Text style={{fontSize:14,color:textSec,fontWeight:'700'}}>X</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
           )}
 
           {/* Lab reminder */}

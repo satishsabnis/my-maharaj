@@ -290,7 +290,7 @@ DO NOT repeat any dish that appeared in the last 7 days: ${weekDishHistory?.slic
 Every single dish across ALL days must have a UNIQUE name. No dish can appear more than once in the entire plan. If a dish name from the list above appears in your response, it will be REJECTED.
 
 IMPORTANT RULES:
-- Use ONLY authentic Indian dish names (e.g. Poha, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Butter Chicken, Fish Curry, Dal Makhani, Pav Bhaji). NEVER use generic English names like 'lentil soup' or 'chickpea curry'.
+- DISH NAME RULE: Every dish must have its authentic Indian regional name as the PRIMARY name. Examples: 'Dal Makhani' not 'Black Lentil Curry', 'Poha' not 'Flattened Rice', 'Chole Bhature' not 'Chickpea with Fried Bread', 'Appam with Stew' not 'Rice Pancake with Vegetable Stew', 'Kosha Mangsho' not 'Bengali Spiced Mutton'. If a dish has no authentic Indian name, it should not be in this app. Generic English translations are BANNED.
 - MILLETS ARE BANNED. Do not suggest Ragi, Jowar, Bajra, or any millet-based dish unless explicitly requested. Most families do not eat millets daily.
 - Do NOT over-index on 'health foods'. A family that wants Butter Chicken and Pav Bhaji should get it. Balance health with what real families enjoy.
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
@@ -469,31 +469,29 @@ export async function generateMealPlan(
   });
 
   let completed = 0;
-  const weekHistory = [...(params.dishHistory ?? [])].slice(0, 30);
-  
-  // Process all days in parallel for maximum speed
-  const BATCH_SIZE = 7;
+  const weekHistory = [...(params.dishHistory ?? [])].slice(0, 60);
+
+  // Process days SEQUENTIALLY so each day sees all previous dishes — prevents repeats
+  // Within each day, meals run in parallel for speed
   const dayResults: MealPlanDay[] = [];
-  
-  for (let batchStart = 0; batchStart < dayMeta.length; batchStart += BATCH_SIZE) {
-    const batch = dayMeta.slice(batchStart, batchStart + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(async ({ date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i }) => {
-        const emptySlot: MealSlot = { options: [] };
-        const [breakfast, lunch, dinner, snack] = await Promise.all([
-          slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
-          slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint) : Promise.resolve(emptySlot),
-          slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint) : Promise.resolve(emptySlot),
-          slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint) : Promise.resolve(undefined),
-        ]);
-        completed++;
-        onProgress?.(completed, total);
-        const day: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };
-        if (snack) day.snack = snack;
-        return day;
-      })
-    );
-    dayResults.push(...batchResults);
+
+  for (const { date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i } of dayMeta) {
+    const emptySlot: MealSlot = { options: [] };
+    const [breakfast, lunch, dinner, snack] = await Promise.all([
+      slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint) : Promise.resolve(emptySlot),
+      slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint) : Promise.resolve(emptySlot),
+      slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint) : Promise.resolve(emptySlot),
+      slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint) : Promise.resolve(undefined),
+    ]);
+    // Accumulate all dish names from this day into history for next day
+    [breakfast, lunch, dinner, snack].forEach(slot => {
+      if (slot) slot.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
+    });
+    completed++;
+    onProgress?.(completed, total);
+    const day: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };
+    if (snack) day.snack = snack;
+    dayResults.push(day);
   }
 
   const days: MealPlanDay[] = dayResults;  // batched results
