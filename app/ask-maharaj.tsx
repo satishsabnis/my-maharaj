@@ -288,7 +288,7 @@ Always respond in the same language the user writes in. If they write in Marathi
             {messages.map((msg, i) => (
               <View key={i} style={[s.bubble, msg.role === 'user' ? s.bubbleUser : s.bubbleAI]}>
                 {msg.role === 'assistant' && (
-                  <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
+                  <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:28,height:28}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
                 )}
                 <Text style={[s.bubbleTxt, msg.role === 'user' ? s.bubbleTxtUser : s.bubbleTxtAI]}>
                   {msg.content}
@@ -310,7 +310,7 @@ Always respond in the same language the user writes in. If they write in Marathi
 
             {loading && (
               <View style={[s.bubble, s.bubbleAI]}>
-                <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
+                <View style={{flexDirection:"row",alignItems:"center",gap:6,marginBottom:4}}><Image source={require('../assets/logo.png')} style={{width:28,height:28}} resizeMode="contain" /><Text style={{fontSize:10,fontWeight:"700",color:"#1A6B5C"}}>Maharaj</Text></View>
                 <ActivityIndicator color={navy} size="small" style={{ marginTop: 4 }} />
                 <Text style={[s.bubbleTxt, s.bubbleTxtAI, { fontStyle: 'italic', marginTop: 4 }]}>
                   Consulting ancient wisdom...
@@ -321,7 +321,7 @@ Always respond in the same language the user writes in. If they write in Marathi
             {mealResult && (
               <View style={s.mealResultInline}>
                 <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>
-                  <Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" />
+                  <Image source={require('../assets/logo.png')} style={{width:28,height:28}} resizeMode="contain" />
                   <Text style={{fontSize:16,fontWeight:'800',color:navy}}>{mealResult.title ?? 'Your Meal Plan'}</Text>
                 </View>
                 {mealResult.meals.map((meal, i) => (
@@ -372,7 +372,7 @@ Always respond in the same language the user writes in. If they write in Marathi
               style={[s.voiceBtn, listening && s.voiceBtnActive]}
               onPress={startVoice}
             >
-              <Text style={s.voiceIcon}>{listening ? 'Stop' : 'Mic'}</Text>
+              <Text style={{fontSize:18,color:listening?white:'#1B3A5C'}}>{listening ? '\u25A0' : '\uD83C\uDFA4'}</Text>
             </TouchableOpacity>
             <TextInput
               style={s.input}

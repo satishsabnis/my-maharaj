@@ -1448,33 +1448,44 @@ export default function MealWizardScreen() {
             const opt = getOpt(dayIdx, slot);
             if (!opt || !selected.includes(opt.name)) return null;
             return (
-              <View key={`${dayIdx}-${slot}`} style={s.recipeCard}>
-                <Text style={s.recipeCardName}>{opt.name}</Text>
-                {opt.tags.length > 0 && <Text style={s.recipeCardTags}>{opt.tags.join(' · ')}</Text>}
-                <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:6}}>Ingredients</Text>
-                <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',paddingHorizontal:10,paddingVertical:4}}>
+              <View key={`${dayIdx}-${slot}`} style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
+                {/* Dish header */}
+                <View style={{backgroundColor:navy,padding:10}}>
+                  <Text style={{fontSize:8,color:gold,textTransform:'uppercase',letterSpacing:0.5}}>{slot}</Text>
+                  <Text style={{fontSize:11,fontWeight:'500',color:white}}>{opt.name}</Text>
+                </View>
+                {/* Ingredients */}
+                <Text style={{fontSize:9,fontWeight:'700',color:navy,paddingHorizontal:10,paddingTop:8,paddingBottom:4}}>Ingredients</Text>
+                <View style={{paddingHorizontal:10}}>
                   {opt.ingredients.map((ing: any, i: number) => {
                     const isStr = typeof ing === 'string';
-                    const name = isStr ? ing : (ing.item || ing.name || '');
-                    const qty = isStr ? '' : `${ing.qty || ''} ${ing.unit || ''}`.trim();
+                    const nm = isStr ? ing : (ing.item || ing.name || '');
+                    const qt = isStr ? '' : `${ing.qty || ''} ${ing.unit || ''}`.trim();
                     return (
-                      <View key={i} style={{flexDirection:'row',paddingVertical:4,borderBottomWidth:i<opt.ingredients.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.08)'}}>
-                        <View style={{width:6,height:6,borderRadius:3,backgroundColor:navy,marginRight:8,marginTop:5}} />
-                        <Text style={{flex:1,fontSize:11,color:'#1B3A5C'}}>{name}</Text>
-                        {qty ? <Text style={{fontSize:11,color:'#6B7280'}}>{qty}</Text> : null}
+                      <View key={i} style={{flexDirection:'row',paddingVertical:3,borderBottomWidth:i<opt.ingredients.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.05)'}}>
+                        <View style={{width:4,height:4,borderRadius:2,backgroundColor:navy,marginRight:6,marginTop:4}} />
+                        <Text style={{flex:1,fontSize:9,color:'#1B3A5C'}}>{nm}</Text>
+                        {qt ? <Text style={{fontSize:9,color:'#6B7280'}}>{qt}</Text> : null}
                       </View>
                     );
                   })}
                 </View>
+                {/* Method */}
                 {opt.steps.length > 0 && (
-                  <>
-                    <Text style={{fontSize:11,fontWeight:'700',color:navy,marginTop:10,marginBottom:6}}>Method</Text>
-                    {opt.steps.map((st: any, i: number) => <Text key={i} style={s.recipeItem}>{i + 1}. {typeof st === 'string' ? st : st}</Text>)}
-                  </>
+                  <View style={{paddingHorizontal:10,paddingTop:4}}>
+                    <Text style={{fontSize:9,fontWeight:'700',color:navy,paddingBottom:4}}>Method</Text>
+                    {opt.steps.map((st: any, i: number) => (
+                      <View key={i} style={{flexDirection:'row',gap:6,paddingVertical:3}}>
+                        <View style={{width:16,height:16,borderRadius:8,backgroundColor:navy,alignItems:'center',justifyContent:'center'}}><Text style={{fontSize:7,color:white,fontWeight:'700'}}>{i+1}</Text></View>
+                        <Text style={{flex:1,fontSize:8,color:'#374151',lineHeight:13}}>{typeof st === 'string' ? st : st}</Text>
+                      </View>
+                    ))}
+                  </View>
                 )}
-                {opt.description && /diabetic|protein|iron|calcium|vitamin|omega|fibre|gut|anti-inflammatory/i.test(opt.description) && (
-                  <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:8,marginTop:10}}>
-                    <Text style={{fontSize:8,fontWeight:'700',color:'#854F0B',marginBottom:3}}>Maharaj's health note</Text>
+                {/* Health note */}
+                {opt.description && opt.description.length > 10 && (
+                  <View style={{backgroundColor:'#FFF8E7',padding:8}}>
+                    <Text style={{fontSize:8,fontWeight:'700',color:'#854F0B',marginBottom:2}}>Maharaj's health note</Text>
                     <Text style={{fontSize:8,color:'#854F0B',lineHeight:12}}>{opt.description}</Text>
                   </View>
                 )}
