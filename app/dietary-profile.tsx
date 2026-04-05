@@ -647,7 +647,7 @@ export default function DietaryProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll:      { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
+  scroll:      { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
   loadingText: { textAlign: 'center', color: textSec, marginTop: 40 },
   labReportLink:  { flexDirection:'row', alignItems:'center', gap:12, backgroundColor:'rgba(124,58,237,0.08)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(124,58,237,0.2)' },
   labReportIcon:  { fontSize:24 },
@@ -689,5 +689,5 @@ const s = StyleSheet.create({
   modalTitle:      { fontSize: 18, fontWeight: '700', color: navy },
   modalClose:      { width: 32, height: 32, borderRadius: 16, backgroundColor: surface, alignItems: 'center', justifyContent: 'center' },
   modalCloseTxt:   { fontSize: 14, color: textSec, fontWeight: '600' },
-  modalScroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
+  modalScroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
 });
