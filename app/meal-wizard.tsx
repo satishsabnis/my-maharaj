@@ -201,20 +201,29 @@ export default function MealWizardScreen() {
 
   // ── Pulse animation ──────────────────────────────────────────────────────
 
+  // Spinner animation — runs infinitely while step === 'generating'
   useEffect(() => {
-    if (step !== 'generating') return;
+    if (step !== 'generating') {
+      // Reset when leaving generating step
+      pulseAnim.setValue(1);
+      return;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 0.5, duration: 800, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1.0, duration: 800, useNativeDriver: true }),
-      ])
+      ]),
+      { iterations: -1 }
     );
+    // Spin uses a repeating 0→1 value that resets each cycle
+    spinAnim.setValue(0);
     const spin = Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true })
+      Animated.timing(spinAnim, { toValue: 1, duration: 2500, easing: Easing.linear, useNativeDriver: true }),
+      { iterations: -1 }
     );
     pulse.start();
     spin.start();
-    return () => { pulse.stop(); spin.stop(); spinAnim.setValue(0); };
+    return () => { pulse.stop(); spin.stop(); };
   }, [step]);
 
   // ── Generation ────────────────────────────────────────────────────────────
@@ -1484,47 +1493,44 @@ export default function MealWizardScreen() {
             const opt = getOpt(recipeDay, slot);
             if (!opt) return null;
             return (
-              <View key={`${recipeDay}-${slot}`} style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
+              <View key={`${recipeDay}-${slot}`} style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',marginBottom:14,overflow:'hidden'}}>
                 {/* Dish header */}
-                <View style={{backgroundColor:navy,padding:10}}>
-                  <Text style={{fontSize:8,color:gold,textTransform:'uppercase',letterSpacing:0.5}}>{slot}</Text>
-                  <Text style={{fontSize:11,fontWeight:'500',color:white}}>{opt.name}</Text>
+                <View style={{backgroundColor:navy,paddingHorizontal:14,paddingVertical:12}}>
+                  <Text style={{fontSize:10,color:gold,textTransform:'uppercase',letterSpacing:0.8,marginBottom:2}}>{slot}</Text>
+                  <Text style={{fontSize:16,fontWeight:'700',color:white}}>{opt.name}</Text>
+                  {opt.description && !opt.description.includes(' | ') && (
+                    <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:3}}>{opt.description}</Text>
+                  )}
                 </View>
                 {/* Ingredients */}
-                <Text style={{fontSize:9,fontWeight:'700',color:navy,paddingHorizontal:10,paddingTop:8,paddingBottom:4}}>Ingredients</Text>
-                <View style={{paddingHorizontal:10}}>
+                <View style={{paddingHorizontal:14,paddingTop:10,paddingBottom:6}}>
+                  <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:6}}>Ingredients</Text>
                   {opt.ingredients.map((ing: any, i: number) => {
                     const isStr = typeof ing === 'string';
                     const nm = isStr ? ing : (ing.item || ing.name || '');
                     const qt = isStr ? '' : `${ing.qty || ''} ${ing.unit || ''}`.trim();
                     return (
-                      <View key={i} style={{flexDirection:'row',paddingVertical:3,borderBottomWidth:i<opt.ingredients.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.05)'}}>
-                        <View style={{width:4,height:4,borderRadius:2,backgroundColor:navy,marginRight:6,marginTop:4}} />
-                        <Text style={{flex:1,fontSize:9,color:'#1B3A5C'}}>{nm}</Text>
-                        {qt ? <Text style={{fontSize:9,color:'#6B7280'}}>{qt}</Text> : null}
+                      <View key={i} style={{flexDirection:'row',paddingVertical:4,borderBottomWidth:i<opt.ingredients.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.06)'}}>
+                        <Text style={{fontSize:12,color:navy,marginRight:8}}>{'\u2022'}</Text>
+                        <Text style={{flex:1,fontSize:12,color:'#1B3A5C'}}>{nm}</Text>
+                        {qt ? <Text style={{fontSize:12,color:'#6B7280'}}>{qt}</Text> : null}
                       </View>
                     );
                   })}
                 </View>
                 {/* Method */}
                 {opt.steps.length > 0 && (
-                  <View style={{paddingHorizontal:10,paddingTop:4}}>
-                    <Text style={{fontSize:9,fontWeight:'700',color:navy,paddingBottom:4}}>Method</Text>
+                  <View style={{paddingHorizontal:14,paddingTop:4,paddingBottom:10}}>
+                    <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:6}}>Method</Text>
                     {opt.steps.map((st: any, i: number) => (
-                      <View key={i} style={{flexDirection:'row',gap:6,paddingVertical:3}}>
-                        <View style={{width:16,height:16,borderRadius:8,backgroundColor:navy,alignItems:'center',justifyContent:'center'}}><Text style={{fontSize:7,color:white,fontWeight:'700'}}>{i+1}</Text></View>
-                        <Text style={{flex:1,fontSize:8,color:'#374151',lineHeight:13}}>{typeof st === 'string' ? st : st}</Text>
+                      <View key={i} style={{flexDirection:'row',gap:8,paddingVertical:4}}>
+                        <View style={{width:20,height:20,borderRadius:10,backgroundColor:navy,alignItems:'center',justifyContent:'center',marginTop:1}}><Text style={{fontSize:9,color:white,fontWeight:'700'}}>{i+1}</Text></View>
+                        <Text style={{flex:1,fontSize:12,color:'#374151',lineHeight:18}}>{typeof st === 'string' ? st : st}</Text>
                       </View>
                     ))}
                   </View>
                 )}
-                {/* Health note */}
-                {opt.description && opt.description.length > 3 && !opt.description.includes(' | ') && (
-                  <View style={{backgroundColor:'#FFF8E7',padding:8}}>
-                    <Text style={{fontSize:8,fontWeight:'700',color:'#854F0B',marginBottom:2}}>Maharaj's health note</Text>
-                    <Text style={{fontSize:8,color:'#854F0B',lineHeight:12}}>{opt.description}</Text>
-                  </View>
-                )}
+                {/* Health note — shown in header now, skip duplicate */}
               </View>
             );
           })}
