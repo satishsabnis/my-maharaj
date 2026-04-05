@@ -137,6 +137,9 @@ export default function MealWizardScreen() {
   const [feedbacks,    setFeedbacks]    = useState<FeedbackEntry[]>([]);
   const [feedbackDone, setFeedbackDone] = useState(false);
 
+  // Fridge cross-reference
+  const [fridgeItems, setFridgeItems] = useState<any[]>([]);
+
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: true }); }, [step]);
 
@@ -187,6 +190,9 @@ export default function MealWizardScreen() {
       const saved = (cuisineData ?? []).map((c: any) => c.cuisine_name);
       setSelectedCuisinesWiz(saved);
       setSavedCuisines(saved);
+      // Load fridge inventory for cross-reference
+      const { data: fridgeData } = await supabase.from('fridge_inventory').select('id, item_name, quantity, unit').eq('user_id', user.id);
+      setFridgeItems(fridgeData ?? []);
     }
     void loadWiz();
     loadOrDetectLocation().then(setUserLocation);
@@ -1509,20 +1515,34 @@ export default function MealWizardScreen() {
     );
   }
 
+  const isInFridge = (itemName: string): boolean => {
+    if (!fridgeItems.length) return false;
+    const searchTerm = itemName.toLowerCase().split(' ')[0];
+    return fridgeItems.some((fi: any) =>
+      fi.item_name?.toLowerCase().includes(searchTerm) ||
+      searchTerm.includes(fi.item_name?.toLowerCase().split(' ')[0] || '')
+    );
+  };
+
   function renderGrocery() {
     const grocery = buildGrocery();
     const totalItems = CAT_ORDER.reduce((acc, cat) => acc + (grocery[cat]?.length ?? 0), 0);
+    const allItems = CAT_ORDER.flatMap(cat => grocery[cat] ?? []);
+    const fridgeMatchCount = allItems.filter(item => isInFridge(item.name)).length;
 
     return (
       <View>
         <Text style={s.stepTitle}>Your Shopping List</Text>
         <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : 'your plan'}</Text>
 
-        {/* Fridge tip */}
-        <View style={{backgroundColor:'#E8F4F8',borderRadius:8,padding:8,marginBottom:12,flexDirection:'row',gap:6,alignItems:'flex-start'}}>
+        {/* Fridge info card */}
+        <View style={{backgroundColor:'#E8F4F8',borderRadius:8,paddingHorizontal:10,paddingVertical:8,marginBottom:8,flexDirection:'row',gap:6,alignItems:'flex-start'}}>
           <Text style={{fontSize:12}}>{'\u2139\uFE0F'}</Text>
-          <Text style={{fontSize:9,color:'#0C447C',flex:1,lineHeight:14}}>Items already in your fridge are marked below. Your fridge inventory will update when you confirm this plan.</Text>
+          <Text style={{fontSize:9,color:'#0C447C',flex:1,lineHeight:14}}>Items already in your fridge are marked green and do not need to be purchased.</Text>
         </View>
+        {fridgeMatchCount > 0 && (
+          <Text style={{fontSize:9,color:'#059669',marginBottom:6}}>{fridgeMatchCount} item{fridgeMatchCount !== 1 ? 's' : ''} already in your fridge</Text>
+        )}
 
         {totalItems === 0 ? (
           <View style={s.emptyBox}><Text style={s.emptyText}>No ingredients found. Please select meals first.</Text></View>
@@ -1533,12 +1553,21 @@ export default function MealWizardScreen() {
             return (
               <View key={cat} style={{marginBottom:14}}>
                 <Text style={{fontSize:11,fontWeight:'700',color:gold,letterSpacing:0.5,paddingBottom:4,marginBottom:6,borderBottomWidth:1.5,borderBottomColor:gold}}>{cat}</Text>
-                {items.map((item, i) => (
-                  <View key={i} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5,borderBottomWidth:i<items.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.08)'}}>
-                    <Text style={{fontSize:11,color:'#1B3A5C',flex:1}}>{item.name}</Text>
-                    <Text style={{fontSize:11,color:'#6B7280'}}>{item.qty ? `${item.qty}${item.unit||''}` : ''}</Text>
-                  </View>
-                ))}
+                {items.map((item, i) => {
+                  const inFridge = isInFridge(item.name);
+                  return inFridge ? (
+                    <View key={i} style={{flexDirection:'row',alignItems:'center',backgroundColor:'#F0FFF4',borderRadius:4,paddingHorizontal:6,paddingVertical:3,marginVertical:1}}>
+                      <Text style={{fontSize:10,color:'#059669',marginRight:6}}>{'\u2713'}</Text>
+                      <Text style={{fontSize:10,color:'#9CA3AF',flex:1,textDecorationLine:'line-through'}}>{item.name}</Text>
+                      <Text style={{fontSize:9,color:'#059669'}}>In fridge</Text>
+                    </View>
+                  ) : (
+                    <View key={i} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5,borderBottomWidth:i<items.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.08)'}}>
+                      <Text style={{fontSize:10,color:'#1B3A5C',flex:1}}>{item.name}</Text>
+                      <Text style={{fontSize:10,color:'#6B7280'}}>{item.qty ? `${item.qty}${item.unit||''}` : ''}</Text>
+                    </View>
+                  );
+                })}
               </View>
             );
           })
@@ -1556,7 +1585,20 @@ export default function MealWizardScreen() {
           <TouchableOpacity style={{paddingVertical:14,paddingHorizontal:20,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
             <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={() => advance('cook-or-order')}>
+          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={async () => {
+            // Deplete fridge items that matched
+            try {
+              const raw = await AsyncStorage.getItem('fridge_inventory');
+              const current = JSON.parse(raw || '[]');
+              const allGrocery = CAT_ORDER.flatMap(cat => grocery[cat] ?? []);
+              const updated = current.filter((fi: any) =>
+                !allGrocery.some((si: any) => isInFridge(si.name))
+              );
+              await AsyncStorage.setItem('fridge_inventory', JSON.stringify(updated));
+              await AsyncStorage.setItem('last_plan_sync', new Date().toISOString());
+            } catch {}
+            advance('cook-or-order');
+          }}>
             <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Next</Text>
           </TouchableOpacity>
         </View>
