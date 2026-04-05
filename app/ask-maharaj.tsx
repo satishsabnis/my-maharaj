@@ -241,7 +241,7 @@ Always respond in the same language the user writes in. If they write in Marathi
             <Text style={s.backTxt}>Back</Text>
           </TouchableOpacity>
           <View style={s.headerCenter}>
-            <Text style={s.headerTitle}>Ask Maharaj AI</Text>
+            <Text style={s.headerTitle}>Ask Maharaj</Text>
             <Text style={s.headerSub}>Your Wise Nutrition Mentor</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
@@ -274,7 +274,7 @@ Always respond in the same language the user writes in. If they write in Marathi
                     'What should I cook for dinner tonight?',
                     'Suggest a diabetic-friendly meal plan',
                     'What is the history of biryani?',
-                    'Plan a Ram Navami festive menu',
+                    'Plan a festive menu',
                   ].map((s_) => (
                     <TouchableOpacity key={s_} style={s.suggChip} onPress={() => setInput(s_)}>
                       <Text style={s.suggTxt}>{s_}</Text>

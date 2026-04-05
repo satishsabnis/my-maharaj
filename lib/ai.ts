@@ -243,6 +243,10 @@ CRITICAL COOKING RULES:
 - Scale all ingredient quantities to exact number of people eating.
 ${nutritionGoals ? `NUTRITION GOALS FOR THIS PLAN: ${nutritionGoals}. Every dish must support these goals where possible.` : ''}
 
+ZERO REPETITION — MANDATORY:
+These dishes have been used recently and must NOT appear: ${weekDishHistory?.slice(0, 30).join(', ') || 'none yet'}.
+Every single dish across ALL days must have a UNIQUE name. No dish can appear more than once in the entire plan.
+
 IMPORTANT RULES:
 - Use REAL authentic Indian dish names (e.g. Pohe, Upma, Idli Sambhar, Methi Thepla, Rajma Chawal, Chole Bhature, Chicken Tikka Masala, Fish Curry, Dal Makhani)
 - NEVER use generic names like "breakfast 1" or "Tamil Nadu meal"
