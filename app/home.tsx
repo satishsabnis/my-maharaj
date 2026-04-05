@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Image, ImageBackground, Linking, Modal,
+  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal,
   Platform, SafeAreaView, ScrollView, StyleSheet, Switch,
   Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
@@ -73,12 +73,26 @@ export default function HomeScreen() {
   const [privacyVisible, setPrivacyVisible] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
+  const tickerAnim = useRef(new Animated.Value(0)).current;
+  const [tickerContentWidth, setTickerContentWidth] = useState(0);
+  const TICKER_TEXT = 'My Maharaj by Blue Flute Consulting \u00B7 Beta \u00B7 Smart meal planning for Indian families \u00B7 Feedback: info@bluefluteconsulting.com     ';
 
   // Clock update
   useEffect(() => {
     const t = setInterval(() => setDateTimeStr(formatInfoBar(new Date())), 60000);
     return () => clearInterval(t);
   }, []);
+
+  // Ticker animation
+  useEffect(() => {
+    if (tickerContentWidth === 0) return;
+    const startAnim = () => {
+      tickerAnim.setValue(0);
+      Animated.timing(tickerAnim, { toValue: -tickerContentWidth / 3, duration: (tickerContentWidth / 3) * 30, easing: Easing.linear, useNativeDriver: true }).start(({ finished }) => { if (finished) startAnim(); });
+    };
+    startAnim();
+    return () => tickerAnim.stopAnimation();
+  }, [tickerContentWidth]);
 
   // Load user data
   useEffect(() => {
@@ -185,8 +199,8 @@ export default function HomeScreen() {
         </View>
 
         {/* ── TICKER ── */}
-        <View style={s.ticker}>
-          <Text style={s.tickerTxt} numberOfLines={1}>My Maharaj by Blue Flute Consulting \u00B7 Beta \u00B7 Feedback: info@bluefluteconsulting.com</Text>
+        <View style={{backgroundColor:navy,height:22,overflow:'hidden'}}>
+          <Animated.Text style={{transform:[{translateX:tickerAnim}],color:'rgba(201,162,39,0.75)',fontSize:9,lineHeight:22}} onLayout={e => { if (tickerContentWidth === 0) setTickerContentWidth(e.nativeEvent.layout.width); }} numberOfLines={1}>{TICKER_TEXT.repeat(3)}</Animated.Text>
         </View>
 
         {/* ── SCROLL CONTENT ── */}
