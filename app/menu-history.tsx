@@ -17,12 +17,27 @@ interface MenuRecord {
   cuisine: string;
   food_pref: string;
   dietary_notes: string | null;
-  menu_json: { days?: Array<{
-    date: string; day: string;
-    breakfast: { name: string } | null;
-    lunch:     { name: string } | null;
-    dinner:    { name: string } | null;
-  }> } | null;
+  menu_json: {
+    type?: 'party' | 'outdoor';
+    occasion?: string;
+    recognised?: string;
+    guests?: string;
+    budget?: string;
+    setup?: string;
+    weather?: string;
+    starters?: { name: string; description: string }[];
+    main_course?: { name: string; description: string }[];
+    desserts?: { name: string; description: string }[];
+    beverages?: { name: string; description: string }[];
+    serving_tips?: string[];
+    packing_tips?: string[];
+    days?: Array<{
+      date: string; day: string;
+      breakfast: { name: string } | null;
+      lunch:     { name: string } | null;
+      dinner:    { name: string } | null;
+    }>;
+  } | null;
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -86,6 +101,32 @@ export default function MenuHistoryScreen() {
     return prefColors[key];
   }
 
+  const typeBadge: Record<string, { bg: string; fg: string; label: string }> = {
+    party:   { bg: '#FEF2F2', fg: '#8B1A1A', label: 'Party' },
+    outdoor: { bg: '#ECFDF5', fg: '#1A6B3C', label: 'Outdoor' },
+  };
+
+  function renderEventExpanded(mj: NonNullable<MenuRecord['menu_json']>) {
+    const sections: { title: string; items: { name: string; description: string }[] }[] = [
+      { title: 'Starters', items: mj.starters ?? [] },
+      { title: 'Main Course', items: mj.main_course ?? [] },
+      { title: 'Desserts', items: mj.desserts ?? [] },
+      { title: 'Beverages', items: mj.beverages ?? [] },
+    ];
+    return (
+      <View style={s.expandedBody}>
+        {sections.map(sec => sec.items.length > 0 ? (
+          <View key={sec.title} style={{marginBottom:8}}>
+            <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:4}}>{sec.title}</Text>
+            {sec.items.map((it,i) => (
+              <Text key={i} style={{fontSize:12,color:textSec,lineHeight:18}}>{i+1}. {it.name}</Text>
+            ))}
+          </View>
+        ) : null)}
+      </View>
+    );
+  }
+
   return (
     <ScreenWrapper title="Menu History">
 
@@ -106,11 +147,20 @@ export default function MenuHistoryScreen() {
             const isExpanded = expanded[r.id];
             const pc   = prefStyle(r.food_pref);
             const days = r.menu_json?.days ?? [];
+            const menuType = r.menu_json?.type;
+            const badge = menuType ? typeBadge[menuType] : null;
             return (
               <TouchableOpacity key={r.id} style={s.card} onPress={() => toggle(r.id)} activeOpacity={0.85}>
                 <View style={s.cardHeader}>
                   <View style={s.cardLeft}>
-                    <Text style={s.cardPeriod}>{periodLabel(r)}</Text>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:4}}>
+                      <Text style={s.cardPeriod}>{periodLabel(r)}</Text>
+                      {badge && (
+                        <View style={{backgroundColor:badge.bg,borderRadius:6,paddingHorizontal:8,paddingVertical:2}}>
+                          <Text style={{fontSize:10,fontWeight:'700',color:badge.fg}}>{badge.label}</Text>
+                        </View>
+                      )}
+                    </View>
                     <View style={s.cardMeta}>
                       <View style={[s.prefPill, { backgroundColor: pc.bg }]}>
                         <Text style={[s.prefPillText, { color: pc.fg }]}>{r.food_pref}</Text>
@@ -122,10 +172,12 @@ export default function MenuHistoryScreen() {
                       {new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </Text>
                   </View>
-                  <Text style={s.chevron}>{isExpanded ? '▲' : '▼'}</Text>
+                  <Text style={s.chevron}>{isExpanded ? '\u25B2' : '\u25BC'}</Text>
                 </View>
 
-                {isExpanded && days.length > 0 && (
+                {isExpanded && menuType && r.menu_json && renderEventExpanded(r.menu_json)}
+
+                {isExpanded && !menuType && days.length > 0 && (
                   <View style={s.expandedBody}>
                     {days.map((day, idx) => (
                       <View key={idx} style={[s.dayRow, idx < days.length - 1 && s.dayRowBorder]}>
@@ -160,7 +212,7 @@ const s = StyleSheet.create({
   backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   backArrow:  { fontSize: 22, color: navy },
   headerTitle:{ fontSize: 18, fontWeight: '700', color: navy },
-  scroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48, maxWidth: 700, width: '100%', alignSelf: 'center' },
+  scroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, maxWidth: 700, width: '100%', alignSelf: 'center' },
   loadingText:{ textAlign: 'center', color: textSec, marginTop: 40 },
 
   emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 24 },

@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { loadOrDetectLocation } from '../lib/location';
 import { navy, gold, white, textSec, border } from '../theme/colors';
+import { fetchWeather, getCoords, WeatherInfo } from '../lib/weather';
 
 // ─── Festival data ────────────────────────────────────────────────────────────
 
@@ -71,6 +72,8 @@ export default function HomeScreen() {
   const [planReminder, setPlanReminder] = useState(false);
   const [planReady, setPlanReady] = useState(false);
   const [privacyVisible, setPrivacyVisible] = useState(false);
+  const [weatherInfo, setWeatherInfo] = useState<WeatherInfo | null>(null);
+  const [weatherDismissed, setWeatherDismissed] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const tickerAnim = useRef(new Animated.Value(0)).current;
@@ -129,6 +132,18 @@ export default function HomeScreen() {
     }
     void load();
     loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
+  }, []);
+
+  // Weather check (when active plan exists)
+  useEffect(() => {
+    async function checkWeather() {
+      const plan = await AsyncStorage.getItem('confirmed_meal_plan');
+      if (!plan) return;
+      const coords = await getCoords();
+      const info = await fetchWeather(coords.lat, coords.lon, coords.city);
+      if (info) setWeatherInfo(info);
+    }
+    void checkWeather();
   }, []);
 
   // Drawer animation
@@ -205,6 +220,20 @@ export default function HomeScreen() {
 
         {/* ── SCROLL CONTENT ── */}
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+          {/* Weather card */}
+          {weatherInfo && !weatherDismissed && (
+            <View style={{flexDirection:'row',alignItems:'center',backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:12,marginBottom:10,borderWidth:1,borderColor:'rgba(27,58,92,0.12)',gap:10}}>
+              <Text style={{fontSize:28}}>{weatherInfo.icon}</Text>
+              <View style={{flex:1}}>
+                <Text style={{fontSize:14,fontWeight:'700',color:navy}}>{weatherInfo.temp}\u00B0C in {weatherInfo.city}</Text>
+                <Text style={{fontSize:12,color:textSec}}>{weatherInfo.description}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setWeatherDismissed(true)} style={{padding:4}}>
+                <Text style={{fontSize:14,color:textSec,fontWeight:'700'}}>X</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Lab reminder */}
           {labReminder && (
