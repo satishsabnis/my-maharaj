@@ -320,14 +320,6 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
 
-        {/* ── FAB ── */}
-        <TouchableOpacity style={s.fab} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
-          <View style={s.fabLabelWrap}><Text style={s.fabLabel}>Ask Maharaj</Text></View>
-          <View style={s.fabCircle}>
-            <Image source={require('../assets/logo.png')} style={s.fabIcon} resizeMode="contain" />
-          </View>
-        </TouchableOpacity>
-
         {/* ── DRAWER OVERLAY ── */}
         {isDrawerOpen && (
           <TouchableOpacity style={s.drawerOverlay} activeOpacity={1} onPress={closeDrawer}>

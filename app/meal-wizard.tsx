@@ -839,7 +839,16 @@ export default function MealWizardScreen() {
       <View style={{alignItems:'center',paddingVertical:30}}>
         <Text style={s.stepTitle}>What next?</Text>
         <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:12}}>
-          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { console.log('[CookAtHome] tapped — navigating to recipes'); setStep('recipes'); }}>
+          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => {
+            console.log('[CookAtHome] tapped, generatedPlan exists:', !!generatedPlan, 'days:', generatedPlan?.length);
+            if (generatedPlan && generatedPlan.length > 0) {
+              console.log('[CookAtHome] setting step to recipes');
+              setStep('recipes');
+            } else {
+              console.log('[CookAtHome] no plan data, going to plan-summary');
+              setStep('plan-summary');
+            }
+          }}>
             <Text style={{fontSize:32,marginBottom:8}}>{'\uD83C\uDFE0'}</Text>
             <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Cook at Home</Text>
             <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>View recipes & shopping list</Text>
