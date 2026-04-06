@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { useLang } from "../lib/LanguageProvider";
 import MarqueeTicker from "./MarqueeTicker";
@@ -15,8 +15,14 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
   const { t, toggleEnglish, isEnglish, lang } = useLang();
 
   return (
-    <ImageBackground source={require("../assets/background.png")} style={{ flex: 1 }} resizeMode="cover">
-      <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
+      {/* Q1: Absolute-positioned background — covers 100% including status bar */}
+      <Image
+        source={require("../assets/background.png")}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
+        resizeMode="cover"
+      />
+      <SafeAreaView style={{ flex: 1, zIndex: 1 }}>
         <View style={sw.header}>
           <TouchableOpacity onPress={onBack ?? (() => router.back())} style={sw.backBtn}>
             <Text style={sw.backTxt}>{t.back}</Text>
@@ -42,14 +48,14 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
           <Text style={{ fontSize: 10, color: "#5A7A8A", fontWeight: "600" }}>  {t.poweredBy}</Text>
         </View>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 
 const sw = StyleSheet.create({
   header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: Platform.OS === "android" ? 25 : Platform.OS === "web" ? 14 : 8, paddingBottom: 12, backgroundColor: "rgba(255,255,255,0.85)", borderBottomWidth: 1, borderBottomColor: "rgba(27,58,92,0.1)" },
   backBtn:      { paddingRight: 8, minWidth: 60 },
-  backTxt:      { fontSize: 15, color: "#1B3A5C", fontWeight: "600" },
+  backTxt:      { fontSize: 16, color: "#1B3A5C", fontWeight: "600" },
   maharajLogo:  { flex: 1, height: 60, maxWidth: 220 },
   headerRight:  { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "flex-end" },
   langToggle:       { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.3)", backgroundColor: "rgba(255,255,255,0.8)" },
