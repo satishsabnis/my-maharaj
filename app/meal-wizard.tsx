@@ -197,6 +197,13 @@ export default function MealWizardScreen() {
       // Load fridge inventory for cross-reference
       const { data: fridgeData } = await supabase.from('fridge_inventory').select('id, item_name, quantity, unit').eq('user_id', user.id);
       setFridgeItems(fridgeData ?? []);
+      // FIX 3: Load saved dietary preference from AsyncStorage
+      const savedFoodPref = await AsyncStorage.getItem('dietary_food_pref');
+      const savedNonVegOpts = await AsyncStorage.getItem('dietary_nonveg_opts');
+      const savedIsMixed = await AsyncStorage.getItem('dietary_is_mixed');
+      if (savedFoodPref) setFoodPref(savedFoodPref as 'veg' | 'nonveg');
+      if (savedNonVegOpts) try { setNonVegOpts(JSON.parse(savedNonVegOpts)); } catch {}
+      if (savedIsMixed === 'true') setIsMixed(true);
     }
     void loadWiz();
     loadOrDetectLocation().then(setUserLocation);
@@ -290,6 +297,23 @@ export default function MealWizardScreen() {
       // Ensure slots is never empty - default to breakfast/lunch/dinner
       const slotsToUse = selectedSlots.length > 0 ? selectedSlots : ['breakfast', 'lunch', 'dinner'];
 
+      // FIX 4: Make weekFoodPref functional — override foodPref if user changed it this week
+      let effectiveFoodPref: 'veg' | 'nonveg' | null = foodPref;
+      let effectiveIsMixed = isMixed;
+      if (weekFoodPref === 'Non-vegetarian') { effectiveFoodPref = 'nonveg'; effectiveIsMixed = false; }
+      else if (weekFoodPref === 'Vegetarian this week' || weekFoodPref === 'Vegetarian') { effectiveFoodPref = 'veg'; effectiveIsMixed = false; }
+      else if (weekFoodPref === 'Eggetarian') { effectiveFoodPref = 'nonveg'; effectiveIsMixed = false; }
+      else if (weekFoodPref === 'Mixed') { effectiveFoodPref = 'nonveg'; effectiveIsMixed = true; }
+      // FIX 5: Null default → vegetarian (safe default)
+      if (!effectiveFoodPref) effectiveFoodPref = 'veg';
+
+      // FIX 2: Save dietary to AsyncStorage for persistence
+      await AsyncStorage.setItem('dietary_food_pref', effectiveFoodPref);
+      await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));
+      await AsyncStorage.setItem('dietary_is_mixed', String(effectiveIsMixed));
+
+      console.log(`[MealWizard] Dietary: effectiveFoodPref=${effectiveFoodPref}, weekFoodPref=${weekFoodPref}, isMixed=${effectiveIsMixed}, nonVegOpts=${JSON.stringify(nonVegOpts)}`);
+
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
         userId,
@@ -305,12 +329,12 @@ export default function MealWizardScreen() {
         cuisine,
         dishHistory,
         foodPrefs: {
-          type:          foodPref,
+          type:          effectiveFoodPref,
           vegType:       vegType ?? undefined,
           nonVegOptions: nonVegOpts.length > 0 ? nonVegOpts : undefined,
         },
         allowedProteins: nonVegOpts.length > 0 ? nonVegOpts : undefined,
-        isMixed,
+        isMixed: effectiveIsMixed,
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: [nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
         vegDays:        profile?.veg_days ?? [],
