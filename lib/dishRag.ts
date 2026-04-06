@@ -66,6 +66,19 @@ export async function getRelevantDishes(params: {
 
   console.error('After dietary filter:', results.length, 'dishes remain');
 
+  // HARD FILTER: When cuisines are specified, return ONLY dishes from those cuisines
+  if (cuisines.length > 0) {
+    const cuisineLower = cuisines.map(c => c.toLowerCase());
+    const cuisineFiltered = results.filter(d => d.cuisine.some(dc => cuisineLower.some(c => dc.toLowerCase().includes(c))));
+    // Only apply hard filter if it leaves enough dishes (>5), otherwise fall back to scoring
+    if (cuisineFiltered.length >= 5) {
+      results = cuisineFiltered;
+      console.error('After HARD cuisine filter:', results.length, 'dishes remain (only', cuisines.join('+'), ')');
+    } else {
+      console.error('Hard cuisine filter too restrictive (', cuisineFiltered.length, '), keeping all and using scoring');
+    }
+  }
+
   // Filter by meal type
   if (mealType) {
     results = results.filter(d => d.meal_type.includes(mealType));
@@ -76,7 +89,7 @@ export async function getRelevantDishes(params: {
   // Score
   const scored = results.map(dish => {
     let score = 0;
-    // FIX 2: +20 for exact selected cuisine match (ensures selected cuisines dominate RAG results)
+    // +20 for exact selected cuisine match
     if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase() === c.toLowerCase()))) score += 20;
     else if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase().includes(c.toLowerCase())))) score += 10;
     if (healthConditions.length > 0 && dish.health_tags.some(t => healthConditions.some(h => t.toLowerCase().includes(h.toLowerCase())))) score += 5;

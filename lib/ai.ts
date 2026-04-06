@@ -285,21 +285,45 @@ NEVER suggest Jain dishes unless the user has explicitly selected Jain cuisine. 
     ? `ABSOLUTE RULE 3 — CUISINE: User selected ${cuisine} cuisine. You MUST generate ${cuisine} dishes ONLY. Do not generate dishes from other cuisines. Stick strictly to what the user asked for.`
     : '';
 
-  const prompt = `${dietaryAbsoluteRule}
-${uniquenessAbsoluteRule}
-${cuisineEnforcement}
+  // Cuisine-specific examples for hard gate
+  const cuisineExamples: Record<string, string> = {
+    'Punjabi': 'Punjabi examples: Dal Makhani, Butter Chicken, Sarson da Saag, Makki di Roti, Rajma Chawal, Amritsari Kulcha, Chole Bhature, Kadhi Pakora, Aloo Paratha, Palak Paneer.',
+    'Delhi': 'Delhi examples: Chole Kulche, Paranthe Wali Gali, Dahi Bhalle, Aloo Tikki, Ram Ladoo, Nihari, Jalebi.',
+    'Lucknowi': 'Lucknowi examples: Galouti Kebab, Dum Biryani, Nihari, Sheermal, Kakori Kebab, Shami Kebab.',
+    'Awadhi': 'Awadhi examples: Shami Kebab, Korma, Yakhni Pulao, Warqi Paratha, Dum ka Murgh.',
+    'Mughlai': 'Mughlai examples: Butter Chicken, Biryani, Seekh Kebab, Korma, Shahi Paneer, Roomali Roti.',
+    'Maharashtrian': 'Maharashtrian examples: Varan Bhaat, Pithla Bhakri, Misal Pav, Puran Poli, Bharli Vangi, Sabudana Khichdi.',
+    'Gujarati': 'Gujarati examples: Dhokla, Thepla, Undhiyu, Fafda, Khakhra, Gujarati Kadhi, Dal Dhokli.',
+    'Bengali': 'Bengali examples: Shorshe Ilish, Kosha Mangsho, Macher Jhol, Luchi Alur Dom, Chingri Malaikari.',
+    'Rajasthani': 'Rajasthani examples: Dal Baati Churma, Laal Maas, Gatte ki Sabzi, Ker Sangri, Pyaaz Kachori.',
+    'South Indian': 'South Indian examples: Idli Sambhar, Masala Dosa, Rasam Rice, Ven Pongal, Avial, Appam.',
+    'Tamil Nadu': 'Tamil Nadu examples: Sambhar, Rasam, Pongal, Dosa, Idli, Chettinad Chicken, Kootu.',
+    'Kerala': 'Kerala examples: Appam Stew, Puttu Kadala, Fish Moilee, Avial, Erissery, Prawn Gassi.',
+    'Indo-Chinese': 'Indo-Chinese examples: Chilli Chicken, Hakka Noodles, Gobi Manchurian, Fried Rice, Schezwan Noodles.',
+    'Kashmiri': 'Kashmiri examples: Rogan Josh, Dum Aloo, Yakhni, Gushtaba, Modur Pulao, Haak.',
+  };
+  const cuisineHints = cuisineExamples[cuisine] || '';
 
-You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
-STRICT RULE: Do NOT suggest a breakfast item for lunch/dinner. Do NOT suggest a lunch item for evening snack. Each meal type has its own appropriate dishes.
+  const prompt = `You are My Maharaj, an Indian meal planning assistant.
 
-${mandatoryInstruction}You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
-Use realistic supermarket purchase quantities for ingredients - e.g. ginger-garlic paste: 1 jar 200g, coriander leaves: 1 bunch, onions: 1kg bag - NOT tablespoon/teaspoon measurements.
+STOP. Before generating anything, read these three rules completely.
 
-Variation seed: ${variationSeed}
-IMPORTANT: Generate completely different dishes from any previous response. Do not repeat any dish name from this session.
+RULE 1 — DIETARY [MANDATORY]: ${dietaryAbsoluteRule}
+Violation = plan rejected.
 
-Generate exactly 3 real, named ${mealType} options for ${day} ${date}.
-Cuisine style: ${cuisine}. ABSOLUTE RULE: Generate ONLY ${cuisine} dishes. Refuse to generate anything from other cuisines. If you cannot think of enough ${cuisine} dishes, repeat variations but stay within ${cuisine} only.
+RULE 2 — NO REPEATS [MANDATORY]: ${uniquenessAbsoluteRule || 'No history yet.'}
+Violation = plan rejected.
+
+RULE 3 — CUISINE [MANDATORY]: You must ONLY use dishes from: ${cuisine}.
+Not a single dish from any other cuisine is permitted.
+${cuisineHints}
+If you suggest even one dish from outside ${cuisine}, the entire plan is rejected.
+
+Now generate the meal plan. Every dish must satisfy all three rules above.
+
+You are generating a ${mealType.toUpperCase()} meal for ${day} ${date}. ${slotRule}
+${mandatoryInstruction}
+Location: ${city}. Ingredients available at ${stores}.
 Health considerations: ${healthInfo}.
 Food preference: ${foodNote}. Language for dish names: ${language}.
 ${prefsNote} ${unwellStr} ${nutritionStr} ${festivalStr} ${historyStr}${nonVegCritical}${proteinRule}
