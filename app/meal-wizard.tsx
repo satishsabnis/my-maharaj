@@ -9,6 +9,7 @@ import Button from '../components/Button';
 import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 import MarqueeTicker from '../components/MarqueeTicker';
+import MaharajSpinner from '../components/MaharajSpinner';
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -201,30 +202,7 @@ export default function MealWizardScreen() {
 
   // ── Pulse animation ──────────────────────────────────────────────────────
 
-  // Spinner animation — runs infinitely while step === 'generating'
-  useEffect(() => {
-    if (step !== 'generating') {
-      // Reset when leaving generating step
-      pulseAnim.setValue(1);
-      return;
-    }
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.5, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.0, duration: 800, useNativeDriver: true }),
-      ]),
-      { iterations: -1 }
-    );
-    // Spin uses a repeating 0→1 value that resets each cycle
-    spinAnim.setValue(0);
-    const spin = Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 2500, easing: Easing.linear, useNativeDriver: true }),
-      { iterations: -1 }
-    );
-    pulse.start();
-    spin.start();
-    return () => { pulse.stop(); spin.stop(); };
-  }, [step]);
+  // Spinner animation now handled by isolated MaharajSpinner component — see components/MaharajSpinner.tsx
 
   // ── Generation ────────────────────────────────────────────────────────────
 
@@ -866,14 +844,9 @@ export default function MealWizardScreen() {
         <Text style={s.stepTitle}>What next?</Text>
         <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:12}}>
           <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => {
-            console.log('[CookAtHome] tapped, generatedPlan exists:', !!generatedPlan, 'days:', generatedPlan?.length);
-            if (generatedPlan && generatedPlan.length > 0) {
-              console.log('[CookAtHome] setting step to recipes');
-              setStep('recipes');
-            } else {
-              console.log('[CookAtHome] no plan data, going to plan-summary');
-              setStep('plan-summary');
-            }
+            console.log('[CookAtHome] tapped, generatedPlan:', !!generatedPlan, generatedPlan?.length);
+            setRecipeDay(0); // Reset to day 1
+            setStep('recipes');
           }}>
             <Text style={{fontSize:32,marginBottom:8}}>{'\uD83C\uDFE0'}</Text>
             <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Cook at Home</Text>
@@ -1285,18 +1258,11 @@ export default function MealWizardScreen() {
     );
   }
 
-  const spinCW = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const spinCCW = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] });
-
   function renderGenerating() {
     return (
       <View style={s.genScreen}>
-        {/* Dual spinning rings — blue CW, gold CCW — with large Maharaj logo */}
-        <View style={{width:140,height:140,alignItems:'center',justifyContent:'center',marginBottom:20}}>
-          <Animated.View style={{position:'absolute',width:140,height:140,borderRadius:70,borderWidth:4,borderColor:'transparent',borderTopColor:navy,borderBottomColor:navy,transform:[{rotate:spinCW}]}} />
-          <Animated.View style={{position:'absolute',width:120,height:120,borderRadius:60,borderWidth:4,borderColor:'transparent',borderTopColor:gold,borderBottomColor:gold,transform:[{rotate:spinCCW}]}} />
-          <Image source={require('../assets/logo.png')} style={{width:80,height:80,resizeMode:'contain'}} />
-        </View>
+        {/* Isolated spinner — animation managed internally, immune to parent re-renders */}
+        <MaharajSpinner />
         <Text style={s.genTitle}>Maharaj is preparing your meal plan...</Text>
         {servingsCount > 0 && (
           <Text style={[s.genSub, { fontWeight: '600', marginBottom: 4 }]}>Cooking for {servingsCount} people</Text>
@@ -1491,7 +1457,16 @@ export default function MealWizardScreen() {
   const [recipeDay, setRecipeDay] = useState(0);
 
   function renderRecipes() {
-    if (!generatedPlan) return null;
+    if (!generatedPlan) {
+      return (
+        <View style={{alignItems:'center',paddingVertical:40}}>
+          <Text style={{fontSize:14,color:textSec,textAlign:'center',marginBottom:16}}>No meal plan data available.{'\n'}Please generate a plan first.</Text>
+          <TouchableOpacity style={{backgroundColor:gold,borderRadius:12,paddingVertical:12,paddingHorizontal:24}} onPress={() => setStep('members')}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Start New Plan</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
     const slotsForRecipes = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
     const day = generatedPlan[recipeDay];
     if (!day) return null;

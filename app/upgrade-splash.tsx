@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, ImageBackground, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function UpgradeSplashScreen() {
@@ -21,35 +21,36 @@ export default function UpgradeSplashScreen() {
   }, []);
 
   return (
-    <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">
-      <SafeAreaView style={s.safe}>
+    <View style={{ flex: 1 }}>
+      {/* Background — absolute positioned, first child, covers 100% */}
+      <Image
+        source={require('../assets/background.png')}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
+      {/* Content — on top with zIndex */}
+      <SafeAreaView style={{ flex: 1, zIndex: 1 }}>
         <View style={s.center}>
-          {/* Top section */}
           <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
           <Text style={s.title}>My Maharaj</Text>
           <Text style={s.hindi}>{'\u092E\u0947\u0930\u093E \u092E\u0939\u093E\u0930\u093E\u091C'}</Text>
           <View style={s.goldLine} />
-
-          {/* Middle section */}
           <Text style={s.upgradeTitle}>My Maharaj has been upgraded</Text>
           <Text style={s.upgradeBody}>We have made significant improvements to your experience. Please log in again to continue.</Text>
           <View style={s.badge}>
             <Text style={s.badgeText}>Beta</Text>
           </View>
-
-          {/* Bottom section */}
           <View style={s.barTrack}>
             <Animated.View style={[s.barFill, { width: barWidth }]} />
           </View>
           <Text style={s.redirectText}>Taking you to login...</Text>
         </View>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   logo: { width: 80, height: 80, marginBottom: 16 },
   title: { fontSize: 28, fontWeight: '500', color: '#1B3A5C', textAlign: 'center' },
