@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, ImageBackground, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { useLang } from "../lib/LanguageProvider";
 import MarqueeTicker from "./MarqueeTicker";
@@ -15,14 +15,8 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
   const { t, toggleEnglish, isEnglish, lang } = useLang();
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Q1: Absolute-positioned background — covers 100% including status bar */}
-      <Image
-        source={require("../assets/background.png")}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
-      <SafeAreaView style={{ flex: 1, zIndex: 1 }}>
+    <ImageBackground source={require("../assets/background.png")} style={{ flex: 1 }} resizeMode="cover">
+      <SafeAreaView style={{ flex: 1 }}>
         <View style={sw.header}>
           <TouchableOpacity onPress={onBack ?? (() => router.back())} style={sw.backBtn}>
             <Text style={sw.backTxt}>{t.back}</Text>
@@ -48,7 +42,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
           <Text style={{ fontSize: 10, color: "#5A7A8A", fontWeight: "600" }}>  {t.poweredBy}</Text>
         </View>
       </SafeAreaView>
-    </View>
+    </ImageBackground>
   );
 }
 
