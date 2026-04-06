@@ -3,6 +3,9 @@
  * Rules: Jain=zero root veg, specific regional names, cultural descriptions.
  */
 import { JAIN_DISH_DATA } from './seed-dishes-jain';
+import { GUJARATI_DISHES } from './seed-dishes-gujarati';
+import { MAHARASHTRIAN_DISHES } from './seed-dishes-maharashtrian';
+import { MALVANI_DISHES, MANGALOREAN_DISHES, GOAN_DISHES } from './seed-dishes-coastal';
 
 interface DishSeed {
   name: string; name_hindi?: string; name_regional?: string;
@@ -167,5 +170,13 @@ const NON_JAIN_DISHES: DishSeed[] = [
 { name:'Aloo Pitika', name_regional:'আলু পিটিকা', cuisine:['Assamese'], meal_type:['lunch'], dietary:['vegetarian'], health_tags:['comfort'], occasion:['everyday'], season:['all'], ingredients_main:['potato','mustard oil','onion','green chilli','coriander'], description:'Mashed potato with mustard oil — Assamese comfort side dish, simple and satisfying' },
 ];
 
-// Merge Jain dishes (255) with non-Jain dishes
-export const DISH_DATA: DishSeed[] = [...JAIN_DISH_DATA, ...NON_JAIN_DISHES];
+// Merge all cuisine files into single export
+export const DISH_DATA: DishSeed[] = [
+  ...JAIN_DISH_DATA,
+  ...GUJARATI_DISHES,
+  ...MAHARASHTRIAN_DISHES,
+  ...MALVANI_DISHES,
+  ...MANGALOREAN_DISHES,
+  ...GOAN_DISHES,
+  ...NON_JAIN_DISHES,
+];
