@@ -33,14 +33,6 @@ export async function getRelevantDishes(params: {
 }): Promise<DishMatch[]> {
   const { cuisines, dietaryPref, healthConditions, mealType, excludeDishes = [], limit = 20 } = params;
 
-  console.error('=== RAG QUERY ===');
-  console.error('dietaryPref:', dietaryPref);
-  console.error('cuisines:', JSON.stringify(cuisines));
-  console.error('jainSelected:', cuisines.some(c => c.toLowerCase() === 'jain'));
-  console.error('mealType:', mealType);
-  console.error('totalDishesInDB:', DISH_DATA.length);
-  console.error('=== END RAG ===');
-
   try {
     // First try Supabase table (if it exists from manual SQL setup)
     const supaResult = await querySupabase(params);
@@ -64,8 +56,6 @@ export async function getRelevantDishes(params: {
     results = results.filter(d => !d.dietary.includes('jain') || jainSelected);
   }
 
-  console.error('After dietary filter:', results.length, 'dishes remain');
-
   // HARD FILTER: When cuisines are specified, return ONLY dishes from those cuisines
   if (cuisines.length > 0) {
     const cuisineLower = cuisines.map(c => c.toLowerCase());
@@ -73,9 +63,6 @@ export async function getRelevantDishes(params: {
     // Only apply hard filter if it leaves enough dishes (>5), otherwise fall back to scoring
     if (cuisineFiltered.length >= 5) {
       results = cuisineFiltered;
-      console.error('After HARD cuisine filter:', results.length, 'dishes remain (only', cuisines.join('+'), ')');
-    } else {
-      console.error('Hard cuisine filter too restrictive (', cuisineFiltered.length, '), keeping all and using scoring');
     }
   }
 
@@ -83,8 +70,6 @@ export async function getRelevantDishes(params: {
   if (mealType) {
     results = results.filter(d => d.meal_type.includes(mealType));
   }
-
-  console.error('After meal type filter:', results.length, 'dishes remain');
 
   // Score
   const scored = results.map(dish => {
