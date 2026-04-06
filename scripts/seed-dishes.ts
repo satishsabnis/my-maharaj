@@ -6,6 +6,9 @@ import { JAIN_DISH_DATA } from './seed-dishes-jain';
 import { GUJARATI_DISHES } from './seed-dishes-gujarati';
 import { MAHARASHTRIAN_DISHES } from './seed-dishes-maharashtrian';
 import { MALVANI_DISHES, MANGALOREAN_DISHES, GOAN_DISHES } from './seed-dishes-coastal';
+import { FASTING_DISHES } from './seed-dishes-fasting';
+import { PUNJABI_DISHES } from './seed-dishes-punjabi';
+import { RAJASTHANI_DISHES } from './seed-dishes-rajasthani';
 
 interface DishSeed {
   name: string; name_hindi?: string; name_regional?: string;
@@ -178,5 +181,8 @@ export const DISH_DATA: DishSeed[] = [
   ...MALVANI_DISHES,
   ...MANGALOREAN_DISHES,
   ...GOAN_DISHES,
+  ...FASTING_DISHES,
+  ...PUNJABI_DISHES,
+  ...RAJASTHANI_DISHES,
   ...NON_JAIN_DISHES,
 ];
