@@ -225,14 +225,13 @@ export default function HomeScreen() {
         {/* ── SCROLL CONTENT ── */}
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-          {/* Ask Maharaj — prime slot */}
-          <TouchableOpacity style={{backgroundColor:navy,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:12}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
-            <View style={{width:40,height:40,overflow:'hidden'}}><Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" /></View>
+          {/* Ask Maharaj — prime slot: white card, gold border, correct logo */}
+          <TouchableOpacity style={{backgroundColor:white,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderColor:gold}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
+            <View style={{width:40,height:40,overflow:'hidden',backgroundColor:'transparent'}}><Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" /></View>
             <View style={{flex:1}}>
-              <Text style={{fontSize:16,fontWeight:'700',color:white}}>Ask Maharaj</Text>
-              <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)'}}>Your wise nutrition mentor</Text>
+              <Text style={{fontSize:16,fontWeight:'700',color:navy}}>Ask Maharaj</Text>
+              <Text style={{fontSize:11,color:textSec}}>Your wise nutrition mentor</Text>
             </View>
-            <Text style={{fontSize:20,color:gold,fontWeight:'700'}}>{'\u203A'}</Text>
           </TouchableOpacity>
 
           {/* Weather-aware meal prompt — only shows when conditions are notable */}
