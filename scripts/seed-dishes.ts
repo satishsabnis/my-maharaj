@@ -11,6 +11,7 @@ import { PUNJABI_DISHES } from './seed-dishes-punjabi';
 import { RAJASTHANI_DISHES } from './seed-dishes-rajasthani';
 import { SOUTH_INDIAN_DISHES } from './seed-dishes-south-indian';
 import { MUGHLAI_DISHES } from './seed-dishes-mughlai';
+import { INDO_CHINESE_DISHES } from './seed-dishes-indo-chinese';
 
 interface DishSeed {
   name: string; name_hindi?: string; name_regional?: string;
@@ -188,5 +189,6 @@ export const DISH_DATA: DishSeed[] = [
   ...RAJASTHANI_DISHES,
   ...SOUTH_INDIAN_DISHES,
   ...MUGHLAI_DISHES,
+  ...INDO_CHINESE_DISHES,
   ...NON_JAIN_DISHES,
 ];
