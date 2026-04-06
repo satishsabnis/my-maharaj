@@ -30,7 +30,8 @@ interface FeedbackEntry { dishName: string; rating: 1 | -1 | null; comment: stri
 
 function startOfDay(d: Date) { const n = new Date(d); n.setHours(0, 0, 0, 0); return n; }
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
-function toYMD(d: Date) { return d.toISOString().split('T')[0]; }
+// BUG 3 FIX: Use local timezone, NOT UTC — prevents "yesterday" bug for Dubai (UTC+4)
+function toYMD(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function getDates(from: Date, to: Date): string[] {
   const dates: string[] = [];
   const cur = startOfDay(new Date(from));

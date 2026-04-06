@@ -4,9 +4,10 @@ import { Animated, Easing, Image, View } from 'react-native';
 /**
  * Isolated dual-ring spinner with Maharaj logo.
  * Animation runs on mount, stops only on unmount.
- * Receives NO props that change during generation — prevents re-render interruption.
+ * React.memo prevents parent re-renders from reaching this component.
+ * Receives NO props — completely isolated from state changes.
  */
-export default function MaharajSpinner() {
+function MaharajSpinnerInner() {
   // useRef for animation values — survives re-renders
   const ringA = useRef(new Animated.Value(0)).current;
   const ringB = useRef(new Animated.Value(0)).current;
@@ -50,15 +51,13 @@ export default function MaharajSpinner() {
       {/* Navy ring — clockwise */}
       <Animated.View style={{
         position: 'absolute', width: 140, height: 140, borderRadius: 70,
-        borderWidth: 4, borderColor: 'transparent',
-        borderTopColor: '#1B3A5C', borderBottomColor: '#1B3A5C',
+        borderWidth: 5, borderColor: '#1B3A5C', borderTopColor: 'transparent',
         transform: [{ rotate: rotateCW }],
       }} />
       {/* Gold ring — counter-clockwise */}
       <Animated.View style={{
-        position: 'absolute', width: 120, height: 120, borderRadius: 60,
-        borderWidth: 4, borderColor: 'transparent',
-        borderTopColor: '#C9A227', borderBottomColor: '#C9A227',
+        position: 'absolute', width: 110, height: 110, borderRadius: 55,
+        borderWidth: 5, borderColor: '#C9A227', borderTopColor: 'transparent',
         transform: [{ rotate: rotateCCW }],
       }} />
       {/* Logo — pulsing */}
@@ -69,3 +68,7 @@ export default function MaharajSpinner() {
     </View>
   );
 }
+
+// BUG 6 FIX: React.memo prevents parent re-renders from killing the animation
+const MaharajSpinner = React.memo(MaharajSpinnerInner);
+export default MaharajSpinner;
