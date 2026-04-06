@@ -132,6 +132,7 @@ export default function Layout() {
       <Stack.Screen name="meal-prep" />
       <Stack.Screen name="disclaimer" />
       <Stack.Screen name="upgrade-splash" />
+      <Stack.Screen name="about" />
     </Stack>
     </LanguageProvider>
   );
