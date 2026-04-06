@@ -447,7 +447,14 @@ export async function generateMealPlan(
     baseFoodPref = 'Strictly Vegetarian'; // safe default
   }
 
-  console.log(`Dietary preference used in prompt: type=${params.foodPrefs.type}, isMixed=${isMixed}, baseFoodPref="${baseFoodPref}", allowedProteins=${JSON.stringify(allowedProteins)}`);
+  console.error(`=== AI PROMPT CONFIG ===`);
+  console.error(`foodPrefs.type: ${params.foodPrefs.type}`);
+  console.error(`isMixed: ${isMixed}`);
+  console.error(`baseFoodPref: ${baseFoodPref}`);
+  console.error(`allowedProteins: ${JSON.stringify(allowedProteins)}`);
+  console.error(`cuisine param: ${params.cuisine}`);
+  console.error(`cuisinePerDay: ${JSON.stringify(params.cuisinePerDay?.slice(0, 3))}...`);
+  console.error(`=== END AI CONFIG ===`);
 
   const unwellNote = params.unwellMembers && params.unwellMembers.length > 0
     ? params.unwellMembers.join(', ')

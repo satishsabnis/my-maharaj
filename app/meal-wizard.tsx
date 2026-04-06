@@ -312,7 +312,15 @@ export default function MealWizardScreen() {
       await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));
       await AsyncStorage.setItem('dietary_is_mixed', String(effectiveIsMixed));
 
-      console.log(`[MealWizard] Dietary: effectiveFoodPref=${effectiveFoodPref}, weekFoodPref=${weekFoodPref}, isMixed=${effectiveIsMixed}, nonVegOpts=${JSON.stringify(nonVegOpts)}`);
+      console.error(`=== GENERATION PARAMS ===`);
+      console.error(`effectiveFoodPref: ${effectiveFoodPref}`);
+      console.error(`weekFoodPref: ${weekFoodPref}`);
+      console.error(`isMixed: ${effectiveIsMixed}`);
+      console.error(`nonVegOpts: ${JSON.stringify(nonVegOpts)}`);
+      console.error(`cuisine (random from saved): ${cuisine}`);
+      console.error(`selectedCuisinesWiz: ${JSON.stringify(selectedCuisinesWiz)}`);
+      console.error(`dates: ${JSON.stringify(getDates(selectedFrom!, selectedTo!))}`);
+      console.error(`=== END PARAMS ===`);
 
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
@@ -848,6 +856,14 @@ export default function MealWizardScreen() {
     }
     // Wire up generation: compute dates and set from/to, then start
     function startGeneration() {
+      console.error('=== GENERATION START ===');
+      console.error('selectedDays:', JSON.stringify(selectedDays));
+      console.error('selectedCuisinesWiz:', JSON.stringify(selectedCuisinesWiz));
+      console.error('foodPref:', foodPref);
+      console.error('weekFoodPref:', weekFoodPref);
+      console.error('isMixed:', isMixed);
+      console.error('numDaysWiz:', numDaysWiz);
+      console.error('=== END START ===');
       const today = startOfDay(new Date());
       const dayMap: Record<string, number> = { 'Sun':0,'Mon':1,'Tue':2,'Wed':3,'Thu':4,'Fri':5,'Sat':6 };
 
