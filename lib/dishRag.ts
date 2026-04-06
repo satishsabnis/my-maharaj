@@ -43,12 +43,17 @@ export async function getRelevantDishes(params: {
   const excludeSet = new Set(excludeDishes.map(d => d.toLowerCase()));
   let results = DISH_DATA.filter(d => !excludeSet.has(d.name.toLowerCase()));
 
-  // BUG 2 FIX: Dietary filter applied FIRST — non-veg users get non-veg dishes
+  // FIX 1: Strict dietary filter — Jain dishes EXCLUDED for non-Jain users
+  const jainSelected = cuisines.some(c => c.toLowerCase() === 'jain');
   if (dietaryPref === 'veg') {
-    results = results.filter(d => d.dietary.includes('vegetarian') || d.dietary.includes('jain') || d.dietary.includes('vegan'));
+    results = results.filter(d => {
+      if (d.dietary.includes('jain') && !jainSelected) return false; // Exclude Jain unless explicitly selected
+      return d.dietary.includes('vegetarian') || d.dietary.includes('vegan') || (d.dietary.includes('jain') && jainSelected);
+    });
   } else if (dietaryPref === 'nonveg') {
-    // For non-veg users: include BOTH non-veg AND veg dishes (they eat both)
-    // But prioritise non-veg in scoring below
+    results = results.filter(d => !d.dietary.includes('jain')); // Always exclude Jain for non-veg
+  } else if (dietaryPref === 'mixed') {
+    results = results.filter(d => !d.dietary.includes('jain') || jainSelected);
   }
 
   // Filter by meal type
@@ -59,8 +64,8 @@ export async function getRelevantDishes(params: {
   // Score
   const scored = results.map(dish => {
     let score = 0;
-    // P12: +15 for exact selected cuisine match (ensures selected cuisines dominate)
-    if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase() === c.toLowerCase()))) score += 15;
+    // FIX 2: +20 for exact selected cuisine match (ensures selected cuisines dominate RAG results)
+    if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase() === c.toLowerCase()))) score += 20;
     else if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase().includes(c.toLowerCase())))) score += 10;
     if (healthConditions.length > 0 && dish.health_tags.some(t => healthConditions.some(h => t.toLowerCase().includes(h.toLowerCase())))) score += 5;
     if (mealType && dish.meal_type.includes(mealType)) score += 3;

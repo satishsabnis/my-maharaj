@@ -268,21 +268,21 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
   const dietaryAbsoluteRule = isNonVegPref
     ? `ABSOLUTE RULE 1 — DIETARY: This user is NON-VEGETARIAN.
 Every day must include AT LEAST ONE non-vegetarian dish (chicken, mutton, fish, eggs or seafood).
-Remaining meals in the day may be vegetarian — dal, sabzi, roti, rice, raita alongside non-veg is natural and correct. This is how Indian families actually eat.
-A plan where EVERY dish across ALL days is vegetarian is a FAILURE.
-A mixed plan with 1-2 non-veg dishes per day and the rest vegetarian is CORRECT and expected.`
+Remaining meals may be vegetarian — dal, sabzi, roti, rice alongside non-veg is natural and correct.
+NEVER suggest Jain dishes. This user eats onion, garlic and root vegetables normally.`
     : fp.includes('jain')
     ? `ABSOLUTE RULE 1 — DIETARY: This user is JAIN. No meat, fish, eggs, onion, garlic, potato, carrot, beetroot, radish or turnip in any dish under any circumstances.`
-    : `ABSOLUTE RULE 1 — DIETARY: This user is VEGETARIAN. No meat, fish or eggs in any dish under any circumstances.`;
+    : `ABSOLUTE RULE 1 — DIETARY: This user is VEGETARIAN. No meat, fish or eggs in any dish.
+NEVER suggest Jain dishes unless the user has explicitly selected Jain cuisine. This user eats onion, garlic and root vegetables normally.`;
 
   // BUG 4 FIX: No-repeat rule is SECOND line — immediately after dietary
   const uniquenessAbsoluteRule = weekDishHistory && weekDishHistory.length > 0
     ? `ABSOLUTE RULE 2 — UNIQUENESS: These dishes are ALREADY USED. You MUST NOT use any of them: ${weekDishHistory.join(', ')}. Using a repeated dish is a FAILURE.`
     : '';
 
-  // P12: Cuisine enforcement
+  // FIX 2: ABSOLUTE RULE 3 — Cuisine enforcement
   const cuisineEnforcement = cuisine && cuisine !== 'Various'
-    ? `CUISINE REQUIREMENT: The user selected ${cuisine} cuisine. You MUST generate ${cuisine} dishes. If Indo-Chinese is selected, include Chilli Chicken, Hakka Noodles, Gobi Manchurian or similar.`
+    ? `ABSOLUTE RULE 3 — CUISINE: User selected ${cuisine} cuisine. You MUST generate ${cuisine} dishes ONLY. Do not generate dishes from other cuisines. Stick strictly to what the user asked for.`
     : '';
 
   const prompt = `${dietaryAbsoluteRule}

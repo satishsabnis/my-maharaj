@@ -35,10 +35,10 @@ function MaharajSpinnerInner() {
 
   if (Platform.OS === 'web') {
     return (
-      <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+      <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 16, backgroundColor: 'transparent' }}>
         {/* @ts-ignore — web-only className */}
         <div className="maharaj-ring-outer" />
-        <Image source={require('../assets/logo.png')} style={{ width: 70, height: 70 }} resizeMode="contain" />
+        <Image source={require('../assets/logo.png')} style={{ width: 70, height: 70, backgroundColor: 'transparent' }} resizeMode="contain" />
       </View>
     );
   }

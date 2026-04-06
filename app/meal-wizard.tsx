@@ -340,7 +340,12 @@ export default function MealWizardScreen() {
         vegDays:        profile?.veg_days ?? [],
         cuisinePerDay: (() => {
           const dates = getDates(selectedFrom, selectedTo);
-          const allCuisines = [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
+          // FIX 2: Use selectedCuisinesWiz (days-meals step) as primary, fall back to saved/extra
+          const wizCuisines = selectedCuisinesWiz.length > 0 ? selectedCuisinesWiz : [];
+          const allCuisines = wizCuisines.length > 0
+            ? wizCuisines
+            : [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
+          console.log('[MealWizard] Cuisines for plan:', allCuisines.join(', '));
           return dates.map((d, i) => {
             if (perDayCuisine[d]) return perDayCuisine[d];
             if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
@@ -844,9 +849,23 @@ export default function MealWizardScreen() {
     // Wire up generation: compute dates and set from/to, then start
     function startGeneration() {
       const today = startOfDay(new Date());
-      const from = today;
-      const to = addDays(today, numDaysWiz - 1);
-      setSelectedFrom(from); setSelectedTo(to);
+      const dayMap: Record<string, number> = { 'Sun':0,'Mon':1,'Tue':2,'Wed':3,'Thu':4,'Fri':5,'Sat':6 };
+
+      if (selectedDays.length > 0) {
+        // FIX 3: Convert selected day names to actual calendar dates
+        const todayDow = today.getDay(); // 0=Sun
+        const targetDates = selectedDays.map(d => {
+          const targetDow = dayMap[d] ?? 0;
+          let diff = targetDow - todayDow;
+          if (diff < 0) diff += 7; // Next week if day has passed
+          return addDays(today, diff);
+        }).sort((a, b) => a.getTime() - b.getTime());
+        setSelectedFrom(targetDates[0]);
+        setSelectedTo(targetDates[targetDates.length - 1]);
+      } else {
+        setSelectedFrom(today);
+        setSelectedTo(addDays(today, numDaysWiz - 1));
+      }
       setSelectedSlots(selectedMeals);
       if (!foodPref) setFoodPref('veg');
       setStep('generating');
