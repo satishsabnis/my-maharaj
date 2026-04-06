@@ -10,7 +10,22 @@
       "Bash(npx eas:*)",
       "Bash(grep -E '\"\"name\"\"|\"\"slug\"\"|\"\"package\"\"|\"\"version\"\"' app.json)",
       "Bash(grep -A3 '\"\"preview\"\"' eas.json)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx expo:*)",
+      "Bash(node scripts/setup-db.js)",
+      "Bash(node -e \":*)",
+      "Bash(curl -s 'https://my-maharaj.vercel.app/api/setup-dishes')",
+      "Bash(npx ts-node --skip-project -e \":*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npx tsx:*)",
+      "Bash(ls:*)",
+      "Bash(find /c/Users/satis/documents/my-maharaj -name *.sql -o -name *schema*)",
+      "Bash(grep -r \"food_pref\\\\|allowed_proteins\" /c/Users/satis/documents/my-maharaj --include=*.sql)",
+      "Bash(grep -rn \"\\\\.upsert\\\\|\\\\.update\" /c/Users/satis/documents/my-maharaj/app/*.tsx --include=\"*.tsx\")",
+      "Bash(grep -rn \"foodPref\\\\|isMixed\\\\|allowedProteins\\\\|food_pref\\\\|allowed_proteins\\\\|weekFoodPref\" /c/Users/satis/documents/my-maharaj --include=*.tsx --include=*.ts)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Bash(done)"
     ]
   }
 }
