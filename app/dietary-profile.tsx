@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -83,6 +83,8 @@ export default function DietaryProfileScreen() {
   const [formError,        setFormError]        = useState('');
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSaving,    setCuisineSaving]    = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const snapshotRef = useRef('');
   const [cuisineSearch,    setCuisineSearch]    = useState('');
 
   // Household settings
@@ -156,8 +158,20 @@ export default function DietaryProfileScreen() {
         setUserEmail(user.email ?? '');
       }
     }
-    void loadHousehold();
+    loadHousehold().then(() => {
+      // Q5: Snapshot current values for change detection
+      setTimeout(() => {
+        snapshotRef.current = JSON.stringify({ maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
+      }, 500);
+    });
   }, []);
+
+  // Q5: Detect changes for Save button state
+  useEffect(() => {
+    if (!snapshotRef.current) return;
+    const current = JSON.stringify({ maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
+    setHasChanges(current !== snapshotRef.current);
+  }, [maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber]);
 
   async function saveHousehold() {
     await Promise.all([
@@ -293,6 +307,19 @@ export default function DietaryProfileScreen() {
           </View>
         )}
 
+        {/* Q7: My Maharaj Day — FIRST visible setting */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderWidth:1,borderColor:'rgba(201,162,39,0.2)',borderLeftWidth:3,borderLeftColor:gold}}>
+          <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:4}}>My Maharaj Day</Text>
+          <Text style={{fontSize:10,color:'#6B7280',marginBottom:10}}>Maharaj will automatically plan your week on this day.</Text>
+          <View style={{flexDirection:'row',gap:4}}>
+            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+              <TouchableOpacity key={d} style={{flex:1,paddingVertical:8,borderRadius:8,borderWidth:1.5,borderColor:maharajDay===d?gold:'#D1D5DB',backgroundColor:maharajDay===d?gold:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setMaharajDay(d)}>
+                <Text style={{fontSize:10,fontWeight:'700',color:maharajDay===d?'#1B2A0C':navy}}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Subscription Card */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderLeftWidth:2,borderLeftColor:gold,borderWidth:1,borderColor:'rgba(27,58,92,0.08)'}}>
           <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:6}}>
@@ -404,18 +431,7 @@ export default function DietaryProfileScreen() {
         {/* Household Settings */}
         <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Household Settings</Text>
 
-        {/* My Maharaj Day — P5 Saturday Signal */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:1,borderColor:'rgba(201,162,39,0.2)',borderLeftWidth:3,borderLeftColor:gold}}>
-          <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:4}}>My Maharaj Day</Text>
-          <Text style={{fontSize:9,color:'#6B7280',marginBottom:8}}>Maharaj will plan your week automatically on this day.</Text>
-          <View style={{flexDirection:'row',gap:4}}>
-            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-              <TouchableOpacity key={d} style={{flex:1,paddingVertical:8,borderRadius:8,borderWidth:1.5,borderColor:maharajDay===d?navy:'#D1D5DB',backgroundColor:maharajDay===d?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setMaharajDay(d)}>
-                <Text style={{fontSize:10,fontWeight:'700',color:maharajDay===d?white:navy}}>{d}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        {/* My Maharaj Day moved to top of profile (Q7) */}
 
         {/* Insurance */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
@@ -565,9 +581,13 @@ export default function DietaryProfileScreen() {
 
         {/* App Info removed — now in About My Maharaj page (P9) */}
 
-        {/* Save button */}
-        <TouchableOpacity style={{backgroundColor:gold,borderRadius:12,paddingVertical:14,alignItems:'center',marginTop:8,marginBottom:24}} onPress={saveHousehold}>
-          <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Save Profile</Text>
+        {/* Q5: Save button — active only when changes exist */}
+        <TouchableOpacity
+          style={{backgroundColor: hasChanges ? navy : '#AAAAAA', borderRadius:12, paddingVertical:14, alignItems:'center', marginTop:8, marginBottom:24, opacity: hasChanges ? 1 : 0.5}}
+          onPress={() => { if (hasChanges) { saveHousehold(); snapshotRef.current = JSON.stringify({ maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber }); setHasChanges(false); } }}
+          disabled={!hasChanges}
+        >
+          <Text style={{fontSize:14,fontWeight:'700',color: hasChanges ? white : '#666666'}}>{hasChanges ? 'Save Profile' : 'No changes'}</Text>
         </TouchableOpacity>
 
       </ScrollView>

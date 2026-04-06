@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ImageBackground, SafeAreaView, ScrollView, StyleSheet,
+  SafeAreaView, ScrollView, StyleSheet,
   Text, TouchableOpacity, View, Image, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -100,12 +100,9 @@ export default function LanguageSelectScreen() {
   }
 
   return (
-    <ImageBackground
-      source={require('../assets/background.png')}
-      style={{ flex: 1 }}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
+      <Image source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
+      <SafeAreaView style={{ flex: 1, zIndex: 1 }}>
 
         {/* Header */}
         <View style={s.header}>
@@ -164,7 +161,7 @@ export default function LanguageSelectScreen() {
 
         </ScrollView>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 

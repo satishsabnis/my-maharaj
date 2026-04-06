@@ -25,7 +25,31 @@ async function callClaude(messages: { role: string; content: string }[], systemP
 }
 
 function stripMarkdown(text: string): string {
-  return text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/#{1,6}\s/g, '').replace(/`{1,3}(.*?)`{1,3}/g, '$1').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/^\s*[-*+]\s/gm, '\u2022 ').replace(/^\s*\d+\.\s/gm, '').trim();
+  return text
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')   // bold-italic
+    .replace(/\*\*(.*?)\*\*/g, '$1')         // bold
+    .replace(/\*(.*?)\*/g, '$1')             // italic
+    .replace(/#{1,6}\s/g, '')                // headers
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')    // code
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')      // links
+    .replace(/^\s*[-*+]\s/gm, '\u2022 ')     // bullets
+    .replace(/---+/g, '')                     // horizontal rules
+    .replace(/___+/g, '')                     // underline rules
+    .replace(/:[a-z_]+:/g, '')                // emoji shortcodes
+    .trim();
+}
+
+function stripForSpeech(text: string): string {
+  return text
+    .replace(/\*{1,3}/g, '')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/`{1,3}/g, '')
+    .replace(/---+/g, '. ')
+    .replace(/:[a-z_]+:/g, '')
+    .replace(/[*#_~`]/g, '')
+    .replace(/\n+/g, '. ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 export default function AskMaharajScreen() {
@@ -121,7 +145,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
       setMessages(prev => [...prev, { role: 'assistant', content: clean }]);
       // Maharaj = male voice. Maharani would be female.
       if (wasVoice && typeof window !== 'undefined' && window.speechSynthesis) {
-        const u = new SpeechSynthesisUtterance(clean.slice(0, 500));
+        const u = new SpeechSynthesisUtterance(stripForSpeech(clean).slice(0, 500));
         u.lang = 'en-IN'; u.rate = 0.9;
         const voices = window.speechSynthesis.getVoices();
         u.voice = voices.find(v => v.name.includes('Rishi')) || voices.find(v => v.name.includes('David')) || voices.find(v => v.name.toLowerCase().includes('male') && v.lang.startsWith('en')) || voices.find(v => v.lang.startsWith('en')) || null;
@@ -201,7 +225,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                   <TouchableOpacity style={{alignSelf:'flex-end',marginTop:6,paddingHorizontal:8,paddingVertical:3,borderRadius:6,backgroundColor:'rgba(27,58,92,0.06)'}} onPress={() => {
                     if (typeof window !== 'undefined' && window.speechSynthesis) {
                       window.speechSynthesis.cancel();
-                      const u = new SpeechSynthesisUtterance(msg.content.slice(0,500));
+                      const u = new SpeechSynthesisUtterance(stripForSpeech(msg.content).slice(0,500));
                       u.lang = 'en-IN'; u.rate = 0.9;
                       const voices = window.speechSynthesis.getVoices();
                       u.voice = voices.find(v => v.name.includes('Rishi')) || voices.find(v => v.name.includes('David')) || voices.find(v => v.lang.startsWith('en')) || null;
