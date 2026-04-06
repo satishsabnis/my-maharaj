@@ -261,7 +261,25 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
   const slotRule = slotRules[mealType] ?? '';
 
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
-  const prompt = `You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
+
+  // BUG 2 FIX: Dietary rule is FIRST line of prompt — before everything else
+  const dietaryAbsoluteRule = foodPref.toLowerCase().includes('non-veg') || foodPref.toLowerCase().includes('chicken') || foodPref.toLowerCase().includes('mutton') || foodPref.toLowerCase().includes('fish') || foodPref.toLowerCase().includes('egg')
+    ? `ABSOLUTE RULE 1 — DIETARY: This user is NON-VEGETARIAN. At least one of the 3 options MUST contain chicken, mutton, fish, eggs or seafood. An all-vegetarian set for a non-vegetarian user is a FAILURE and will be rejected.`
+    : foodPref.toLowerCase().includes('jain')
+    ? `ABSOLUTE RULE 1 — DIETARY: This user is JAIN. No meat, fish, eggs, onion, garlic, potato, carrot, beetroot, radish or turnip in any dish.`
+    : foodPref.toLowerCase().includes('vegetarian')
+    ? `ABSOLUTE RULE 1 — DIETARY: This user is VEGETARIAN. No meat, fish or eggs in any dish.`
+    : '';
+
+  // BUG 4 FIX: No-repeat rule is SECOND line — immediately after dietary
+  const uniquenessAbsoluteRule = weekDishHistory && weekDishHistory.length > 0
+    ? `ABSOLUTE RULE 2 — UNIQUENESS: These dishes are ALREADY USED. You MUST NOT use any of them: ${weekDishHistory.join(', ')}. Using a repeated dish is a FAILURE.`
+    : '';
+
+  const prompt = `${dietaryAbsoluteRule}
+${uniquenessAbsoluteRule}
+
+You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
 STRICT RULE: Do NOT suggest a breakfast item for lunch/dinner. Do NOT suggest a lunch item for evening snack. Each meal type has its own appropriate dishes.
 
 ${mandatoryInstruction}You are Maharaj, a professional Indian chef in ${city} specialising in authentic regional Indian cooking. Ingredients available at ${stores}.
@@ -517,7 +535,27 @@ export async function generateMealPlan(
     dayResults.push(day);
   }
 
-  const days: MealPlanDay[] = dayResults;  // batched results
+  const days: MealPlanDay[] = dayResults;
+
+  // BUG 4 FIX: Post-generation duplicate check
+  const allDishNames: string[] = [];
+  days.forEach(day => {
+    ['breakfast','lunch','dinner','snack'].forEach(slot => {
+      const s = day[slot as keyof MealPlanDay] as MealSlot | undefined;
+      if (s?.options) s.options.forEach(opt => { if (opt.name) allDishNames.push(opt.name); });
+    });
+  });
+  const seenDishes = new Set<string>();
+  const duplicates: string[] = [];
+  allDishNames.forEach(name => {
+    const key = name.toLowerCase().trim();
+    if (seenDishes.has(key)) duplicates.push(name);
+    else seenDishes.add(key);
+  });
+  if (duplicates.length > 0) {
+    console.error(`[MealPlan] DUPLICATE DISHES DETECTED: ${duplicates.join(', ')}`);
+  }
+
   const allIngredients: string[] = [];
   days.forEach(({ breakfast, lunch, dinner }) => {
     [breakfast, lunch, dinner].forEach((slot) =>

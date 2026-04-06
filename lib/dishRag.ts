@@ -43,9 +43,12 @@ export async function getRelevantDishes(params: {
   const excludeSet = new Set(excludeDishes.map(d => d.toLowerCase()));
   let results = DISH_DATA.filter(d => !excludeSet.has(d.name.toLowerCase()));
 
-  // Filter by dietary
+  // BUG 2 FIX: Dietary filter applied FIRST — non-veg users get non-veg dishes
   if (dietaryPref === 'veg') {
-    results = results.filter(d => d.dietary.includes('vegetarian'));
+    results = results.filter(d => d.dietary.includes('vegetarian') || d.dietary.includes('jain') || d.dietary.includes('vegan'));
+  } else if (dietaryPref === 'nonveg') {
+    // For non-veg users: include BOTH non-veg AND veg dishes (they eat both)
+    // But prioritise non-veg in scoring below
   }
 
   // Filter by meal type
@@ -61,6 +64,8 @@ export async function getRelevantDishes(params: {
     if (mealType && dish.meal_type.includes(mealType)) score += 3;
     const isTrending = TRENDING_DISHES.some(t => dish.name.toLowerCase().includes(t.toLowerCase()));
     if (isTrending) score += 2;
+    // BUG 2 FIX: Non-veg users get non-veg dishes boosted in RAG results
+    if (dietaryPref === 'nonveg' && dish.dietary.some(d => d.includes('non-vegetarian'))) score += 4;
     return { ...dish, isTrending, score } as DishMatch & { score: number };
   });
 
