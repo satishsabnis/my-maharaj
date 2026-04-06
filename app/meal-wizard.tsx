@@ -772,6 +772,22 @@ export default function MealWizardScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {/* P11: Veg days selector */}
+        {weekExtras.includes('Veg days') && (
+          <View style={{marginBottom:12}}>
+            <Text style={{fontSize:10,fontWeight:'600',color:textSec,marginBottom:6}}>Which days are vegetarian?</Text>
+            <View style={{flexDirection:'row',gap:4}}>
+              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => {
+                const active = vegFastDays[d] === 'veg';
+                return (
+                  <TouchableOpacity key={d} style={{flex:1,paddingVertical:8,borderRadius:8,borderWidth:1.5,borderColor:active?'#1A6B3C':'#D1D5DB',backgroundColor:active?'#E8F5E9':'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setVegFastDays(prev => ({...prev, [d]: active ? '' : 'veg'}))}>
+                    <Text style={{fontSize:10,fontWeight:'700',color:active?'#1A6B3C':navy}}>{d}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
         <Text style={s.sectionLabel}>FOOD PREFERENCE THIS WEEK</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
           {['As per family profile','Vegetarian this week','Non-vegetarian','Eggetarian','Mixed'].map(fp => (
@@ -1289,23 +1305,51 @@ export default function MealWizardScreen() {
     );
   }
 
+  const [genPaused, setGenPaused] = useState(false);
+
   function renderGenerating() {
+    const totalDays = generatingProgress?.total || 7;
+    const completedDays = generatingProgress?.current || 0;
     return (
-      <View style={s.genScreen}>
-        {/* Isolated spinner — animation managed internally, immune to parent re-renders */}
-        <MaharajSpinner />
-        <Text style={s.genTitle}>Maharaj is preparing your meal plan...</Text>
-        {servingsCount > 0 && (
-          <Text style={[s.genSub, { fontWeight: '600', marginBottom: 4 }]}>Cooking for {servingsCount} people</Text>
-        )}
-        <Text style={s.genSub}>
-          {generatingProgress
-            ? `Generating day ${generatingProgress.current} of ${generatingProgress.total}...`
-            : 'Starting up — please wait'
-          }
-        </Text>
-        <View style={s.dotRow}>
-          {[0,1,2].map((i) => <View key={i} style={[s.dot, { opacity: 0.3 + i * 0.35 }]} />)}
+      <View style={{flex:1}}>
+        {/* Background with overlay */}
+        <Image source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
+        <View style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(27,58,92,0.45)'}} />
+
+        {/* Content */}
+        <View style={{flex:1,alignItems:'center',justifyContent:'center',zIndex:1,paddingHorizontal:24}}>
+          {/* Spinner */}
+          <MaharajSpinner />
+
+          {/* Text */}
+          <Text style={{fontSize:14,fontWeight:'700',color:gold,marginBottom:8}}>Maharaj is planning...</Text>
+          <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginBottom:20}}>
+            {completedDays > 0 ? `Working on Day ${completedDays} of ${totalDays}` : 'Starting up'}
+          </Text>
+
+          {/* Day progress dots */}
+          <View style={{flexDirection:'row',gap:8,marginBottom:6}}>
+            {Array.from({length: totalDays}, (_, i) => {
+              const isDone = i < completedDays;
+              const isCurrent = i === completedDays;
+              return (
+                <View key={i} style={{width:28,height:28,borderRadius:14,borderWidth:2,borderColor:isDone?gold:isCurrent?gold:'rgba(255,255,255,0.3)',backgroundColor:isDone?gold:'transparent',alignItems:'center',justifyContent:'center'}}>
+                  <Text style={{fontSize:10,fontWeight:'700',color:isDone?'#1B2A0C':isCurrent?gold:'rgba(255,255,255,0.3)'}}>{i+1}</Text>
+                </View>
+              );
+            })}
+          </View>
+          <Text style={{fontSize:10,color:'rgba(255,255,255,0.5)'}}>Days completed</Text>
+        </View>
+
+        {/* Bottom buttons */}
+        <View style={{flexDirection:'row',gap:10,paddingHorizontal:20,paddingBottom:40,zIndex:1}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(255,255,255,0.5)',alignItems:'center'}} onPress={goBack}>
+            <Text style={{fontSize:14,fontWeight:'600',color:white}}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:gold,backgroundColor:'rgba(201,162,39,0.15)',alignItems:'center'}} onPress={() => setGenPaused(!genPaused)}>
+            <Text style={{fontSize:14,fontWeight:'600',color:gold}}>{genPaused ? 'Resume' : 'Pause'}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1488,78 +1532,31 @@ export default function MealWizardScreen() {
   const [recipeDay, setRecipeDay] = useState(0);
   const [cookDishIdx, setCookDishIdx] = useState(0);
 
-  // Cook at Home — step-by-step cooking mode within the wizard (no navigation loop)
+  // P7: Cook at Home — two options: Shopping List or Meal Prep
   function renderCookAtHome() {
-    if (!generatedPlan) return null;
-    const slotsToUse = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
-    // Build flat list of all dishes across all days
-    const allDishes: { day: string; slot: string; opt: MealOption }[] = [];
-    generatedPlan.forEach((day, dayIdx) => {
-      slotsToUse.forEach(slot => {
-        const opt = getOpt(dayIdx, slot);
-        if (opt) allDishes.push({ day: day.day, slot, opt });
-      });
-    });
-    if (allDishes.length === 0) return null;
-    const dish = allDishes[cookDishIdx] ?? allDishes[0];
-    const total = allDishes.length;
-
     return (
-      <View>
-        <Text style={{fontSize:10,color:textSec,textAlign:'center',marginBottom:8}}>{cookDishIdx + 1} of {total} dishes</Text>
-
-        {/* Dish card */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,overflow:'hidden',marginBottom:16,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
-          <View style={{backgroundColor:navy,paddingHorizontal:16,paddingVertical:14}}>
-            <Text style={{fontSize:10,color:gold,textTransform:'uppercase',letterSpacing:0.8}}>{dish.day} {'\u00B7'} {dish.slot}</Text>
-            <Text style={{fontSize:20,fontWeight:'800',color:white,marginTop:4}}>{dish.opt.name}</Text>
-            {dish.opt.description && !dish.opt.description.includes(' | ') && (
-              <Text style={{fontSize:12,color:'rgba(255,255,255,0.7)',marginTop:4}}>{dish.opt.description}</Text>
-            )}
-          </View>
-
-          {/* Ingredients */}
-          <View style={{paddingHorizontal:16,paddingVertical:12}}>
-            <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:8}}>Ingredients</Text>
-            {dish.opt.ingredients.map((ing: any, i: number) => {
-              const nm = typeof ing === 'string' ? ing : (ing.item || ing.name || '');
-              return (
-                <View key={i} style={{flexDirection:'row',paddingVertical:4}}>
-                  <Text style={{fontSize:14,color:navy,marginRight:8}}>{'\u2022'}</Text>
-                  <Text style={{fontSize:14,color:'#1B3A5C',lineHeight:20}}>{nm}</Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Method steps */}
-          {dish.opt.steps.length > 0 && (
-            <View style={{paddingHorizontal:16,paddingBottom:14}}>
-              <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:8}}>Method</Text>
-              {dish.opt.steps.map((st: any, i: number) => (
-                <View key={i} style={{flexDirection:'row',gap:10,paddingVertical:5}}>
-                  <View style={{width:24,height:24,borderRadius:12,backgroundColor:navy,alignItems:'center',justifyContent:'center'}}>
-                    <Text style={{fontSize:11,color:white,fontWeight:'700'}}>{i+1}</Text>
-                  </View>
-                  <Text style={{flex:1,fontSize:16,color:'#374151',lineHeight:24}}>{typeof st === 'string' ? st : st}</Text>
-                </View>
-              ))}
+      <View style={{alignItems:'center',paddingVertical:20}}>
+        <Text style={s.stepTitle}>Cook at Home</Text>
+        <Text style={s.stepSub}>Your meal plan is confirmed</Text>
+        <View style={{gap:12,width:'100%',marginTop:16}}>
+          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:18,flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { setFeedbacks(buildFeedbackEntries()); setStep('grocery'); }}>
+            <Text style={{fontSize:28}}>🛒</Text>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Shopping List</Text>
+              <Text style={{fontSize:11,color:textSec}}>Consolidated ingredients for your plan</Text>
             </View>
-          )}
-        </View>
-
-        {/* Navigation */}
-        <View style={{flexDirection:'row',gap:8}}>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center',opacity:cookDishIdx>0?1:0.3}} onPress={() => setCookDishIdx(Math.max(0, cookDishIdx-1))} disabled={cookDishIdx<=0}>
-            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Previous</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:'rgba(255,255,255,0.9)',borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('plan-summary')}>
-            <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Back to Plan</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center',opacity:cookDishIdx<total-1?1:0.3}} onPress={() => setCookDishIdx(Math.min(total-1, cookDishIdx+1))} disabled={cookDishIdx>=total-1}>
-            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Next</Text>
+          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:18,flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => router.push('/meal-prep' as never)}>
+            <Text style={{fontSize:28}}>👨‍🍳</Text>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Meal Prep</Text>
+              <Text style={{fontSize:11,color:textSec}}>Plan your cooking session</Text>
+            </View>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={{marginTop:20,paddingVertical:14,paddingHorizontal:40,borderRadius:12,borderWidth:1.5,borderColor:navy}} onPress={() => setStep('plan-summary')}>
+          <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back to Plan</Text>
+        </TouchableOpacity>
       </View>
     );
   }

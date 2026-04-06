@@ -227,7 +227,7 @@ export default function HomeScreen() {
 
           {/* Ask Maharaj — prime slot */}
           <TouchableOpacity style={{backgroundColor:navy,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:12}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
-            <Image source={require('../assets/logo.png')} style={{width:40,height:40,borderRadius:8}} resizeMode="contain" />
+            <View style={{width:40,height:40,overflow:'hidden'}}><Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" /></View>
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'700',color:white}}>Ask Maharaj</Text>
               <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)'}}>Your wise nutrition mentor</Text>

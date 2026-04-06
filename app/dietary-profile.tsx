@@ -8,6 +8,7 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { getCuisineGroups } from '../lib/cuisineGroups';
 import { navy, gold, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,11 +50,9 @@ const LANGUAGES = [
 
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
-const ALL_CUISINES = [
-  'Arabic','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi','Jain',
-  'Kashmiri','Kerala','Maharashtrian','Malabar','Malvani','Mangalorean','Mughlai',
-  'Pakistani','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','UP / Awadhi',
-];
+// P6: Cuisines dynamically sourced from RAG dish database
+const CUISINE_GROUPS_PROFILE = getCuisineGroups();
+const ALL_CUISINES = CUISINE_GROUPS_PROFILE.flatMap(g => g.cuisines);
 
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
@@ -93,6 +92,7 @@ export default function DietaryProfileScreen() {
   const [hasInsurance, setHasInsurance] = useState(false);
   const [insuranceExpiry, setInsuranceExpiry] = useState('');
   const [referralConsent, setReferralConsent] = useState(false);
+  const [maharajDay, setMaharajDay] = useState('Saturday');
   const [fastingDays, setFastingDays] = useState<string[]>([]);
   const [storePrefs, setStorePrefs] = useState<string[]>([]);
   const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
@@ -120,12 +120,14 @@ export default function DietaryProfileScreen() {
           if (prof?.subscription_expires_at) setSubExpiry(new Date(prof.subscription_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
         }
       } catch {}
-      const [ins, insExp, ref, fast, store, del, cook, bud] = await Promise.all([
+      const [ins, insExp, ref, fast, store, del, cook, bud, mDay] = await Promise.all([
         AsyncStorage.getItem('household_insurance'), AsyncStorage.getItem('insurance_expiry'),
         AsyncStorage.getItem('referral_consent'), AsyncStorage.getItem('fasting_days'),
         AsyncStorage.getItem('store_prefs'), AsyncStorage.getItem('delivery_prefs'),
         AsyncStorage.getItem('cooking_skill'), AsyncStorage.getItem('budget_pref'),
+        AsyncStorage.getItem('maharaj_day'),
       ]);
+      if (mDay) setMaharajDay(mDay);
       if (ins === 'true') setHasInsurance(true); if (insExp) setInsuranceExpiry(insExp);
       if (ref === 'true') setReferralConsent(true);
       if (fast) try { setFastingDays(JSON.parse(fast)); } catch {}
@@ -163,6 +165,7 @@ export default function DietaryProfileScreen() {
       AsyncStorage.setItem('insurance_expiry', insuranceExpiry),
       AsyncStorage.setItem('referral_consent', referralConsent ? 'true' : 'false'),
       AsyncStorage.setItem('fasting_days', JSON.stringify(fastingDays)), // legacy
+      AsyncStorage.setItem('maharaj_day', maharajDay),
       AsyncStorage.setItem('store_prefs', JSON.stringify(storePrefs)),
       AsyncStorage.setItem('delivery_prefs', JSON.stringify(deliveryPrefs)),
       AsyncStorage.setItem('cooking_skill', cookingSkill),
@@ -401,6 +404,19 @@ export default function DietaryProfileScreen() {
         {/* Household Settings */}
         <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Household Settings</Text>
 
+        {/* My Maharaj Day — P5 Saturday Signal */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:1,borderColor:'rgba(201,162,39,0.2)',borderLeftWidth:3,borderLeftColor:gold}}>
+          <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:4}}>My Maharaj Day</Text>
+          <Text style={{fontSize:9,color:'#6B7280',marginBottom:8}}>Maharaj will plan your week automatically on this day.</Text>
+          <View style={{flexDirection:'row',gap:4}}>
+            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+              <TouchableOpacity key={d} style={{flex:1,paddingVertical:8,borderRadius:8,borderWidth:1.5,borderColor:maharajDay===d?navy:'#D1D5DB',backgroundColor:maharajDay===d?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setMaharajDay(d)}>
+                <Text style={{fontSize:10,fontWeight:'700',color:maharajDay===d?white:navy}}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Insurance */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
@@ -547,29 +563,7 @@ export default function DietaryProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── APP INFO ── */}
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>App Info</Text>
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
-          <View style={{backgroundColor:'#FFF8E7',borderRadius:8,padding:10,marginBottom:8}}>
-            <Text style={{fontSize:10,color:'#854F0B',textAlign:'center'}}>My Maharaj has been upgraded to Beta. Thank you for being an early user.</Text>
-          </View>
-          <View style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}}>
-            <Text style={{fontSize:10,color:navy}}>Version</Text>
-            <Text style={{fontSize:10,color:'#6B7280'}}>2.0 Beta</Text>
-          </View>
-          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}} onPress={() => Alert.alert('My Maharaj', 'AI-powered family meal planning app by Blue Flute Consulting LLC-FZ, Dubai. Powered by Claude AI.\n\nVersion 2.0 Beta\nwww.bluefluteconsulting.com')}>
-            <Text style={{fontSize:10,color:navy}}>About My Maharaj</Text>
-            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}} onPress={() => router.push('/disclaimer' as never)}>
-            <Text style={{fontSize:10,color:navy}}>Privacy Policy</Text>
-            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:6}} onPress={() => Linking.openURL('mailto:info@bluefluteconsulting.com')}>
-            <Text style={{fontSize:10,color:navy}}>Contact support</Text>
-            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* App Info removed — now in About My Maharaj page (P9) */}
 
         {/* Save button */}
         <TouchableOpacity style={{backgroundColor:gold,borderRadius:12,paddingVertical:14,alignItems:'center',marginTop:8,marginBottom:24}} onPress={saveHousehold}>
