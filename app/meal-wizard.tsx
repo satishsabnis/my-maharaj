@@ -10,6 +10,7 @@ import Logo from '../components/Logo';
 import { navy, gold, peacock, textSec, errorRed, white, border, surface, textColor, successGreen } from '../theme/colors';
 import MarqueeTicker from '../components/MarqueeTicker';
 import MaharajSpinner from '../components/MaharajSpinner';
+import { getCuisineGroups } from '../lib/cuisineGroups';
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -174,7 +175,7 @@ export default function MealWizardScreen() {
   const [nutritionGoalsWiz, setNutritionGoalsWiz] = useState<string[]>([]);
   const spinAnim = useRef(new Animated.Value(0)).current;
 
-  const ALL_CUISINES_WIZ = ['Arabic','Bengali','Bihari','Chettinad','Goan','Gujarati','Hyderabadi','Jain','Kashmiri','Kerala','Maharashtrian','Malabar','Malvani','Mangalorean','Mughlai','Pakistani','Punjabi','Rajasthani','Sindhi','South Indian','Tamil','Telugu','UP / Awadhi'];
+  const CUISINE_GROUPS = getCuisineGroups();
 
   // Load members + cuisines on mount
   useEffect(() => {
@@ -755,13 +756,18 @@ export default function MealWizardScreen() {
           ))}
         </View>
         <Text style={s.sectionLabel}>CUISINE</Text>
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:16}}>
-          {ALL_CUISINES_WIZ.map(c => (
-            <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:selectedCuisinesWiz.includes(c)?navy:'#D4EDE5',backgroundColor:selectedCuisinesWiz.includes(c)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setSelectedCuisinesWiz(prev => prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}>
-              <Text style={{fontSize:11,fontWeight:'500',color:selectedCuisinesWiz.includes(c)?white:navy}}>{c}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {CUISINE_GROUPS.map(group => (
+          <View key={group.label} style={{marginBottom:10}}>
+            <Text style={{fontSize:9,fontWeight:'700',color:textSec,letterSpacing:0.5,marginBottom:4,textTransform:'uppercase'}}>{group.label}</Text>
+            <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+              {group.cuisines.map(c => (
+                <TouchableOpacity key={c} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:16,borderWidth:1.5,borderColor:selectedCuisinesWiz.includes(c)?navy:'#D4EDE5',backgroundColor:selectedCuisinesWiz.includes(c)?navy:'rgba(255,255,255,0.9)'}} onPress={() => setSelectedCuisinesWiz(prev => prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}>
+                  <Text style={{fontSize:11,fontWeight:'500',color:selectedCuisinesWiz.includes(c)?white:navy}}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
         <View style={{flexDirection:'row',gap:8,marginTop:8}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('members')}>
             <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
