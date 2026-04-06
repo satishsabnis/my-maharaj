@@ -227,7 +227,7 @@ export default function HomeScreen() {
 
           {/* Ask Maharaj — prime slot */}
           <TouchableOpacity style={{backgroundColor:navy,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:12}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
-            <Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" />
+            <Image source={require('../assets/logo.png')} style={{width:40,height:40,borderRadius:8}} resizeMode="contain" />
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'700',color:white}}>Ask Maharaj</Text>
               <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)'}}>Your wise nutrition mentor</Text>
@@ -347,7 +347,7 @@ export default function HomeScreen() {
 
                   <Text style={s.drawerSection}>SUPPORT</Text>
                   <DrawerRow icon={'\uD83D\uDCE7'} label="Feedback" onPress={() => { closeDrawer(); Linking.openURL('mailto:info@bluefluteconsulting.com'); }} />
-                  <DrawerRow icon={'\u2139\uFE0F'} label="About My Maharaj" onPress={() => { closeDrawer(); Alert.alert('My Maharaj', 'AI-powered family meal planner by Blue Flute Consulting LLC-FZ, Dubai, UAE.\n\nVersion 1.0\nwww.bluefluteconsulting.com'); }} />
+                  <DrawerRow icon={'\u2139\uFE0F'} label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
                   <DrawerRow icon={'\uD83D\uDD12'} label="Privacy Policy" onPress={() => { closeDrawer(); setPrivacyVisible(true); }} />
                   <DrawerRow icon={'\uD83D\uDEAA'} label="Sign Out" signOut onPress={doSignOut} />
                 </ScrollView>

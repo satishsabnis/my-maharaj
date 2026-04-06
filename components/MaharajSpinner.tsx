@@ -1,74 +1,72 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, View } from 'react-native';
+import React from 'react';
+import { Image, Platform, View } from 'react-native';
 
 /**
- * Isolated dual-ring spinner with Maharaj logo.
- * Animation runs on mount, stops only on unmount.
- * React.memo prevents parent re-renders from reaching this component.
- * Receives NO props — completely isolated from state changes.
+ * Dual-ring spinner with Maharaj logo.
+ * Web: Uses CSS @keyframes — runs on browser compositor thread, CANNOT be interrupted by React re-renders.
+ * Native: Uses CSS-in-JS equivalent via transform animations.
+ * React.memo + zero props = fully isolated from parent state.
  */
 function MaharajSpinnerInner() {
-  // useRef for animation values — survives re-renders
+  if (Platform.OS === 'web') {
+    // CSS animations — guaranteed infinite, immune to React re-renders
+    return (
+      <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes maharajSpinCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes maharajSpinCCW { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+          .maharaj-ring-outer { animation: maharajSpinCW 1.5s linear infinite !important; }
+          .maharaj-ring-inner { animation: maharajSpinCCW 1.2s linear infinite !important; }
+        `}} />
+        <View
+          // @ts-ignore — web-only className
+          className="maharaj-ring-outer"
+          style={{
+            position: 'absolute', width: 140, height: 140, borderRadius: 70,
+            borderWidth: 5, borderColor: '#1B3A5C', borderTopColor: 'transparent',
+          }}
+        />
+        <View
+          // @ts-ignore — web-only className
+          className="maharaj-ring-inner"
+          style={{
+            position: 'absolute', width: 110, height: 110, borderRadius: 55,
+            borderWidth: 5, borderColor: '#C9A227', borderTopColor: 'transparent',
+          }}
+        />
+        <Image
+          source={require('../assets/logo.png')}
+          style={{ width: 70, height: 70 }}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  }
+
+  // Native fallback — same visual, uses RN Animated
+  const { useEffect, useRef } = require('react');
+  const { Animated, Easing } = require('react-native');
   const ringA = useRef(new Animated.Value(0)).current;
   const ringB = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(1)).current;
 
-  // Start on mount, stop only on unmount — empty [] dependency
   useEffect(() => {
-    const spinA = Animated.loop(
-      Animated.timing(ringA, { toValue: 1, duration: 2500, easing: Easing.linear, useNativeDriver: true }),
-      { iterations: -1 }
-    );
-    const spinB = Animated.loop(
-      Animated.timing(ringB, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true }),
-      { iterations: -1 }
-    );
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.6, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.0, duration: 800, useNativeDriver: true }),
-      ]),
-      { iterations: -1 }
-    );
+    const a = Animated.loop(Animated.timing(ringA, { toValue: 1, duration: 1500, easing: Easing.linear, useNativeDriver: true }), { iterations: -1 });
+    const b = Animated.loop(Animated.timing(ringB, { toValue: 1, duration: 1200, easing: Easing.linear, useNativeDriver: true }), { iterations: -1 });
+    a.start(); b.start();
+    return () => { a.stop(); b.stop(); };
+  }, []);
 
-    spinA.start();
-    spinB.start();
-    pulseLoop.start();
-
-    // ONLY stop on unmount — never during generation
-    return () => {
-      spinA.stop();
-      spinB.stop();
-      pulseLoop.stop();
-    };
-  }, []); // Empty deps — runs once, never re-runs
-
-  const rotateCW = ringA.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const rotateCCW = ringB.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] });
+  const cw = ringA.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const ccw = ringB.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
 
   return (
     <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-      {/* Navy ring — clockwise */}
-      <Animated.View style={{
-        position: 'absolute', width: 140, height: 140, borderRadius: 70,
-        borderWidth: 5, borderColor: '#1B3A5C', borderTopColor: 'transparent',
-        transform: [{ rotate: rotateCW }],
-      }} />
-      {/* Gold ring — counter-clockwise */}
-      <Animated.View style={{
-        position: 'absolute', width: 110, height: 110, borderRadius: 55,
-        borderWidth: 5, borderColor: '#C9A227', borderTopColor: 'transparent',
-        transform: [{ rotate: rotateCCW }],
-      }} />
-      {/* Logo — pulsing */}
-      <Animated.Image
-        source={require('../assets/logo.png')}
-        style={{ width: 80, height: 80, resizeMode: 'contain', opacity: pulse }}
-      />
+      <Animated.View style={{ position: 'absolute', width: 140, height: 140, borderRadius: 70, borderWidth: 5, borderColor: '#1B3A5C', borderTopColor: 'transparent', transform: [{ rotate: cw }] }} />
+      <Animated.View style={{ position: 'absolute', width: 110, height: 110, borderRadius: 55, borderWidth: 5, borderColor: '#C9A227', borderTopColor: 'transparent', transform: [{ rotate: ccw }] }} />
+      <Image source={require('../assets/logo.png')} style={{ width: 70, height: 70 }} resizeMode="contain" />
     </View>
   );
 }
 
-// BUG 6 FIX: React.memo prevents parent re-renders from killing the animation
 const MaharajSpinner = React.memo(MaharajSpinnerInner);
 export default MaharajSpinner;
