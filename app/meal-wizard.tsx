@@ -312,16 +312,6 @@ export default function MealWizardScreen() {
       await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));
       await AsyncStorage.setItem('dietary_is_mixed', String(effectiveIsMixed));
 
-      console.error(`=== GENERATION PARAMS ===`);
-      console.error(`effectiveFoodPref: ${effectiveFoodPref}`);
-      console.error(`weekFoodPref: ${weekFoodPref}`);
-      console.error(`isMixed: ${effectiveIsMixed}`);
-      console.error(`nonVegOpts: ${JSON.stringify(nonVegOpts)}`);
-      console.error(`cuisine (random from saved): ${cuisine}`);
-      console.error(`selectedCuisinesWiz: ${JSON.stringify(selectedCuisinesWiz)}`);
-      console.error(`dates: ${JSON.stringify(getDates(selectedFrom!, selectedTo!))}`);
-      console.error(`=== END PARAMS ===`);
-
       setGeneratingProgress({ current: 0, total: 1 });
       const plan = await generateMealPlan({
         userId,
@@ -353,7 +343,6 @@ export default function MealWizardScreen() {
           const allCuisines = wizCuisines.length > 0
             ? wizCuisines
             : [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
-          console.log('[MealWizard] Cuisines for plan:', allCuisines.join(', '));
           return dates.map((d, i) => {
             if (perDayCuisine[d]) return perDayCuisine[d];
             if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
@@ -856,14 +845,6 @@ export default function MealWizardScreen() {
     }
     // Wire up generation: compute dates and set from/to, then start
     function startGeneration() {
-      console.error('=== GENERATION START ===');
-      console.error('selectedDays:', JSON.stringify(selectedDays));
-      console.error('selectedCuisinesWiz:', JSON.stringify(selectedCuisinesWiz));
-      console.error('foodPref:', foodPref);
-      console.error('weekFoodPref:', weekFoodPref);
-      console.error('isMixed:', isMixed);
-      console.error('numDaysWiz:', numDaysWiz);
-      console.error('=== END START ===');
       const today = startOfDay(new Date());
       const dayMap: Record<string, number> = { 'Sun':0,'Mon':1,'Tue':2,'Wed':3,'Thu':4,'Fri':5,'Sat':6 };
 
@@ -1346,44 +1327,27 @@ export default function MealWizardScreen() {
     const totalDays = generatingProgress?.total || 7;
     const completedDays = generatingProgress?.current || 0;
     return (
-      <View style={{flex:1}}>
-        {/* Background with overlay */}
-        <Image source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
-        <View style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(27,58,92,0.45)'}} />
-
-        {/* Content */}
-        <View style={{flex:1,alignItems:'center',justifyContent:'center',zIndex:1,paddingHorizontal:24}}>
-          {/* Spinner */}
-          <MaharajSpinner />
-
-          {/* Text */}
-          <Text style={{fontSize:14,fontWeight:'700',color:gold,marginBottom:8}}>Maharaj is planning...</Text>
-          <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginBottom:20}}>
-            {completedDays > 0 ? `Working on Day ${completedDays} of ${totalDays}` : 'Starting up'}
-          </Text>
-
-          {/* Day progress dots */}
-          <View style={{flexDirection:'row',gap:8,marginBottom:6}}>
-            {Array.from({length: totalDays}, (_, i) => {
-              const isDone = i < completedDays;
-              const isCurrent = i === completedDays;
-              return (
-                <View key={i} style={{width:28,height:28,borderRadius:14,borderWidth:2,borderColor:isDone?gold:isCurrent?gold:'rgba(255,255,255,0.3)',backgroundColor:isDone?gold:'transparent',alignItems:'center',justifyContent:'center'}}>
-                  <Text style={{fontSize:10,fontWeight:'700',color:isDone?'#1B2A0C':isCurrent?gold:'rgba(255,255,255,0.3)'}}>{i+1}</Text>
-                </View>
-              );
-            })}
-          </View>
-          <Text style={{fontSize:10,color:'rgba(255,255,255,0.5)'}}>Days completed</Text>
+      <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
+        <MaharajSpinner />
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:8}}>Maharaj is planning...</Text>
+        <Text style={{fontSize:11,color:textSec,marginBottom:20}}>
+          {completedDays > 0 ? `Working on Day ${completedDays} of ${totalDays}` : 'Starting up'}
+        </Text>
+        <View style={{flexDirection:'row',gap:8,marginBottom:6}}>
+          {Array.from({length: totalDays}, (_, i) => {
+            const isDone = i < completedDays;
+            const isCurrent = i === completedDays;
+            return (
+              <View key={i} style={{width:28,height:28,borderRadius:14,borderWidth:2,borderColor:isDone?gold:isCurrent?gold:'#D1D5DB',backgroundColor:isDone?gold:'transparent',alignItems:'center',justifyContent:'center'}}>
+                <Text style={{fontSize:10,fontWeight:'700',color:isDone?'#1B2A0C':isCurrent?gold:'#9CA3AF'}}>{i+1}</Text>
+              </View>
+            );
+          })}
         </View>
-
-        {/* Bottom buttons */}
-        <View style={{flexDirection:'row',gap:10,paddingHorizontal:20,paddingBottom:40,zIndex:1}}>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(255,255,255,0.5)',alignItems:'center'}} onPress={goBack}>
-            <Text style={{fontSize:14,fontWeight:'600',color:white}}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:gold,backgroundColor:'rgba(201,162,39,0.15)',alignItems:'center'}} onPress={() => setGenPaused(!genPaused)}>
-            <Text style={{fontSize:14,fontWeight:'600',color:gold}}>{genPaused ? 'Resume' : 'Pause'}</Text>
+        <Text style={{fontSize:10,color:textSec}}>Days completed</Text>
+        <View style={{flexDirection:'row',gap:10,position:'absolute',bottom:40,left:20,right:20}}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={goBack}>
+            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
           </TouchableOpacity>
         </View>
       </View>
