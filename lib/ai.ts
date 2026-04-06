@@ -262,14 +262,18 @@ Do NOT generate a single dish for Full Thali. This is non-negotiable.
 
   const variationSeed = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
 
-  // BUG 2 FIX: Dietary rule is FIRST line of prompt — before everything else
-  const dietaryAbsoluteRule = foodPref.toLowerCase().includes('non-veg') || foodPref.toLowerCase().includes('chicken') || foodPref.toLowerCase().includes('mutton') || foodPref.toLowerCase().includes('fish') || foodPref.toLowerCase().includes('egg')
-    ? `ABSOLUTE RULE 1 — DIETARY: This user is NON-VEGETARIAN. At least one of the 3 options MUST contain chicken, mutton, fish, eggs or seafood. An all-vegetarian set for a non-vegetarian user is a FAILURE and will be rejected.`
-    : foodPref.toLowerCase().includes('jain')
-    ? `ABSOLUTE RULE 1 — DIETARY: This user is JAIN. No meat, fish, eggs, onion, garlic, potato, carrot, beetroot, radish or turnip in any dish.`
-    : foodPref.toLowerCase().includes('vegetarian')
-    ? `ABSOLUTE RULE 1 — DIETARY: This user is VEGETARIAN. No meat, fish or eggs in any dish.`
-    : '';
+  // FIX 6: Updated ABSOLUTE RULE 1 with realistic non-veg description
+  const fp = foodPref.toLowerCase();
+  const isNonVegPref = fp.includes('non-veg') || fp.includes('chicken') || fp.includes('mutton') || fp.includes('fish') || fp.includes('egg');
+  const dietaryAbsoluteRule = isNonVegPref
+    ? `ABSOLUTE RULE 1 — DIETARY: This user is NON-VEGETARIAN.
+Every day must include AT LEAST ONE non-vegetarian dish (chicken, mutton, fish, eggs or seafood).
+Remaining meals in the day may be vegetarian — dal, sabzi, roti, rice, raita alongside non-veg is natural and correct. This is how Indian families actually eat.
+A plan where EVERY dish across ALL days is vegetarian is a FAILURE.
+A mixed plan with 1-2 non-veg dishes per day and the rest vegetarian is CORRECT and expected.`
+    : fp.includes('jain')
+    ? `ABSOLUTE RULE 1 — DIETARY: This user is JAIN. No meat, fish, eggs, onion, garlic, potato, carrot, beetroot, radish or turnip in any dish under any circumstances.`
+    : `ABSOLUTE RULE 1 — DIETARY: This user is VEGETARIAN. No meat, fish or eggs in any dish under any circumstances.`;
 
   // BUG 4 FIX: No-repeat rule is SECOND line — immediately after dietary
   const uniquenessAbsoluteRule = weekDishHistory && weekDishHistory.length > 0
@@ -423,14 +427,19 @@ export async function generateMealPlan(
   const allowedProteins = params.allowedProteins ?? params.foodPrefs.nonVegOptions;
   const isMixed = params.isMixed ?? false;
 
-  const baseFoodPref =
-    params.foodPrefs.type === 'veg'
-      ? params.foodPrefs.vegType === 'fasting'
-        ? 'Fasting only (sabudana/rajgira/fruits/sama rice)'
-        : 'Strictly Vegetarian — zero non-veg, no eggs, no fish, no chicken, no mutton'
-      : isMixed
-        ? 'Mixed — Vegetarian for breakfast, non-veg allowed for lunch and dinner only'
-        : `Non-vegetarian: ONLY use ${allowedProteins?.join(', ') || 'chicken, fish, eggs, mutton'}`;
+  // FIX 5: Null-safe dietary with correct default (vegetarian, not non-veg)
+  let baseFoodPref: string;
+  if (!params.foodPrefs.type || params.foodPrefs.type === 'veg') {
+    baseFoodPref = params.foodPrefs.vegType === 'fasting'
+      ? 'Fasting only (sabudana/rajgira/fruits/sama rice)'
+      : 'Strictly Vegetarian — no meat, fish or eggs in any dish';
+  } else if (isMixed) {
+    baseFoodPref = 'Mixed — Vegetarian for breakfast, non-veg allowed for lunch and dinner only';
+  } else if (params.foodPrefs.type === 'nonveg') {
+    baseFoodPref = `Non-vegetarian — include at least one non-veg dish (${allowedProteins?.join(', ') || 'chicken, fish, eggs, mutton'}) per day. Remaining meals can be vegetarian — dal, sabzi, roti, rice alongside non-veg is natural and correct.`;
+  } else {
+    baseFoodPref = 'Strictly Vegetarian'; // safe default
+  }
 
   console.log(`Dietary preference used in prompt: type=${params.foodPrefs.type}, isMixed=${isMixed}, baseFoodPref="${baseFoodPref}", allowedProteins=${JSON.stringify(allowedProteins)}`);
 

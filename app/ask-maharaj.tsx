@@ -68,19 +68,24 @@ export default function AskMaharajScreen() {
     try {
       const user = await getSessionUser();
       if (!user) return '';
-      const [{ data: members }, { data: cuisines }, { data: profile }] = await Promise.all([
+      const [{ data: members }, { data: cuisines }] = await Promise.all([
         supabase.from('family_members').select('name, age, health_notes').eq('user_id', user.id),
         supabase.from('cuisine_preferences').select('cuisine_name').eq('user_id', user.id).eq('is_excluded', false),
-        supabase.from('profiles').select('food_pref, allowed_proteins').eq('id', user.id).maybeSingle(),
       ]);
       const memberCtx = (members ?? []).map((m: any) => `${m.name} (${m.age}yo)${m.health_notes ? ': ' + m.health_notes : ''}`).join('; ');
       const cuisineCtx = (cuisines ?? []).map((c: any) => c.cuisine_name).join(', ');
+      // FIX 7: Read dietary from AsyncStorage (where meal wizard saves it)
+      const savedFoodPref = await AsyncStorage.getItem('dietary_food_pref');
+      const savedNonVegOpts = await AsyncStorage.getItem('dietary_nonveg_opts');
       let dietCtx = '';
-      if (profile?.food_pref === 'veg') dietCtx = 'STRICTLY VEGETARIAN. No non-veg.';
-      else if (profile?.food_pref === 'nonveg') {
-        const allowed = profile?.allowed_proteins ?? [];
-        dietCtx = `NON-VEGETARIAN. Allowed proteins: ${allowed.join(', ') || 'all'}.`;
+      if (savedFoodPref === 'veg') dietCtx = 'STRICTLY VEGETARIAN. No non-veg dishes.';
+      else if (savedFoodPref === 'nonveg') {
+        const opts = savedNonVegOpts ? JSON.parse(savedNonVegOpts) : [];
+        dietCtx = `NON-VEGETARIAN. Allowed proteins: ${opts.length > 0 ? opts.join(', ') : 'chicken, fish, eggs, mutton'}.`;
+      } else {
+        dietCtx = 'Dietary preference not set — assume vegetarian.';
       }
+      console.log('[AskMaharaj] Dietary context:', dietCtx);
       return [memberCtx ? `Family: ${memberCtx}` : '', cuisineCtx ? `Cuisines: ${cuisineCtx}` : '', dietCtx].filter(Boolean).join('\n');
     } catch { return ''; }
   }
