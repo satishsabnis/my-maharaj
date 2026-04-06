@@ -59,7 +59,9 @@ export async function getRelevantDishes(params: {
   // Score
   const scored = results.map(dish => {
     let score = 0;
-    if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase().includes(c.toLowerCase())))) score += 10;
+    // P12: +15 for exact selected cuisine match (ensures selected cuisines dominate)
+    if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase() === c.toLowerCase()))) score += 15;
+    else if (cuisines.some(c => dish.cuisine.some(dc => dc.toLowerCase().includes(c.toLowerCase())))) score += 10;
     if (healthConditions.length > 0 && dish.health_tags.some(t => healthConditions.some(h => t.toLowerCase().includes(h.toLowerCase())))) score += 5;
     if (mealType && dish.meal_type.includes(mealType)) score += 3;
     const isTrending = TRENDING_DISHES.some(t => dish.name.toLowerCase().includes(t.toLowerCase()));

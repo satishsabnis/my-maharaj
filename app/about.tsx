@@ -36,7 +36,7 @@ export default function AboutScreen() {
         {/* Section 1 — The Vision */}
         <Text style={s.heading}>The Vision</Text>
         <Text style={s.body}>
-          My Maharaj is the world's first Cultural Health Intelligence Engine. We believe 1.4 billion people of Indian origin deserve an AI that understands how they eat — not just what they eat.
+          My Maharaj is the world's first Cultural Health Intelligence Engine. We believe people of Indian origin across 195 countries deserve an AI that understands how they eat — not just what they eat.
         </Text>
         <Text style={[s.body, { marginTop: 10 }]}>
           Every dal in Maharashtra differs from dal in Punjab. Every family has its own health story. My Maharaj is built to understand both.
@@ -80,7 +80,7 @@ export default function AboutScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
   heading: { fontSize: 18, fontWeight: '700', color: NAVY, marginBottom: 12 },
   body: { fontSize: 14, color: BODY, lineHeight: 22 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: 'rgba(27,58,92,0.08)' },

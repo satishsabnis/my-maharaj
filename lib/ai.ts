@@ -280,8 +280,14 @@ A mixed plan with 1-2 non-veg dishes per day and the rest vegetarian is CORRECT 
     ? `ABSOLUTE RULE 2 — UNIQUENESS: These dishes are ALREADY USED. You MUST NOT use any of them: ${weekDishHistory.join(', ')}. Using a repeated dish is a FAILURE.`
     : '';
 
+  // P12: Cuisine enforcement
+  const cuisineEnforcement = cuisine && cuisine !== 'Various'
+    ? `CUISINE REQUIREMENT: The user selected ${cuisine} cuisine. You MUST generate ${cuisine} dishes. If Indo-Chinese is selected, include Chilli Chicken, Hakka Noodles, Gobi Manchurian or similar.`
+    : '';
+
   const prompt = `${dietaryAbsoluteRule}
 ${uniquenessAbsoluteRule}
+${cuisineEnforcement}
 
 You are generating a ${mealType.toUpperCase()} meal. ${slotRule}
 STRICT RULE: Do NOT suggest a breakfast item for lunch/dinner. Do NOT suggest a lunch item for evening snack. Each meal type has its own appropriate dishes.
