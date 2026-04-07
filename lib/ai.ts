@@ -558,16 +558,18 @@ export async function generateMealPlan(
 
   for (const { date, dayName, foodPref, bfFoodPref, lunchDinnerPref, dayCuisine, i } of dayMeta) {
     const emptySlot: MealSlot = { options: [] };
-    const [breakfast, lunch, dinner, snack] = await Promise.all([
-      slots.includes('breakfast') ? generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref,        lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint, ragDishPrompt) : Promise.resolve(emptySlot),
-      slots.includes('lunch')     ? generateOneMeal('lunch',     date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint, ragDishPrompt) : Promise.resolve(emptySlot),
-      slots.includes('dinner')    ? generateOneMeal('dinner',    date, dayName, dayCuisine, healthInfo, lunchDinnerPref,   lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint, ragDishPrompt) : Promise.resolve(emptySlot),
-      slots.includes('snack')     ? generateOneMeal('snack',      date, dayName, dayCuisine, healthInfo, foodPref,          lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint, ragDishPrompt) : Promise.resolve(undefined),
-    ]);
-    // Accumulate all dish names from this day into history for next day
-    [breakfast, lunch, dinner, snack].forEach(slot => {
-      if (slot) slot.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
-    });
+    // SEQUENTIAL within each day — each meal sees previous meals' dishes in weekHistory
+    const breakfast = slots.includes('breakfast') ? await generateOneMeal('breakfast', date, dayName, dayCuisine, healthInfo, bfFoodPref, lang, bfPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, bfProteins, bfConstraint, ragDishPrompt) : emptySlot;
+    breakfast.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
+
+    const lunch = slots.includes('lunch') ? await generateOneMeal('lunch', date, dayName, dayCuisine, healthInfo, lunchDinnerPref, lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint, ragDishPrompt) : emptySlot;
+    lunch.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
+
+    const dinner = slots.includes('dinner') ? await generateOneMeal('dinner', date, dayName, dayCuisine, healthInfo, lunchDinnerPref, lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint, ragDishPrompt) : emptySlot;
+    dinner.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
+
+    const snack = slots.includes('snack') ? await generateOneMeal('snack', date, dayName, dayCuisine, healthInfo, foodPref, lang, snPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, undefined, snConstraint, ragDishPrompt) : undefined;
+    if (snack) snack.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
     completed++;
     onProgress?.(completed, total);
     const day: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };

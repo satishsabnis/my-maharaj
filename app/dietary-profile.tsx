@@ -95,6 +95,8 @@ export default function DietaryProfileScreen() {
   const [insuranceExpiry, setInsuranceExpiry] = useState('');
   const [referralConsent, setReferralConsent] = useState(false);
   const [maharajDay, setMaharajDay] = useState('Saturday');
+  const [isJainFamily, setIsJainFamily] = useState(false);
+  const [jainAllowNonJain, setJainAllowNonJain] = useState(false);
   const [fastingDays, setFastingDays] = useState<string[]>([]);
   const [storePrefs, setStorePrefs] = useState<string[]>([]);
   const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
@@ -130,6 +132,10 @@ export default function DietaryProfileScreen() {
         AsyncStorage.getItem('maharaj_day'),
       ]);
       if (mDay) setMaharajDay(mDay);
+      const jf = await AsyncStorage.getItem('jain_family');
+      const jnj = await AsyncStorage.getItem('jain_allow_non_jain');
+      if (jf === 'true') setIsJainFamily(true);
+      if (jnj === 'true') setJainAllowNonJain(true);
       if (ins === 'true') setHasInsurance(true); if (insExp) setInsuranceExpiry(insExp);
       if (ref === 'true') setReferralConsent(true);
       if (fast) try { setFastingDays(JSON.parse(fast)); } catch {}
@@ -180,6 +186,8 @@ export default function DietaryProfileScreen() {
       AsyncStorage.setItem('referral_consent', referralConsent ? 'true' : 'false'),
       AsyncStorage.setItem('fasting_days', JSON.stringify(fastingDays)), // legacy
       AsyncStorage.setItem('maharaj_day', maharajDay),
+      AsyncStorage.setItem('jain_family', String(isJainFamily)),
+      AsyncStorage.setItem('jain_allow_non_jain', String(jainAllowNonJain)),
       AsyncStorage.setItem('store_prefs', JSON.stringify(storePrefs)),
       AsyncStorage.setItem('delivery_prefs', JSON.stringify(deliveryPrefs)),
       AsyncStorage.setItem('cooking_skill', cookingSkill),
@@ -307,7 +315,21 @@ export default function DietaryProfileScreen() {
           </View>
         )}
 
-        {/* Q7: My Maharaj Day — FIRST visible setting */}
+        {/* Jain family toggle */}
+        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Are you a Jain family?</Text>
+            <Switch value={isJainFamily} onValueChange={setIsJainFamily} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+          </View>
+          {isJainFamily && (
+            <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
+              <Text style={{fontSize:11,color:navy,flex:1}}>Would you like Maharaj to suggest non-Jain recipes also?</Text>
+              <Switch value={jainAllowNonJain} onValueChange={setJainAllowNonJain} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+            </View>
+          )}
+        </View>
+
+        {/* Q7: My Maharaj Day */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderWidth:1,borderColor:'rgba(201,162,39,0.2)',borderLeftWidth:3,borderLeftColor:gold}}>
           <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:4}}>My Maharaj Day</Text>
           <Text style={{fontSize:10,color:'#6B7280',marginBottom:10}}>Maharaj will automatically plan your week on this day.</Text>

@@ -50,9 +50,9 @@ export default function OrderOutScreen() {
       <ScrollView contentContainerStyle={{padding:16,paddingBottom:100}} showsVerticalScrollIndicator={false}>
 
         {/* Coming Soon Banner */}
-        <View style={{backgroundColor:'#FFF0F0',borderRadius:8,padding:10,marginBottom:12,borderWidth:0.5,borderColor:'rgba(153,27,27,0.19)'}}>
-          <Text style={{fontSize:10,fontWeight:'500',color:'#991B1B',textAlign:'center'}}>Maharaj is learning and will connect you soon</Text>
-          <Text style={{fontSize:9,color:'rgba(153,27,27,0.5)',textAlign:'center',marginTop:3}}>Maharaj will soon suggest restaurants matching your family's dietary needs and cuisine preferences.</Text>
+        <View style={{backgroundColor:'#2E5480',borderRadius:12,padding:14,marginBottom:12}}>
+          <Text style={{fontSize:10,fontWeight:'500',color:white,textAlign:'center'}}>Maharaj is learning and will connect you soon</Text>
+          <Text style={{fontSize:9,color:'rgba(255,255,255,0.6)',textAlign:'center',marginTop:3}}>Maharaj will soon suggest restaurants matching your family's dietary needs and cuisine preferences.</Text>
         </View>
 
         <Text style={{fontSize:20,fontWeight:'800',color:navy,marginBottom:12}}>Where would you like to order from?</Text>
