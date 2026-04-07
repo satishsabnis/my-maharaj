@@ -95,7 +95,7 @@ export default function HomeScreen() {
       if (!document.getElementById('maharaj-pulse-styles')) {
         const styleEl = document.createElement('style');
         styleEl.id = 'maharaj-pulse-styles';
-        styleEl.textContent = `@keyframes maharajPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } } .maharaj-hero-circle { animation: maharajPulse 2.5s ease-in-out infinite !important; }`;
+        styleEl.textContent = `@keyframes maharajPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } } .maharaj-pulse { animation: maharajPulse 2.5s ease-in-out infinite !important; }`;
         document.head.appendChild(styleEl);
       }
     } else {
@@ -243,20 +243,21 @@ export default function HomeScreen() {
         <MarqueeTicker />
 
         {/* ── MAIN CONTENT ── */}
-        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
+        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingTop:8}}>
 
-          {/* Maharaj hero circle */}
-          <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85} style={{alignItems:'center'}}>
-            <Animated.View
+          {/* Maharaj hero logo — only the image is touchable */}
+          <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
+            <Animated.Image
+              source={require('../assets/logo.png')}
               // @ts-ignore — web-only className
-              className={Platform.OS === 'web' ? 'maharaj-hero-circle' : undefined}
-              style={{width:220,height:220,borderRadius:110,backgroundColor:'transparent',alignItems:'center',justifyContent:'center',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
-              <Image source={require('../assets/logo.png')} style={{width:220,height:220,backgroundColor:'transparent'}} resizeMode="contain" />
-            </Animated.View>
-            <Text style={{fontSize:22,fontWeight:'700',color:'#2E5480',marginTop:14,textAlign:'center'}}>Ask Maharaj</Text>
-            <Text style={{fontSize:14,color:'#1A6B5C',textAlign:'center',marginTop:4}}>Your personal meal planner</Text>
-            <Text style={{fontSize:12,color:'#C9A227',textAlign:'center',marginTop:8,fontStyle:'italic'}}>Tap to begin</Text>
+              className={Platform.OS === 'web' ? 'maharaj-pulse' : undefined}
+              style={{width:400,height:400,backgroundColor:'transparent',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
+          <Text style={{fontSize:13,color:'#C9A227',textAlign:'center',marginTop:4,fontStyle:'italic'}}>Tap to begin</Text>
+          <Text style={{fontSize:20,fontWeight:'700',color:'#2E5480',textAlign:'center',marginTop:4}}>Ask Maharaj</Text>
+          <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginTop:3}}>Your personal meal planner</Text>
 
           {/* Amber divider */}
           <View style={{height:1.5,backgroundColor:'#C9A227',width:'100%',marginTop:24}} />

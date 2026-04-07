@@ -81,6 +81,7 @@ export default function AskMaharajScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const [familyCount, setFamilyCount] = useState(0);
+  const [userName, setUserName] = useState('');
   const [hasPlan, setHasPlan] = useState(false);
   const [familyContextStr, setFamilyContextStr] = useState('');
   const [userLanguages, setUserLanguages] = useState<string[]>(['English']);
@@ -93,6 +94,8 @@ export default function AskMaharajScreen() {
         const { data: members } = await supabase.from('family_members').select('name, age, health_notes').eq('user_id', user.id);
         const mems = members ?? [];
         setFamilyCount(mems.length);
+        const uName = (user.user_metadata?.full_name ?? user.email ?? '') as string;
+        setUserName(uName.split(' ')[0] || '');
         const [storePref, cookSkill, fastDays] = await Promise.all([
           AsyncStorage.getItem('store_prefs'), AsyncStorage.getItem('cooking_skill'), AsyncStorage.getItem('fasting_days'),
         ]);
@@ -230,11 +233,15 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
             {messages.length === 0 && (
               <View style={{alignItems:'center',paddingVertical:20,paddingHorizontal:12}}>
                 <Image source={require('../assets/logo.png')} style={{width:80,height:40,marginBottom:10}} resizeMode="contain" />
-                <Text style={{fontSize:18,fontWeight:'800',color:navy,marginBottom:6}}>Namaste! I am Maharaj.</Text>
-                <Text style={{fontSize:13,color:textSec,textAlign:'center',lineHeight:20,marginBottom:16}}>Ask me about Indian food, recipes, nutrition, or meal planning.</Text>
+                <Text style={{fontSize:16,fontWeight:'700',color:navy,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
+                <Text style={{fontSize:13,color:textSec,textAlign:'center',lineHeight:20,marginBottom:16}}>Ask me anything — meals, fridge, shopping, nutrition. Or choose below.</Text>
                 <View style={{width:'100%',flexDirection:'row',flexWrap:'wrap',gap:8}}>
-                  {['What should I cook tonight?','Diabetic-friendly meal plan','History of biryani','Plan a festive menu'].map(s_ => (
-                    <TouchableOpacity key={s_} style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,padding:10,borderWidth:1,borderColor:border,flexBasis:'47%',flexGrow:0}} onPress={() => setInput(s_)}>
+                  {['Plan my week','What is in my fridge?','Party menu','Shopping list','Meal prep','Outdoor trip'].map(s_ => (
+                    <TouchableOpacity key={s_} style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,padding:10,borderWidth:1,borderColor:border,flexBasis:'47%',flexGrow:0}} onPress={() => {
+                      const intent = detectIntent(s_);
+                      if (intent) { router.push(`/${intent}` as never); }
+                      else { setInput(s_); }
+                    }}>
                       <Text style={{fontSize:12,color:navy,fontWeight:'500'}}>{s_}</Text>
                     </TouchableOpacity>
                   ))}
