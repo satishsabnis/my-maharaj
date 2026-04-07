@@ -250,11 +250,12 @@ export default function HomeScreen() {
             <Animated.View
               // @ts-ignore — web-only className
               className={Platform.OS === 'web' ? 'maharaj-hero-circle' : undefined}
-              style={{width:110,height:110,borderRadius:55,borderWidth:2.5,borderColor:'#C9A227',backgroundColor:'rgba(255,255,255,0.15)',alignItems:'center',justifyContent:'center',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
-              <Image source={require('../assets/logo.png')} style={{width:78,height:78,backgroundColor:'transparent'}} resizeMode="contain" />
+              style={{width:220,height:220,borderRadius:110,borderWidth:2.5,borderColor:'#C9A227',backgroundColor:'rgba(255,255,255,0.15)',alignItems:'center',justifyContent:'center',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
+              <Image source={require('../assets/logo.png')} style={{width:160,height:160,backgroundColor:'transparent'}} resizeMode="contain" />
             </Animated.View>
-            <Text style={{fontSize:20,fontWeight:'700',color:'#1B3A5C',marginTop:10,textAlign:'center'}}>Ask Maharaj</Text>
-            <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginTop:3}}>Your wise nutrition mentor</Text>
+            <Text style={{fontSize:22,fontWeight:'700',color:'#1B3A5C',marginTop:14,textAlign:'center'}}>Ask Maharaj</Text>
+            <Text style={{fontSize:14,color:'#1A6B5C',textAlign:'center',marginTop:4}}>Your personal meal planner</Text>
+            <Text style={{fontSize:12,color:'#C9A227',textAlign:'center',marginTop:8,fontStyle:'italic'}}>Tap to begin</Text>
           </TouchableOpacity>
 
           {/* Amber divider */}
@@ -284,7 +285,7 @@ export default function HomeScreen() {
                   <Text style={s.drawerEmail}>{email}</Text>
                 </View>
 
-                <ScrollView style={{maxHeight:'80%'}}>
+                <ScrollView style={{maxHeight:'80%'}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:32}}>
                   <Text style={s.drawerSection}>PLAN</Text>
                   <DrawerRow icon={'\uD83D\uDCCB'} label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
                   <DrawerRow icon={'\uD83D\uDCDC'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
