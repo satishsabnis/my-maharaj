@@ -249,12 +249,6 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
 
             {messages.map((msg, i) => (
               <View key={i} style={msg.role === 'user' ? s.userBubble : s.aiBubble}>
-                {msg.role === 'assistant' && (
-                  <View style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:4}}>
-                    <Image source={require('../assets/logo.png')} style={{width:22,height:22}} resizeMode="contain" />
-                    <Text style={{fontSize:10,fontWeight:'700',color:'#1A6B5C'}}>Maharaj</Text>
-                  </View>
-                )}
                 {msg.role === 'user' ? (
                   <Text style={{fontSize:14,lineHeight:22,color:white}}>{msg.content}</Text>
                 ) : (
@@ -283,10 +277,6 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
 
             {loading && (
               <View style={s.aiBubble}>
-                <View style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:4}}>
-                  <Image source={require('../assets/logo.png')} style={{width:22,height:22}} resizeMode="contain" />
-                  <Text style={{fontSize:10,fontWeight:'700',color:'#1A6B5C'}}>Maharaj</Text>
-                </View>
                 <ActivityIndicator color={navy} size="small" />
                 <Text style={{fontSize:13,color:textSec,fontStyle:'italic',marginTop:4}}>Thinking...</Text>
               </View>
