@@ -1346,7 +1346,7 @@ export default function MealWizardScreen() {
           })}
         </View>
         <Text style={{fontSize:10,color:textSec}}>Days completed</Text>
-        <TouchableOpacity style={{marginTop:24,backgroundColor:'#C9A227',borderRadius:12,paddingVertical:12,paddingHorizontal:24}} onPress={() => setGenPaused(p => !p)}>
+        <TouchableOpacity style={{marginTop:24,backgroundColor:'#C9A227',borderRadius:8,paddingVertical:12,paddingHorizontal:24}} onPress={() => setGenPaused(p => !p)}>
           <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>{genPaused ? 'Resume' : 'Pause'}</Text>
         </TouchableOpacity>
       </View>
