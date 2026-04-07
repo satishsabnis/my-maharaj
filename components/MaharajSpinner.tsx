@@ -20,8 +20,8 @@ function MaharajSpinnerInner() {
       }
       .maharaj-ring-outer {
         animation: maharajSpin 1.5s linear infinite !important;
-        width: 140px;
-        height: 140px;
+        width: 220px;
+        height: 220px;
         border-radius: 50%;
         border: 6px solid #C9A227;
         border-top-color: transparent;
@@ -35,10 +35,10 @@ function MaharajSpinnerInner() {
 
   if (Platform.OS === 'web') {
     return (
-      <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 16, backgroundColor: 'transparent' }}>
+      <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: 16, backgroundColor: 'transparent' }}>
         {/* @ts-ignore — web-only className */}
         <div className="maharaj-ring-outer" />
-        <Image source={require('../assets/logo.png')} style={{ width: 70, height: 70, backgroundColor: 'transparent' }} resizeMode="contain" />
+        <Image source={require('../assets/logo.png')} style={{ width: 200, height: 200, backgroundColor: 'transparent' }} resizeMode="contain" />
       </View>
     );
   }
@@ -54,9 +54,9 @@ function MaharajSpinnerInner() {
   }, []);
   const rot = ring.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   return (
-    <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-      <Animated.View style={{ position: 'absolute', width: 140, height: 140, borderRadius: 70, borderWidth: 6, borderColor: '#C9A227', borderTopColor: 'transparent', transform: [{ rotate: rot }] }} />
-      <Image source={require('../assets/logo.png')} style={{ width: 70, height: 70 }} resizeMode="contain" />
+    <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+      <Animated.View style={{ position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 6, borderColor: '#C9A227', borderTopColor: 'transparent', transform: [{ rotate: rot }] }} />
+      <Image source={require('../assets/logo.png')} style={{ width: 200, height: 200 }} resizeMode="contain" />
     </View>
   );
 }

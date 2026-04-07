@@ -259,8 +259,7 @@ export default function HomeScreen() {
           <Text style={{fontSize:20,fontWeight:'700',color:'#2E5480',textAlign:'center',marginTop:4}}>Ask Maharaj</Text>
           <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginTop:3}}>Your personal meal planner</Text>
 
-          {/* Amber divider */}
-          <View style={{height:1.5,backgroundColor:'#C9A227',width:'100%',marginTop:24}} />
+
         </View>
 
         {/* Footer */}
