@@ -79,6 +79,7 @@ export default function HomeScreen() {
 
   const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const tickerAnim = useRef(new Animated.Value(0)).current;
+  const heroPulse = useRef(new Animated.Value(1)).current;
   const [tickerContentWidth, setTickerContentWidth] = useState(0);
   const TICKER_TEXT = 'My Maharaj by Blue Flute Consulting \u00B7 Beta \u00B7 Smart meal planning for Indian families \u00B7 Feedback: info@bluefluteconsulting.com     ';
 
@@ -86,6 +87,16 @@ export default function HomeScreen() {
   useEffect(() => {
     const t = setInterval(() => setDateTimeStr(formatInfoBar(new Date())), 60000);
     return () => clearInterval(t);
+  }, []);
+
+  // Hero circle pulse
+  useEffect(() => {
+    const pulse = Animated.loop(Animated.sequence([
+      Animated.timing(heroPulse, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
+      Animated.timing(heroPulse, { toValue: 1.0, duration: 1200, useNativeDriver: true }),
+    ]));
+    pulse.start();
+    return () => pulse.stop();
   }, []);
 
   // Ticker animation
@@ -225,14 +236,19 @@ export default function HomeScreen() {
         {/* ── SCROLL CONTENT ── */}
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-          {/* Ask Maharaj — prime slot: white card, gold border, correct logo */}
-          <TouchableOpacity style={{backgroundColor:white,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderColor:gold}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.88}>
-            <View style={{width:40,height:40,overflow:'hidden',backgroundColor:'transparent'}}><Image source={require('../assets/logo.png')} style={{width:40,height:40}} resizeMode="contain" /></View>
-            <View style={{flex:1}}>
-              <Text style={{fontSize:16,fontWeight:'700',color:navy}}>Ask Maharaj</Text>
-              <Text style={{fontSize:11,color:textSec}}>Your wise nutrition mentor</Text>
-            </View>
-          </TouchableOpacity>
+          {/* Maharaj hero circle */}
+          <View style={{alignItems:'center',paddingTop:20,paddingBottom:16}}>
+            <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
+              <Animated.View style={{width:100,height:100,borderRadius:50,borderWidth:2.5,borderColor:gold,backgroundColor:white,alignItems:'center',justifyContent:'center',transform:[{scale:heroPulse}]}}>
+                <Image source={require('../assets/logo.png')} style={{width:70,height:70,backgroundColor:'transparent'}} resizeMode="contain" />
+              </Animated.View>
+            </TouchableOpacity>
+            <Text style={{fontSize:18,fontWeight:'700',color:navy,marginTop:8,textAlign:'center'}}>Ask Maharaj</Text>
+            <Text style={{fontSize:12,color:'#1A6B5C',textAlign:'center'}}>Your wise nutrition mentor</Text>
+          </View>
+
+          {/* Gold divider */}
+          <View style={{height:1,backgroundColor:'rgba(201,162,39,0.4)',marginHorizontal:16,marginBottom:14,marginTop:4}} />
 
           {/* Weather-aware meal prompt — only shows when conditions are notable */}
           {weatherPrompt && !weatherDismissed && (
@@ -263,7 +279,7 @@ export default function HomeScreen() {
 
           {/* Plan ready card */}
           {planReady && (
-            <TouchableOpacity style={s.planReadyCard} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.85}>
+            <TouchableOpacity style={s.planReadyCard} onPress={() => router.push('/menu-history' as never)} activeOpacity={0.85}>
               <View style={{flex:1}}>
                 <Text style={s.planReadyTitle}>This week's plan is ready</Text>
                 <Text style={s.planReadySub}>Tap to view your plan</Text>
@@ -317,7 +333,7 @@ export default function HomeScreen() {
           {/* Footer */}
           <View style={s.footer}>
             <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
-            <Text style={s.footerLine2}>www.bluefluteconsulting.com \u00B7 info@bluefluteconsulting.com</Text>
+            <Text style={s.footerLine2}>www.bluefluteconsulting.com · info@bluefluteconsulting.com</Text>
           </View>
         </ScrollView>
 
