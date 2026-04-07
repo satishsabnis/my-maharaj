@@ -242,112 +242,35 @@ export default function HomeScreen() {
         {/* ── TICKER ── */}
         <MarqueeTicker />
 
-        {/* ── SCROLL CONTENT ── */}
-        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        {/* ── MAIN CONTENT ── */}
+        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
 
           {/* Maharaj hero circle */}
-          <View style={{alignItems:'center',paddingTop:20,paddingBottom:16}}>
-            <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
-              <Animated.View
-                // @ts-ignore — web-only className
-                className={Platform.OS === 'web' ? 'maharaj-hero-circle' : undefined}
-                style={{width:100,height:100,borderRadius:50,borderWidth:2.5,borderColor:gold,backgroundColor:white,alignItems:'center',justifyContent:'center',transform: Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
-                <Image source={require('../assets/logo.png')} style={{width:70,height:70,backgroundColor:'transparent'}} resizeMode="contain" />
-              </Animated.View>
-            </TouchableOpacity>
-            <Text style={{fontSize:18,fontWeight:'700',color:navy,marginTop:8,textAlign:'center'}}>Ask Maharaj</Text>
-            <Text style={{fontSize:12,color:'#1A6B5C',textAlign:'center'}}>Your wise nutrition mentor</Text>
-          </View>
-
-          {/* Gold divider */}
-          <View style={{height:1,backgroundColor:'rgba(201,162,39,0.4)',marginHorizontal:16,marginBottom:14,marginTop:4}} />
-
-          {/* Weather-aware meal prompt — only shows when conditions are notable */}
-          {weatherPrompt && !weatherDismissed && (
-            <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:12,padding:12,marginBottom:10,borderWidth:1,borderColor:'rgba(201,162,39,0.25)',flexDirection:'row',alignItems:'center',gap:10}} onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
-              <Text style={{fontSize:24}}>{weatherPrompt.icon}</Text>
-              <View style={{flex:1}}>
-                <Text style={{fontSize:12,fontWeight:'600',color:navy,lineHeight:18}}>{weatherPrompt.message}</Text>
-                {weatherInfo && <Text style={{fontSize:10,color:textSec,marginTop:2}}>{weatherInfo.temp}{'\u00B0'}C in {weatherInfo.city}</Text>}
-              </View>
-              <TouchableOpacity onPress={() => setWeatherDismissed(true)} style={{padding:4}}>
-                <Text style={{fontSize:14,color:textSec,fontWeight:'700'}}>X</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          )}
-
-          {/* Lab reminder */}
-          {labReminder && (
-            <View style={s.labCard}>
-              <View style={{flex:1}}>
-                <Text style={s.labTitle}>Lab Retest Due</Text>
-                <Text style={s.labSub}>{labReminder.name}'s retest due around {labReminder.date}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setLabReminder(null)} style={{padding:4}}>
-                <Text style={{fontSize:14,color:'#92400E',fontWeight:'700'}}>X</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Plan ready card */}
-          {planReady && (
-            <TouchableOpacity style={s.planReadyCard} onPress={() => router.push('/menu-history' as never)} activeOpacity={0.85}>
-              <View style={{flex:1}}>
-                <Text style={s.planReadyTitle}>This week's plan is ready</Text>
-                <Text style={s.planReadySub}>Tap to view your plan</Text>
-              </View>
-              <TouchableOpacity onPress={() => { setPlanReady(false); AsyncStorage.removeItem('maharaj_plan_ready'); }} style={{padding:4}}>
-                <Text style={{fontSize:16,color:'white',fontWeight:'700'}}>X</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          )}
-
-          {/* Festival banner */}
-          {nextFest && (
-            <View style={s.festCard}>
-              <Text style={s.festIcon}>{nextFest.icon}</Text>
-              <View style={{flex:1}}>
-                <Text style={s.festName}>{nextFest.name}</Text>
-                <Text style={s.festDays}>In {nextFest.daysAway} day{nextFest.daysAway !== 1 ? 's' : ''} \u00B7 {nextFest.dateLabel}</Text>
-              </View>
-              <View style={{alignItems:'center'}}>
-                <Text style={{fontSize:9,color:textSec}}>48h reminder</Text>
-                <Switch value={planReminder} onValueChange={setPlanReminder} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
-                {planReminder && <Text style={{fontSize:8,color:gold,fontWeight:'600'}}>48h alert on</Text>}
-              </View>
-            </View>
-          )}
-
-          {/* Hero card */}
-          <TouchableOpacity style={s.heroCard} onPress={() => router.push('/meal-wizard' as never)} activeOpacity={0.88}>
-            <Text style={s.heroTitle}>Generate Meal Plan</Text>
-            <Text style={s.heroSub}>Smart weekly planning for your family</Text>
+          <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85} style={{alignItems:'center'}}>
+            <Animated.View
+              // @ts-ignore — web-only className
+              className={Platform.OS === 'web' ? 'maharaj-hero-circle' : undefined}
+              style={{width:110,height:110,borderRadius:55,borderWidth:2.5,borderColor:'#C9A227',backgroundColor:'rgba(255,255,255,0.15)',alignItems:'center',justifyContent:'center',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
+              <Image source={require('../assets/logo.png')} style={{width:78,height:78,backgroundColor:'transparent'}} resizeMode="contain" />
+            </Animated.View>
+            <Text style={{fontSize:20,fontWeight:'700',color:'#1B3A5C',marginTop:10,textAlign:'center'}}>Ask Maharaj</Text>
+            <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginTop:3}}>Your wise nutrition mentor</Text>
           </TouchableOpacity>
 
-          {/* Grid Row 1 */}
-          <View style={s.gridRow}>
-            <GridCard label="Meal Prep" onPress={() => router.push('/meal-prep' as never)} goldBorder />
-            <GridCard label="My Fridge" onPress={() => router.push('/my-fridge' as never)} goldBorder />
-          </View>
+          {/* Amber divider */}
+          <View style={{height:1.5,backgroundColor:'#C9A227',width:'100%',marginTop:24}} />
+        </View>
 
-          {/* Grid Row 2 */}
-          <View style={s.gridRow}>
-            <GridCard label="Party Menu" onPress={() => router.push('/party-menu' as never)} goldBorder />
-            <GridCard label="Outdoor Catering" onPress={() => router.push('/outdoor-catering' as never)} goldBorder />
-          </View>
-
-          {/* Grid Row 3 */}
-          <View style={s.gridRow}>
-            <GridCard label="Trending Recipes" sub="YouTube picks" badge="Coming Soon" onPress={() => Alert.alert('Coming Soon', 'Maharaj is learning and will connect you soon')} />
-            <GridCard label="Consult Specialist" sub="Book a referral" badge="Coming Soon" onPress={() => Alert.alert('Coming Soon', 'Maharaj is learning and will connect you soon')} />
-          </View>
-
-          {/* Footer */}
-          <View style={s.footer}>
-            <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
-            <Text style={s.footerLine2}>www.bluefluteconsulting.com · info@bluefluteconsulting.com</Text>
-          </View>
-        </ScrollView>
+        {/* Footer */}
+        <View style={{backgroundColor:'#1B3A5C',padding:16,alignItems:'center'}}>
+          <Text style={{color:'#C9A227',fontSize:12,fontWeight:'600',marginBottom:6}}>Powered by Blue Flute Consulting LLC-FZ</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://www.bluefluteconsulting.com')}>
+            <Text style={{color:'rgba(255,255,255,0.8)',fontSize:10,textDecorationLine:'underline',marginBottom:3}}>www.bluefluteconsulting.com</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL('mailto:info@bluefluteconsulting.com')}>
+            <Text style={{color:'rgba(255,255,255,0.8)',fontSize:10,textDecorationLine:'underline'}}>info@bluefluteconsulting.com</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* ── DRAWER OVERLAY ── */}
         {isDrawerOpen && (
@@ -362,19 +285,24 @@ export default function HomeScreen() {
                 </View>
 
                 <ScrollView style={{maxHeight:'80%'}}>
+                  <Text style={s.drawerSection}>PLAN</Text>
+                  <DrawerRow icon={'\uD83D\uDCCB'} label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
+                  <DrawerRow icon={'\uD83D\uDCDC'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
+
+                  <Text style={s.drawerSection}>KITCHEN</Text>
+                  <DrawerRow icon={'\uD83E\uDDCA'} label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
+                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83C\uDF73'} label="Meal Prep" onPress={() => { closeDrawer(); router.push('/meal-prep' as never); }} />
+
+                  <Text style={s.drawerSection}>EVENTS</Text>
+                  <DrawerRow icon={'\uD83C\uDF89'} label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
+                  <DrawerRow icon={'\u26FA'} label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
+
                   <Text style={s.drawerSection}>PROFILE</Text>
-                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile Settings" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
-
-                  <Text style={s.drawerSection}>MY PLANS</Text>
-                  <DrawerRow icon={'\uD83D\uDCCB'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
-
-                  <Text style={s.drawerSection}>EXPLORE</Text>
-                  <DrawerRow icon={'\uD83C\uDF7D\uFE0F'} label="Table Etiquettes" badge="Soon" onPress={() => { closeDrawer(); router.push('/table-etiquettes' as never); }} />
-                  <DrawerRow icon={'\uD83C\uDFA8'} label="Traditional Plating" badge="Soon" onPress={() => { closeDrawer(); router.push('/traditional-plating' as never); }} />
+                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
 
                   <Text style={s.drawerSection}>SUPPORT</Text>
-                  <DrawerRow icon={'\uD83D\uDCE7'} label="Feedback" onPress={() => { closeDrawer(); Linking.openURL('mailto:info@bluefluteconsulting.com'); }} />
                   <DrawerRow icon={'\u2139\uFE0F'} label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
+                  <DrawerRow icon={'\uD83D\uDCE7'} label="Feedback" onPress={() => { closeDrawer(); Linking.openURL('mailto:info@bluefluteconsulting.com'); }} />
                   <DrawerRow icon={'\uD83D\uDD12'} label="Privacy Policy" onPress={() => { closeDrawer(); setPrivacyVisible(true); }} />
                   <DrawerRow icon={'\uD83D\uDEAA'} label="Sign Out" signOut onPress={doSignOut} />
                 </ScrollView>
