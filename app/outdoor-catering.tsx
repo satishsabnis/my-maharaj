@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform, Share } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +8,7 @@ import { loadOrDetectLocation } from '../lib/location';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, midGray, lightGray, darkGray, errorRed } from '../theme/colors';
 
-const FOOD_TYPES = ['Mixed','Veg only','Jain','Halal'];
+const FOOD_TYPES = ['Vegetarian','Non-vegetarian','Mixed'];
 const SETUP_STYLES = ['Finger Food','Buffet','Packed Boxes','BBQ / Grill','Thali Style'];
 const WEATHER_OPTS = ['Hot & Sunny','Evening / Cooler','Indoor Backup'];
 
@@ -57,6 +57,7 @@ export default function OutdoorCateringScreen() {
   const [error,     setError]     = useState('');
   const [menu,      setMenu]      = useState<OutdoorMenu | null>(null);
   const [saved,     setSaved]     = useState(false);
+  const [dietaryRestrictions, setDietaryRestrictions] = useState('');
   const [loc,       setLoc]       = useState({ city: 'Dubai', country: 'UAE', stores: 'Carrefour/Spinneys/Lulu' });
   const [beverages, setBeverages] = useState({
     mineralWater: true, nimbuPani: true, coldCoffee: false,
@@ -259,6 +260,10 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
               {!beverages.alcohol && <Text style={{fontSize:8,color:'#9CA3AF',marginTop:3}}>Beer, wine, cocktail suggestions added to menu when on</Text>}
             </View>
 
+            {/* Dietary restrictions */}
+            <Text style={s.label}>DIETARY RESTRICTIONS</Text>
+            <TextInput style={s.input} value={dietaryRestrictions} onChangeText={setDietaryRestrictions} placeholder="e.g. no nuts, diabetic friendly, Jain" placeholderTextColor={midGray} />
+
             {error ? <Text style={s.error}>{error}</Text> : null}
             <View style={{marginTop:8}}>
               <TouchableOpacity style={[{paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}, loading && {opacity:0.6}]} onPress={generateMenu} disabled={loading}>
@@ -328,6 +333,16 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
                 </TouchableOpacity>
               )}
             </>}
+
+            {/* Share + Plan Again */}
+            <View style={{flexDirection:'row',gap:10,marginBottom:12}}>
+              <TouchableOpacity style={{flex:1,backgroundColor:'#C9A227',borderRadius:8,paddingVertical:12,alignItems:'center'}} onPress={() => { if (!menu) return; const text = ['Starters', ...(menu.starters||[]).map(i => i.name), '', 'Main Course', ...(menu.main_course||[]).map(i => i.name), '', 'Desserts', ...(menu.desserts||[]).map(i => i.name)].join('\n'); Share.share({ message: `Outdoor Menu — ${occasionText}\n\n${text}\n\nPlanned by My Maharaj` }); }}>
+                <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Share Menu</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:12,alignItems:'center'}} onPress={() => { setStep('form'); setMenu(null); setOccasionText(''); setError(''); }}>
+                <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Plan Again</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Disclaimer */}
             <Text style={{fontSize:9,color:'#9CA3AF',textAlign:'center',marginTop:8,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any external services.</Text>
