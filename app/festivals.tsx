@@ -125,7 +125,7 @@ export default function FestivalsScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll:       { padding: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  scroll:       { padding: 16, paddingBottom: 80, maxWidth: 680, width: '100%', alignSelf: 'center' },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: midGray, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
   card:         { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   cardPast:     { opacity: 0.45 },

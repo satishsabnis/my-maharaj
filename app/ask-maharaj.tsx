@@ -7,6 +7,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFonts, Poppins_400Regular } from '@expo-google-fonts/poppins';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { navy, gold, white, textSec, border } from '../theme/colors';
 import MarqueeTicker from '../components/MarqueeTicker';
@@ -62,15 +63,16 @@ function renderResponseText(text: string) {
     if (isHeader) {
       return (
         <View key={i} style={{backgroundColor:'#2E5480',borderRadius:8,paddingHorizontal:14,paddingVertical:8,marginVertical:6}}>
-          <Text style={{color:'#C9A227',fontSize:13,fontWeight:'600'}}>{trimmed}</Text>
+          <Text style={{color:'#C9A227',fontSize:13,fontWeight:'600',fontFamily:'Poppins_400Regular'}}>{trimmed}</Text>
         </View>
       );
     }
-    return <Text key={i} style={{color:'#2E5480',fontSize:13,lineHeight:20}}>{trimmed}</Text>;
+    return <Text key={i} style={{color:'#2E5480',fontSize:13,lineHeight:20,fontFamily:'Poppins_400Regular'}}>{trimmed}</Text>;
   });
 }
 
 export default function AskMaharajScreen() {
+  const [fontsLoaded] = useFonts({ Poppins_400Regular });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -214,11 +216,11 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
       <SafeAreaView style={{flex:1}}>
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:12,paddingVertical:6,paddingHorizontal:14}}>
+          <TouchableOpacity onPress={() => router.back()} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
             <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
           </TouchableOpacity>
           <Text style={{flex:1,fontSize:16,fontWeight:'700',color:'#2E5480',textAlign:'center'}}>Ask Maharaj</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:12,paddingVertical:6,paddingHorizontal:14}}>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
             <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
           </TouchableOpacity>
         </View>
@@ -226,7 +228,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
 
         <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           {/* Messages */}
-          <ScrollView ref={scrollRef} contentContainerStyle={{padding:14,paddingBottom:8}} showsVerticalScrollIndicator={false}>
+          <ScrollView ref={scrollRef} contentContainerStyle={{padding:14,paddingBottom:80}} showsVerticalScrollIndicator={false}>
             {messages.length === 0 && (
               <View style={{alignItems:'center',paddingVertical:20,paddingHorizontal:12}}>
                 <Text style={{fontSize:16,fontWeight:'700',color:navy,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
@@ -314,7 +316,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                     <Text style={{fontSize:11,fontWeight:'600',color:navy}}>Regenerate</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:10,paddingVertical:9,alignItems:'center'}} onPress={() => router.push('/meal-wizard' as never)}>
-                    <Text style={{fontSize:11,fontWeight:'700',color:white}}>Full Weekly Plan</Text>
+                    <Text style={{fontSize:11,fontWeight:'500',color:white}}>Full Weekly Plan</Text>
                   </TouchableOpacity>
                 </View>
               </View>

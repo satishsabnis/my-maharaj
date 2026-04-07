@@ -47,7 +47,7 @@ export default function OrderOutScreen() {
 
   return (
     <ScreenWrapper title="Order Out" onBack={() => router.back()}>
-      <ScrollView contentContainerStyle={{padding:16,paddingBottom:24}} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{padding:16,paddingBottom:80}} showsVerticalScrollIndicator={false}>
 
         {/* Coming Soon Banner */}
         <View style={{backgroundColor:'#2E5480',borderRadius:12,padding:14,marginBottom:12}}>
