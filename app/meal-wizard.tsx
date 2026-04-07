@@ -1756,28 +1756,18 @@ export default function MealWizardScreen() {
           <Text style={{fontSize:13,fontWeight:'700',color:white}}>Download Shopping List</Text>
         </TouchableOpacity>
 
+        {/* Order Online — Coming Soon (matches Order Out screen) */}
+        <View style={{backgroundColor:'#FFF0F0',borderRadius:8,padding:10,marginTop:12,marginBottom:8,borderWidth:0.5,borderColor:'rgba(153,27,27,0.19)'}}>
+          <Text style={{fontSize:10,fontWeight:'500',color:'#991B1B',textAlign:'center'}}>Order Online — Coming Soon</Text>
+          <Text style={{fontSize:9,color:'rgba(153,27,27,0.5)',textAlign:'center',marginTop:3}}>Maharaj will soon connect you to grocery stores for one-tap ordering from your shopping list.</Text>
+        </View>
+
         <View style={{flexDirection:'row',gap:8,marginTop:4}}>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('recipes')}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => setStep('cook-at-home')}>
             <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{paddingVertical:14,paddingHorizontal:20,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
             <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={async () => {
-            // Deplete fridge items that matched
-            try {
-              const raw = await AsyncStorage.getItem('fridge_inventory');
-              const current = JSON.parse(raw || '[]');
-              const allGrocery = CAT_ORDER.flatMap(cat => grocery[cat] ?? []);
-              const updated = current.filter((fi: any) =>
-                !allGrocery.some((si: any) => isInFridge(si.name))
-              );
-              await AsyncStorage.setItem('fridge_inventory', JSON.stringify(updated));
-              await AsyncStorage.setItem('last_plan_sync', new Date().toISOString());
-            } catch {}
-            advance('cook-or-order');
-          }}>
-            <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Next</Text>
           </TouchableOpacity>
         </View>
       </View>
