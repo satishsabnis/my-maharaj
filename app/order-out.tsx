@@ -47,7 +47,7 @@ export default function OrderOutScreen() {
 
   return (
     <ScreenWrapper title="Order Out" onBack={() => router.back()}>
-      <ScrollView contentContainerStyle={{padding:16,paddingBottom:100}} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{padding:16,paddingBottom:24}} showsVerticalScrollIndicator={false}>
 
         {/* Coming Soon Banner */}
         <View style={{backgroundColor:'#2E5480',borderRadius:12,padding:14,marginBottom:12}}>
@@ -76,16 +76,6 @@ export default function OrderOutScreen() {
 
         {/* Disclaimer */}
         <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',paddingVertical:12,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
-
-        {/* Buttons */}
-        <View style={{flexDirection:'row',gap:10}}>
-          <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={() => router.back()}>
-            <Text style={{fontSize:15,fontWeight:'700',color:navy}}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:12,paddingVertical:14,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
-            <Text style={{fontSize:15,fontWeight:'700',color:white}}>Home</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </ScreenWrapper>
   );

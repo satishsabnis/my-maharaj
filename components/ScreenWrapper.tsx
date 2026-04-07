@@ -19,9 +19,9 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
       <SafeAreaView style={{ flex: 1 }}>
         <View style={sw.header}>
           <TouchableOpacity onPress={onBack ?? (() => router.back())} style={sw.backBtn}>
-            <Text style={sw.backTxt}>{t.back}</Text>
+            <Text style={sw.backTxt}>Back</Text>
           </TouchableOpacity>
-          <Image source={require("../assets/logo.png")} style={sw.maharajLogo} resizeMode="contain" />
+          <Text style={sw.headerTitle}>{title ?? ''}</Text>
           <View style={sw.headerRight}>
             {lang !== 'en' && (
               <TouchableOpacity onPress={toggleEnglish} style={[sw.langToggle, isEnglish && sw.langToggleActive]}>
@@ -48,15 +48,15 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
 
 const sw = StyleSheet.create({
   header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: Platform.OS === "android" ? 25 : Platform.OS === "web" ? 14 : 8, paddingBottom: 12, backgroundColor: "rgba(255,255,255,0.85)", borderBottomWidth: 1, borderBottomColor: "rgba(27,58,92,0.1)" },
-  backBtn:      { paddingRight: 8, minWidth: 60 },
-  backTxt:      { fontSize: 16, color: "#2E5480", fontWeight: "600" },
-  maharajLogo:  { flex: 1, height: 60, maxWidth: 220 },
-  headerRight:  { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "flex-end" },
+  backBtn:      { borderWidth: 1.5, borderColor: "#2E5480", borderRadius: 12, paddingVertical: 6, paddingHorizontal: 14 },
+  backTxt:      { fontSize: 15, fontWeight: "700", color: "#2E5480" },
+  headerTitle:  { fontSize: 16, fontWeight: "700", color: "#2E5480", textAlign: "center", flex: 1 },
+  headerRight:  { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "flex-end" },
   langToggle:       { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.3)", backgroundColor: "rgba(255,255,255,0.8)" },
   langToggleActive: { backgroundColor: "#2E5480", borderColor: "#2E5480" },
   langToggleTxt:    { fontSize: 11, fontWeight: "700", color: "#2E5480" },
   langToggleTxtActive: { color: "#FFFFFF" },
-  homeBtn:      { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(27,58,92,0.25)", backgroundColor: "rgba(255,255,255,0.8)" },
-  homeTxt:      { fontSize: 12, fontWeight: "700", color: "#2E5480" },
+  homeBtn:      { backgroundColor: "#2E5480", borderRadius: 12, paddingVertical: 6, paddingHorizontal: 14 },
+  homeTxt:      { fontSize: 15, fontWeight: "700", color: "white" },
   footer:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "rgba(255,255,255,0.7)", borderTopWidth: 1, borderTopColor: "rgba(27,58,92,0.08)" },
 });

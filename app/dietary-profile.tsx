@@ -51,8 +51,6 @@ const LANGUAGES = [
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
 // P6: Cuisines dynamically sourced from RAG dish database
-const CUISINE_GROUPS_PROFILE = getCuisineGroups();
-const ALL_CUISINES = CUISINE_GROUPS_PROFILE.flatMap(g => g.cuisines);
 
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
@@ -435,7 +433,7 @@ export default function DietaryProfileScreen() {
           />
 
           <View style={s.pillRow}>
-            {ALL_CUISINES
+            {getCuisineGroups(isJainFamily).flatMap(g => g.cuisines)
               .filter(c => !cuisineSearch || c.toLowerCase().includes(cuisineSearch.toLowerCase()))
               .map((c) => (
                 <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}

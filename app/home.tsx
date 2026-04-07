@@ -100,7 +100,7 @@ export default function HomeScreen() {
       }
     } else {
       const pulse = Animated.loop(Animated.sequence([
-        Animated.timing(heroPulse, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
+        Animated.timing(heroPulse, { toValue: 1.05, duration: 1200, useNativeDriver: true }),
         Animated.timing(heroPulse, { toValue: 1.0, duration: 1200, useNativeDriver: true }),
       ]));
       pulse.start();
