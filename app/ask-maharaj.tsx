@@ -52,6 +52,24 @@ function stripForSpeech(text: string): string {
     .trim();
 }
 
+function renderResponseText(text: string) {
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <View key={i} style={{height:6}} />;
+    // Sub-header: short line ending with : or starting with caps word followed by :
+    const isHeader = (trimmed.length < 40 && trimmed.endsWith(':')) || /^[A-Z][a-z]+:/.test(trimmed);
+    if (isHeader) {
+      return (
+        <View key={i} style={{backgroundColor:'#1B3A5C',borderRadius:8,paddingHorizontal:14,paddingVertical:8,marginVertical:6}}>
+          <Text style={{color:'#C9A227',fontSize:13,fontWeight:'600'}}>{trimmed}</Text>
+        </View>
+      );
+    }
+    return <Text key={i} style={{color:'#1B3A5C',fontSize:13,lineHeight:20}}>{trimmed}</Text>;
+  });
+}
+
 export default function AskMaharajScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -164,16 +182,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
       if (mealMatch) { try { setMealResult(JSON.parse(mealMatch[1]) as MealResult); } catch {} }
       const clean = stripMarkdown(response.replace(/MEAL_JSON_START[\s\S]*?MEAL_JSON_END/g, '').trim());
       setMessages(prev => [...prev, { role: 'assistant', content: clean }]);
-      // Maharaj = male voice. Maharani would be female.
-      if (wasVoice && typeof window !== 'undefined' && window.speechSynthesis) {
-        const u = new SpeechSynthesisUtterance(stripForSpeech(clean).slice(0, 500));
-        u.lang = 'en-IN'; u.rate = 0.9;
-        const voices = window.speechSynthesis.getVoices();
-        u.voice = voices.find(v => v.name.includes('Rishi')) || voices.find(v => v.name.includes('David')) || voices.find(v => v.name.toLowerCase().includes('male') && v.lang.startsWith('en')) || voices.find(v => v.lang.startsWith('en')) || null;
-        u.onend = () => { setIsSpeaking(false); setIsPaused(false); };
-        setIsSpeaking(true); setIsPaused(false);
-        window.speechSynthesis.speak(u);
-      }
+      // Auto-speak disabled — user taps Speak button explicitly
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Sorry, something went wrong. Please try again.` }]);
     } finally {
@@ -241,10 +250,16 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                     <Text style={{fontSize:10,fontWeight:'700',color:'#1A6B5C'}}>Maharaj</Text>
                   </View>
                 )}
-                <Text style={{fontSize:14,lineHeight:22,color:msg.role==='user'?white:navy}}>{msg.content}</Text>
+                {msg.role === 'user' ? (
+                  <Text style={{fontSize:14,lineHeight:22,color:white}}>{msg.content}</Text>
+                ) : (
+                  <View>{renderResponseText(msg.content)}</View>
+                )}
                 {msg.role === 'assistant' && (
-                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:6,paddingHorizontal:8,paddingVertical:3,borderRadius:6,backgroundColor:'rgba(27,58,92,0.06)'}} onPress={() => {
+                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:8,backgroundColor:isSpeaking?'#C9A227':'#1B3A5C',borderRadius:24,paddingHorizontal:24,paddingVertical:12,minWidth:48,minHeight:48,alignItems:'center',justifyContent:'center'}} onPress={() => {
                     if (typeof window !== 'undefined' && window.speechSynthesis) {
+                      if (isSpeaking && !isPaused) { window.speechSynthesis.pause(); setIsPaused(true); return; }
+                      if (isSpeaking && isPaused) { window.speechSynthesis.resume(); setIsPaused(false); return; }
                       window.speechSynthesis.cancel();
                       const u = new SpeechSynthesisUtterance(stripForSpeech(msg.content).slice(0,500));
                       u.lang = 'en-IN'; u.rate = 0.9;
@@ -255,7 +270,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                       window.speechSynthesis.speak(u);
                     }
                   }}>
-                    <Text style={{fontSize:10,color:navy,fontWeight:'600'}}>Speak</Text>
+                    <Text style={{fontSize:14,fontWeight:'600',color:isSpeaking?'#1B3A5C':'#C9A227'}}>{isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Speak'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -303,20 +318,8 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
             )}
           </ScrollView>
 
-          {/* TTS controls */}
-          {isSpeaking && (
-            <View style={{flexDirection:'row',justifyContent:'center',gap:10,paddingVertical:4,backgroundColor:'rgba(255,255,255,0.92)'}}>
-              <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(27,58,92,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); } else { window.speechSynthesis.pause(); setIsPaused(true); } } }}>
-                <Text style={{fontSize:11,color:navy,fontWeight:'600'}}>{isPaused ? 'Resume' : 'Pause'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={{paddingHorizontal:12,paddingVertical:4,borderRadius:8,backgroundColor:'rgba(220,38,38,0.08)'}} onPress={() => { if (typeof window !== 'undefined' && window.speechSynthesis) { window.speechSynthesis.cancel(); setIsSpeaking(false); setIsPaused(false); } }}>
-                <Text style={{fontSize:11,color:'#DC2626',fontWeight:'600'}}>Stop</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Input bar */}
-          <View style={s.inputBar}>
+          {/* Input bar — pinned outside ScrollView */}
+          <View style={{backgroundColor:'white',borderTopWidth:0.5,borderTopColor:'rgba(201,162,39,0.3)',padding:8,flexDirection:'row',alignItems:'flex-end',gap:8}}>
             <TouchableOpacity onPress={startVoice} style={{width:36,height:36,borderRadius:18,backgroundColor:listening?gold:'#F0F5FA',alignItems:'center',justifyContent:'center'}}>
               <Svg width={18} height={18} viewBox="0 0 24 24">
                 <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill={listening?'white':'#1B3A5C'} />
