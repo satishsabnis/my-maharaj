@@ -82,6 +82,7 @@ export default function DietaryProfileScreen() {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSaving,    setCuisineSaving]    = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
   const snapshotRef = useRef('');
   const [cuisineSearch,    setCuisineSearch]    = useState('');
 
@@ -165,7 +166,7 @@ export default function DietaryProfileScreen() {
     loadHousehold().then(() => {
       // Q5: Snapshot current values for change detection
       setTimeout(() => {
-        snapshotRef.current = JSON.stringify({ maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
+        snapshotRef.current = JSON.stringify({ isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
       }, 500);
     });
   }, []);
@@ -173,9 +174,9 @@ export default function DietaryProfileScreen() {
   // Q5: Detect changes for Save button state
   useEffect(() => {
     if (!snapshotRef.current) return;
-    const current = JSON.stringify({ maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
+    const current = JSON.stringify({ isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
     setHasChanges(current !== snapshotRef.current);
-  }, [maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber]);
+  }, [isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber]);
 
   async function saveHousehold() {
     await Promise.all([
@@ -313,19 +314,31 @@ export default function DietaryProfileScreen() {
           </View>
         )}
 
-        {/* Jain family toggle */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Are you a Jain family?</Text>
-            <Switch value={isJainFamily} onValueChange={setIsJainFamily} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+        {/* Jain family questions */}
+        <View style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:12}}>
+          <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:10}}>Are you a Jain family?</Text>
+          <View style={{flexDirection:'row',gap:10}}>
+            <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(isJainFamily ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setIsJainFamily(true); setHasChanges(true); void AsyncStorage.setItem('jain_family','true'); }}>
+              <Text style={{fontSize:15,fontWeight:isJainFamily?'700':'500',color:isJainFamily?'white':'#2E5480'}}>Yes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(!isJainFamily ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setIsJainFamily(false); setJainAllowNonJain(false); setHasChanges(true); void AsyncStorage.setItem('jain_family','false'); void AsyncStorage.setItem('jain_allow_non_jain','false'); }}>
+              <Text style={{fontSize:15,fontWeight:!isJainFamily?'700':'500',color:!isJainFamily?'white':'#2E5480'}}>No</Text>
+            </TouchableOpacity>
           </View>
-          {isJainFamily && (
-            <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
-              <Text style={{fontSize:11,color:navy,flex:1}}>Would you like Maharaj to suggest non-Jain recipes also?</Text>
-              <Switch value={jainAllowNonJain} onValueChange={setJainAllowNonJain} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
-            </View>
-          )}
         </View>
+        {isJainFamily && (
+          <View style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:12}}>
+            <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:10}}>Would Maharaj suggest non-Jain recipes also?</Text>
+            <View style={{flexDirection:'row',gap:10}}>
+              <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(jainAllowNonJain ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setJainAllowNonJain(true); setHasChanges(true); void AsyncStorage.setItem('jain_allow_non_jain','true'); }}>
+                <Text style={{fontSize:15,fontWeight:jainAllowNonJain?'700':'500',color:jainAllowNonJain?'white':'#2E5480'}}>Yes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(!jainAllowNonJain ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setJainAllowNonJain(false); setHasChanges(true); void AsyncStorage.setItem('jain_allow_non_jain','false'); }}>
+                <Text style={{fontSize:15,fontWeight:!jainAllowNonJain?'700':'500',color:!jainAllowNonJain?'white':'#2E5480'}}>No</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Q7: My Maharaj Day */}
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderWidth:1,borderColor:'rgba(201,162,39,0.2)',borderLeftWidth:3,borderLeftColor:gold}}>
@@ -601,14 +614,16 @@ export default function DietaryProfileScreen() {
 
         {/* App Info removed — now in About My Maharaj page (P9) */}
 
-        {/* Q5: Save button — active only when changes exist */}
+        {/* Save button — three states: inactive, active (dirty), saved */}
         <TouchableOpacity
-          style={{backgroundColor: hasChanges ? navy : '#AAAAAA', borderRadius:12, paddingVertical:14, alignItems:'center', marginTop:8, marginBottom:24, opacity: hasChanges ? 1 : 0.5}}
-          onPress={() => { if (hasChanges) { saveHousehold(); snapshotRef.current = JSON.stringify({ maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber }); setHasChanges(false); } }}
+          style={{backgroundColor: hasChanges ? '#C9A227' : '#CCCCCC', borderRadius:12, paddingVertical:14, alignItems:'center', marginTop:8, marginBottom:4}}
+          onPress={() => { if (hasChanges) { saveHousehold(); snapshotRef.current = JSON.stringify({ isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber }); setHasChanges(false); setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000); } }}
           disabled={!hasChanges}
         >
-          <Text style={{fontSize:14,fontWeight:'700',color: hasChanges ? white : '#666666'}}>{hasChanges ? 'Save Profile' : 'No changes'}</Text>
+          <Text style={{fontSize:14,fontWeight: hasChanges ? '700' : '500', color: hasChanges ? '#1A1A1A' : '#888888'}}>Save Profile</Text>
         </TouchableOpacity>
+        {savedMsg && <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginBottom:20}}>Saved</Text>}
+        {!savedMsg && <View style={{height:24}} />}
 
       </ScrollView>
 
