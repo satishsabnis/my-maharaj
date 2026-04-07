@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { APP_VERSION } from '../constants/version';
 
 const NAVY = '#2E5480';
 const GOLD = '#C9A227';
@@ -57,7 +58,7 @@ export default function AboutScreen() {
 
         {/* Section 3 — Build Information */}
         <Text style={s.heading}>Build Information</Text>
-        <View style={s.infoRow}><Text style={s.infoLabel}>Version</Text><Text style={s.infoValue}>Beta v2.04.11</Text></View>
+        <View style={s.infoRow}><Text style={s.infoLabel}>Version</Text><Text style={s.infoValue}>{APP_VERSION}</Text></View>
         <View style={s.infoRow}><Text style={s.infoLabel}>Build date</Text><Text style={s.infoValue}>{buildDate}</Text></View>
         <View style={s.infoRow}><Text style={s.infoLabel}>Dish database</Text><Text style={s.infoValue}>1,106 authentic Indian dishes</Text></View>
         <View style={s.infoRow}><Text style={s.infoLabel}>Web</Text><Text style={s.infoValue}>my-maharaj.vercel.app</Text></View>
