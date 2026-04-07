@@ -61,12 +61,12 @@ function renderResponseText(text: string) {
     const isHeader = (trimmed.length < 40 && trimmed.endsWith(':')) || /^[A-Z][a-z]+:/.test(trimmed);
     if (isHeader) {
       return (
-        <View key={i} style={{backgroundColor:'#1B3A5C',borderRadius:8,paddingHorizontal:14,paddingVertical:8,marginVertical:6}}>
+        <View key={i} style={{backgroundColor:'#2E5480',borderRadius:8,paddingHorizontal:14,paddingVertical:8,marginVertical:6}}>
           <Text style={{color:'#C9A227',fontSize:13,fontWeight:'600'}}>{trimmed}</Text>
         </View>
       );
     }
-    return <Text key={i} style={{color:'#1B3A5C',fontSize:13,lineHeight:20}}>{trimmed}</Text>;
+    return <Text key={i} style={{color:'#2E5480',fontSize:13,lineHeight:20}}>{trimmed}</Text>;
   });
 }
 
@@ -256,7 +256,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                   <View>{renderResponseText(msg.content)}</View>
                 )}
                 {msg.role === 'assistant' && (
-                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:8,backgroundColor:isSpeaking?'#C9A227':'#1B3A5C',borderRadius:24,paddingHorizontal:24,paddingVertical:12,minWidth:48,minHeight:48,alignItems:'center',justifyContent:'center'}} onPress={() => {
+                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:8,backgroundColor:isSpeaking?'#C9A227':'#2E5480',borderRadius:24,paddingHorizontal:24,paddingVertical:12,minWidth:48,minHeight:48,alignItems:'center',justifyContent:'center'}} onPress={() => {
                     if (typeof window !== 'undefined' && window.speechSynthesis) {
                       if (isSpeaking && !isPaused) { window.speechSynthesis.pause(); setIsPaused(true); return; }
                       if (isSpeaking && isPaused) { window.speechSynthesis.resume(); setIsPaused(false); return; }
@@ -270,7 +270,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                       window.speechSynthesis.speak(u);
                     }
                   }}>
-                    <Text style={{fontSize:14,fontWeight:'600',color:isSpeaking?'#1B3A5C':'#C9A227'}}>{isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Speak'}</Text>
+                    <Text style={{fontSize:14,fontWeight:'600',color:isSpeaking?'#2E5480':'#C9A227'}}>{isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Speak'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -322,9 +322,9 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
           <View style={{backgroundColor:'white',borderTopWidth:0.5,borderTopColor:'rgba(201,162,39,0.3)',padding:8,flexDirection:'row',alignItems:'flex-end',gap:8}}>
             <TouchableOpacity onPress={startVoice} style={{width:36,height:36,borderRadius:18,backgroundColor:listening?gold:'#F0F5FA',alignItems:'center',justifyContent:'center'}}>
               <Svg width={18} height={18} viewBox="0 0 24 24">
-                <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill={listening?'white':'#1B3A5C'} />
-                <Path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke={listening?'white':'#1B3A5C'} strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                <Path d="M12 19v4M8 23h8" stroke={listening?'white':'#1B3A5C'} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill={listening?'white':'#2E5480'} />
+                <Path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke={listening?'white':'#2E5480'} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                <Path d="M12 19v4M8 23h8" stroke={listening?'white':'#2E5480'} strokeWidth="1.5" strokeLinecap="round" fill="none" />
               </Svg>
             </TouchableOpacity>
             <TextInput style={s.input} value={input} onChangeText={setInput} placeholder="Ask Maharaj anything..." placeholderTextColor={textSec} multiline maxLength={500} returnKeyType="send" onSubmitEditing={send} />

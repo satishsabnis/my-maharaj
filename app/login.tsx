@@ -54,7 +54,7 @@ export default function LoginScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>←</Text>
+          <Text style={s.backArrow}>Back</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Welcome Back</Text>
         <View style={{ width: 40 }} />

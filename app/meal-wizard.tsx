@@ -603,7 +603,7 @@ export default function MealWizardScreen() {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     const grocery = buildGrocery();
     const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    let html = '<html><head><title>Shopping List</title><style>body{font-family:Arial,sans-serif;padding:24px}h1{color:#1B3A5C;font-size:20px}p{color:#666;font-size:12px}h2{color:#1A6B5C;font-size:13px;margin-top:18px;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1B3A5C;color:white;padding:8px;text-align:left;font-size:11px}td{padding:8px;border-bottom:1px solid #E5E7EB;font-size:13px}.qty{text-align:right;color:#1A6B5C;font-weight:600;width:80px}</style></head><body>';
+    let html = '<html><head><title>Shopping List</title><style>body{font-family:Arial,sans-serif;padding:24px}h1{color:#2E5480;font-size:20px}p{color:#666;font-size:12px}h2{color:#1A6B5C;font-size:13px;margin-top:18px;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#2E5480;color:white;padding:8px;text-align:left;font-size:11px}td{padding:8px;border-bottom:1px solid #E5E7EB;font-size:13px}.qty{text-align:right;color:#1A6B5C;font-weight:600;width:80px}</style></head><body>';
     html += '<h1>My Maharaj Shopping List</h1><p>' + today + '</p>';
     CAT_ORDER.forEach(cat => {
       const items = grocery[cat];
@@ -1004,7 +1004,7 @@ export default function MealWizardScreen() {
         <View style={{flexDirection:'row',gap:8,marginBottom:16}}>
           {quickCards.map(c => (
             <TouchableOpacity key={c.label} style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,paddingVertical:12,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)'}} onPress={c.fn} activeOpacity={0.8}>
-              <Text style={{fontSize:13,fontWeight:'700',color:'#1B3A5C'}}>{c.label}</Text>
+              <Text style={{fontSize:13,fontWeight:'700',color:'#2E5480'}}>{c.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1012,11 +1012,11 @@ export default function MealWizardScreen() {
         <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,padding:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}}>
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
             <TouchableOpacity onPress={() => { if (canGoPrev) setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1)); }} style={{padding:8,opacity:canGoPrev?1:0.3}}>
-              <Text style={{fontSize:18,color:'#1B3A5C',fontWeight:'700'}}>{'‹'}</Text>
+              <Text style={{fontSize:18,color:'#2E5480',fontWeight:'700'}}>{'‹'}</Text>
             </TouchableOpacity>
-            <Text style={{fontSize:16,fontWeight:'700',color:'#1B3A5C'}}>{monthName} {calMonth.getFullYear()}</Text>
+            <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480'}}>{monthName} {calMonth.getFullYear()}</Text>
             <TouchableOpacity onPress={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))} style={{padding:8}}>
-              <Text style={{fontSize:18,color:'#1B3A5C',fontWeight:'700'}}>{'›'}</Text>
+              <Text style={{fontSize:18,color:'#2E5480',fontWeight:'700'}}>{'›'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -1036,8 +1036,8 @@ export default function MealWizardScreen() {
               const isEnd = rangeEnd && d.getTime() === rangeEnd.getTime();
               const isToday = d.getTime() === today.getTime();
               return (
-                <TouchableOpacity key={i} style={{width:'14.28%',height:36,alignItems:'center',justifyContent:'center',backgroundColor:inRange?'#1B3A5C':isToday?'rgba(27,58,92,0.15)':'transparent',borderRadius: isStart||isEnd||isToday ? 18 : 0,opacity:isPast?0.3:1}} onPress={() => tapDate(d)} disabled={isPast}>
-                  <Text style={{fontSize:14,fontWeight:inRange||isToday?'700':'400',color:inRange?'#FFFFFF':'#1B3A5C'}}>{i+1}</Text>
+                <TouchableOpacity key={i} style={{width:'14.28%',height:36,alignItems:'center',justifyContent:'center',backgroundColor:inRange?'#2E5480':isToday?'rgba(27,58,92,0.15)':'transparent',borderRadius: isStart||isEnd||isToday ? 18 : 0,opacity:isPast?0.3:1}} onPress={() => tapDate(d)} disabled={isPast}>
+                  <Text style={{fontSize:14,fontWeight:inRange||isToday?'700':'400',color:inRange?'#FFFFFF':'#2E5480'}}>{i+1}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1111,9 +1111,9 @@ export default function MealWizardScreen() {
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12}}>
           {[{k:'breakfast',i:'',l:'Breakfast'},{k:'lunch',i:'',l:'Lunch'},{k:'dinner',i:'',l:'Dinner'},{k:'snack',i:'',l:'Evening Snack'}].map(({k,i,l})=>(
             <TouchableOpacity key={k}
-              style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:selectedSlots.includes(k)?'#1B3A5C':'#D4EDE5',backgroundColor:selectedSlots.includes(k)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+              style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:selectedSlots.includes(k)?'#2E5480':'#D4EDE5',backgroundColor:selectedSlots.includes(k)?'#2E5480':'rgba(255,255,255,0.9)'}}
               onPress={()=>setSelectedSlots(prev=>prev.includes(k)?prev.filter(x=>x!==k):[...prev,k])}>
-              <Text style={{fontSize:13,fontWeight:'600',color:selectedSlots.includes(k)?'#FFFFFF':'#1B3A5C'}}>{i} {l}</Text>
+              <Text style={{fontSize:13,fontWeight:'600',color:selectedSlots.includes(k)?'#FFFFFF':'#2E5480'}}>{i} {l}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1126,9 +1126,9 @@ export default function MealWizardScreen() {
               <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
                 {familyMembers.map(m=>(
                   <TouchableOpacity key={m.id}
-                    style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:presentMembers.includes(m.id)?'#1B3A5C':'#D4EDE5',backgroundColor:presentMembers.includes(m.id)?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+                    style={{paddingHorizontal:14,paddingVertical:9,borderRadius:20,borderWidth:1.5,borderColor:presentMembers.includes(m.id)?'#2E5480':'#D4EDE5',backgroundColor:presentMembers.includes(m.id)?'#2E5480':'rgba(255,255,255,0.9)'}}
                     onPress={()=>setPresentMembers(prev=>prev.includes(m.id)?prev.filter(x=>x!==m.id):[...prev,m.id])}>
-                    <Text style={{fontSize:13,fontWeight:'600',color:presentMembers.includes(m.id)?'#FFFFFF':'#1B3A5C'}}>{m.name}</Text>
+                    <Text style={{fontSize:13,fontWeight:'600',color:presentMembers.includes(m.id)?'#FFFFFF':'#2E5480'}}>{m.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1144,9 +1144,9 @@ export default function MealWizardScreen() {
         <View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:4}}>
           {[0,1,2,3,4,5,8,10].map(n=>(
             <TouchableOpacity key={n}
-              style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestCount===n?'#1B3A5C':'#D4EDE5',backgroundColor:guestCount===n?'#1B3A5C':'rgba(255,255,255,0.9)'}}
+              style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestCount===n?'#2E5480':'#D4EDE5',backgroundColor:guestCount===n?'#2E5480':'rgba(255,255,255,0.9)'}}
               onPress={()=>setGuestCount(n)}>
-              <Text style={{fontSize:13,fontWeight:'600',color:guestCount===n?'#FFFFFF':'#1B3A5C'}}>{n===0?'None':'+'+n}</Text>
+              <Text style={{fontSize:13,fontWeight:'600',color:guestCount===n?'#FFFFFF':'#2E5480'}}>{n===0?'None':'+'+n}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1377,7 +1377,7 @@ export default function MealWizardScreen() {
           const value = rest.join(':').trim();
           return (
             <Text key={i} style={{fontSize:11,color:'#374151',lineHeight:16}}>
-              <Text style={{fontWeight:'700',color:'#1B3A5C'}}>{label.trim()}</Text>
+              <Text style={{fontWeight:'700',color:'#2E5480'}}>{label.trim()}</Text>
               {value ? `: ${value}` : ''}
             </Text>
           );
@@ -1513,7 +1513,7 @@ export default function MealWizardScreen() {
           />
           <View style={{flexDirection:'row',gap:8,marginTop:8}}>
             <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}>
-              <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+              <Text style={{fontSize:13,fontWeight:'600',color:'#2E5480'}}>Regenerate</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{flex:1,paddingVertical:12,borderRadius:12,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => router.push('/home' as never)}>
               <Text style={{fontSize:13,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
@@ -1655,7 +1655,7 @@ export default function MealWizardScreen() {
                     return (
                       <View key={i} style={{flexDirection:'row',paddingVertical:4,borderBottomWidth:i<opt.ingredients.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.06)'}}>
                         <Text style={{fontSize:12,color:navy,marginRight:8}}>{'\u2022'}</Text>
-                        <Text style={{flex:1,fontSize:12,color:'#1B3A5C'}}>{nm}</Text>
+                        <Text style={{flex:1,fontSize:12,color:'#2E5480'}}>{nm}</Text>
                         {qt ? <Text style={{fontSize:12,color:'#6B7280'}}>{qt}</Text> : null}
                       </View>
                     );
@@ -1741,7 +1741,7 @@ export default function MealWizardScreen() {
                     </View>
                   ) : (
                     <View key={i} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5,borderBottomWidth:i<items.length-1?0.5:0,borderBottomColor:'rgba(27,58,92,0.08)'}}>
-                      <Text style={{fontSize:10,color:'#1B3A5C',flex:1}}>{item.name}</Text>
+                      <Text style={{fontSize:10,color:'#2E5480',flex:1}}>{item.name}</Text>
                       <Text style={{fontSize:10,color:'#6B7280'}}>{item.qty ? `${item.qty}${item.unit||''}` : ''}</Text>
                     </View>
                   );
@@ -1898,12 +1898,12 @@ export default function MealWizardScreen() {
           <Text style={[s.sectionLabel,{marginTop:12}]}>GUEST CUISINE</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{flexDirection:'row',gap:8,paddingVertical:4,paddingBottom:8}}>
-              {ALL_CUISINES.map(c=>(<TouchableOpacity key={c} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:20,borderWidth:1.5,borderColor:guestCuisine===c?'#1B3A5C':'#D4EDE5',backgroundColor:guestCuisine===c?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestCuisine(c)}><Text style={{fontSize:13,fontWeight:'600',color:guestCuisine===c?'#FFFFFF':'#1B3A5C'}}>{c}</Text></TouchableOpacity>))}
+              {ALL_CUISINES.map(c=>(<TouchableOpacity key={c} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:20,borderWidth:1.5,borderColor:guestCuisine===c?'#2E5480':'#D4EDE5',backgroundColor:guestCuisine===c?'#2E5480':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestCuisine(c)}><Text style={{fontSize:13,fontWeight:'600',color:guestCuisine===c?'#FFFFFF':'#2E5480'}}>{c}</Text></TouchableOpacity>))}
             </View>
           </ScrollView>
           <Text style={s.sectionLabel}>FOR HOW MANY DAYS?</Text>
           <View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:8}}>
-            {[1,2,3,4,5,7].map(d=>(<TouchableOpacity key={d} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestDays===d?'#1B3A5C':'#D4EDE5',backgroundColor:guestDays===d?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestDays(d)}><Text style={{fontSize:13,fontWeight:'600',color:guestDays===d?'#FFFFFF':'#1B3A5C'}}>{d} day{d>1?'s':''}</Text></TouchableOpacity>))}
+            {[1,2,3,4,5,7].map(d=>(<TouchableOpacity key={d} style={{paddingHorizontal:14,paddingVertical:8,borderRadius:16,borderWidth:1.5,borderColor:guestDays===d?'#2E5480':'#D4EDE5',backgroundColor:guestDays===d?'#2E5480':'rgba(255,255,255,0.9)'}} onPress={()=>setGuestDays(d)}><Text style={{fontSize:13,fontWeight:'600',color:guestDays===d?'#FFFFFF':'#2E5480'}}>{d} day{d>1?'s':''}</Text></TouchableOpacity>))}
           </View>
         </View>)}
         <View style={s.btnRow}>
@@ -1929,9 +1929,9 @@ export default function MealWizardScreen() {
           const val = vegFastDays[d] ?? 'normal';
           return (
             <View key={d} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:'rgba(255,255,255,0.9)',borderRadius:12,padding:14,marginBottom:8}}>
-              <Text style={{fontSize:14,fontWeight:'600',color:'#1B3A5C',width:70}}>{label}</Text>
+              <Text style={{fontSize:14,fontWeight:'600',color:'#2E5480',width:70}}>{label}</Text>
               <View style={{flexDirection:'row',gap:6}}>
-                {(['normal','veg','fasting'] as const).map(opt=>(<TouchableOpacity key={opt} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:14,borderWidth:1.5,borderColor:val===opt?'#1B3A5C':'#D4EDE5',backgroundColor:val===opt?'#1B3A5C':'rgba(255,255,255,0.9)'}} onPress={()=>setVegFastDays(p=>({...p,[d]:opt}))}><Text style={{fontSize:12,fontWeight:'600',color:val===opt?'#FFFFFF':'#1B3A5C',textTransform:'capitalize'}}>{opt}</Text></TouchableOpacity>))}
+                {(['normal','veg','fasting'] as const).map(opt=>(<TouchableOpacity key={opt} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:14,borderWidth:1.5,borderColor:val===opt?'#2E5480':'#D4EDE5',backgroundColor:val===opt?'#2E5480':'rgba(255,255,255,0.9)'}} onPress={()=>setVegFastDays(p=>({...p,[d]:opt}))}><Text style={{fontSize:12,fontWeight:'600',color:val===opt?'#FFFFFF':'#2E5480',textTransform:'capitalize'}}>{opt}</Text></TouchableOpacity>))}
               </View>
             </View>
           );
@@ -1957,7 +1957,7 @@ export default function MealWizardScreen() {
       (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
     );
     const COL_W = 130;
-    const BORDER = '#1B3A5C';
+    const BORDER = '#2E5480';
     const dateRange = selectedFrom && selectedTo
       ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}`
       : '';
@@ -2044,9 +2044,9 @@ export default function MealWizardScreen() {
         <TouchableOpacity style={{backgroundColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center',marginTop:12}} onPress={async () => {
           if (!generatedPlan) return;
           const activeSlots = slotsToShow.map(s => s.key);
-          const lines: string[] = ['*My Week\'s Meal Plan \u2014 by My Maharaj*', ''];
+          const lines: string[] = ['MY WEEK\'S MEAL PLAN \u2014 by My Maharaj', ''];
           generatedPlan.forEach((day, idx) => {
-            lines.push(`*${day.day}*`);
+            lines.push(day.day.toUpperCase());
             activeSlots.forEach(slot => {
               const opt = getOpt(idx, slot);
               if (opt) lines.push(`${slot.charAt(0).toUpperCase() + slot.slice(1)}: ${opt.name}`);
@@ -2080,7 +2080,7 @@ export default function MealWizardScreen() {
             const cells = generatedPlan.map((day, idx) => `<td>${day[sl]?.options?.[selections[idx]?.[sl] ?? 0]?.name ?? '\u2014'}</td>`).join('');
             return `<tr><td class="sl">${label}</td>${cells}</tr>`;
           }).join('');
-          const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:A4 landscape;margin:15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;-webkit-print-color-adjust:exact}.hd{background:#1B3A5C;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}.hd-l{color:white;font-size:18px;font-weight:bold}.hd-h{color:#C9A227;font-size:11px;margin-top:3px}.hd-r{color:#C9A227;font-size:11px;text-align:right}.gb{background:#C9A227;padding:10px 20px;text-align:center}.gb-t{font-size:14px;font-weight:bold;color:#1B2A0C}.gb-s{font-size:11px;color:#412402;margin-top:3px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#1B3A5C;color:white;padding:8px;font-size:11px;text-align:center;border:1px solid #1B3A5C}td{padding:8px;font-size:10px;border:1px solid #E5E7EB;text-align:center}tr:nth-child(even) td{background:#F9FAFB}.sl{font-weight:bold;color:#1B3A5C;text-align:left;width:80px}.ft{margin-top:20px;border-top:1px solid #E5E7EB;padding-top:10px;text-align:center;font-size:9px;color:#6B7280}.disc{margin-top:10px;background:#F5F7FA;border-radius:6px;padding:8px 12px;font-size:9px;color:#6B7280;text-align:center}</style></head><body><div class="hd"><div><div class="hd-l">My Maharaj</div><div class="hd-h">\u092E\u0947\u0930\u093E \u092E\u0939\u093E\u0930\u093E\u091C</div></div><div class="hd-r">blue flute<br>consulting</div></div><div class="gb"><div class="gb-t">Weekly Meal Plan</div><div class="gb-s">${dateRange} \u00B7 ${servingsCount} family members</div></div><table><tr><th class="sl">Meal</th>${dayHeaders}</tr>${mealRows}</table><div class="disc">Maharaj meal plans are recommendations only. Please consult your doctor or nutritionist.</div><div class="ft">Powered by Blue Flute Consulting LLC-FZ \u00B7 www.bluefluteconsulting.com</div><script>setTimeout(function(){window.print()},800)</script></body></html>`;
+          const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:A4 landscape;margin:15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;-webkit-print-color-adjust:exact}.hd{background:#2E5480;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}.hd-l{color:white;font-size:18px;font-weight:bold}.hd-h{color:#C9A227;font-size:11px;margin-top:3px}.hd-r{color:#C9A227;font-size:11px;text-align:right}.gb{background:#C9A227;padding:10px 20px;text-align:center}.gb-t{font-size:14px;font-weight:bold;color:#1B2A0C}.gb-s{font-size:11px;color:#412402;margin-top:3px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#2E5480;color:white;padding:8px;font-size:11px;text-align:center;border:1px solid #2E5480}td{padding:8px;font-size:10px;border:1px solid #E5E7EB;text-align:center}tr:nth-child(even) td{background:#F9FAFB}.sl{font-weight:bold;color:#2E5480;text-align:left;width:80px}.ft{margin-top:20px;border-top:1px solid #E5E7EB;padding-top:10px;text-align:center;font-size:9px;color:#6B7280}.disc{margin-top:10px;background:#F5F7FA;border-radius:6px;padding:8px 12px;font-size:9px;color:#6B7280;text-align:center}</style></head><body><div class="hd"><div><div class="hd-l">My Maharaj</div><div class="hd-h">\u092E\u0947\u0930\u093E \u092E\u0939\u093E\u0930\u093E\u091C</div></div><div class="hd-r">blue flute<br>consulting</div></div><div class="gb"><div class="gb-t">Weekly Meal Plan</div><div class="gb-s">${dateRange} \u00B7 ${servingsCount} family members</div></div><table><tr><th class="sl">Meal</th>${dayHeaders}</tr>${mealRows}</table><div class="disc">Maharaj meal plans are recommendations only. Please consult your doctor or nutritionist.</div><div class="ft">Powered by Blue Flute Consulting LLC-FZ \u00B7 www.bluefluteconsulting.com</div><script>setTimeout(function(){window.print()},800)</script></body></html>`;
           const blob = new Blob([html], { type: 'text/html' });
           const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'maharaj-meal-plan.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }}>
@@ -2090,7 +2090,7 @@ export default function MealWizardScreen() {
         {/* Action buttons */}
         <View style={{flexDirection:'row',gap:8,marginTop:12}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}>
-            <Text style={{fontSize:13,fontWeight:'600',color:'#1B3A5C'}}>Regenerate</Text>
+            <Text style={{fontSize:13,fontWeight:'600',color:'#2E5480'}}>Regenerate</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={async () => {
             // Auto-save confirmed plan + menu history + dish history
@@ -2133,25 +2133,25 @@ export default function MealWizardScreen() {
         <Text style={s.stepTitle}>How would you like to proceed?</Text>
         <Text style={s.stepSub}>Your meal plan is confirmed!</Text>
         <View style={{gap:14,marginVertical:20}}>
-          <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#1B3A5C',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
+          <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#2E5480',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
             <Image source={require('../assets/logo.png')} style={{width:64,height:30}} resizeMode="contain" />
             <View style={{flex:1}}>
-              <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Cook at Home</Text>
+              <Text style={{fontSize:16,fontWeight:'800',color:'#2E5480',marginBottom:4}}>Cook at Home</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Full recipes & step-by-step instructions</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#1B3A5C',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
+          <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#2E5480',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>router.push('/order-out' as never)} activeOpacity={0.85}>
             <View style={{width:64,height:30,backgroundColor:'#E3F2FD',borderRadius:10,alignItems:'center',justifyContent:'center'}}>
-              <Text style={{fontSize:14,fontWeight:'700',color:'#1B3A5C'}}>Delivery</Text>
+              <Text style={{fontSize:14,fontWeight:'700',color:'#2E5480'}}>Delivery</Text>
             </View>
             <View style={{flex:1}}>
-              <Text style={{fontSize:16,fontWeight:'800',color:'#1B3A5C',marginBottom:4}}>Order Out</Text>
+              <Text style={{fontSize:16,fontWeight:'800',color:'#2E5480',marginBottom:4}}>Order Out</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Find delivery options near you</Text>
             </View>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={{borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',backgroundColor:'rgba(255,255,255,0.9)',marginTop:16}} onPress={()=>router.push('/home' as never)}>
-          <Text style={{fontSize:14,color:'#1B3A5C',fontWeight:'700'}}>Done — Back to Home</Text>
+          <Text style={{fontSize:14,color:'#2E5480',fontWeight:'700'}}>Done — Back to Home</Text>
         </TouchableOpacity>
       </View>
     );
@@ -2171,7 +2171,7 @@ export default function MealWizardScreen() {
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
             {activeCuisines.map(c => (
               <TouchableOpacity key={c} style={{backgroundColor:'#E3F2FD',borderRadius:12,paddingHorizontal:10,paddingVertical:5,flexDirection:'row',gap:4,alignItems:'center'}} onPress={() => setRemovedCuisines(prev => [...prev, c])}>
-                <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>{c}</Text>
+                <Text style={{fontSize:12,fontWeight:'600',color:'#2E5480'}}>{c}</Text>
                 <Text style={{fontSize:10,color:'#9CA3AF'}}>✕</Text>
               </TouchableOpacity>
             ))}
@@ -2202,19 +2202,19 @@ export default function MealWizardScreen() {
           <View style={{flexDirection:'row',gap:6,paddingVertical:4}}>
             {ALL_CUISINES.filter(c => !activeCuisines.includes(c) && !extraCuisines.includes(c)).map(c => (
               <TouchableOpacity key={c} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:'#D4EDE5',backgroundColor:'rgba(255,255,255,0.9)'}} onPress={() => setExtraCuisines(prev => [...prev, c])}>
-                <Text style={{fontSize:12,fontWeight:'600',color:'#1B3A5C'}}>{c}</Text>
+                <Text style={{fontSize:12,fontWeight:'600',color:'#2E5480'}}>{c}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
 
         <View style={{gap:12,marginTop:8}}>
-          <TouchableOpacity style={{backgroundColor:'#1B3A5C',borderRadius:14,paddingVertical:18,alignItems:'center'}} onPress={() => advance('generating')} activeOpacity={0.85}>
+          <TouchableOpacity style={{backgroundColor:'#2E5480',borderRadius:14,paddingVertical:18,alignItems:'center'}} onPress={() => advance('generating')} activeOpacity={0.85}>
             <Text style={{fontSize:16,fontWeight:'800',color:'white'}}>Generate My Meal Plan</Text>
           </TouchableOpacity>
           <View style={{flexDirection:'row',gap:10}}>
             <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={goBack}>
-              <Text style={{fontSize:14,fontWeight:'600',color:'#1B3A5C'}}>Back</Text>
+              <Text style={{fontSize:14,fontWeight:'600',color:'#2E5480'}}>Back</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
               <Text style={{fontSize:14,fontWeight:'600',color:'#5A7A8A'}}>Cancel</Text>
@@ -2260,7 +2260,7 @@ export default function MealWizardScreen() {
       {!isFullScreen && (
         <View style={s.header}>
           <TouchableOpacity onPress={goBack} style={s.headerBack}>
-            <Text style={s.headerBackText}>←</Text>
+            <Text style={s.headerBackText}>Back</Text>
           </TouchableOpacity>
           <Text style={s.headerTitle}>Curating Your Meal Plan</Text>
           {isUserStep && (

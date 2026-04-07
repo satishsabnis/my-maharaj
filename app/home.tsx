@@ -250,10 +250,10 @@ export default function HomeScreen() {
             <Animated.View
               // @ts-ignore — web-only className
               className={Platform.OS === 'web' ? 'maharaj-hero-circle' : undefined}
-              style={{width:220,height:220,borderRadius:110,borderWidth:2.5,borderColor:'#C9A227',backgroundColor:'rgba(255,255,255,0.15)',alignItems:'center',justifyContent:'center',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
-              <Image source={require('../assets/logo.png')} style={{width:160,height:160,backgroundColor:'transparent'}} resizeMode="contain" />
+              style={{width:220,height:220,borderRadius:110,backgroundColor:'transparent',alignItems:'center',justifyContent:'center',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
+              <Image source={require('../assets/logo.png')} style={{width:220,height:220,backgroundColor:'transparent'}} resizeMode="contain" />
             </Animated.View>
-            <Text style={{fontSize:22,fontWeight:'700',color:'#1B3A5C',marginTop:14,textAlign:'center'}}>Ask Maharaj</Text>
+            <Text style={{fontSize:22,fontWeight:'700',color:'#2E5480',marginTop:14,textAlign:'center'}}>Ask Maharaj</Text>
             <Text style={{fontSize:14,color:'#1A6B5C',textAlign:'center',marginTop:4}}>Your personal meal planner</Text>
             <Text style={{fontSize:12,color:'#C9A227',textAlign:'center',marginTop:8,fontStyle:'italic'}}>Tap to begin</Text>
           </TouchableOpacity>
@@ -263,7 +263,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Footer */}
-        <View style={{backgroundColor:'#1B3A5C',padding:16,alignItems:'center'}}>
+        <View style={{backgroundColor:'#2E5480',padding:16,alignItems:'center'}}>
           <Text style={{color:'#C9A227',fontSize:12,fontWeight:'600',marginBottom:6}}>Powered by Blue Flute Consulting LLC-FZ</Text>
           <TouchableOpacity onPress={() => Linking.openURL('https://www.bluefluteconsulting.com')}>
             <Text style={{color:'rgba(255,255,255,0.8)',fontSize:10,textDecorationLine:'underline',marginBottom:3}}>www.bluefluteconsulting.com</Text>
@@ -285,26 +285,15 @@ export default function HomeScreen() {
                   <Text style={s.drawerEmail}>{email}</Text>
                 </View>
 
-                <ScrollView style={{maxHeight:'80%'}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:32}}>
-                  <Text style={s.drawerSection}>PLAN</Text>
+                <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:48}}>
+                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
                   <DrawerRow icon={'\uD83D\uDCCB'} label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
-                  <DrawerRow icon={'\uD83D\uDCDC'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
-
-                  <Text style={s.drawerSection}>KITCHEN</Text>
                   <DrawerRow icon={'\uD83E\uDDCA'} label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
                   <DrawerRow icon={'\uD83D\uDC68\u200D\uD83C\uDF73'} label="Meal Prep" onPress={() => { closeDrawer(); router.push('/meal-prep' as never); }} />
-
-                  <Text style={s.drawerSection}>EVENTS</Text>
                   <DrawerRow icon={'\uD83C\uDF89'} label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
                   <DrawerRow icon={'\u26FA'} label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
-
-                  <Text style={s.drawerSection}>PROFILE</Text>
-                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
-
-                  <Text style={s.drawerSection}>SUPPORT</Text>
+                  <DrawerRow icon={'\uD83D\uDCDC'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
                   <DrawerRow icon={'\u2139\uFE0F'} label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
-                  <DrawerRow icon={'\uD83D\uDCE7'} label="Feedback" onPress={() => { closeDrawer(); Linking.openURL('mailto:info@bluefluteconsulting.com'); }} />
-                  <DrawerRow icon={'\uD83D\uDD12'} label="Privacy Policy" onPress={() => { closeDrawer(); setPrivacyVisible(true); }} />
                   <DrawerRow icon={'\uD83D\uDEAA'} label="Sign Out" signOut onPress={doSignOut} />
                 </ScrollView>
               </TouchableOpacity>
@@ -411,9 +400,9 @@ const s = StyleSheet.create({
 
   // FAB
   fab: { position: 'absolute', bottom: 24, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fabLabelWrap: { backgroundColor: '#1B3A5C', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  fabLabelWrap: { backgroundColor: '#2E5480', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   fabLabel: { fontSize: 10, fontWeight: '700', color: white },
-  fabCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#1B3A5C', alignItems: 'center', justifyContent: 'center', shadowColor: navy, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  fabCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#2E5480', alignItems: 'center', justifyContent: 'center', shadowColor: navy, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   fabIcon: { width: 26, height: 26 },
 
   // Drawer overlay

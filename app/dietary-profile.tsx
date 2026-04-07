@@ -460,7 +460,7 @@ export default function DietaryProfileScreen() {
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
           <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>Fasting days / observances</Text>
           <TextInput
-            style={{backgroundColor:white,borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:10,fontSize:11,color:'#1B3A5C',minHeight:70,textAlignVertical:'top'}}
+            style={{backgroundColor:white,borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:10,fontSize:11,color:'#2E5480',minHeight:70,textAlignVertical:'top'}}
             value={fastingDaysText}
             onChangeText={setFastingDaysText}
             placeholder="e.g. Ekadashi, Monday fast, Navratri, Ramadan..."
@@ -532,7 +532,7 @@ export default function DietaryProfileScreen() {
               ))}
             </View>
           )}
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:6}} value={languageSearch} onChangeText={setLanguageSearch} placeholder="Search language..." placeholderTextColor="#9CA3AF" />
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#2E5480',marginBottom:6}} value={languageSearch} onChangeText={setLanguageSearch} placeholder="Search language..." placeholderTextColor="#9CA3AF" />
           {languageSearch.length > 0 && (
             <View style={{backgroundColor:white,maxHeight:160,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',borderRadius:8,overflow:'hidden',marginBottom:6}}>
               {['English','Hindi','Marathi','Gujarati','Punjabi','Tamil','Telugu','Kannada','Malayalam','Bengali','Urdu','Arabic','Odia','Assamese','Sindhi','Kashmiri','Maithili','Sanskrit'].filter(l => l.toLowerCase().includes(languageSearch.toLowerCase()) && !selectedLanguages.includes(l)).map(l => (
@@ -540,7 +540,7 @@ export default function DietaryProfileScreen() {
                   if (selectedLanguages.length >= 3) { Alert.alert('Maximum 3 languages', 'Remove a language before adding another.'); return; }
                   setSelectedLanguages(prev => [...prev, l]); setLanguageSearch('');
                 }}>
-                  <Text style={{fontSize:11,color:'#1B3A5C'}}>{l}</Text>
+                  <Text style={{fontSize:11,color:'#2E5480'}}>{l}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -568,13 +568,13 @@ export default function DietaryProfileScreen() {
         <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Account</Text>
         <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
           <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Full name</Text>
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:8}} value={fullName} onChangeText={setFullName} placeholder="Your full name" placeholderTextColor="#9CA3AF" />
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#2E5480',marginBottom:8}} value={fullName} onChangeText={setFullName} placeholder="Your full name" placeholderTextColor="#9CA3AF" />
           <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Email</Text>
           <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#9CA3AF',backgroundColor:'#F9FAFB',marginBottom:8}} value={userEmail} editable={false} />
           <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Phone number</Text>
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#1B3A5C',marginBottom:8}} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="+971 XX XXX XXXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
+          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#2E5480',marginBottom:8}} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="+971 XX XXX XXXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
           <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:8}} onPress={async () => { try { await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo: 'https://my-maharaj.vercel.app' }); Alert.alert('Password reset email sent to your email address.'); } catch { Alert.alert('Error', 'Could not send reset email.'); } }}>
-            <Text style={{fontSize:10,color:'#1B3A5C'}}>Change password</Text>
+            <Text style={{fontSize:10,color:'#2E5480'}}>Change password</Text>
             <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
           </TouchableOpacity>
         </View>
