@@ -1346,8 +1346,8 @@ export default function MealWizardScreen() {
           })}
         </View>
         <Text style={{fontSize:10,color:textSec}}>Days completed</Text>
-        <TouchableOpacity style={{marginTop:24,backgroundColor:'#C9A227',borderRadius:12,paddingVertical:12,paddingHorizontal:24}} onPress={goBack}>
-          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Pause</Text>
+        <TouchableOpacity style={{marginTop:24,backgroundColor:'#C9A227',borderRadius:12,paddingVertical:12,paddingHorizontal:24}} onPress={() => setGenPaused(p => !p)}>
+          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>{genPaused ? 'Resume' : 'Pause'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -2246,6 +2246,16 @@ export default function MealWizardScreen() {
     const BORDER = '#2E5480';
     return (
       <View style={{flex:1}}>
+        {/* Plan detail header */}
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:12,backgroundColor:'rgba(255,255,255,0.85)',borderBottomWidth:1,borderBottomColor:'rgba(27,58,92,0.1)'}}>
+          <TouchableOpacity onPress={() => setStep('plan-summary')} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
+          </TouchableOpacity>
+          <Text style={{flex:1,fontSize:18,fontWeight:'700',color:'#2E5480',textAlign:'center'}}>My Meal Plan</Text>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
+          </TouchableOpacity>
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={true}>
           <ScrollView showsVerticalScrollIndicator={true}>
             <View style={{borderWidth:1,borderColor:BORDER,borderRadius:4,overflow:'hidden'}}>
@@ -2312,7 +2322,7 @@ export default function MealWizardScreen() {
 
   const isUserStep = USER_STEPS.includes(step);
   const currentNum = stepNum(step);
-  const isFullScreen = ['generating','generating-error'].includes(step);
+  const isFullScreen = ['generating','generating-error','plan-detail'].includes(step);
 
   return (
     <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">

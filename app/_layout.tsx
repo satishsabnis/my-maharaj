@@ -3,6 +3,7 @@ import { Platform, View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { requestNotificationPermissions } from '../lib/notifications';
 import Logo from '../components/Logo';
@@ -32,6 +33,14 @@ export default function Layout() {
   const [loading, setLoading] = useState(true);
 
   useBrowserBackGuard();
+
+  // Route notification taps to plan-summary inside meal-wizard
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((_response) => {
+      router.push('/meal-wizard?step=plan-summary' as never);
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     requestNotificationPermissions();
