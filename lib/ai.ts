@@ -519,8 +519,10 @@ export async function generateMealPlan(
   if (hf.cholesterol) ragHealthConditions.push('low cholesterol');
   let ragDishPrompt = '';
   try {
+    // Use ALL selected cuisines for RAG, not just the random single one
+    const allRagCuisines = [...new Set([...(params.cuisinePerDay ?? []), cuisine].filter(Boolean))];
     const ragDishes = await getRelevantDishes({
-      cuisines: [cuisine, ...(params.cuisinePerDay ?? [])].filter(Boolean),
+      cuisines: allRagCuisines,
       dietaryPref: params.foodPrefs.type === 'veg' ? 'veg' : isMixed ? 'mixed' : 'nonveg',
       healthConditions: ragHealthConditions,
       excludeDishes: params.dishHistory ?? [],

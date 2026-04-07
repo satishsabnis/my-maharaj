@@ -921,11 +921,7 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Order from a restaurant tonight</Text>
           </TouchableOpacity>
         </View>
-        {/* Meal Prep button */}
-        <TouchableOpacity style={{width:'100%',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:14,alignItems:'center',borderWidth:1,borderColor:'rgba(201,162,39,0.3)',marginBottom:24}} onPress={() => { console.log('[MealPrep] tapped'); router.push('/meal-prep' as never); }}>
-          <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Meal Prep Planning</Text>
-          <Text style={{fontSize:9,color:textSec,marginTop:2}}>Plan your cooking session ahead</Text>
-        </TouchableOpacity>
+        {/* Meal Prep handled inline in cook-at-home step — no separate navigation */}
         <View style={{flexDirection:'row',gap:10,width:'100%'}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={goBack}>
             <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
@@ -1532,28 +1528,66 @@ export default function MealWizardScreen() {
   const [cookDishIdx, setCookDishIdx] = useState(0);
 
   // P7: Cook at Home — two options: Shopping List or Meal Prep
+  const [mealPrepGuide, setMealPrepGuide] = useState<string | null>(null);
+  const [mealPrepLoading, setMealPrepLoading] = useState(false);
+
+  async function generateMealPrep() {
+    if (!generatedPlan || mealPrepLoading) return;
+    setMealPrepLoading(true);
+    try {
+      const dishes = generatedPlan.flatMap((day, i) => {
+        const slots = (selectedSlots.length > 0 ? selectedSlots : ['breakfast','lunch','dinner']) as MealSlotKey[];
+        return slots.map(slot => {
+          const opt = getOpt(i, slot);
+          return opt ? `${day.day} ${slot}: ${opt.name}` : null;
+        }).filter(Boolean);
+      });
+      const base = 'https://my-maharaj.vercel.app';
+      const res = await fetch(`${base}/api/claude`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: `You are a meal prep assistant. Here is the week's meal plan:\n${dishes.join('\n')}\n\nCreate a concise meal prep guide: what to prep in advance, what to batch cook, what to marinate overnight. Keep it practical — 5-8 bullet points maximum. No markdown formatting.` }] }),
+      });
+      const data = await res.json();
+      const text = data?.content?.[0]?.text ?? 'Could not generate prep guide.';
+      setMealPrepGuide(text);
+      await AsyncStorage.setItem('meal_prep_guide', text);
+    } catch { setMealPrepGuide('Could not generate prep guide. Please try again.'); }
+    finally { setMealPrepLoading(false); }
+  }
+
   function renderCookAtHome() {
     return (
-      <View style={{alignItems:'center',paddingVertical:20}}>
+      <View style={{paddingVertical:16}}>
         <Text style={s.stepTitle}>Cook at Home</Text>
         <Text style={s.stepSub}>Your meal plan is confirmed</Text>
-        <View style={{gap:12,width:'100%',marginTop:16}}>
-          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:18,flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => { setFeedbacks(buildFeedbackEntries()); setStep('grocery'); }}>
-            <Text style={{fontSize:28}}>🛒</Text>
-            <View style={{flex:1}}>
-              <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Shopping List</Text>
-              <Text style={{fontSize:11,color:textSec}}>Consolidated ingredients for your plan</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:18,flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => router.push('/meal-prep' as never)}>
-            <Text style={{fontSize:28}}>👨‍🍳</Text>
-            <View style={{flex:1}}>
-              <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Meal Prep</Text>
-              <Text style={{fontSize:11,color:textSec}}>Plan your cooking session</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={{marginTop:20,paddingVertical:14,paddingHorizontal:40,borderRadius:12,borderWidth:1.5,borderColor:navy}} onPress={() => setStep('plan-summary')}>
+
+        {/* Shopping List */}
+        <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:18,flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)',marginTop:16}} onPress={() => { setFeedbacks(buildFeedbackEntries()); setStep('grocery'); }}>
+          <Text style={{fontSize:24}}>🛒</Text>
+          <View style={{flex:1}}>
+            <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Shopping List</Text>
+            <Text style={{fontSize:11,color:textSec}}>Consolidated ingredients for your plan</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Meal Prep — inline, no navigation */}
+        <TouchableOpacity style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:18,flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:'rgba(27,58,92,0.1)',marginTop:10}} onPress={generateMealPrep} disabled={mealPrepLoading}>
+          <Text style={{fontSize:24}}>👨‍🍳</Text>
+          <View style={{flex:1}}>
+            <Text style={{fontSize:14,fontWeight:'700',color:navy}}>Meal Prep Guide</Text>
+            <Text style={{fontSize:11,color:textSec}}>{mealPrepLoading ? 'Generating...' : 'Tap to generate prep instructions'}</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Meal Prep Guide — renders inline when ready */}
+        {mealPrepGuide && (
+          <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,padding:16,marginTop:12,borderWidth:1,borderColor:'rgba(201,162,39,0.2)'}}>
+            <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:8}}>Meal Prep Guide</Text>
+            <Text style={{fontSize:13,color:'#374151',lineHeight:22}}>{mealPrepGuide}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity style={{marginTop:20,paddingVertical:14,alignItems:'center',borderRadius:12,borderWidth:1.5,borderColor:navy}} onPress={() => setStep('plan-summary')}>
           <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back to Plan</Text>
         </TouchableOpacity>
       </View>
