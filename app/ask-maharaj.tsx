@@ -214,15 +214,12 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
       <SafeAreaView style={{flex:1}}>
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={{paddingRight:12}}>
-            <Text style={{fontSize:15,color:navy,fontWeight:'600'}}>Back</Text>
+          <TouchableOpacity onPress={() => router.back()} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:12,paddingVertical:6,paddingHorizontal:14}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
           </TouchableOpacity>
-          <View style={{flex:1,alignItems:'center'}}>
-            <Image source={require('../assets/logo.png')} style={{width:36,height:36}} resizeMode="contain" />
-            <Text style={{fontSize:12,fontWeight:'600',color:navy,marginTop:1}}>Ask Maharaj</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{paddingHorizontal:10,paddingVertical:5,borderRadius:8,borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',backgroundColor:'rgba(255,255,255,0.8)'}}>
-            <Text style={{fontSize:11,fontWeight:'700',color:navy}}>Home</Text>
+          <Text style={{flex:1,fontSize:16,fontWeight:'700',color:'#2E5480',textAlign:'center'}}>Ask Maharaj</Text>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:12,paddingVertical:6,paddingHorizontal:14}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
           </TouchableOpacity>
         </View>
         <MarqueeTicker />

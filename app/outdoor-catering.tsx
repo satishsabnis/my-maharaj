@@ -260,11 +260,8 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
             </View>
 
             {error ? <Text style={s.error}>{error}</Text> : null}
-            <View style={{flexDirection:'row',gap:10,marginTop:8}}>
-              <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={() => router.back()}>
-                <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}, loading && {opacity:0.6}]} onPress={generateMenu} disabled={loading}>
+            <View style={{marginTop:8}}>
+              <TouchableOpacity style={[{paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}, loading && {opacity:0.6}]} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={'#1B2A0C'} /> : <Text style={{fontSize:14,fontWeight:'700',color:'#1B2A0C'}}>Generate</Text>}
               </TouchableOpacity>
             </View>
@@ -291,7 +288,6 @@ Include 3-5 items per section. Shopping list must have quantity with units for $
 
             {/* Action Row */}
             <View style={s.actionRow}>
-              <TouchableOpacity style={s.cancelBtn} onPress={() => router.push('/home' as never)}><Text style={s.cancelBtnTxt}>Home</Text></TouchableOpacity>
               <TouchableOpacity style={s.regenBtn} onPress={generateMenu} disabled={loading}>
                 {loading ? <ActivityIndicator color={white} size="small" /> : <Text style={s.regenBtnTxt}>Regenerate</Text>}
               </TouchableOpacity>
