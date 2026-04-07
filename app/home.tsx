@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal,
+  Alert, Animated, Dimensions, Easing, Image, Linking, Modal,
   Platform, SafeAreaView, ScrollView, StyleSheet, Switch,
   Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
@@ -89,14 +89,23 @@ export default function HomeScreen() {
     return () => clearInterval(t);
   }, []);
 
-  // Hero circle pulse
+  // Hero circle pulse — CSS for web, Animated for native
   useEffect(() => {
-    const pulse = Animated.loop(Animated.sequence([
-      Animated.timing(heroPulse, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
-      Animated.timing(heroPulse, { toValue: 1.0, duration: 1200, useNativeDriver: true }),
-    ]));
-    pulse.start();
-    return () => pulse.stop();
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      if (!document.getElementById('maharaj-pulse-styles')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'maharaj-pulse-styles';
+        styleEl.textContent = `@keyframes maharajPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } } .maharaj-hero-circle { animation: maharajPulse 2.5s ease-in-out infinite !important; }`;
+        document.head.appendChild(styleEl);
+      }
+    } else {
+      const pulse = Animated.loop(Animated.sequence([
+        Animated.timing(heroPulse, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
+        Animated.timing(heroPulse, { toValue: 1.0, duration: 1200, useNativeDriver: true }),
+      ]));
+      pulse.start();
+      return () => pulse.stop();
+    }
   }, []);
 
   // Ticker animation
@@ -204,8 +213,9 @@ export default function HomeScreen() {
   }
 
   return (
-    <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">
-      <SafeAreaView style={s.safe}>
+    <View style={{flex:1}}>
+      <Image source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
+      <SafeAreaView style={[s.safe,{zIndex:1}]}>
 
         {/* ── HEADER ── */}
         <View style={s.header}>
@@ -220,7 +230,6 @@ export default function HomeScreen() {
           </View>
           <View style={s.headerRight}>
             <Image source={require('../assets/blueflute-logo.png')} style={s.bfLogo} resizeMode="contain" />
-            <Text style={s.bfSub}>consulting</Text>
           </View>
         </View>
 
@@ -239,7 +248,10 @@ export default function HomeScreen() {
           {/* Maharaj hero circle */}
           <View style={{alignItems:'center',paddingTop:20,paddingBottom:16}}>
             <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
-              <Animated.View style={{width:100,height:100,borderRadius:50,borderWidth:2.5,borderColor:gold,backgroundColor:white,alignItems:'center',justifyContent:'center',transform:[{scale:heroPulse}]}}>
+              <Animated.View
+                // @ts-ignore — web-only className
+                className={Platform.OS === 'web' ? 'maharaj-hero-circle' : undefined}
+                style={{width:100,height:100,borderRadius:50,borderWidth:2.5,borderColor:gold,backgroundColor:white,alignItems:'center',justifyContent:'center',transform: Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}>
                 <Image source={require('../assets/logo.png')} style={{width:70,height:70,backgroundColor:'transparent'}} resizeMode="contain" />
               </Animated.View>
             </TouchableOpacity>
@@ -389,7 +401,7 @@ export default function HomeScreen() {
         </Modal>
 
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 
