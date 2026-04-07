@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
@@ -38,15 +39,29 @@ export default function MealPrepScreen() {
       const user = await getSessionUser();
       if (!user) throw new Error('Not authenticated');
 
-      const [{ data: historyData }, { data: fridgeData }] = await Promise.all([
-        supabase.from('menu_history').select('menu_json').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
-        supabase.from('fridge_inventory').select('item_name, quantity, unit').eq('user_id', user.id),
-      ]);
+      // Check three sources in order: AsyncStorage → Supabase menu_history → error
+      let mealPlan: any = null;
 
-      const mealPlan = historyData?.[0]?.menu_json ?? null;
+      // Source 1: AsyncStorage confirmed_meal_plan
+      const localPlan = await AsyncStorage.getItem('confirmed_meal_plan');
+      if (localPlan) { try { mealPlan = JSON.parse(localPlan); } catch {} }
+
+      // Source 2: Supabase menu_history
+      if (!mealPlan) {
+        const { data: historyData } = await supabase.from('menu_history').select('menu_json').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
+        mealPlan = historyData?.[0]?.menu_json ?? null;
+      }
+
+      // Source 3: AsyncStorage menu_history (local fallback)
+      if (!mealPlan) {
+        const localHistory = await AsyncStorage.getItem('menu_history');
+        if (localHistory) { try { const arr = JSON.parse(localHistory); if (arr.length > 0) mealPlan = arr[0]; } catch {} }
+      }
+
+      const { data: fridgeData } = await supabase.from('fridge_inventory').select('item_name, quantity, unit').eq('user_id', user.id);
       const fridge = (fridgeData ?? []).map((f: any) => `${f.item_name} ${f.quantity ?? ''}${f.unit ?? ''}`).join(', ');
 
-      if (!mealPlan) { setError('No meal plan found. Generate a meal plan first.'); setLoading(false); return; }
+      if (!mealPlan) { setError('No meal plan found. Please generate a plan first.'); setLoading(false); return; }
 
       const raw = await callClaude(`You are Maharaj, a kitchen prep expert. Given this meal plan and fridge inventory, create a prep guide.
 

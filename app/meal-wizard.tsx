@@ -903,33 +903,25 @@ export default function MealWizardScreen() {
 
   function renderCookOrOrderNew() {
     return (
-      <View style={{alignItems:'center',paddingVertical:30}}>
+      <View style={{paddingVertical:16}}>
         <Text style={s.stepTitle}>What next?</Text>
-        <View style={{flexDirection:'row',gap:12,marginTop:20,marginBottom:12}}>
-          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => {
-            setRecipeDay(0);
-            setCookDishIdx(0);
-            setStep('cook-at-home');
-          }}>
-            <Text style={{fontSize:32,marginBottom:8}}>{'\uD83C\uDFE0'}</Text>
-            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Cook at Home</Text>
-            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Step-by-step recipes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,backgroundColor:'rgba(255,255,255,0.92)',borderRadius:14,padding:16,alignItems:'center',borderWidth:1,borderColor:'rgba(27,58,92,0.1)'}} onPress={() => router.push('/order-out' as never)}>
-            <Text style={{fontSize:32,marginBottom:8}}>{'\uD83D\uDEF5'}</Text>
-            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Order Out</Text>
-            <Text style={{fontSize:9,color:textSec,textAlign:'center',marginTop:4}}>Order from a restaurant tonight</Text>
-          </TouchableOpacity>
-        </View>
-        {/* Meal Prep handled inline in cook-at-home step — no separate navigation */}
-        <View style={{flexDirection:'row',gap:10,width:'100%'}}>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={goBack}>
-            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={() => router.push('/home' as never)}>
-            <Text style={{fontSize:14,fontWeight:'700',color:white}}>Home</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={s.stepSub}>Your meal plan is confirmed</Text>
+
+        {/* Card 1 — Cook at Home */}
+        <TouchableOpacity style={{backgroundColor:white,borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:20,marginTop:16}} onPress={() => setStep('cook-at-home')} activeOpacity={0.85}>
+          <Text style={{fontSize:16,fontWeight:'700',color:navy}}>Cook at Home</Text>
+          <Text style={{fontSize:12,color:'#1A6B5C',marginTop:4}}>Meal prep and shopping list</Text>
+        </TouchableOpacity>
+
+        {/* Card 2 — Order Out */}
+        <TouchableOpacity style={{backgroundColor:white,borderWidth:1.5,borderColor:navy,borderRadius:14,padding:20,marginTop:12}} onPress={() => router.push('/order-out' as never)} activeOpacity={0.85}>
+          <Text style={{fontSize:16,fontWeight:'700',color:navy}}>Order Out</Text>
+          <Text style={{fontSize:12,color:'#1A6B5C',marginTop:4}}>Order from your favourite restaurants</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={{marginTop:24}} onPress={() => setStep('confirmed-menu')}>
+          <Text style={{fontSize:16,color:navy}}>Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -2092,6 +2084,11 @@ export default function MealWizardScreen() {
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'rgba(27,58,92,0.3)',backgroundColor:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={()=>{setGeneratedPlan(null);setSelections({});setActiveDay(0);setStep('generating');}}>
             <Text style={{fontSize:13,fontWeight:'600',color:'#2E5480'}}>Regenerate</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,backgroundColor:gold,alignItems:'center'}} onPress={() => setStep('cook-or-order')}>
+            <Text style={{fontSize:14,fontWeight:'700',color:'#1A1A1A'}}>Next</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{flexDirection:'row',gap:8,marginTop:8}}>
           <TouchableOpacity style={{flex:2,paddingVertical:14,borderRadius:12,backgroundColor:navy,alignItems:'center'}} onPress={async () => {
             // Auto-save confirmed plan + menu history + dish history
             if (generatedPlan) {
