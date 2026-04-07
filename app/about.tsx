@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScreenWrapper from '../components/ScreenWrapper';
 
-const NAVY = '#1B3A5C';
+const NAVY = '#2E5480';
 const GOLD = '#C9A227';
 const BODY = '#374151';
 

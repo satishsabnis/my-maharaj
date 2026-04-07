@@ -26,11 +26,11 @@ export default function MarqueeTicker() {
   }, [contentWidth]);
 
   return (
-    <View style={{ backgroundColor: '#1B3A5C', height: 22, overflow: 'hidden' }}>
+    <View style={{ backgroundColor: '#C9A227', height: 22, overflow: 'hidden' }}>
       <Animated.Text
         style={{
           transform: [{ translateX: anim }],
-          color: 'rgba(201,162,39,0.8)',
+          color: '#1A1A1A',
           fontSize: 9,
           lineHeight: 22,
         }}

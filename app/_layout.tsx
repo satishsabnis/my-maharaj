@@ -102,7 +102,7 @@ export default function Layout() {
     return (
       <View style={{ flex: 1, backgroundColor: white, alignItems: 'center', justifyContent: 'center' }}>
         <Logo size="large" />
-        <ActivityIndicator color="#1B3A5C" style={{ marginTop: 24 }} />
+        <ActivityIndicator color="#2E5480" style={{ marginTop: 24 }} />
       </View>
     );
   }

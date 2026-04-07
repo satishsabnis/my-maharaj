@@ -54,7 +54,7 @@ export default function SignupScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>←</Text>
+          <Text style={s.backArrow}>Back</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Create Account</Text>
         <View style={{ width: 40 }} />

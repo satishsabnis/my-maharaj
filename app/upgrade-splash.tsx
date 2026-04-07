@@ -53,10 +53,10 @@ export default function UpgradeSplashScreen() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   logo: { width: 80, height: 80, marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: '500', color: '#1B3A5C', textAlign: 'center' },
+  title: { fontSize: 28, fontWeight: '500', color: '#2E5480', textAlign: 'center' },
   hindi: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 4 },
   goldLine: { height: 1, width: 60, backgroundColor: '#C9A227', marginVertical: 20, alignSelf: 'center' },
-  upgradeTitle: { fontSize: 16, fontWeight: '500', color: '#1B3A5C', textAlign: 'center', marginBottom: 8 },
+  upgradeTitle: { fontSize: 16, fontWeight: '500', color: '#2E5480', textAlign: 'center', marginBottom: 8 },
   upgradeBody: { fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20, paddingHorizontal: 32 },
   badge: { backgroundColor: '#C9A227', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginTop: 16, alignSelf: 'center' },
   badgeText: { fontSize: 11, fontWeight: '500', color: '#1B2A0C' },
