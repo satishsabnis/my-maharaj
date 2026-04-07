@@ -19,7 +19,8 @@ type WizardStep =
   | 'members' | 'days-meals' | 'nutrition'
   | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'cuisine-confirm'
   | 'generating' | 'generating-error' | 'selection' | 'confirmed-menu' | 'plan-summary'
-  | 'cook-or-order' | 'cook-at-home' | 'recipes' | 'grocery' | 'delivery-apps' | 'feedback';
+  | 'cook-or-order' | 'cook-at-home' | 'recipes' | 'grocery' | 'delivery-apps' | 'feedback'
+  | 'plan-detail';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -638,6 +639,7 @@ export default function MealWizardScreen() {
       'cuisine-confirm': 'nutrition',
       'selection': 'cuisine-confirm',
       'plan-summary': 'selection',
+      'plan-detail': 'plan-summary',
       'cook-or-order': 'plan-summary',
       'recipes': 'cook-or-order',
       'grocery': 'recipes',
@@ -1344,8 +1346,8 @@ export default function MealWizardScreen() {
           })}
         </View>
         <Text style={{fontSize:10,color:textSec}}>Days completed</Text>
-        <TouchableOpacity style={{marginTop:24,borderWidth:1.5,borderColor:'#2E5480',borderRadius:12,paddingVertical:10,paddingHorizontal:24}} onPress={goBack}>
-          <Text style={{fontSize:14,fontWeight:'700',color:'#2E5480'}}>Pause</Text>
+        <TouchableOpacity style={{marginTop:24,backgroundColor:'#C9A227',borderRadius:12,paddingVertical:12,paddingHorizontal:24}} onPress={goBack}>
+          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Pause</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1982,7 +1984,7 @@ export default function MealWizardScreen() {
 
 
         {/* Table — tap to expand */}
-        <TouchableOpacity activeOpacity={0.85} onPress={() => setTableModalVisible(true)}>
+        <TouchableOpacity activeOpacity={0.85} onPress={() => setStep('plan-detail')}>
         <ScrollView horizontal showsHorizontalScrollIndicator={true}>
           <View style={{borderWidth:1,borderColor:BORDER,borderRadius:4,overflow:'hidden'}}>
             {/* Header row */}
@@ -2027,6 +2029,7 @@ export default function MealWizardScreen() {
           </View>
         </ScrollView>
         </TouchableOpacity>
+        <Text style={{fontSize:11,color:'#1A6B5C',textAlign:'center',marginTop:4}}>Tap table to view full plan</Text>
 
         {/* Table Modal — full screen expanded view */}
         <Modal visible={tableModalVisible} transparent animationType="fade" onRequestClose={() => setTableModalVisible(false)}>
@@ -2227,6 +2230,61 @@ export default function MealWizardScreen() {
     );
   }
 
+  function renderPlanDetail() {
+    if (!generatedPlan) return null;
+    const SLOT_LABELS: { key: MealSlotKey; label: string }[] = [
+      { key: 'breakfast', label: 'Breakfast' },
+      { key: 'lunch', label: 'Lunch' },
+      { key: 'snack', label: 'Evening Snack' },
+      { key: 'dinner', label: 'Dinner' },
+    ];
+    const slotsToShow = SLOT_LABELS.filter(sl =>
+      (selectedSlots.length === 0 || selectedSlots.includes(sl.key)) &&
+      (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
+    );
+    const COL_W = 130;
+    const BORDER = '#2E5480';
+    return (
+      <View style={{flex:1}}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+          <ScrollView showsVerticalScrollIndicator={true}>
+            <View style={{borderWidth:1,borderColor:BORDER,borderRadius:4,overflow:'hidden'}}>
+              <View style={{flexDirection:'row'}}>
+                <View style={{width:90,padding:10,backgroundColor:BORDER,justifyContent:'center'}}>
+                  <Text style={{fontSize:12,fontWeight:'800',color:'white'}}>Meal</Text>
+                </View>
+                {generatedPlan.map((day) => {
+                  const d = new Date(day.date);
+                  const label = `${day.day.substring(0,3)} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+                  return (
+                    <View key={day.date} style={{width:COL_W,padding:10,backgroundColor:BORDER,borderLeftWidth:1,borderLeftColor:'rgba(255,255,255,0.2)'}}>
+                      <Text style={{fontSize:11,fontWeight:'700',color:'white',textAlign:'center'}}>{label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              {slotsToShow.map(({ key, label }, slotIdx) => (
+                <View key={key} style={{flexDirection:'row',borderTopWidth:1,borderTopColor:BORDER}}>
+                  <View style={{width:90,padding:10,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,justifyContent:'center',borderRightWidth:1,borderRightColor:BORDER}}>
+                    <Text style={{fontSize:11,fontWeight:'800',color:navy}}>{label}</Text>
+                  </View>
+                  {generatedPlan.map((day, dayIdx) => {
+                    const opt = getOpt(dayIdx, key);
+                    return (
+                      <View key={day.date} style={{width:COL_W,padding:8,backgroundColor: slotIdx % 2 === 0 ? '#E8F4FF' : white,borderLeftWidth:1,borderLeftColor:'#D1D5DB'}}>
+                        <Text style={{fontSize:11,fontWeight:'700',color:'#1F2937',lineHeight:15}}>{opt?.name ?? '\u2014'}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </ScrollView>
+      </View>
+    );
+  }
+
   const STEP_RENDER: Record<WizardStep, () => React.ReactNode> = {
     'members':          renderMembers,
     'days-meals':       renderDaysMeals,
@@ -2249,6 +2307,7 @@ export default function MealWizardScreen() {
     'grocery':          renderGrocery,
     'delivery-apps':    renderDeliveryApps,
     'feedback':         renderFeedback,
+    'plan-detail':      renderPlanDetail,
   };
 
   const isUserStep = USER_STEPS.includes(step);

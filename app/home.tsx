@@ -255,7 +255,7 @@ export default function HomeScreen() {
               resizeMode="contain"
             />
           </TouchableOpacity>
-          <Text style={{fontSize:13,color:'#C9A227',textAlign:'center',marginTop:4,fontStyle:'italic'}}>Tap to begin</Text>
+          <Text style={{fontSize:13,color:'#C9A227',textAlign:'center',marginTop:2,fontStyle:'italic'}}>Tap to begin</Text>
           <Text style={{fontSize:20,fontWeight:'700',color:'#2E5480',textAlign:'center',marginTop:4}}>Ask Maharaj</Text>
           <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginTop:3}}>Your personal meal planner</Text>
 
