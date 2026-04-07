@@ -537,7 +537,7 @@ Respond ONLY with JSON, no markdown.`;
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  scroll:       { padding: 16, paddingBottom: 48 },
+  scroll:       { padding: 16, paddingBottom: 80 },
   actionRow:    { flexDirection: 'row', gap: 10, marginBottom: 12 },
   scanBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: navy, borderRadius: 14, paddingVertical: 14 },
   scanBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.9)', borderWidth: 1.5, borderColor: border },

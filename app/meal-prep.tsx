@@ -165,7 +165,7 @@ Respond ONLY with valid JSON:
 }
 
 const s = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 80 },
   title: { fontSize: 22, fontWeight: '800', color: navy, marginBottom: 4 },
   sub: { fontSize: 13, color: textSec, marginBottom: 16, lineHeight: 20 },
   error: { color: errorRed, fontSize: 13, textAlign: 'center', marginTop: 12 },

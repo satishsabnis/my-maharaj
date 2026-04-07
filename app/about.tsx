@@ -80,7 +80,7 @@ export default function AboutScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 80 },
   heading: { fontSize: 18, fontWeight: '700', color: NAVY, marginBottom: 12 },
   body: { fontSize: 14, color: BODY, lineHeight: 22 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: 'rgba(27,58,92,0.08)' },

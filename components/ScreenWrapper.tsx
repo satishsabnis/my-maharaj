@@ -48,7 +48,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
 
 const sw = StyleSheet.create({
   header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: Platform.OS === "android" ? 25 : Platform.OS === "web" ? 14 : 8, paddingBottom: 12, backgroundColor: "rgba(255,255,255,0.85)", borderBottomWidth: 1, borderBottomColor: "rgba(27,58,92,0.1)" },
-  backBtn:      { borderWidth: 1.5, borderColor: "#2E5480", borderRadius: 12, paddingVertical: 6, paddingHorizontal: 14 },
+  backBtn:      { borderWidth: 1.5, borderColor: "#2E5480", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
   backTxt:      { fontSize: 15, fontWeight: "700", color: "#2E5480" },
   headerTitle:  { fontSize: 16, fontWeight: "700", color: "#2E5480", textAlign: "center", flex: 1 },
   headerRight:  { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "flex-end" },
@@ -56,7 +56,7 @@ const sw = StyleSheet.create({
   langToggleActive: { backgroundColor: "#2E5480", borderColor: "#2E5480" },
   langToggleTxt:    { fontSize: 11, fontWeight: "700", color: "#2E5480" },
   langToggleTxtActive: { color: "#FFFFFF" },
-  homeBtn:      { backgroundColor: "#2E5480", borderRadius: 12, paddingVertical: 6, paddingHorizontal: 14 },
+  homeBtn:      { backgroundColor: "#2E5480", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
   homeTxt:      { fontSize: 15, fontWeight: "700", color: "white" },
   footer:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "rgba(255,255,255,0.7)", borderTopWidth: 1, borderTopColor: "rgba(27,58,92,0.08)" },
 });

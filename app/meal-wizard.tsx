@@ -2215,7 +2215,7 @@ export default function MealWizardScreen() {
 
         <View style={{gap:12,marginTop:8}}>
           <TouchableOpacity style={{backgroundColor:'#2E5480',borderRadius:14,paddingVertical:18,alignItems:'center'}} onPress={() => advance('generating')} activeOpacity={0.85}>
-            <Text style={{fontSize:16,fontWeight:'800',color:'white'}}>Generate My Meal Plan</Text>
+            <Text style={{fontSize:16,fontWeight:'500',color:'white'}}>Generate My Meal Plan</Text>
           </TouchableOpacity>
           <View style={{flexDirection:'row',gap:10}}>
             <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.25)',borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={goBack}>
@@ -2320,11 +2320,11 @@ export default function MealWizardScreen() {
       {/* Header */}
       {!isFullScreen && (
         <View style={s.header}>
-          <TouchableOpacity onPress={goBack} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:12,paddingVertical:6,paddingHorizontal:14}}>
+          <TouchableOpacity onPress={goBack} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
             <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
           </TouchableOpacity>
           <Text style={{flex:1,fontSize:16,fontWeight:'700',color:'#2E5480',textAlign:'center'}}>Curating Your Meal Plan</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:12,paddingVertical:6,paddingHorizontal:14}}>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
             <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
           </TouchableOpacity>
         </View>

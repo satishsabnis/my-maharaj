@@ -94,7 +94,7 @@ const s = StyleSheet.create({
   header: { backgroundColor: '#1A6B3C', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 14, paddingBottom: 16 },
   backText: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '500', width: 60 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: white },
-  scroll: { padding: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  scroll: { padding: 16, paddingBottom: 80, maxWidth: 680, width: '100%', alignSelf: 'center' },
   intro: { fontSize: 14, color: '#166534', lineHeight: 22, marginBottom: 20, fontStyle: 'italic' },
   section: { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 14, marginBottom: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
