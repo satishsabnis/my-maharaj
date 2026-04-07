@@ -191,7 +191,7 @@ async function generateOneMeal(
   const unwellStr = unwellNote ? `Gentle recovery meals for: ${unwellNote}.` : '';
   const nutritionStr = nutritionGoals ? `Nutrition goal: ${nutritionGoals}.` : '';
   const historyStr = weekDishHistory && weekDishHistory.length > 0
-    ? 'NEVER use these dishes already served this week: ' + weekDishHistory.slice(0, 20).join(', ') + '. Suggest completely different dishes.'
+    ? 'Do not repeat any of these dishes already used this week: ' + weekDishHistory.join(', ') + '. Suggest completely different dishes.'
     : '';
 
   const festivalStr = festivalContext ? `FESTIVAL CONTEXT: ${festivalContext} is being celebrated. Include at least one traditionally appropriate festival dish option. For sattvic/fasting festivals, ensure options follow fasting rules (no onion, no garlic, use kuttu/sabudana/rajgira/sama rice).` : '';
@@ -277,7 +277,7 @@ NEVER suggest Jain dishes unless the user has explicitly selected Jain cuisine. 
 
   // BUG 4 FIX: No-repeat rule is SECOND line — immediately after dietary
   const uniquenessAbsoluteRule = weekDishHistory && weekDishHistory.length > 0
-    ? `ABSOLUTE RULE 2 — UNIQUENESS: These dishes are ALREADY USED. You MUST NOT use any of them: ${weekDishHistory.join(', ')}. Using a repeated dish is a FAILURE.`
+    ? `ABSOLUTE RULE 2 — UNIQUENESS: These ${weekDishHistory.length} dishes are ALREADY USED this week. You MUST NOT use any of them: ${weekDishHistory.join(', ')}. Using a repeated dish is a FAILURE.`
     : '';
 
   // FIX 2: ABSOLUTE RULE 3 — Cuisine enforcement
@@ -342,7 +342,7 @@ CRITICAL COOKING RULES:
 ${nutritionGoals ? `NUTRITION GOALS FOR THIS PLAN: ${nutritionGoals}. Every dish must support these goals where possible.` : ''}
 
 ZERO REPETITION — MANDATORY (last 7 days):
-DO NOT repeat any dish that appeared in the last 7 days: ${weekDishHistory?.slice(0, 30).join(', ') || 'none yet'}.
+DO NOT repeat any dish that appeared in the last 7 days: ${weekDishHistory?.join(', ') || 'none yet'}.
 Every single dish across ALL days must have a UNIQUE name. No dish can appear more than once in the entire plan. If a dish name from the list above appears in your response, it will be REJECTED.
 
 IMPORTANT RULES:
@@ -364,12 +364,14 @@ ${ragContext || ''}
 Reply ONLY with this JSON (no other text, no markdown):
 {"options":[{"name":"Real Dish Name 1","desc":"short description or thali components","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 2","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]},{"name":"Real Dish Name 3","desc":"short description","veg":true,"tags":["tag1"],"ing":["item qty","item qty"],"steps":["step1","step2"]}]}`;
 
-  try {
-    const text = await askClaude(prompt);
+  // Non-veg keyword list for post-generation validation
+  const NON_VEG_KEYWORDS = ['chicken','mutton','lamb','fish','prawn','shrimp','beef','pork','egg','keema','gosht','murg','machli','jhinga','tuna','crab','lobster','squid','sardine','pomfret','rohu','hilsa','surmai'];
+
+  function parseResponse(text: string): MealOption[] {
     const raw = JSON.parse(text) as {
       options: Array<{ name: string; desc?: string; veg: boolean; tags: string[]; ing: string[]; steps: string[] }>;
     };
-    const opts = (raw.options ?? []).map((o) => {
+    return (raw.options ?? []).map((o) => {
       let ingredients = o.ing ?? [];
       if (ingredients.length === 0) {
         console.warn(`[generateOneMeal] Empty ingredients for "${o.name}" — adding placeholders`);
@@ -388,7 +390,35 @@ Reply ONLY with this JSON (no other text, no markdown):
         steps,
       };
     });
+  }
+
+  function hasNonVegDish(opts: MealOption[]): boolean {
+    return opts.some(o => {
+      const lower = (o.name + ' ' + (o.description ?? '') + ' ' + o.tags.join(' ')).toLowerCase();
+      return NON_VEG_KEYWORDS.some(kw => lower.includes(kw));
+    });
+  }
+
+  try {
+    const text = await askClaude(prompt);
+    let opts = parseResponse(text);
     if (opts.length === 0) return fallbackSlot(mealType, dayIdx);
+
+    // Post-generation non-veg validation: retry once if non-veg user got all-veg
+    if (isNonVegPref && !hasNonVegDish(opts)) {
+      console.warn(`[generateOneMeal] Non-veg user got all-veg ${mealType} on ${day} — retrying`);
+      try {
+        const retryPrompt = prompt + '\n\nRETRY: Previous response contained ONLY vegetarian dishes. You MUST include at least one non-vegetarian dish containing meat, poultry, seafood or eggs. An all-vegetarian response is INVALID for this non-vegetarian user.';
+        const retryText = await askClaude(retryPrompt);
+        const retryOpts = parseResponse(retryText);
+        if (retryOpts.length > 0 && hasNonVegDish(retryOpts)) {
+          opts = retryOpts;
+        } else {
+          console.error(`[generateOneMeal] Non-veg retry ALSO failed for ${mealType} on ${day}`);
+        }
+      } catch { /* use original opts if retry fails */ }
+    }
+
     return { options: opts };
   } catch {
     return fallbackSlot(mealType, dayIdx);

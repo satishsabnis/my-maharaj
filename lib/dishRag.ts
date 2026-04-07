@@ -56,14 +56,18 @@ export async function getRelevantDishes(params: {
     results = results.filter(d => !d.dietary.includes('jain') || jainSelected);
   }
 
-  // HARD FILTER: When cuisines are specified, return ONLY dishes from those cuisines
+  // HARD FILTER: When cuisines are specified, return ONLY dishes from those cuisines — no exceptions
   if (cuisines.length > 0) {
     const cuisineLower = cuisines.map(c => c.toLowerCase());
-    const cuisineFiltered = results.filter(d => d.cuisine.some(dc => cuisineLower.some(c => dc.toLowerCase().includes(c))));
-    // Only apply hard filter if it leaves enough dishes (>5), otherwise fall back to scoring
-    if (cuisineFiltered.length >= 5) {
-      results = cuisineFiltered;
-    }
+    const before = results.length;
+    results = results.filter(d => {
+      const match = d.cuisine.some(dc => cuisineLower.some(c => dc.toLowerCase().includes(c)));
+      if (!match) {
+        console.warn(`[RAG] Filtered out "${d.name}" — cuisine [${d.cuisine.join(', ')}] not in selected: [${cuisines.join(', ')}]`);
+      }
+      return match;
+    });
+    console.log(`[RAG] Cuisine hard filter: ${before} → ${results.length} dishes (selected: ${cuisines.join(', ')})`);
   }
 
   // Filter by meal type
@@ -111,6 +115,16 @@ async function querySupabase(params: {
 
   const excludeSet = new Set(excludeDishes.map(d => d.toLowerCase()));
   let results = (data as DishMatch[]).filter(d => !excludeSet.has(d.name.toLowerCase()));
+
+  // Hard cuisine filter on Supabase results too
+  if (cuisines.length > 0) {
+    const cuisineLower = cuisines.map(c => c.toLowerCase());
+    results = results.filter(d => {
+      const match = d.cuisine.some(dc => cuisineLower.some(c => dc.toLowerCase().includes(c)));
+      if (!match) console.warn(`[RAG/Supabase] Filtered out "${d.name}" — cuisine [${d.cuisine.join(', ')}] not in selected: [${cuisines.join(', ')}]`);
+      return match;
+    });
+  }
 
   const scored = results.map(dish => {
     let score = 0;
