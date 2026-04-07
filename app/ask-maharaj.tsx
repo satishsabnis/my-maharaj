@@ -229,7 +229,6 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
           <ScrollView ref={scrollRef} contentContainerStyle={{padding:14,paddingBottom:8}} showsVerticalScrollIndicator={false}>
             {messages.length === 0 && (
               <View style={{alignItems:'center',paddingVertical:20,paddingHorizontal:12}}>
-                <Image source={require('../assets/logo.png')} style={{width:80,height:40,marginBottom:10}} resizeMode="contain" />
                 <Text style={{fontSize:16,fontWeight:'700',color:navy,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
                 <Text style={{fontSize:13,color:textSec,textAlign:'center',lineHeight:20,marginBottom:16}}>Ask me anything — meals, fridge, shopping, nutrition. Or choose below.</Text>
                 <View style={{width:'100%',flexDirection:'row',flexWrap:'wrap',gap:8}}>

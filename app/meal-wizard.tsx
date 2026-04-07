@@ -907,25 +907,26 @@ export default function MealWizardScreen() {
 
   function renderCookOrOrderNew() {
     return (
-      <View style={{paddingVertical:16}}>
-        <Text style={s.stepTitle}>What next?</Text>
-        <Text style={s.stepSub}>Your meal plan is confirmed</Text>
+      <View>
+        {/* Banner */}
+        <View style={{backgroundColor:'#2E5480',borderRadius:12,padding:14,marginBottom:16}}>
+          <Text style={{fontSize:12,fontWeight:'500',color:'white',textAlign:'center'}}>Choose how you would like to proceed with your meal plan</Text>
+        </View>
 
         {/* Card 1 — Cook at Home */}
-        <TouchableOpacity style={{backgroundColor:white,borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:20,marginTop:16}} onPress={() => setStep('cook-at-home')} activeOpacity={0.85}>
-          <Text style={{fontSize:16,fontWeight:'700',color:navy}}>Cook at Home</Text>
+        <TouchableOpacity style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:12}} onPress={() => setStep('cook-at-home')} activeOpacity={0.85}>
+          <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480'}}>Cook at Home</Text>
           <Text style={{fontSize:12,color:'#1A6B5C',marginTop:4}}>Meal prep and shopping list</Text>
         </TouchableOpacity>
 
         {/* Card 2 — Order Out */}
-        <TouchableOpacity style={{backgroundColor:white,borderWidth:1.5,borderColor:navy,borderRadius:14,padding:20,marginTop:12}} onPress={() => router.push('/order-out' as never)} activeOpacity={0.85}>
-          <Text style={{fontSize:16,fontWeight:'700',color:navy}}>Order Out</Text>
+        <TouchableOpacity style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#2E5480',borderRadius:14,padding:16,marginBottom:12}} onPress={() => router.push('/order-out' as never)} activeOpacity={0.85}>
+          <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480'}}>Order Out</Text>
           <Text style={{fontSize:12,color:'#1A6B5C',marginTop:4}}>Order from your favourite restaurants</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={{marginTop:24}} onPress={() => setStep('confirmed-menu')}>
-          <Text style={{fontSize:16,color:navy}}>Back</Text>
-        </TouchableOpacity>
+        {/* Disclaimer */}
+        <Text style={{fontSize:10,color:'#9CA3AF',textAlign:'center',paddingVertical:12,lineHeight:14}}>App names and trademarks belong to their respective owners. My Maharaj is not affiliated with any of these services.</Text>
       </View>
     );
   }
@@ -1323,17 +1324,16 @@ export default function MealWizardScreen() {
   const [genPaused, setGenPaused] = useState(false);
 
   function renderGenerating() {
-    const totalDays = generatingProgress?.total || 7;
     const completedDays = generatingProgress?.current || 0;
     return (
       <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
         <MaharajSpinner />
         <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:8}}>Maharaj is planning...</Text>
         <Text style={{fontSize:11,color:textSec,marginBottom:20}}>
-          {completedDays > 0 ? `Working on Day ${completedDays} of ${totalDays}` : 'Starting up'}
+          {completedDays > 0 ? `Working on Day ${completedDays} of 7` : 'Starting up'}
         </Text>
         <View style={{flexDirection:'row',gap:8,marginBottom:6}}>
-          {Array.from({length: totalDays}, (_, i) => {
+          {Array.from({length: 7}, (_, i) => {
             const isDone = i < completedDays;
             const isCurrent = i === completedDays;
             return (
@@ -1344,11 +1344,9 @@ export default function MealWizardScreen() {
           })}
         </View>
         <Text style={{fontSize:10,color:textSec}}>Days completed</Text>
-        <View style={{flexDirection:'row',gap:10,position:'absolute',bottom:40,left:20,right:20}}>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:navy,alignItems:'center'}} onPress={goBack}>
-            <Text style={{fontSize:14,fontWeight:'600',color:navy}}>Back</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={{marginTop:24,borderWidth:1.5,borderColor:'#2E5480',borderRadius:12,paddingVertical:10,paddingHorizontal:24}} onPress={goBack}>
+          <Text style={{fontSize:14,fontWeight:'700',color:'#2E5480'}}>Pause</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -1548,7 +1546,7 @@ export default function MealWizardScreen() {
       const base = 'https://my-maharaj.vercel.app';
       const res = await fetch(`${base}/api/claude`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: `You are a meal prep assistant. Here is the week's meal plan:\n${dishes.join('\n')}\n\nCreate a concise meal prep guide: what to prep in advance, what to batch cook, what to marinate overnight. Keep it practical — 5-8 bullet points maximum. No markdown formatting.` }] }),
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: `You are a meal prep assistant. Here is the week's meal plan:\n${dishes.join('\n')}\n\nCreate a meal prep guide structured by day. Use this EXACT format — no markdown, no bullets, no extra formatting:\nDAY: Sunday\nSoak dal and rajma overnight\nChop vegetables for Monday and Tuesday\nPrepare ginger-garlic paste in bulk\nDAY: Monday\nMarinate chicken for Tuesday dinner\nBatch cook rice for 2 days\n\nEvery line must start with either "DAY: [dayname]" or be a plain task sentence. No asterisks, no dashes, no numbers.` }] }),
       });
       const data = await res.json();
       const text = data?.content?.[0]?.text ?? 'Could not generate prep guide.';
@@ -1585,8 +1583,17 @@ export default function MealWizardScreen() {
         {/* Meal Prep Guide — renders inline when ready */}
         {mealPrepGuide && (
           <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:14,padding:16,marginTop:12,borderWidth:1,borderColor:'rgba(201,162,39,0.2)'}}>
-            <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:8}}>Meal Prep Guide</Text>
-            <Text style={{fontSize:13,color:'#374151',lineHeight:22}}>{mealPrepGuide}</Text>
+            {mealPrepGuide.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
+              const trimmed = line.trim();
+              if (trimmed.startsWith('DAY:')) {
+                return (
+                  <View key={i} style={{backgroundColor:'#2E5480',borderRadius:8,paddingHorizontal:14,paddingVertical:10,marginVertical:8}}>
+                    <Text style={{color:'#C9A227',fontSize:14,fontWeight:'700'}}>{trimmed}</Text>
+                  </View>
+                );
+              }
+              return <Text key={i} style={{color:'#2E5480',fontSize:13,lineHeight:20,paddingLeft:16,marginVertical:3}}>{trimmed}</Text>;
+            })}
           </View>
         )}
 
@@ -1969,16 +1976,10 @@ export default function MealWizardScreen() {
 
         {/* Header */}
         <View style={{alignItems:'center',marginBottom:16}}>
-          <Text style={{fontSize:22,fontWeight:'800',color:navy}}>My Maharaj — Weekly Meal Plan</Text>
+          <Text style={{fontSize:22,fontWeight:'800',color:navy}}>My Maharaj Meal Plan for You</Text>
           <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4}}>{dateRange}{servingsCount > 0 ? ` · Cooking for ${servingsCount} people` : ''}</Text>
         </View>
 
-        {/* Print button */}
-        {Platform.OS === 'web' && (
-          <TouchableOpacity style={{position:'absolute',top:0,right:0,paddingHorizontal:14,paddingVertical:8,borderRadius:8,backgroundColor:'rgba(27,58,92,0.1)'}} onPress={doPrint}>
-            <Text style={{fontSize:12,fontWeight:'700',color:navy}}>Print / PDF</Text>
-          </TouchableOpacity>
-        )}
 
         {/* Table — tap to expand */}
         <TouchableOpacity activeOpacity={0.85} onPress={() => setTableModalVisible(true)}>
