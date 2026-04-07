@@ -114,11 +114,32 @@ export default function AskMaharajScreen() {
     } catch { return ''; }
   }
 
+  // Intent detection — routes to correct screen before AI call
+  function detectIntent(msg: string): string | null {
+    const m = msg.toLowerCase();
+    if (m.includes('plan my week') || m.includes('meal plan') || m.includes('generate plan') || m.includes('plan this week')) return 'meal-wizard';
+    if (m.includes('fridge') || m.includes('what do i have') || m.includes('ingredients')) return 'my-fridge';
+    if (m.includes('party') || m.includes('guests coming') || m.includes('party menu')) return 'party-menu';
+    if (m.includes('outdoor') || m.includes('trek') || m.includes('picnic') || m.includes('camping')) return 'outdoor-catering';
+    if (m.includes('last plan') || m.includes('history') || m.includes('what did we eat')) return 'menu-history';
+    if (m.includes('meal prep') || m.includes('prep guide')) return 'meal-prep';
+    return null;
+  }
+
   async function send() {
     const text = input.trim();
     const wasVoice = lastVoiceInput;
     setLastVoiceInput(false);
     if (!text || loading) return;
+
+    // Check intent before AI call
+    const intent = detectIntent(text);
+    if (intent) {
+      setInput('');
+      router.push(`/${intent}` as never);
+      return;
+    }
+
     setInput('');
     const userMsg: Message = { role: 'user', content: text };
     const newMsgs = [...messages, userMsg];
