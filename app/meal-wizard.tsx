@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { BarCodeScanner } from 'expo-barcode-scanner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -145,6 +147,11 @@ export default function MealWizardScreen() {
   // Fridge cross-reference
   const [fridgeItems, setFridgeItems] = useState<any[]>([]);
   const [tableModalVisible, setTableModalVisible] = useState(false);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<'idle'|'trolley-loading'|'barcode'|'review'>('idle');
+  const [scannedItems, setScannedItems] = useState<{name:string;quantity:string;category:string}[]>([]);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: true }); }, [step]);
@@ -1699,6 +1706,51 @@ export default function MealWizardScreen() {
     );
   }
 
+  async function scanTrolley() {
+    setScanModalOpen(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Camera permission required'); return; }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+    setScanLoading(true); setScanMode('trolley-loading');
+    try {
+      const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, system: 'You are Maharaj, an expert in Indian cuisine and grocery shopping. Analyse this supermarket trolley image and identify all visible food products and ingredients. Return ONLY a JSON array. Each object: { name: string (product or ingredient name), quantity: string (estimated quantity e.g. "1 pack", "2 pieces", "500g"), category: string (one of: Vegetables, Meat, Dairy, Dry Groceries, Frozen, Fruits, Condiments, Beverages) }. No preamble, no explanation, only the JSON array.', messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: result.assets[0].base64 } }, { type: 'text', text: 'Identify all food items in this trolley photo.' }] }] }),
+      });
+      const data = await res.json();
+      const text = (data?.content?.[0]?.text ?? '[]').replace(/```json|```/g, '').trim();
+      const items = JSON.parse(text) as {name:string;quantity:string;category:string}[];
+      setScannedItems(items);
+      setScanMode('review');
+    } catch (e) { Alert.alert('Scan failed', 'Could not analyse the image. Please try again.'); setScanMode('idle'); }
+    finally { setScanLoading(false); }
+  }
+
+  async function handleBarcodeScan({ data: barcodeValue }: { type: string; data: string }) {
+    setBarcodeScannerOpen(false);
+    setScanLoading(true); setScanMode('trolley-loading');
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcodeValue}.json`);
+      const json = await res.json();
+      if (json.status === 1 && json.product) {
+        const p = json.product;
+        setScannedItems([{ name: p.product_name || 'Unknown Product', quantity: p.quantity || '1', category: 'Dry Groceries' }]);
+        setScanMode('review');
+      } else { Alert.alert('Product not found', 'Add it manually to your shopping list.'); setScanMode('idle'); }
+    } catch { Alert.alert('Lookup failed', 'Could not look up the barcode.'); setScanMode('idle'); }
+    finally { setScanLoading(false); }
+  }
+
+  async function addScannedToList() {
+    try {
+      const existing = JSON.parse(await AsyncStorage.getItem('shopping_list_items') || '[]');
+      await AsyncStorage.setItem('shopping_list_items', JSON.stringify([...existing, ...scannedItems]));
+    } catch {}
+    setScannedItems([]); setScanMode('idle');
+    Alert.alert('Added', `${scannedItems.length} item${scannedItems.length !== 1 ? 's' : ''} added to your shopping list.`);
+  }
+
   const isInFridge = (itemName: string): boolean => {
     if (!fridgeItems.length) return false;
     const searchTerm = itemName.toLowerCase().split(' ')[0];
@@ -1718,6 +1770,72 @@ export default function MealWizardScreen() {
       <View>
         <Text style={s.stepTitle}>Your Shopping List</Text>
         <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : 'your plan'}</Text>
+
+        {/* Scan to Shop */}
+        <TouchableOpacity style={{backgroundColor:'#2E5480',borderRadius:8,paddingHorizontal:16,paddingVertical:10,alignItems:'center',marginBottom:12}} onPress={() => setScanModalOpen(true)}>
+          <Text style={{color:'white',fontWeight:'700',fontSize:15}}>Scan to Shop</Text>
+        </TouchableOpacity>
+
+        {/* Scan Modal — choose mode */}
+        <Modal visible={scanModalOpen} transparent animationType="fade" onRequestClose={() => setScanModalOpen(false)}>
+          <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'center',alignItems:'center'}}>
+            <View style={{backgroundColor:'white',borderRadius:16,margin:24,padding:20,width:Dimensions.get('window').width-48}}>
+              <Text style={{fontSize:18,fontWeight:'700',color:'#2E5480',marginBottom:16,textAlign:'center'}}>Scan to Shop</Text>
+              <TouchableOpacity style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:12}} onPress={scanTrolley}>
+                <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480'}}>Scan My Trolley</Text>
+                <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4}}>Take a photo of your supermarket trolley — Maharaj will identify what you have picked up</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#2E5480',borderRadius:14,padding:16,marginBottom:12}} onPress={async () => { setScanModalOpen(false); const { status } = await BarCodeScanner.requestPermissionsAsync(); if (status === 'granted') setBarcodeScannerOpen(true); else Alert.alert('Camera permission required'); }}>
+                <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480'}}>Scan a Barcode</Text>
+                <Text style={{fontSize:13,color:'#5A7A8A',marginTop:4}}>Point your camera at any product barcode — Maharaj will add it to your list</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setScanModalOpen(false)} style={{alignItems:'center',paddingTop:8}}>
+                <Text style={{fontSize:14,color:'#9CA3AF'}}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Barcode scanner full-screen */}
+        <Modal visible={barcodeScannerOpen} animationType="slide" onRequestClose={() => setBarcodeScannerOpen(false)}>
+          <View style={{flex:1}}>
+            <BarCodeScanner onBarCodeScanned={barcodeScannerOpen ? handleBarcodeScan : undefined} style={{flex:1}} />
+            <TouchableOpacity style={{position:'absolute',top:50,right:20,backgroundColor:'rgba(0,0,0,0.6)',borderRadius:8,paddingHorizontal:16,paddingVertical:8}} onPress={() => setBarcodeScannerOpen(false)}>
+              <Text style={{color:'white',fontWeight:'700'}}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+
+        {/* Scan loading */}
+        {scanLoading && (
+          <View style={{alignItems:'center',paddingVertical:16}}>
+            <ActivityIndicator color={'#2E5480'} />
+            <Text style={{fontSize:13,color:'#2E5480',marginTop:8}}>Maharaj is scanning your trolley...</Text>
+          </View>
+        )}
+
+        {/* Review scanned items */}
+        {scanMode === 'review' && scannedItems.length > 0 && (
+          <View style={{marginBottom:16}}>
+            <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480',marginBottom:4}}>Review Scanned Items</Text>
+            <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginBottom:12}}>Review and edit before adding to your shopping list.</Text>
+            {scannedItems.map((item, i) => (
+              <View key={i} style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:10}}>
+                <TextInput style={{fontSize:15,color:'#2E5480',fontWeight:'600',marginBottom:4}} value={item.name} onChangeText={v => setScannedItems(prev => prev.map((it,j) => j===i ? {...it,name:v} : it))} />
+                <TextInput style={{fontSize:13,color:'#5A7A8A'}} value={item.quantity} onChangeText={v => setScannedItems(prev => prev.map((it,j) => j===i ? {...it,quantity:v} : it))} />
+                <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:4}}>
+                  <Text style={{fontSize:12,color:'#1A6B5C'}}>{item.category}</Text>
+                  <TouchableOpacity onPress={() => setScannedItems(prev => prev.filter((_,j) => j!==i))}>
+                    <Text style={{fontSize:12,color:'#E24B4A'}}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+            <TouchableOpacity style={{backgroundColor:'#C9A227',borderRadius:8,paddingVertical:12,alignItems:'center',marginTop:8}} onPress={addScannedToList}>
+              <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Add to Shopping List</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Fridge info card */}
         <View style={{backgroundColor:'#E8F4F8',borderRadius:8,paddingHorizontal:10,paddingVertical:8,marginBottom:8,flexDirection:'row',gap:6,alignItems:'flex-start'}}>

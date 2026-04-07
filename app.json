@@ -13,7 +13,10 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Maharaj uses your camera to scan your trolley and product barcodes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +24,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.blueflute.mymaharaj"
+      "package": "com.blueflute.mymaharaj",
+      "permissions": ["CAMERA"]
     },
     "web": {
       "bundler": "metro",
@@ -32,7 +36,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-barcode-scanner"
     ],
     "experiments": {
       "typedRoutes": true
