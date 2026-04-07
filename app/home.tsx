@@ -285,7 +285,7 @@ export default function HomeScreen() {
                   <Text style={s.drawerEmail}>{email}</Text>
                 </View>
 
-                <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:48}}>
+                <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{paddingBottom:60}}>
                   <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
                   <DrawerRow icon={'\uD83D\uDCCB'} label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
                   <DrawerRow icon={'\uD83E\uDDCA'} label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
