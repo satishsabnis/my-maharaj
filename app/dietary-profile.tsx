@@ -95,7 +95,7 @@ export default function DietaryProfileScreen() {
   const [referralConsent, setReferralConsent] = useState(false);
   const [maharajDay, setMaharajDay] = useState('Saturday');
   const [isJainFamily, setIsJainFamily] = useState(false);
-  const [jainAllowNonJain, setJainAllowNonJain] = useState(false);
+  const [jainAllowNonJain, setJainAllowNonJain] = useState(true);
   const [fastingDays, setFastingDays] = useState<string[]>([]);
   const [storePrefs, setStorePrefs] = useState<string[]>([]);
   const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
@@ -134,7 +134,7 @@ export default function DietaryProfileScreen() {
       const jf = await AsyncStorage.getItem('jain_family');
       const jnj = await AsyncStorage.getItem('jain_allow_non_jain');
       if (jf === 'true') setIsJainFamily(true);
-      if (jnj === 'true') setJainAllowNonJain(true);
+      if (jnj === 'false') setJainAllowNonJain(false);
       if (ins === 'true') setHasInsurance(true); if (insExp) setInsuranceExpiry(insExp);
       if (ref === 'true') setReferralConsent(true);
       if (fast) try { setFastingDays(JSON.parse(fast)); } catch {}
