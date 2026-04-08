@@ -217,7 +217,7 @@ export default function MealPrepScreen() {
 
           {/* Grouped tasks */}
           {groups.map(group => (
-            <View key={group.label} style={{ marginBottom: 10 }}>
+            <View key={group.label} style={{ marginBottom: 6 }}>
               {/* Day divider */}
               <Text style={s.sectionTitle}>{group.label}</Text>
               <View style={s.sectionDivider} />
@@ -295,21 +295,21 @@ const s = StyleSheet.create({
   backBtn: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: colors.navy,
-    borderRadius: 20,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    borderColor: '#2E5480',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  backTxt: { fontSize: 8, fontWeight: '700', color: colors.navy },
+  backTxt: { fontSize: 15, fontWeight: '700', color: '#2E5480' },
   headerTitle: { fontSize: 10, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
   homeBtn: {
-    backgroundColor: colors.navy,
-    borderRadius: 20,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    backgroundColor: '#2E5480',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  homeTxt: { fontSize: 8, fontWeight: '700', color: colors.white },
-  scroll: { padding: 12, paddingBottom: 80 },
+  homeTxt: { fontSize: 15, fontWeight: '700', color: colors.white },
+  scroll: { padding: 12, paddingBottom: 24 },
   tipCard: {
     backgroundColor: 'rgba(30,158,94,0.08)',
     borderWidth: 1,
