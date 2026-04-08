@@ -37,7 +37,7 @@ export default function SplashScreen() {
         <Animated.View style={[s.content, { opacity }]}>
           <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
           <Text style={s.title}>My Maharaj</Text>
-          <Text style={s.subtitle}>Your personal kitchen planner</Text>
+          <Text style={s.subtitle}>Your personal meal planner</Text>
         </Animated.View>
       </View>
     </View>

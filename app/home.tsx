@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Image, ImageBackground, Linking, Platform,
+  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
@@ -37,6 +37,23 @@ export default function HomeScreen() {
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scrollAnim = useRef(new Animated.Value(SCREEN_W)).current;
+  const [tickerTextWidth, setTickerTextWidth] = useState(0);
+
+  // Ticker scroll animation — starts after text is measured
+  useEffect(() => {
+    if (tickerTextWidth === 0) return;
+    scrollAnim.setValue(SCREEN_W);
+    Animated.loop(
+      Animated.timing(scrollAnim, {
+        toValue: -tickerTextWidth,
+        duration: 18000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+    return () => scrollAnim.stopAnimation();
+  }, [tickerTextWidth]);
 
   // Pulse animation — infinite loop
   useEffect(() => {
@@ -199,8 +216,14 @@ export default function HomeScreen() {
         </View>
 
         {/* ── TICKER ── */}
-        <View style={{backgroundColor:colors.amber,paddingVertical:5,paddingHorizontal:16}}>
-          <Text style={{fontSize:10,color:'#1A1A1A'}}>My Maharaj Beta — App Store launch coming soon</Text>
+        <View style={{backgroundColor:colors.amber,paddingVertical:5,overflow:'hidden'}}>
+          <Animated.Text
+            style={{fontSize:10,color:'#1A1A1A',fontWeight:'500',transform:[{translateX:scrollAnim}]}}
+            onLayout={(e) => { if (tickerTextWidth === 0) setTickerTextWidth(e.nativeEvent.layout.width); }}
+            numberOfLines={1}
+          >
+            {'Powered by Blue Flute Consulting LLC-FZ  \u00B7  My Maharaj Beta is a smart meal planning app for Indian families in the GCC  \u00B7  Feedback: info@bluefluteconsulting.com  \u00B7  '}
+          </Animated.Text>
         </View>
 
         <ScrollView contentContainerStyle={{paddingBottom:20}} showsVerticalScrollIndicator={false}>
