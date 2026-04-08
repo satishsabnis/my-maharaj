@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, ImageBackground, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function UpgradeSplashScreen() {
@@ -22,8 +22,7 @@ export default function UpgradeSplashScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Background — absolute positioned, first child, covers 100% */}
-      <Image
+      <ImageBackground
         source={require('../assets/background.png')}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
         resizeMode="cover"

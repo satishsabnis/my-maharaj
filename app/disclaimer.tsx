@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BackHandler, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -61,6 +61,8 @@ export default function DisclaimerScreen() {
   }
 
   return (
+    <View style={{flex:1}}>
+    <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.title}>Terms & Disclaimers</Text>
@@ -91,6 +93,7 @@ export default function DisclaimerScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 

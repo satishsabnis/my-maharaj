@@ -15,7 +15,8 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
   const { t, toggleEnglish, isEnglish, lang } = useLang();
 
   return (
-    <ImageBackground source={require("../assets/background.png")} style={{ flex: 1 }} resizeMode="cover">
+    <View style={{ flex: 1 }}>
+    <ImageBackground source={require("../assets/background.png")} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }} resizeMode="cover" />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={sw.header}>
           <TouchableOpacity onPress={onBack ?? (() => router.back())} style={sw.backBtn}>
@@ -42,7 +43,7 @@ export default function ScreenWrapper({ title, children, onBack, showHome = true
           <Text style={{ fontSize: 10, color: "#5A7A8A", fontWeight: "600" }}>  {t.poweredBy}</Text>
         </View>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 

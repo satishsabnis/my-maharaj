@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, ImageBackground, Platform, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -30,8 +30,7 @@ export default function SplashScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* BUG 1 FIX: Absolute-positioned background, BEFORE all content, no SafeAreaView wrapper */}
-      <Image
+      <ImageBackground
         source={require('../assets/background.png')}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
         resizeMode="cover"

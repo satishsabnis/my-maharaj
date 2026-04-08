@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator, Platform,
+  ScrollView, ActivityIndicator, ImageBackground, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -70,6 +70,8 @@ export default function CuisineSelectionScreen() {
   }
 
   return (
+    <View style={{flex:1}}>
+    <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()}><Text style={s.backText}>Back</Text></TouchableOpacity>
@@ -119,6 +121,7 @@ export default function CuisineSelectionScreen() {
         </ScrollView>
       )}
     </SafeAreaView>
+    </View>
   );
 }
 
