@@ -105,7 +105,6 @@ export default function LanguageSelectScreen() {
 
         {/* Header */}
         <View style={s.header}>
-          <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
           {/* English toggle always visible */}
           <TouchableOpacity
             style={[s.engToggle, selected === 'en' && s.engToggleActive]}

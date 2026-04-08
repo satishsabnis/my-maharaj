@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, BackHandler, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { loadOrDetectLocation, UserLocation } from '../lib/location';
@@ -21,7 +21,7 @@ type WizardStep =
   | 'members' | 'days-meals' | 'nutrition'
   | 'period' | 'food-pref' | 'guest-cuisine' | 'meal-prefs' | 'unwell' | 'veg-days' | 'cuisine-confirm'
   | 'generating' | 'generating-error' | 'selection' | 'confirmed-menu' | 'plan-summary'
-  | 'cook-or-order' | 'cook-at-home' | 'recipes' | 'grocery' | 'delivery-apps' | 'feedback'
+  | 'cook-or-order' | 'cook-at-home' | 'recipes' | 'grocery' | 'delivery-apps' | 'online-shopping' | 'feedback'
   | 'plan-detail';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -155,6 +155,18 @@ export default function MealWizardScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: true }); }, [step]);
+
+  // Intercept hardware back button — route through internal wizard navigation
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        goBack();
+        return true;
+      };
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [step])
+  );
 
   useEffect(() => {
     async function load() {
@@ -651,6 +663,7 @@ export default function MealWizardScreen() {
       'recipes': 'cook-or-order',
       'grocery': 'recipes',
       'delivery-apps': 'grocery',
+      'online-shopping': 'grocery',
       'feedback': 'delivery-apps',
     };
     const prev = backMap[step];
@@ -1334,15 +1347,16 @@ export default function MealWizardScreen() {
 
   function renderGenerating() {
     const completedDays = generatingProgress?.current || 0;
+    const totalDays = selectedFrom && selectedTo ? getDates(selectedFrom, selectedTo).length : (selectedDays.length || numDaysWiz);
     return (
       <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
         <MaharajSpinner />
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:8}}>Maharaj is planning...</Text>
+        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginBottom:8}}>Maharaj is planning your {totalDays}-day meal plan...</Text>
         <Text style={{fontSize:11,color:textSec,marginBottom:20}}>
-          {completedDays > 0 ? `Working on Day ${completedDays} of 7` : 'Starting up'}
+          {completedDays > 0 ? `Working on Day ${completedDays} of ${totalDays}` : 'Starting up'}
         </Text>
         <View style={{flexDirection:'row',gap:8,marginBottom:6}}>
-          {Array.from({length: 7}, (_, i) => {
+          {Array.from({length: totalDays}, (_, i) => {
             const isDone = i < completedDays;
             const isCurrent = i === completedDays;
             return (
@@ -1880,12 +1894,47 @@ export default function MealWizardScreen() {
           <Text style={{fontSize:13,fontWeight:'500',color:'white'}}>Download Shopping List</Text>
         </TouchableOpacity>
 
-        {/* Order Online — Coming Soon */}
-        <View style={{backgroundColor:'#2E5480',borderRadius:12,padding:14,marginTop:12,marginBottom:8}}>
-          <Text style={{fontSize:10,fontWeight:'500',color:'white',textAlign:'center'}}>Maharaj is learning and will connect you soon</Text>
-          <Text style={{fontSize:9,color:'rgba(255,255,255,0.6)',textAlign:'center',marginTop:3}}>Maharaj will soon connect you to grocery stores for one-tap ordering from your shopping list.</Text>
+        {/* Next — Online Shopping */}
+        <TouchableOpacity style={{backgroundColor:'#C9A227',borderRadius:8,paddingVertical:14,width:'100%',alignItems:'center',marginTop:16}} onPress={() => setStep('online-shopping')}>
+          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Next</Text>
+        </TouchableOpacity>
+
+      </View>
+    );
+  }
+
+  function renderOnlineShopping() {
+    const stores = ['Carrefour','Noon Daily','Amazon Fresh','Talabat Groceries'];
+    return (
+      <View style={{flex:1}}>
+        {/* Header */}
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingTop:Platform.OS === 'web' ? 16 : 10,paddingBottom:14,borderBottomWidth:1,borderBottomColor:border}}>
+          <TouchableOpacity onPress={() => setStep('grocery')} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
+          </TouchableOpacity>
+          <Text style={{flex:1,fontSize:16,fontWeight:'700',color:'#2E5480',textAlign:'center'}}>Order Online</Text>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
+          </TouchableOpacity>
         </View>
 
+        {/* Subtitle */}
+        <Text style={{color:'#5A7A8A',fontSize:13,textAlign:'center',marginBottom:16,marginTop:12,paddingHorizontal:20}}>Choose your preferred store or delivery app</Text>
+
+        {/* 2x2 Grid */}
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:12,paddingHorizontal:20}}>
+          {stores.map(name => (
+            <View key={name} style={{width:'47%',backgroundColor:'white',borderWidth:1.5,borderColor:'#2E5480',borderRadius:14,padding:20,alignItems:'center',opacity:0.75}}>
+              <Text style={{color:'#2E5480',fontWeight:'700',fontSize:15,textAlign:'center'}}>{name}</Text>
+              <Text style={{color:'#C9A227',fontSize:12,fontWeight:'500',textAlign:'center',marginTop:6}}>Coming Soon</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Navy banner */}
+        <View style={{backgroundColor:'#2E5480',borderRadius:12,padding:14,marginTop:20,marginHorizontal:20}}>
+          <Text style={{color:'white',fontSize:13,textAlign:'center'}}>Integrations coming soon. Maharaj will connect directly to your favourite store.</Text>
+        </View>
       </View>
     );
   }
@@ -2260,7 +2309,9 @@ export default function MealWizardScreen() {
         <Text style={s.stepSub}>Your meal plan is confirmed!</Text>
         <View style={{gap:14,marginVertical:20}}>
           <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#2E5480',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
-            <Image source={require('../assets/logo.png')} style={{width:64,height:30}} resizeMode="contain" />
+            <View style={{width:64,height:30,backgroundColor:'#FFFBEB',borderRadius:10,alignItems:'center',justifyContent:'center'}}>
+              <Text style={{fontSize:20}}>👨‍🍳</Text>
+            </View>
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'800',color:'#2E5480',marginBottom:4}}>Cook at Home</Text>
               <Text style={{fontSize:13,color:'#5A7A8A',lineHeight:18}}>Full recipes & step-by-step instructions</Text>
@@ -2434,13 +2485,14 @@ export default function MealWizardScreen() {
     'recipes':          renderRecipes,
     'grocery':          renderGrocery,
     'delivery-apps':    renderDeliveryApps,
+    'online-shopping':  renderOnlineShopping,
     'feedback':         renderFeedback,
     'plan-detail':      renderPlanDetail,
   };
 
   const isUserStep = USER_STEPS.includes(step);
   const currentNum = stepNum(step);
-  const isFullScreen = ['generating','generating-error','plan-detail'].includes(step);
+  const isFullScreen = ['generating','generating-error','plan-detail','online-shopping'].includes(step);
 
   return (
     <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">

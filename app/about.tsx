@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { APP_VERSION } from '../constants/version';
 
@@ -29,10 +29,8 @@ export default function AboutScreen() {
     <ScreenWrapper title="About My Maharaj">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Logo */}
-        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <Image source={require('../assets/logo.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
-        </View>
+        {/* Spacer where logo was */}
+        <View style={{ alignItems: 'center', marginBottom: 20 }} />
 
         {/* Section 1 — The Vision */}
         <Text style={s.heading}>The Vision</Text>

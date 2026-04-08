@@ -243,7 +243,7 @@ export default function HomeScreen() {
         <MarqueeTicker />
 
         {/* ── MAIN CONTENT ── */}
-        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingTop:8}}>
+        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingTop:0}}>
 
           {/* Maharaj hero logo — only the image is touchable */}
           <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
@@ -251,7 +251,7 @@ export default function HomeScreen() {
               source={require('../assets/logo.png')}
               // @ts-ignore — web-only className
               className={Platform.OS === 'web' ? 'maharaj-pulse' : undefined}
-              style={{width:400,height:400,backgroundColor:'transparent',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}
+              style={{width:400,height:400,marginBottom:-12,backgroundColor:'transparent',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}
               resizeMode="contain"
             />
           </TouchableOpacity>
