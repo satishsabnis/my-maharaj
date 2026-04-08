@@ -90,6 +90,19 @@ export default function DisclaimerScreen() {
           </>
         )}
 
+        {/* Navigation links */}
+        <View style={{marginTop:16,borderTopWidth:1,borderTopColor:'rgba(26,58,92,0.08)',paddingTop:12}}>
+          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:8}} onPress={() => router.push('/privacy-policy' as never)}>
+            <Text style={{fontSize:13,fontWeight:'500',color:navy}}>Privacy Policy</Text>
+            <Text style={{fontSize:14,color:navy}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+          <View style={{height:1,backgroundColor:'rgba(26,58,92,0.08)'}} />
+          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:8}} onPress={() => router.push('/about' as never)}>
+            <Text style={{fontSize:13,fontWeight:'500',color:navy}}>About My Maharaj</Text>
+            <Text style={{fontSize:14,color:navy}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>

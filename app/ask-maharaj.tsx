@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Image, ImageBackground, KeyboardAvoidingView, Platform,
+  Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
@@ -82,11 +82,23 @@ export default function AskMaharajScreen() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const [familyCount, setFamilyCount] = useState(0);
   const [userName, setUserName] = useState('');
   const [hasPlan, setHasPlan] = useState(false);
   const [familyContextStr, setFamilyContextStr] = useState('');
   const [userLanguages, setUserLanguages] = useState<string[]>(['English']);
+
+  // Logo pulse — infinite loop
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+      { iterations: -1 }
+    ).start();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -231,7 +243,12 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
           <ScrollView ref={scrollRef} contentContainerStyle={{padding:14,paddingBottom:80}} showsVerticalScrollIndicator={false}>
             {messages.length === 0 && (
               <View style={{alignItems:'center',paddingVertical:20,paddingHorizontal:12}}>
-                <Text style={{fontSize:16,fontWeight:'700',color:navy,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
+                <Animated.Image
+                  source={require('../assets/logo.png')}
+                  style={{width:88,height:88,transform:[{scale:pulseAnim}],marginBottom:4}}
+                  resizeMode="contain"
+                />
+                <Text style={{fontSize:16,fontWeight:'700',color:navy,marginTop:4,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
                 <Text style={{fontSize:13,color:textSec,textAlign:'center',lineHeight:20,marginBottom:16}}>Ask me anything — meals, fridge, shopping, nutrition. Or choose below.</Text>
                 <View style={{width:'100%',flexDirection:'row',flexWrap:'wrap',gap:8}}>
                   {['Plan my week','What is in my fridge?','Party menu','Shopping list','Meal prep','Outdoor trip'].map(s_ => (

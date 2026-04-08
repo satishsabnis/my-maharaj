@@ -18,8 +18,6 @@ export default function SplashScreen() {
     ]).start(async () => {
       if (navigated) return;
       setNavigated(true);
-      const disclaimerAccepted = await AsyncStorage.getItem('maharaj_disclaimer_accepted');
-      if (!disclaimerAccepted) { router.replace('/disclaimer'); return; }
       await new Promise(resolve => setTimeout(resolve, 500));
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }
@@ -39,7 +37,7 @@ export default function SplashScreen() {
         <Animated.View style={[s.content, { opacity }]}>
           <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
           <Text style={s.title}>My Maharaj</Text>
-          <Text style={s.subtitle}>Your personal kitchen planner</Text>
+          <Text style={s.subtitle}>Your personal meal planner</Text>
         </Animated.View>
       </View>
     </View>

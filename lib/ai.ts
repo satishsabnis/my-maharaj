@@ -650,3 +650,209 @@ export async function generateMealPlan(
 
   return { days, grocery_list };
 }
+
+// ─── Fast generator — one API call per day ─────────────────────────────────
+// Reduces API calls from up to 28 (4 slots × 7 days) to 7 (one per day).
+
+const FAST_NON_VEG_KW = ['chicken','mutton','lamb','fish','prawn','shrimp','beef','pork','egg','keema','gosht','murg','machli','jhinga','tuna','crab','pomfret','rohu','hilsa','surmai'];
+
+interface FastDayResponse {
+  breakfast?: { dishName: string; isVeg: boolean; cuisine?: string };
+  lunch?: { curry: string; veg: string; raita: string; bread: string; rice: string };
+  dinner?: { curry: string; veg: string; raita: string; bread: string; rice: string };
+  snack?: { dishName: string; isVeg: boolean };
+}
+
+function extractFastDishNames(day: FastDayResponse): string[] {
+  const names: string[] = [];
+  if (day.breakfast?.dishName) names.push(day.breakfast.dishName);
+  if (day.lunch) names.push(day.lunch.curry, day.lunch.veg, day.lunch.raita, day.lunch.bread, day.lunch.rice);
+  if (day.dinner) names.push(day.dinner.curry, day.dinner.veg, day.dinner.raita, day.dinner.bread, day.dinner.rice);
+  if (day.snack?.dishName) names.push(day.snack.dishName);
+  return names.filter(Boolean);
+}
+
+function fastDayToMealPlanDay(date: string, dayName: string, day: FastDayResponse, slots: string[]): MealPlanDay {
+  const emptySlot: MealSlot = { options: [] };
+
+  const toMealOption = (components: { curry: string; veg: string; raita: string; bread: string; rice: string }): MealOption => {
+    const isVeg = !FAST_NON_VEG_KW.some(kw => components.curry.toLowerCase().includes(kw));
+    return {
+      name: components.curry,
+      description: `Curry: ${components.curry} | Veg: ${components.veg} | Raita: ${components.raita} | Bread: ${components.bread} | Rice: ${components.rice}`,
+      vegetarian: isVeg,
+      tags: [isVeg ? 'vegetarian' : 'non-vegetarian'],
+      ingredients: [],
+      steps: [],
+    };
+  };
+
+  const breakfast = slots.includes('breakfast') && day.breakfast
+    ? { options: [{ name: day.breakfast.dishName, vegetarian: day.breakfast.isVeg, tags: [day.breakfast.isVeg ? 'vegetarian' : 'non-vegetarian'], ingredients: [], steps: [] }] }
+    : emptySlot;
+
+  const lunch = slots.includes('lunch') && day.lunch ? { options: [toMealOption(day.lunch)] } : emptySlot;
+  const dinner = slots.includes('dinner') && day.dinner ? { options: [toMealOption(day.dinner)] } : emptySlot;
+
+  const snack = slots.includes('snack') && day.snack
+    ? { options: [{ name: day.snack.dishName, vegetarian: day.snack.isVeg, tags: ['snack'], ingredients: [], steps: [] }] }
+    : undefined;
+
+  const result: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };
+  if (snack) result.snack = snack;
+  return result;
+}
+
+export async function generateMealPlanFast(
+  params: {
+    userId: string;
+    dates: string[];
+    healthFlags: HealthFlags;
+    language: string;
+    cuisine: string;
+    dishHistory: string[];
+    foodPrefs: { type: 'veg' | 'nonveg'; vegType?: 'normal' | 'fasting'; nonVegOptions?: string[] };
+    allowedProteins?: string[];
+    isMixed?: boolean;
+    unwellMembers?: string[];
+    nutritionFocus?: string;
+    vegDays?: string[];
+    cuisinePerDay?: string[];
+    breakfastPrefs?: string[];
+    lunchPrefs?: string[];
+    dinnerPrefs?: string[];
+    snackPrefs?: string[];
+    locationCity?: string;
+    locationStores?: string;
+    selectedSlots?: string[];
+    communityRules?: string;
+    familyAvoids?: string[];
+    familySize?: number;
+  },
+  onProgress?: (current: number, total: number) => void,
+  onDayStart?: (dayName: string) => void,
+): Promise<MealPlanResult> {
+  const slots = params.selectedSlots ?? ['breakfast', 'lunch', 'dinner'];
+  if (slots.length === 0) throw new Error('No meal slots selected.');
+
+  const cuisine = params.cuisine || 'Konkani';
+  const hf = params.healthFlags;
+  const healthParts: string[] = [];
+  if (hf.diabetic) healthParts.push('Diabetic — low GI');
+  if (hf.bp) healthParts.push('Low sodium');
+  if (hf.pcos) healthParts.push('No maida, PCOS-friendly');
+  if (hf.cholesterol) healthParts.push('No fried food');
+  if (hf.thyroid) healthParts.push('Selenium-rich');
+  if (hf.kidneyDisease) healthParts.push('Low potassium & phosphorus');
+  if (hf.heartDisease) healthParts.push('Low saturated fat');
+  if (hf.obesity) healthParts.push('Low calorie');
+  if (hf.anaemia) healthParts.push('Iron-rich');
+  if (hf.lactoseIntolerant) healthParts.push('No dairy');
+  if (hf.glutenIntolerant) healthParts.push('No gluten');
+  const healthInfo = healthParts.length > 0 ? healthParts.join('; ') : 'Normal healthy';
+
+  const allowedProteins = params.allowedProteins ?? params.foodPrefs.nonVegOptions;
+  const isMixed = params.isMixed ?? false;
+  const isNonVegPref = params.foodPrefs.type === 'nonveg';
+
+  let baseFoodPref: string;
+  if (params.foodPrefs.type === 'veg') {
+    baseFoodPref = params.foodPrefs.vegType === 'fasting'
+      ? 'Fasting only (sabudana/rajgira/fruits/sama rice)'
+      : 'Strictly Vegetarian — no meat, fish or eggs';
+  } else if (isMixed) {
+    baseFoodPref = 'Mixed — breakfast vegetarian, non-veg allowed for lunch and dinner';
+  } else {
+    baseFoodPref = `Non-vegetarian — include at least one non-veg dish (${allowedProteins?.join(', ') || 'chicken, fish, eggs, mutton'}) somewhere in the day`;
+  }
+
+  const avoidanceList = (params.familyAvoids ?? []).join(', ') || 'None';
+  const communityRules = params.communityRules || 'Indian family';
+  const familySize = params.familySize ?? 4;
+  const total = params.dates.length;
+  const weekHistory = [...(params.dishHistory ?? [])].slice(0, 60);
+  const dayResults: MealPlanDay[] = [];
+
+  onProgress?.(0, total);
+
+  for (let i = 0; i < params.dates.length; i++) {
+    const date = params.dates[i];
+    const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    const isVegDay = params.vegDays?.includes(dayName) ?? false;
+    const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
+    const dayCuisine = params.cuisinePerDay?.[i] || cuisine;
+
+    // Update day label BEFORE the API call (Fix 6)
+    onDayStart?.(dayName);
+
+    const historyStr = weekHistory.length > 0 ? weekHistory.slice(-50).join(', ') : 'None';
+
+    const mealLines: string[] = [];
+    if (slots.includes('breakfast')) mealLines.push('- Breakfast: 1 light morning dish (pohe, upma, idli, dosa, thepla, paratha, eggs, fruit)');
+    if (slots.includes('lunch')) mealLines.push('- Lunch: { curry: one main curry, veg: one vegetable dish, raita: one raita, bread: chapati/paratha/puri/naan, rice: one rice preparation }');
+    if (slots.includes('dinner')) mealLines.push('- Dinner: { curry: one main curry, veg: one vegetable dish, raita: one raita, bread: chapati/paratha/puri/naan, rice: one rice preparation }');
+    if (slots.includes('snack')) mealLines.push('- Snack: 1 freshly cookable snack (15 mins max, never packaged)');
+
+    const jsonShape: string[] = [];
+    if (slots.includes('breakfast')) jsonShape.push('"breakfast": { "dishName": "Authentic Indian name", "isVeg": true }');
+    if (slots.includes('lunch')) jsonShape.push('"lunch": { "curry": "name", "veg": "name", "raita": "name", "bread": "name", "rice": "name" }');
+    if (slots.includes('dinner')) jsonShape.push('"dinner": { "curry": "name", "veg": "name", "raita": "name", "bread": "name", "rice": "name" }');
+    if (slots.includes('snack')) jsonShape.push('"snack": { "dishName": "name", "isVeg": true }');
+
+    const buildPrompt = (retry = false): string => `Generate a complete meal plan for ${dayName} (${date}).
+
+FAMILY: ${communityRules}, ${familySize} members
+MEAL TEMPLATE: Generate exactly:
+${mealLines.join('\n')}
+
+ABSOLUTE RULES:
+1. DIETARY: ${foodPref}. ${allowedProteins?.length ? `Allowed proteins: ${allowedProteins.join(', ')} ONLY.` : ''}
+2. UNIQUENESS: Do NOT use any of these dishes already planned this week: ${historyStr}
+3. CUISINE: ONLY from ${dayCuisine} cuisine. Use authentic Indian regional names. No generic English names.
+4. AVOIDANCE: Never suggest: ${avoidanceList}
+5. HEALTH: ${healthInfo}
+${retry ? `\nRETRY INSTRUCTION: Previous response was invalid. You MUST include at least one non-vegetarian dish (containing meat, fish, or eggs) for this non-vegetarian family. An all-vegetarian response is rejected.\n` : ''}
+Return JSON only, no markdown, no explanation:
+{ ${jsonShape.join(', ')} }`;
+
+    let dayResult: MealPlanDay | null = null;
+
+    try {
+      const text = await askClaude(buildPrompt());
+      const parsed = JSON.parse(text) as FastDayResponse;
+      const dishNames = extractFastDishNames(parsed);
+
+      // Validation: non-veg check
+      const hasNonVeg = FAST_NON_VEG_KW.some(kw =>
+        dishNames.some(n => n.toLowerCase().includes(kw))
+      );
+      if (isNonVegPref && !isVegDay && !hasNonVeg) {
+        // Retry once with stricter prompt
+        try {
+          const retryText = await askClaude(buildPrompt(true));
+          const retryParsed = JSON.parse(retryText) as FastDayResponse;
+          dayResult = fastDayToMealPlanDay(date, dayName, retryParsed, slots);
+          extractFastDishNames(retryParsed).forEach(n => weekHistory.push(n));
+        } catch {
+          dayResult = fastDayToMealPlanDay(date, dayName, parsed, slots);
+          dishNames.forEach(n => weekHistory.push(n));
+        }
+      } else {
+        dayResult = fastDayToMealPlanDay(date, dayName, parsed, slots);
+        dishNames.forEach(n => weekHistory.push(n));
+      }
+    } catch {
+      // Fallback: use existing per-slot generator for this day
+      const emptySlot: MealSlot = { options: [] };
+      const fbBf = slots.includes('breakfast') ? fallbackSlot('breakfast', i) : emptySlot;
+      const fbLn = slots.includes('lunch') ? fallbackSlot('lunch', i) : emptySlot;
+      const fbDn = slots.includes('dinner') ? fallbackSlot('dinner', i) : emptySlot;
+      dayResult = { date, day: dayName, breakfast: fbBf, lunch: fbLn, dinner: fbDn };
+    }
+
+    dayResults.push(dayResult);
+    onProgress?.(i + 1, total);
+  }
+
+  return { days: dayResults, grocery_list: [] };
+}
