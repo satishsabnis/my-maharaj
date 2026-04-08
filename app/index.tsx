@@ -18,8 +18,6 @@ export default function SplashScreen() {
     ]).start(async () => {
       if (navigated) return;
       setNavigated(true);
-      const disclaimerAccepted = await AsyncStorage.getItem('maharaj_disclaimer_accepted');
-      if (!disclaimerAccepted) { router.replace('/disclaimer'); return; }
       await new Promise(resolve => setTimeout(resolve, 500));
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }

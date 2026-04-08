@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, ImageBackground, Linking, Platform,
+  Alert, Animated, Dimensions, Image, ImageBackground, Linking, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
@@ -191,12 +191,11 @@ export default function HomeScreen() {
             <View style={s.avatar}><Text style={s.avatarTxt}>{initials}</Text></View>
           </TouchableOpacity>
           <View style={{flex:1}} />
-          <View style={{alignItems:'center'}}>
-            <View style={{width:20,height:20,borderRadius:3,backgroundColor:colors.navy,alignItems:'center',justifyContent:'center'}}>
-              <View style={{width:11,height:1.5,backgroundColor:colors.gold,borderRadius:1}} />
-            </View>
-            <Text style={{fontSize:8,color:colors.navy,marginTop:1}}>Blue Flute</Text>
-          </View>
+          <Image
+            source={require('../assets/blueflute-logo.png')}
+            style={{width:80,height:32}}
+            resizeMode="contain"
+          />
         </View>
 
         {/* ── TICKER ── */}
