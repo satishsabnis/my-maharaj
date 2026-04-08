@@ -23,7 +23,7 @@ type WizardStep =
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
-interface DBMember { id: string; name: string; age: number; }
+interface DBMember { id: string; name: string; age: number; health_notes?: string | null; }
 interface FeedbackEntry { dishName: string; rating: 1 | -1 | null; comment: string; }
 
 interface Observation {
@@ -182,6 +182,9 @@ export default function MealWizardScreen() {
   const [scanLoading, setScanLoading] = useState(false);
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
 
+  // Fasting members
+  const [fastingInfo, setFastingInfo] = useState<{memberName:string;fastingType:string;dayMatch:(dayName:string)=>boolean}[]>([]);
+
   // Jain
   const [isJainFamily, setIsJainFamily] = useState(false);
   const CUISINE_GROUPS = getCuisineGroups(isJainFamily);
@@ -238,6 +241,27 @@ export default function MealWizardScreen() {
       // Cooking pattern
       const cp = await AsyncStorage.getItem('cooking_pattern');
       if (cp) setCookingPattern(cp);
+
+      // Fasting info — parse from members' health_notes and fasting_days_text
+      const fastingText = await AsyncStorage.getItem('fasting_days_text') ?? '';
+      const fastEntries: {memberName:string;fastingType:string;dayMatch:(dn:string)=>boolean}[] = [];
+      // Parse common fasting patterns from fasting_days_text
+      const fastLower = fastingText.toLowerCase();
+      if (fastLower.includes('monday')) fastEntries.push({ memberName: 'Family', fastingType: 'Monday fast', dayMatch: (dn) => dn === 'Monday' });
+      if (fastLower.includes('tuesday')) fastEntries.push({ memberName: 'Family', fastingType: 'Tuesday fast', dayMatch: (dn) => dn === 'Tuesday' });
+      if (fastLower.includes('thursday')) fastEntries.push({ memberName: 'Family', fastingType: 'Thursday fast', dayMatch: (dn) => dn === 'Thursday' });
+      if (fastLower.includes('saturday')) fastEntries.push({ memberName: 'Family', fastingType: 'Saturday fast', dayMatch: (dn) => dn === 'Saturday' });
+      if (fastLower.includes('ekadashi')) fastEntries.push({ memberName: 'Family', fastingType: 'Ekadashi', dayMatch: () => false }); // calendar-based, not day-of-week
+      // Also check per-member health_notes for fasting
+      members.forEach(m => {
+        const notes = (m.health_notes ?? '').toLowerCase();
+        if (notes.includes('monday fast')) fastEntries.push({ memberName: m.name, fastingType: 'Monday fast', dayMatch: (dn) => dn === 'Monday' });
+        if (notes.includes('fasting')) {
+          const dayMatch = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].find(d => notes.includes(d.toLowerCase()));
+          if (dayMatch) fastEntries.push({ memberName: m.name, fastingType: `${dayMatch} fast`, dayMatch: (dn) => dn === dayMatch });
+        }
+      });
+      setFastingInfo(fastEntries);
 
       // Breakfast prefs
       const bp = await AsyncStorage.getItem('breakfast_preferences');
@@ -1152,11 +1176,19 @@ export default function MealWizardScreen() {
                 const opt = getOpt(dayIdx, key);
                 if (!opt) return null;
 
+                // Carry-forward lunch: if cooking pattern is night_carry, lunch (day 2+) shows previous dinner
+                const isCarryForward = key === 'lunch'
+                  && dayIdx > 0
+                  && cookingPattern === 'Cook at night — dinner carries to next day lunch';
+                const prevDinnerOpt = isCarryForward ? getOpt(dayIdx - 1, 'dinner') : null;
+                const prevDayName = isCarryForward && generatedPlan[dayIdx - 1] ? generatedPlan[dayIdx - 1].day : '';
+
                 // Parse thali components
-                const isThali = opt.name.toLowerCase().includes('thali');
-                const components = isThali && opt.description?.includes(' | ')
-                  ? opt.description.split(' | ').map(c => c.trim())
-                  : [opt.name];
+                const displayOpt = isCarryForward && prevDinnerOpt ? prevDinnerOpt : opt;
+                const isThali = displayOpt.name.toLowerCase().includes('thali');
+                const components = isThali && displayOpt.description?.includes(' | ')
+                  ? displayOpt.description.split(' | ').map(c => c.trim())
+                  : [displayOpt.name];
 
                 return (
                   <View key={key} style={{marginBottom:8}}>
@@ -1170,22 +1202,42 @@ export default function MealWizardScreen() {
                           key={ci}
                           style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
                           onPress={() => {
-                            setAlternativeSlot({ dayIdx, slot: key, component: compLabel });
-                            setStep('alternatives');
+                            if (!isCarryForward) {
+                              setAlternativeSlot({ dayIdx, slot: key, component: compLabel });
+                              setStep('alternatives');
+                            }
                           }}
-                          activeOpacity={0.7}
+                          activeOpacity={isCarryForward ? 1 : 0.7}
                         >
                           <View style={{flex:1}}>
                             {isThali && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
-                            <Text style={{fontSize:13,fontWeight:'600',color:colors.navy}}>{dishName}</Text>
+                            <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
+                            {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                           </View>
-                          <Text style={{fontSize:14,color:colors.textMuted,marginLeft:8}}>{'\u270E'}</Text>
+                          {!isCarryForward && <Text style={{fontSize:14,color:colors.textMuted,marginLeft:8}}>{'\u270E'}</Text>}
                         </TouchableOpacity>
                       );
                     })}
                   </View>
                 );
               })}
+
+              {/* Fasting gold strip */}
+              {(() => {
+                const dayName = day.day;
+                const fastingMatches = fastingInfo.filter(f => f.dayMatch(dayName));
+                if (fastingMatches.length === 0) return null;
+                return (
+                  <View style={{backgroundColor:'rgba(201,162,39,0.1)',borderTopWidth:1,borderTopColor:'rgba(201,162,39,0.25)',paddingVertical:6,paddingHorizontal:9,marginTop:4,borderRadius:0}}>
+                    {fastingMatches.map((f, fi) => (
+                      <View key={fi}>
+                        <Text style={{fontSize:11,fontWeight:'700',color:colors.gold}}>{f.memberName} — {f.fastingType}</Text>
+                        <Text style={{fontSize:9,color:'#8B6914'}}>Separate fasting meal · ingredients added to shopping list</Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
             </View>
           );
         })}
