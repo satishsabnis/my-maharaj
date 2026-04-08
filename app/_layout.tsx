@@ -4,11 +4,88 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { supabase } from '../lib/supabase';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { requestNotificationPermissions } from '../lib/notifications';
 import Logo from '../components/Logo';
 import { white } from '../theme/colors';
 import { LanguageProvider } from '../lib/LanguageProvider';
+
+// ─── One-time AsyncStorage → Supabase migration ─────────────────────────────
+
+async function migrateAsyncStorageToSupabase() {
+  try {
+    const migrated = await AsyncStorage.getItem('supabase_migration_done');
+    if (migrated === 'true') return;
+
+    const user = await getSessionUser();
+    if (!user) return;
+
+    // Migrate menu_history → meal_plans
+    const menuRaw = await AsyncStorage.getItem('menu_history');
+    if (menuRaw) {
+      try {
+        const plans = JSON.parse(menuRaw);
+        if (Array.isArray(plans) && plans.length > 0) {
+          const rows = plans.map((p: any) => ({
+            user_id: user.id,
+            period_start: p.days?.[0]?.date || new Date().toISOString().split('T')[0],
+            period_end: p.days?.[p.days.length - 1]?.date || new Date().toISOString().split('T')[0],
+            date_range: p.dateRange || '',
+            cuisine: 'Various',
+            food_pref: 'veg',
+            plan_json: { days: p.days || [] },
+            created_at: p.createdAt || new Date().toISOString(),
+          }));
+          await supabase.from('meal_plans').insert(rows);
+        }
+      } catch {}
+    }
+
+    // Migrate dish_feedback → dish_feedback
+    const feedbackRaw = await AsyncStorage.getItem('dish_feedback');
+    if (feedbackRaw) {
+      try {
+        const all: Record<string, any> = JSON.parse(feedbackRaw);
+        const rows = Object.entries(all).map(([dishName, fb]) => ({
+          user_id: user.id,
+          dish_name: dishName,
+          rating: fb.rating || 'ok',
+          count: fb.count || 1,
+          is_favourite: fb.isFavourite || false,
+        }));
+        if (rows.length > 0) {
+          await supabase.from('dish_feedback').upsert(rows, { onConflict: 'user_id,dish_name' });
+        }
+      } catch {}
+    }
+
+    // Migrate meal_prep_tasks → meal_prep_tasks
+    const prepRaw = await AsyncStorage.getItem('meal_prep_tasks');
+    if (prepRaw) {
+      try {
+        const tasks = JSON.parse(prepRaw);
+        if (Array.isArray(tasks) && tasks.length > 0) {
+          const rows = tasks.map((t: any) => ({
+            user_id: user.id,
+            dish: t.dish,
+            day: t.day,
+            meal: t.meal,
+            prep_type: t.prepType || t.prep_type || 'Soak',
+            instruction: t.instruction,
+            timing: t.timing,
+            urgency: t.urgency || 'upcoming',
+            done: t.done || false,
+          }));
+          await supabase.from('meal_prep_tasks').insert(rows);
+        }
+      } catch {}
+    }
+
+    await AsyncStorage.setItem('supabase_migration_done', 'true');
+  } catch {
+    // Never block app on migration failure
+  }
+}
 
 // ─── Fix browser back button exiting the app on web ──────────────────────────
 
@@ -81,6 +158,9 @@ export default function Layout() {
         setLoading(false);
         return;
       }
+
+      // One-time data migration (fire-and-forget, never blocks UI)
+      void migrateAsyncStorageToSupabase();
 
       setLoading(false);
     })();

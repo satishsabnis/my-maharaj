@@ -743,6 +743,104 @@ export default function MealWizardScreen() {
     }
   }
 
+  // ── Save confirmed plan to Supabase (fire-and-forget, never blocks UI) ────
+
+  async function savePlanToSupabase(confirmedPlan: any[]) {
+    try {
+      const user = await getSessionUser();
+      if (!user || !selectedFrom || !selectedTo) return;
+      const dateRange = `${selectedFrom.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+      const { data, error } = await supabase.from('meal_plans').insert({
+        user_id: user.id,
+        period_start: toYMD(selectedFrom),
+        period_end: toYMD(selectedTo),
+        date_range: dateRange,
+        cuisine: 'Various',
+        food_pref: foodPref ?? 'veg',
+        plan_json: { days: confirmedPlan },
+      }).select('id').single();
+      if (error) { console.error('[MealWizard] savePlanToSupabase error:', error.message); return; }
+      // Generate prep tasks linked to this plan
+      if (data?.id) generateMealPrepTasks(confirmedPlan, user.id, data.id);
+    } catch (e) { console.error('[MealWizard] savePlanToSupabase catch:', e); }
+  }
+
+  // ── Detect dishes needing advance prep and create tasks ────────────────────
+
+  const SOAK_KW = ['chole','chana masala','rajma','kadala curry','sabudana','sago','urad dal','chana dal','whole masoor'];
+  const MARINATE_KW = ['chicken','murg','murgh','mutton','lamb','gosht','fish','machli','pomfret','surmai','rawas'];
+  const GRIND_KW = ['coconut chutney','fresh chutney','ginger garlic paste'];
+
+  async function generateMealPrepTasks(confirmedPlan: any[], userId: string, planId: string) {
+    try {
+      const tasks: any[] = [];
+      const today = new Date();
+
+      confirmedPlan.forEach((day: any) => {
+        const dayName = day.dayName || day.day || '';
+        const dayDate = day.date || '';
+
+        (['breakfast','lunch','dinner','snack'] as const).forEach(meal => {
+          const dish = day[meal];
+          if (!dish) return;
+          const dishName = typeof dish === 'string' ? dish : (dish.name ?? '');
+          if (!dishName || dishName === '\u2014') return;
+          const lower = dishName.toLowerCase();
+
+          let prepType = '';
+          let instruction = '';
+
+          if (SOAK_KW.some(kw => lower.includes(kw))) {
+            prepType = 'Soak';
+            instruction = `Soak ${dishName} overnight (8-10 hours) in water.`;
+          } else if (MARINATE_KW.some(kw => lower.includes(kw))) {
+            prepType = 'Marinate';
+            instruction = `Marinate ${dishName} with spices for at least 2 hours, ideally overnight.`;
+          } else if (GRIND_KW.some(kw => lower.includes(kw))) {
+            prepType = 'Grind';
+            instruction = `Grind fresh paste/chutney for ${dishName} before cooking.`;
+          }
+
+          if (!prepType) return;
+
+          // Determine timing & urgency
+          let timing = dayName;
+          let urgency = 'upcoming';
+          if (dayDate) {
+            const dDate = new Date(dayDate);
+            const diffMs = dDate.getTime() - today.getTime();
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            if (diffDays <= 0) { timing = 'tonight'; urgency = 'tonight'; }
+            else if (diffDays === 1) { timing = 'tomorrow'; urgency = 'today'; }
+          }
+
+          tasks.push({
+            user_id: userId,
+            plan_id: planId,
+            dish: dishName,
+            day: dayName,
+            meal,
+            prep_type: prepType,
+            instruction,
+            timing,
+            urgency,
+            done: false,
+          });
+        });
+      });
+
+      if (tasks.length === 0) return;
+
+      // Save to Supabase
+      const { error } = await supabase.from('meal_prep_tasks').insert(tasks);
+      if (error) console.error('[MealWizard] generateMealPrepTasks error:', error.message);
+
+      // Also save to AsyncStorage for offline access
+      const asTasks = tasks.map((t, i) => ({ ...t, id: `${planId}-${i}` }));
+      await AsyncStorage.setItem('meal_prep_tasks', JSON.stringify(asTasks));
+    } catch (e) { console.error('[MealWizard] generateMealPrepTasks catch:', e); }
+  }
+
   async function submitFeedback() {
     const user = await getSessionUser();
     if (!user) return;
@@ -1259,6 +1357,8 @@ export default function MealWizardScreen() {
                 const dishNames = confirmedPlan.flatMap(d => [d.breakfast?.name, d.lunch?.name, d.snack?.name, d.dinner?.name].filter(Boolean));
                 const oldDishHist = JSON.parse(await AsyncStorage.getItem('dish_history') || '[]');
                 await AsyncStorage.setItem('dish_history', JSON.stringify([...dishNames, ...oldDishHist].slice(0, 60)));
+                // Fire-and-forget Supabase save (never blocks UI)
+                void savePlanToSupabase(confirmedPlan);
               } catch {}
             }
           })();

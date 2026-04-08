@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, getSessionUser } from '../lib/supabase';
 import { colors } from '../constants/theme';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -87,6 +88,34 @@ export default function MealPrepScreen() {
   useEffect(() => {
     (async () => {
       try {
+        // Try Supabase first
+        const user = await getSessionUser();
+        if (user) {
+          try {
+            const { data, error } = await supabase
+              .from('meal_prep_tasks')
+              .select('id, dish, day, meal, prep_type, instruction, timing, urgency, done')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false });
+            if (!error && data && data.length > 0) {
+              const mapped: PrepTask[] = data.map((row: any) => ({
+                id: row.id,
+                dish: row.dish,
+                day: row.day,
+                meal: row.meal,
+                prepType: row.prep_type,
+                instruction: row.instruction,
+                timing: row.timing,
+                urgency: row.done ? 'done' : row.urgency,
+                done: row.done,
+              }));
+              setTasks(mapped);
+              setLoaded(true);
+              return;
+            }
+          } catch { /* fall through to AsyncStorage */ }
+        }
+        // Fallback: AsyncStorage
         const raw = await AsyncStorage.getItem('meal_prep_tasks');
         if (raw) setTasks(JSON.parse(raw));
       } catch {}
@@ -99,7 +128,18 @@ export default function MealPrepScreen() {
       const next = prev.map(t =>
         t.id === id ? { ...t, done: !t.done, urgency: !t.done ? 'done' : 'upcoming' } : t,
       );
+      // Always write to AsyncStorage
       AsyncStorage.setItem('meal_prep_tasks', JSON.stringify(next)).catch(() => {});
+      // Fire-and-forget Supabase update
+      const task = next.find(t => t.id === id);
+      if (task) {
+        supabase.from('meal_prep_tasks')
+          .update({ done: task.done, urgency: task.urgency })
+          .eq('id', id)
+          .then(({ error }) => {
+            if (error) console.error('[MealPrep] toggleDone error:', error.message);
+          });
+      }
       return next;
     });
   }
