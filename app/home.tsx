@@ -1,331 +1,345 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal,
-  Platform, SafeAreaView, ScrollView, StyleSheet, Switch,
-  Text, TouchableOpacity, useWindowDimensions, View,
+  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Platform,
+  SafeAreaView, ScrollView, StyleSheet, Text,
+  TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
-import { loadOrDetectLocation } from '../lib/location';
-import { navy, gold, white, textSec, border } from '../theme/colors';
-import { fetchWeather, getCoords, getWeatherMealPrompt, WeatherInfo } from '../lib/weather';
-import MarqueeTicker from '../components/MarqueeTicker';
+import { colors, cards } from '../constants/theme';
 
-// ─── Festival data ────────────────────────────────────────────────────────────
+const SCREEN_W = Dimensions.get('window').width;
 
-const FESTIVALS = [
-  { name: 'Baisakhi',         date: '2026-04-14', icon: '\uD83C\uDF3E' },
-  { name: 'Akshaya Tritiya',  date: '2026-04-19', icon: '\uD83E\uDE94' },
-  { name: 'Eid al-Adha',      date: '2026-05-27', icon: '\uD83C\uDF19' },
-  { name: 'Guru Purnima',     date: '2026-07-29', icon: '\uD83D\uDE4F' },
-  { name: 'Independence Day', date: '2026-08-15', icon: '\uD83C\uDDEE\uD83C\uDDF3' },
-  { name: 'Raksha Bandhan',   date: '2026-08-28', icon: '\uD83E\uDDF6' },
-  { name: 'Janmashtami',      date: '2026-09-04', icon: '\uD83C\uDF6F' },
-  { name: 'Ganesh Chaturthi', date: '2026-09-14', icon: '\uD83D\uDC18' },
-  { name: 'Navratri',         date: '2026-10-11', icon: '\uD83E\uDE94' },
-  { name: 'Dussehra',         date: '2026-10-20', icon: '\uD83C\uDFF9' },
-  { name: 'Diwali',           date: '2026-11-08', icon: '\uD83E\uDE94' },
-  { name: 'Bhai Dooj',        date: '2026-11-10', icon: '\uD83D\uDC90' },
-  { name: 'Christmas',        date: '2026-12-25', icon: '\uD83C\uDF84' },
-  { name: 'New Year',         date: '2027-01-01', icon: '\uD83C\uDF89' },
-];
+// ─── Time greeting ───────────────────────────────────────────────────────────
 
-function getNextFestival() {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  for (const f of FESTIVALS) {
-    const [y, m, d] = f.date.split('-').map(Number);
-    const fd = new Date(y, m - 1, d);
-    const daysAway = Math.ceil((fd.getTime() - today.getTime()) / 86400000);
-    if (daysAway >= 0 && daysAway <= 2) {
-      const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return { ...f, daysAway, dateLabel: `${fd.getDate()} ${mon[fd.getMonth()]}` };
-    }
-  }
-  return null;
-}
-
-// ─── DateTime ─────────────────────────────────────────────────────────────────
-
-const WDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const MONS  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-function formatInfoBar(d: Date): string {
-  let h = d.getHours(); const mi = String(d.getMinutes()).padStart(2,'0');
-  const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-  return `${WDAYS[d.getDay()]} ${d.getDate()} ${MONS[d.getMonth()]} ${d.getFullYear()} \u00B7 ${h}:${mi} ${ap}`;
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
-  const { width } = useWindowDimensions();
-  const cardW = (width - 48) / 2;
-
   const [firstName, setFirstName] = useState('');
-  const [initials,  setInitials]  = useState('?');
-  const [email,     setEmail]     = useState('');
-  const [userCity,  setUserCity]  = useState('');
-  const [userCountry, setUserCountry] = useState('');
-  const [dateTimeStr, setDateTimeStr] = useState(formatInfoBar(new Date()));
-  const [labReminder, setLabReminder] = useState<{name:string;date:string}|null>(null);
+  const [initials, setInitials] = useState('?');
+  const [email, setEmail] = useState('');
+  const [userCity, setUserCity] = useState('Dubai');
+  const [maharajDay, setMaharajDay] = useState('Saturday');
+  const [hasWeekPlan, setHasWeekPlan] = useState(false);
+  const [planDayX, setPlanDayX] = useState(0);
+  const [planDayY, setPlanDayY] = useState(0);
+  const [occasions, setOccasions] = useState<{name:string;day:string;people:string}[]>([]);
+  const [mealPrepCount, setMealPrepCount] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [planReminder, setPlanReminder] = useState(false);
-  const [planReady, setPlanReady] = useState(false);
-  const [privacyVisible, setPrivacyVisible] = useState(false);
-  const [weatherInfo, setWeatherInfo] = useState<WeatherInfo | null>(null);
-  const [weatherDismissed, setWeatherDismissed] = useState(false);
-  const [weatherPrompt, setWeatherPrompt] = useState<{ message: string; mealContext: string; icon: string } | null>(null);
 
-  const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
-  const tickerAnim = useRef(new Animated.Value(0)).current;
+  const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [tickerContentWidth, setTickerContentWidth] = useState(0);
-  const TICKER_TEXT = 'My Maharaj by Blue Flute Consulting \u00B7 Beta \u00B7 Smart meal planning for Indian families \u00B7 Feedback: info@bluefluteconsulting.com     ';
+  const scrollAnim = useRef(new Animated.Value(SCREEN_W)).current;
+  const [tickerTextWidth, setTickerTextWidth] = useState(0);
 
-  // Clock update
+  // Ticker scroll animation — starts after text is measured
   useEffect(() => {
-    const t = setInterval(() => setDateTimeStr(formatInfoBar(new Date())), 60000);
-    return () => clearInterval(t);
+    if (tickerTextWidth === 0) return;
+    scrollAnim.setValue(SCREEN_W);
+    Animated.loop(
+      Animated.timing(scrollAnim, {
+        toValue: -tickerTextWidth,
+        duration: 18000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+    return () => scrollAnim.stopAnimation();
+  }, [tickerTextWidth]);
+
+  // Pulse animation — infinite loop
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ]),
+      { iterations: -1 }
+    ).start();
   }, []);
 
-  // Hero circle pulse — infinite loop, never stops
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      if (!document.getElementById('maharaj-pulse-styles')) {
-        const styleEl = document.createElement('style');
-        styleEl.id = 'maharaj-pulse-styles';
-        styleEl.textContent = `@keyframes maharajPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } } .maharaj-pulse { animation: maharajPulse 1.8s ease-in-out infinite !important; }`;
-        document.head.appendChild(styleEl);
-      }
-    } else {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.08,
-            duration: 900,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 900,
-            useNativeDriver: true,
-          }),
-        ]),
-        { iterations: -1 }
-      ).start();
-    }
-  }, []);
-
-  // Ticker animation
-  useEffect(() => {
-    if (tickerContentWidth === 0) return;
-    const startAnim = () => {
-      tickerAnim.setValue(0);
-      Animated.timing(tickerAnim, { toValue: -tickerContentWidth / 3, duration: (tickerContentWidth / 3) * 30, easing: Easing.linear, useNativeDriver: true }).start(({ finished }) => { if (finished) startAnim(); });
-    };
-    startAnim();
-    return () => tickerAnim.stopAnimation();
-  }, [tickerContentWidth]);
-
-  // Load user data
+  // Load data
   useEffect(() => {
     async function load() {
       const user = await getSessionUser();
-      if (!user) return;
-      const name = (user.user_metadata?.full_name ?? user.email ?? '') as string;
-      const first = name.split(' ')[0];
-      setFirstName(first);
-      setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
-      setEmail(user.email ?? '');
-
-      // Lab reminder
-      const { data: members } = await supabase.from('family_members').select('name, health_notes').eq('user_id', user.id);
-      if (members) {
-        const today = new Date(); today.setHours(0,0,0,0);
-        for (const m of members) {
-          const match = (m.health_notes ?? '').match(/Lab \((\d{4}-\d{2}-\d{2})\)/);
-          if (!match) continue;
-          const labDate = new Date(match[1]);
-          const reminderDate = new Date(labDate);
-          reminderDate.setDate(reminderDate.getDate() + 80);
-          const daysUntil = Math.ceil((reminderDate.getTime() - today.getTime()) / 86400000);
-          if (daysUntil <= 7 && daysUntil >= -7) {
-            setLabReminder({ name: m.name, date: reminderDate.toISOString().split('T')[0] });
-            break;
-          }
-        }
+      if (user) {
+        const name = (user.user_metadata?.full_name ?? user.email ?? '') as string;
+        const first = name.split(' ')[0];
+        setFirstName(first);
+        setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
+        setEmail(user.email ?? '');
       }
 
-      // Check plan ready
-      const pr = await AsyncStorage.getItem('maharaj_plan_ready');
-      if (pr) setPlanReady(true);
+      const [md, cwp, occ, prep] = await Promise.all([
+        AsyncStorage.getItem('maharaj_day'),
+        AsyncStorage.getItem('confirmed_meal_plan'),
+        AsyncStorage.getItem('recurring_occasions'),
+        AsyncStorage.getItem('meal_prep_tasks'),
+      ]);
+      if (md) setMaharajDay(md);
+      if (cwp) {
+        try {
+          const plan = JSON.parse(cwp);
+          if (Array.isArray(plan) && plan.length > 0) {
+            setHasWeekPlan(true);
+            const today = new Date().toISOString().split('T')[0];
+            const dayIdx = plan.findIndex((d: any) => d.date >= today);
+            setPlanDayX(dayIdx >= 0 ? dayIdx + 1 : plan.length);
+            setPlanDayY(plan.length);
+          }
+        } catch {}
+      }
+      if (occ) try { setOccasions(JSON.parse(occ)); } catch {}
+      if (prep) try { const tasks = JSON.parse(prep); setMealPrepCount(Array.isArray(tasks) ? tasks.length : 0); } catch {}
     }
     void load();
-    loadOrDetectLocation().then(loc => { setUserCity(loc.city); setUserCountry(loc.country); });
   }, []);
 
-  // Weather check — fetch once, show prompt only if conditions are notable
-  useEffect(() => {
-    async function checkWeather() {
-      try {
-        const coords = await getCoords();
-        const info = await fetchWeather(coords.lat, coords.lon, coords.city);
-        if (info) {
-          setWeatherInfo(info);
-          const prompt = getWeatherMealPrompt(info);
-          if (prompt) setWeatherPrompt(prompt);
-        }
-      } catch (e) { console.log('[Weather] failed:', e); }
-    }
-    void checkWeather();
-  }, []);
-
-  // Drawer animation
+  // Drawer
   function openDrawer() {
     setIsDrawerOpen(true);
     Animated.timing(drawerAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start();
   }
   function closeDrawer() {
-    Animated.timing(drawerAnim, { toValue: -width * 0.75, duration: 200, useNativeDriver: true }).start(() => setIsDrawerOpen(false));
+    Animated.timing(drawerAnim, { toValue: -SCREEN_W * 0.75, duration: 200, useNativeDriver: true }).start(() => setIsDrawerOpen(false));
   }
-
   async function doSignOut() {
     closeDrawer();
     await supabase.auth.signOut();
     router.replace('/login');
   }
 
-  const nextFest = getNextFestival();
-
-  // ─── Drawer Row component ──────────────────────────────────────────────────
-  function DrawerRow({ icon, label, onPress, badge, signOut }: { icon: string; label: string; onPress: () => void; badge?: string; signOut?: boolean }) {
+  function DrawerRow({ label, onPress, signOut }: { label: string; onPress: () => void; signOut?: boolean }) {
     return (
       <TouchableOpacity style={s.drawerRow} onPress={onPress} activeOpacity={0.7}>
-        <View style={s.drawerIconBox}><Text style={s.drawerIcon}>{icon}</Text></View>
-        <Text style={[s.drawerLabel, signOut && { color: gold }]}>{label}</Text>
-        {badge ? <View style={s.drawerBadge}><Text style={s.drawerBadgeTxt}>{badge}</Text></View> : null}
+        <Text style={[s.drawerLabel, signOut && { color: colors.gold }]}>{label}</Text>
         {!signOut && <Text style={s.drawerChevron}>{'\u203A'}</Text>}
       </TouchableOpacity>
     );
   }
 
-  // ─── Grid Card component ───────────────────────────────────────────────────
-  function GridCard({ label, sub, onPress, goldBorder, badge }: { label: string; sub?: string; onPress: () => void; goldBorder?: boolean; badge?: string }) {
-    return (
-      <TouchableOpacity style={[s.gridCard, { width: cardW }, goldBorder && s.gridCardGold]} onPress={onPress} activeOpacity={0.85}>
-        <Text style={s.gridCardLabel}>{label}</Text>
-        {sub ? <Text style={s.gridCardSub}>{sub}</Text> : null}
-        {badge ? <View style={s.gridBadge}><Text style={s.gridBadgeTxt}>{badge}</Text></View> : null}
-      </TouchableOpacity>
-    );
+  // ── Feed card logic ────────────────────────────────────────────────────────
+
+  const now = new Date();
+  const dayOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  const hour = now.getHours();
+
+  type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
+  const feedCards: FeedCard[] = [];
+
+  // Card 1 — Saturday grocery
+  if (dayOfWeek === 'Saturday' || (dayOfWeek === 'Friday' && hour >= 18 && maharajDay === 'Saturday')) {
+    feedCards.push({
+      type: 'grocery', bg: { backgroundColor: colors.frostedGreen, borderLeftWidth: 3, borderLeftColor: colors.emerald },
+      borderColor: colors.emerald, label: 'Saturday grocery', labelColor: colors.teal,
+      title: 'Shopping list ready — emailed to you', sub: `Emailed to ${email}`,
+      buttons: [{ text: 'Download', style: 'emerald', onPress: () => router.push('/meal-wizard' as never) }],
+    });
   }
+
+  // Card 2 — Sunday prep
+  if (dayOfWeek === 'Sunday' && hour >= 17 && mealPrepCount > 0) {
+    feedCards.push({
+      type: 'prep', bg: { backgroundColor: colors.frostedNavy, borderLeftWidth: 3, borderLeftColor: colors.navy },
+      borderColor: colors.navy, label: 'Tonight before you sleep', labelColor: colors.navy,
+      title: `${mealPrepCount} prep tasks waiting for this week`,
+      buttons: [{ text: 'View prep', style: 'navy', onPress: () => router.push('/meal-prep' as never) }],
+    });
+  }
+
+  // Card 3 — Weather (demo placeholder)
+  feedCards.push({
+    type: 'weather', bg: { backgroundColor: colors.frostedCyan, borderLeftWidth: 3, borderLeftColor: colors.skyBlue },
+    borderColor: colors.skyBlue, label: 'Weather change', labelColor: colors.skyBlue,
+    title: 'Rain expected tonight — swap dinner to Varan Bhaat?',
+    buttons: [
+      { text: 'Swap it', style: 'emerald', onPress: () => {} },
+      { text: 'Keep plan', style: 'outline', onPress: () => {} },
+    ],
+  });
+
+  // Card 4 — Occasion reminder
+  const tomorrow = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][(now.getDay() + 1) % 7];
+  const todayOcc = occasions.find(o => o.day === dayOfWeek);
+  const tomorrowOcc = occasions.find(o => o.day === tomorrow);
+  const activeOcc = todayOcc || tomorrowOcc;
+  if (activeOcc) {
+    const isToday = !!todayOcc;
+    feedCards.push({
+      type: 'occasion', bg: { backgroundColor: colors.frostedNavy, borderLeftWidth: 3, borderLeftColor: colors.navy },
+      borderColor: colors.navy, label: isToday ? `${dayOfWeek} occasion` : 'Tomorrow occasion', labelColor: colors.navy,
+      title: `${activeOcc.name} — shall Maharaj plan it?`,
+      sub: activeOcc.people ? `${activeOcc.people}` : undefined,
+      buttons: [
+        { text: 'Plan it', style: 'emerald', onPress: () => router.push('/meal-wizard' as never) },
+        { text: 'Skip this week', style: 'outline', onPress: () => {} },
+      ],
+    });
+  }
+
+  // Fallback
+  if (feedCards.length === 0) {
+    feedCards.push({
+      type: 'fallback', bg: { backgroundColor: colors.frostedGreen },
+      borderColor: colors.emerald, label: 'Ready when you are', labelColor: colors.teal,
+      title: 'Tap to plan your week with Maharaj',
+      buttons: [{ text: 'Plan My Week', style: 'emerald', onPress: () => router.push('/meal-wizard' as never) }],
+    });
+  }
+
+  const feedCount = feedCards.length;
 
   return (
     <View style={{flex:1}}>
       <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
-      <SafeAreaView style={[s.safe,{zIndex:1}]}>
+      <SafeAreaView style={{flex:1,zIndex:1}}>
 
         {/* ── HEADER ── */}
         <View style={s.header}>
-          <TouchableOpacity onPress={openDrawer} style={s.avatarWrap}>
+          <TouchableOpacity onPress={openDrawer} activeOpacity={0.8}>
             <View style={s.avatar}><Text style={s.avatarTxt}>{initials}</Text></View>
-            <Text style={s.avatarChevron}>{'\u25BE'}</Text>
           </TouchableOpacity>
-          <View style={s.headerCenter}>
-            <Image source={require('../assets/logo.png')} style={s.headerLogo} resizeMode="contain" />
-            <Text style={s.headerAppName}>My Maharaj</Text>
-            <Text style={s.headerHindi}>{'\u092E\u0947\u0930\u093E \u092E\u0939\u093E\u0930\u093E\u091C'}</Text>
-          </View>
-          <View style={s.headerRight}>
-            <Image source={require('../assets/blueflute-logo.png')} style={s.bfLogo} resizeMode="contain" />
-          </View>
-        </View>
-
-        {/* ── INFO BAR ── */}
-        <View style={s.infoBar}>
-          <Text style={s.infoLeft} numberOfLines={1}>{userCity ? `${userCity}, ${userCountry} \u00B7 ` : ''}{dateTimeStr}</Text>
-          <Text style={s.infoRight}>Namaste, {firstName || 'there'}</Text>
+          <View style={{flex:1}} />
+          <Image
+            source={require('../assets/blueflute-logo.png')}
+            style={{width:80,height:32}}
+            resizeMode="contain"
+          />
         </View>
 
         {/* ── TICKER ── */}
-        <MarqueeTicker />
-
-        {/* ── MAIN CONTENT ── */}
-        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingTop:0}}>
-
-          {/* Maharaj hero logo — only the image is touchable */}
-          <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
-            <Animated.Image
-              source={require('../assets/logo.png')}
-              // @ts-ignore — web-only className
-              className={Platform.OS === 'web' ? 'maharaj-pulse' : undefined}
-              style={{width:400,height:400,marginBottom:-12,backgroundColor:'transparent',transform:Platform.OS !== 'web' ? [{scale:pulseAnim}] : undefined}}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <Text style={{fontSize:13,color:'#C9A227',textAlign:'center',marginTop:2,fontStyle:'italic'}}>Tap to begin</Text>
-          <Text style={{fontSize:20,fontWeight:'700',color:'#2E5480',textAlign:'center',marginTop:4}}>Ask Maharaj</Text>
-          <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginTop:3}}>Your personal meal planner</Text>
-
-
+        <View style={{backgroundColor:colors.amber,paddingVertical:5,overflow:'hidden'}}>
+          <Animated.Text
+            style={{fontSize:10,color:'#1A1A1A',fontWeight:'500',transform:[{translateX:scrollAnim}]}}
+            onLayout={(e) => { if (tickerTextWidth === 0) setTickerTextWidth(e.nativeEvent.layout.width); }}
+            numberOfLines={1}
+          >
+            {'Powered by Blue Flute Consulting LLC-FZ  \u00B7  My Maharaj Beta is a smart meal planning app for Indian families in the GCC  \u00B7  Feedback: info@bluefluteconsulting.com  \u00B7  '}
+          </Animated.Text>
         </View>
 
-        {/* Footer */}
-        <View style={{backgroundColor:'#2E5480',padding:16,alignItems:'center'}}>
-          <Text style={{color:'#C9A227',fontSize:12,fontWeight:'600',marginBottom:6}}>Powered by Blue Flute Consulting LLC-FZ</Text>
+        <ScrollView contentContainerStyle={{paddingBottom:20}} showsVerticalScrollIndicator={false}>
+
+          {/* ── HERO ── */}
+          <View style={{alignItems:'center',paddingTop:12}}>
+            <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
+              <Animated.Image
+                source={require('../assets/logo.png')}
+                style={{width:88,height:88,transform:[{scale:pulseAnim}]}}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <Text style={{fontSize:10,color:colors.gold,fontStyle:'italic',marginTop:4}}>Tap to begin</Text>
+            <Text style={{fontSize:13,fontWeight:'500',color:colors.navy,marginTop:2}}>Ask Maharaj</Text>
+            <Text style={{fontSize:9,color:colors.teal,marginTop:1}}>Your personal meal planner</Text>
+          </View>
+
+          {/* ── GREETING ── */}
+          <View style={{paddingHorizontal:16,paddingTop:4}}>
+            <Text style={{fontSize:12,fontWeight:'500',color:colors.navy}}>{getGreeting()}, {firstName || 'there'}</Text>
+            <Text style={{fontSize:9,color:colors.textMuted}}>{dayOfWeek} · {userCity} · {feedCount} thing{feedCount !== 1 ? 's' : ''} need your attention</Text>
+
+            {/* Plan pill */}
+            {hasWeekPlan ? (
+              <View style={s.planPill}>
+                <View style={{width:4,height:4,borderRadius:2,backgroundColor:colors.emerald}} />
+                <Text style={{fontSize:8,color:colors.teal}}>This week's plan is active — Day {planDayX} of {planDayY}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={[s.planPill, {borderColor:'rgba(201,162,39,0.3)',backgroundColor:'rgba(201,162,39,0.1)'}]} onPress={() => router.push('/meal-wizard' as never)}>
+                <Text style={{fontSize:8,color:colors.gold}}>No plan this week — tap to plan</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* ── DIVIDER ── */}
+          <View style={s.divider} />
+
+          {/* ── SECTION LABEL ── */}
+          <Text style={s.sectionLabel}>Maharaj suggests</Text>
+
+          {/* ── ANTICIPATION FEED ── */}
+          <View style={{paddingHorizontal:14}}>
+            {feedCards.map((card, i) => (
+              <View key={i} style={[s.feedCard, card.bg]}>
+                <View style={{flex:1}}>
+                  <Text style={{fontSize:7,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
+                  <Text style={{fontSize:10,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
+                  {card.sub && <Text style={{fontSize:8,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+                </View>
+                <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
+                  {card.buttons.map((btn, bi) => (
+                    <TouchableOpacity key={bi} style={btn.style === 'emerald' ? s.btnEmerald : btn.style === 'navy' ? s.btnNavy : s.btnOutline} onPress={btn.onPress} activeOpacity={0.8}>
+                      <Text style={btn.style === 'outline' ? s.btnOutlineTxt : s.btnFilledTxt}>{btn.text}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* ── DIVIDER ── */}
+          <View style={s.divider} />
+
+          {/* ── QUICK CHIPS ── */}
+          <View style={{flexDirection:'row',gap:5,paddingHorizontal:10}}>
+            {[
+              { label: 'Plan week', onPress: () => router.push('/meal-wizard' as never) },
+              { label: 'My fridge', onPress: () => router.push('/my-fridge' as never) },
+              { label: 'Party menu', onPress: () => router.push('/party-menu' as never) },
+              { label: 'Scan to shop', onPress: () => router.push('/meal-wizard' as never) },
+            ].map((c, i) => (
+              <TouchableOpacity key={i} style={s.quickChip} onPress={c.onPress} activeOpacity={0.8}>
+                <Text style={s.quickChipTxt}>{c.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+        </ScrollView>
+
+        {/* ── FOOTER ── */}
+        <View style={s.footer}>
+          <Text style={{fontSize:8,color:colors.emerald}}>Powered by Blue Flute Consulting LLC-FZ</Text>
           <TouchableOpacity onPress={() => Linking.openURL('https://www.bluefluteconsulting.com')}>
-            <Text style={{color:'rgba(255,255,255,0.8)',fontSize:10,textDecorationLine:'underline',marginBottom:3}}>www.bluefluteconsulting.com</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => Linking.openURL('mailto:info@bluefluteconsulting.com')}>
-            <Text style={{color:'rgba(255,255,255,0.8)',fontSize:10,textDecorationLine:'underline'}}>info@bluefluteconsulting.com</Text>
+            <Text style={{fontSize:7,color:'rgba(255,255,255,0.6)',marginTop:2}}>www.bluefluteconsulting.com</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── DRAWER OVERLAY ── */}
         {isDrawerOpen && (
           <TouchableOpacity style={s.drawerOverlay} activeOpacity={1} onPress={closeDrawer}>
-            <Animated.View style={[s.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-              <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-                {/* Drawer header */}
+            <Animated.View style={[s.drawer, {transform:[{translateX:drawerAnim}]}]}>
+              <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{flex:1}}>
                 <View style={s.drawerHeader}>
                   <View style={s.drawerAvatar}><Text style={s.drawerAvatarTxt}>{initials}</Text></View>
                   <Text style={s.drawerName}>{firstName || 'User'}</Text>
                   <Text style={s.drawerEmail}>{email}</Text>
                 </View>
-
                 <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{paddingBottom:60}}>
-                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67'} label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
-                  <DrawerRow icon={'\uD83D\uDCCB'} label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
-                  <DrawerRow icon={'\uD83E\uDDCA'} label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
-                  <DrawerRow icon={'\uD83D\uDC68\u200D\uD83C\uDF73'} label="Meal Prep" onPress={() => { closeDrawer(); router.push('/meal-prep' as never); }} />
-                  <DrawerRow icon={'\uD83C\uDF89'} label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
-                  <DrawerRow icon={'\u26FA'} label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
-                  <DrawerRow icon={'\uD83D\uDCDC'} label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
-                  <DrawerRow icon={'\u2139\uFE0F'} label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
-                  <DrawerRow icon={'\uD83D\uDEAA'} label="Sign Out" signOut onPress={doSignOut} />
+                  <DrawerRow label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
+                  <DrawerRow label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
+                  <DrawerRow label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
+                  <DrawerRow label="Meal Prep" onPress={() => { closeDrawer(); router.push('/meal-prep' as never); }} />
+                  <DrawerRow label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
+                  <DrawerRow label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
+                  <DrawerRow label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
+                  <DrawerRow label="Festivals and Functions" onPress={() => { closeDrawer(); router.push('/festivals' as never); }} />
+                  <DrawerRow label="FAQ" onPress={() => { closeDrawer(); router.push('/faq' as never); }} />
+                  <DrawerRow label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
+                  <DrawerRow label="Sign Out" signOut onPress={doSignOut} />
                 </ScrollView>
               </TouchableOpacity>
             </Animated.View>
           </TouchableOpacity>
         )}
-
-        {/* ── PRIVACY MODAL ── */}
-        <Modal visible={privacyVisible} transparent animationType="fade">
-          <View style={s.modalOverlay}>
-            <View style={s.modalBox}>
-              <Text style={s.modalTitle}>Privacy Policy</Text>
-              <ScrollView style={{maxHeight:400}}>
-                <Text style={s.modalBody}>
-                  Maharaj collects your family profile, health conditions, dietary preferences and lab report data solely to personalise your meal plans. Your data is stored securely and encrypted. We do not sell, share or transfer your personal data to third parties. Health data is processed in accordance with UAE Personal Data Protection Law (PDPL). You may request a full export or deletion of your data at any time by writing to info@bluefluteconsulting.com. AI-generated meal plans are recommendations only and do not constitute medical advice.{'\n\n'}Blue Flute Consulting LLC-FZ, Dubai, UAE
-                </Text>
-              </ScrollView>
-              <TouchableOpacity style={s.modalClose} onPress={() => setPrivacyVisible(false)}>
-                <Text style={s.modalCloseTxt}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
 
       </SafeAreaView>
     </View>
@@ -334,108 +348,34 @@ export default function HomeScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const SCREEN_W = Dimensions.get('window').width;
-
 const s = StyleSheet.create({
-  safe: { flex: 1 },
-
-  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingTop: Platform.OS === 'android' ? 25 : Platform.OS === 'web' ? 12 : 6,
-    paddingBottom: 8,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderBottomWidth: 1, borderBottomColor: 'rgba(27,58,92,0.1)',
+    paddingHorizontal: 14, paddingTop: Platform.OS === 'android' ? 25 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 8,
   },
-  avatarWrap: { alignItems: 'center', width: 44 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: navy, alignItems: 'center', justifyContent: 'center' },
-  avatarTxt: { color: gold, fontSize: 15, fontWeight: '800' },
-  avatarChevron: { fontSize: 10, color: textSec, marginTop: 1 },
-  headerCenter: { alignItems: 'center', flex: 1 },
-  headerLogo: { width: 120, height: 40 },
-  headerAppName: { fontSize: 10, fontWeight: '700', color: navy, marginTop: -2 },
-  headerHindi: { fontSize: 8, color: textSec },
-  headerRight: { alignItems: 'center', width: 80 },
-  bfLogo: { width: 72, height: 24 },
-  bfSub: { fontSize: 7, color: textSec, marginTop: 1 },
-
-  // Info bar
-  infoBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.7)' },
-  infoLeft: { fontSize: 10, color: textSec, flex: 1 },
-  infoRight: { fontSize: 12, fontWeight: '700', color: navy },
-
-  // Ticker
-  ticker: { backgroundColor: navy, paddingVertical: 4, paddingHorizontal: 14 },
-  tickerTxt: { fontSize: 11, color: gold, fontWeight: '600' },
-
-  // Scroll
-  scroll: { padding: 14, paddingBottom: 90 },
-
-  // Lab reminder
-  labCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(217,119,6,0.1)', borderRadius: 12, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(217,119,6,0.3)' },
-  labTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
-  labSub: { fontSize: 12, color: '#78350F', lineHeight: 18 },
-
-  // Plan ready
-  planReadyCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#16A34A', borderRadius: 12, padding: 14, marginBottom: 10 },
-  planReadyTitle: { fontSize: 14, fontWeight: '700', color: white },
-  planReadySub: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
-
-  // Festival
-  festCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12, padding: 12, marginBottom: 10, borderWidth: 1.5, borderColor: gold, gap: 10 },
-  festIcon: { fontSize: 28 },
-  festName: { fontSize: 14, fontWeight: '700', color: navy },
-  festDays: { fontSize: 12, color: textSec },
-
-  // Hero
-  heroCard: { backgroundColor: navy, borderRadius: 16, padding: 20, marginBottom: 12 },
-  heroTitle: { fontSize: 16, fontWeight: '700', color: white, marginBottom: 4 },
-  heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
-
-  // Grid
-  gridRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  gridCard: { backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: 'rgba(27,58,92,0.08)', minHeight: 70, justifyContent: 'center' },
-  gridCardGold: { borderLeftWidth: 2, borderLeftColor: gold },
-  gridCardLabel: { fontSize: 13, fontWeight: '700', color: navy },
-  gridCardSub: { fontSize: 11, color: textSec, marginTop: 2 },
-  gridBadge: { backgroundColor: '#F3F4F6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 6 },
-  gridBadgeTxt: { fontSize: 9, color: '#9CA3AF', fontWeight: '600' },
-
-  // Footer
-  footer: { backgroundColor: navy, borderRadius: 12, padding: 14, marginTop: 8, alignItems: 'center' },
-  footerLine1: { fontSize: 10, color: gold, fontWeight: '600', textAlign: 'center' },
-  footerLine2: { fontSize: 9, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 3 },
-
-  // FAB
-  fab: { position: 'absolute', bottom: 24, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fabLabelWrap: { backgroundColor: '#2E5480', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  fabLabel: { fontSize: 10, fontWeight: '700', color: white },
-  fabCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#2E5480', alignItems: 'center', justifyContent: 'center', shadowColor: navy, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  fabIcon: { width: 26, height: 26 },
-
-  // Drawer overlay
+  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.navy, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.emerald },
+  avatarTxt: { color: colors.white, fontSize: 13, fontWeight: '800' },
+  planPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(30,158,94,0.15)', borderWidth: 1, borderColor: 'rgba(30,158,94,0.3)', borderRadius: 20, paddingVertical: 2, paddingHorizontal: 8, marginTop: 4, alignSelf: 'flex-start' },
+  divider: { height: 1, backgroundColor: 'rgba(26,58,92,0.12)', marginVertical: 8, marginHorizontal: 14 },
+  sectionLabel: { fontSize: 9, fontWeight: '500', color: colors.teal, textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 14, paddingBottom: 5 },
+  feedCard: { borderRadius: 12, padding: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)', marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  btnEmerald: { backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 8 },
+  btnNavy: { backgroundColor: colors.navy, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 8 },
+  btnOutline: { borderRadius: 20, paddingVertical: 4, paddingHorizontal: 8, borderWidth: 1, borderColor: colors.navy },
+  btnFilledTxt: { fontSize: 9, fontWeight: '500', color: colors.white },
+  btnOutlineTxt: { fontSize: 9, fontWeight: '500', color: colors.navy },
+  quickChip: { flex: 1, backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 5, alignItems: 'center' },
+  quickChipTxt: { fontSize: 9, color: colors.white, fontWeight: '500' },
+  footer: { backgroundColor: colors.navy, paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', marginTop: 10 },
+  // Drawer
   drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 999 },
-  drawer: { position: 'absolute', top: 0, left: 0, bottom: 0, width: SCREEN_W * 0.75, backgroundColor: white, shadowColor: '#000', shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 10 },
-  drawerHeader: { backgroundColor: navy, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center' },
-  drawerAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  drawerAvatarTxt: { fontSize: 22, fontWeight: '800', color: gold },
-  drawerName: { fontSize: 16, fontWeight: '700', color: white },
-  drawerEmail: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  drawerSection: { fontSize: 10, fontWeight: '700', color: textSec, letterSpacing: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
-  drawerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13, gap: 12 },
-  drawerIconBox: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  drawerIcon: { fontSize: 14 },
-  drawerLabel: { flex: 1, fontSize: 13, fontWeight: '500', color: navy },
+  drawer: { position: 'absolute', top: 0, left: 0, bottom: 0, width: SCREEN_W * 0.75, backgroundColor: colors.white, shadowColor: '#000', shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 10 },
+  drawerHeader: { backgroundColor: colors.navy, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center' },
+  drawerAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  drawerAvatarTxt: { fontSize: 20, fontWeight: '800', color: colors.gold },
+  drawerName: { fontSize: 15, fontWeight: '700', color: colors.white },
+  drawerEmail: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  drawerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 13 },
+  drawerLabel: { fontSize: 13, fontWeight: '500', color: colors.navy },
   drawerChevron: { fontSize: 16, color: '#D1D5DB' },
-  drawerBadge: { backgroundColor: '#F3F4F6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  drawerBadgeTxt: { fontSize: 9, color: '#9CA3AF', fontWeight: '600' },
-
-  // Privacy modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
-  modalBox: { backgroundColor: white, borderRadius: 16, padding: 24, width: '88%', maxWidth: 400 },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: navy, marginBottom: 12 },
-  modalBody: { fontSize: 13, color: '#374151', lineHeight: 22 },
-  modalClose: { backgroundColor: navy, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
-  modalCloseTxt: { color: white, fontWeight: '700', fontSize: 14 },
 });

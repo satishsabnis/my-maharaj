@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { getCuisineGroups } from '../lib/cuisineGroups';
-import { navy, gold, textSec, errorRed, white, border, surface, successGreen } from '../theme/colors';
+import { colors, cards, typography, chips as chipStyles, buttons } from '../constants/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +29,13 @@ interface MemberForm {
   notes: string;
 }
 
+interface RecurringOccasion {
+  id: string;
+  name: string;
+  day: string;
+  people: string;
+}
+
 const NATIONALITIES = [
   'Afghan','Australian','Bangladeshi','British','Canadian','Chinese','Dutch',
   'Egyptian','Ethiopian','Filipino','French','German','Greek','Indian','Indonesian',
@@ -41,16 +46,29 @@ const NATIONALITIES = [
   'Ukrainian','American','Vietnamese','Yemeni','Zimbabwean',
 ].sort();
 
-const LANGUAGES = [
-  'Arabic','Bengali','Chinese','Dutch','English','Filipino','French','German',
-  'Gujarati','Hindi','Indonesian','Italian','Japanese','Kannada','Korean',
-  'Malayalam','Marathi','Nepali','Odia','Pashto','Persian','Punjabi','Russian',
-  'Sinhala','Spanish','Swahili','Tamil','Telugu','Thai','Turkish','Urdu','Vietnamese',
-].sort();
-
 const HEALTH_PILLS = ['Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid', 'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten'];
 
-// P6: Cuisines dynamically sourced from RAG dish database
+const COMMUNITIES = [
+  'Hindu — no restrictions',
+  'GSB (Gaud Saraswat Brahmin)',
+  'CKP (Chandraseniya Kayastha Prabhu)',
+  'Brahmin — no onion/garlic',
+  'Jain — no root vegetables',
+  'Muslim — Halal only',
+  'Parsi',
+  'Sindhi',
+  'Bengali Hindu',
+  'Christian',
+  'Other',
+];
+
+const COOKING_PATTERNS = [
+  'Cook at night — dinner carries to next day lunch',
+  'Cook fresh at every meal',
+  'Cook once for all three meals',
+];
+
+const LANG_OPTIONS = ['English','Hindi','Marathi','Gujarati','Tamil','Telugu','Malayalam','Kannada','Bengali','Punjabi','Urdu'];
 
 function formToNotes(form: MemberForm): string {
   return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
@@ -67,6 +85,32 @@ function memberToForm(m: Member): MemberForm {
   return { name: m.name, age: String(m.age || ''), nationality: '', nativeLanguage: '', foodPreference: 'Mixed', healthConditions: conds, notes: others };
 }
 
+// ─── Dropdown component ──────────────────────────────────────────────────────
+
+function Dropdown({ label, value, options, onSelect, placeholder }: {
+  label?: string; value: string; options: string[]; onSelect: (v: string) => void; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={{marginBottom:8}}>
+      {label && <Text style={s.fieldLabel}>{label}</Text>}
+      <TouchableOpacity style={s.dropdown} onPress={() => setOpen(!open)} activeOpacity={0.8}>
+        <Text style={{flex:1,fontSize:12,color:value ? colors.navy : colors.textHint}}>{value || placeholder || 'Select...'}</Text>
+        <Text style={{fontSize:10,color:colors.textMuted}}>{open ? '\u25B2' : '\u25BC'}</Text>
+      </TouchableOpacity>
+      {open && (
+        <View style={s.dropdownList}>
+          {options.map(o => (
+            <TouchableOpacity key={o} style={s.dropdownItem} onPress={() => { onSelect(o); setOpen(false); }}>
+              <Text style={{fontSize:12,color:value===o ? colors.emerald : colors.navy,fontWeight:value===o ? '700' : '400'}}>{o}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DietaryProfileScreen() {
@@ -77,147 +121,163 @@ export default function DietaryProfileScreen() {
   const [editId,           setEditId]           = useState<string | null>(null);
   const [form,             setForm]             = useState<MemberForm>(emptyForm());
   const [natSuggestions,   setNatSuggestions]   = useState<string[]>([]);
-  const [langSuggestions,  setLangSuggestions]  = useState<string[]>([]);
   const [formError,        setFormError]        = useState('');
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [cuisineSaving,    setCuisineSaving]    = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [savedMsg, setSavedMsg] = useState(false);
+  const [hasChanges,       setHasChanges]       = useState(false);
+  const [savedMsg,         setSavedMsg]         = useState(false);
   const snapshotRef = useRef('');
-  const [cuisineSearch,    setCuisineSearch]    = useState('');
 
-  // Household settings
-  const [subTier, setSubTier] = useState('Free');
-  const [subExpiry, setSubExpiry] = useState('—');
-  const [isFirstSetup, setIsFirstSetup] = useState(false);
-  const [hasInsurance, setHasInsurance] = useState(false);
-  const [insuranceExpiry, setInsuranceExpiry] = useState('');
-  const [referralConsent, setReferralConsent] = useState(false);
-  const [maharajDay, setMaharajDay] = useState('Saturday');
-  const [isJainFamily, setIsJainFamily] = useState(false);
-  const [jainAllowNonJain, setJainAllowNonJain] = useState(true);
-  const [fastingDays, setFastingDays] = useState<string[]>([]);
-  const [storePrefs, setStorePrefs] = useState<string[]>([]);
-  const [deliveryPrefs, setDeliveryPrefs] = useState<string[]>([]);
-  const [cookingSkill, setCookingSkill] = useState('');
-  const [budgetPref, setBudgetPref] = useState('');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['English']);
-  const [languageSearch, setLanguageSearch] = useState('');
-  const [fastingDaysText, setFastingDaysText] = useState('');
-  const [notifFestivals, setNotifFestivals] = useState(true);
-  const [notifLabReports, setNotifLabReports] = useState(true);
-  const [notifInsurance, setNotifInsurance] = useState(true);
-  const [fullName, setFullName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Section 1 — Account
+  const [subTier,      setSubTier]      = useState('Free');
+  const [subExpiry,    setSubExpiry]    = useState('—');
+  const [fullName,     setFullName]     = useState('');
+  const [phoneNumber,  setPhoneNumber]  = useState('');
+  const [userEmail,    setUserEmail]    = useState('');
 
-  // Load household settings on mount
+  // Section 2 — Community
+  const [community,         setCommunity]         = useState('');
+  const [communityOther,    setCommunityOther]    = useState('');
+  const [additionalRules,   setAdditionalRules]   = useState('');
+  const [isJainFamily,      setIsJainFamily]      = useState(false);
+  const [jainAllowNonJain,  setJainAllowNonJain]  = useState(true);
+
+  // Section 4 — Meal Template
+  const [mealCurry,    setMealCurry]    = useState('');
+  const [mealVeg,      setMealVeg]      = useState('');
+  const [mealRaita,    setMealRaita]    = useState('');
+  const [mealBread,    setMealBread]    = useState('');
+  const [mealRice,     setMealRice]     = useState('');
+  const [sundayCurry,  setSundayCurry]  = useState('');
+  const [sundaySweet,  setSundaySweet]  = useState('');
+
+  // Section 5 — Breakfast
+  const [breakfastPrefs,   setBreakfastPrefs]   = useState('');
+
+  // Section 6 — Cooking Pattern
+  const [cookingPattern,   setCookingPattern]   = useState('');
+
+  // Section 8 — Avoids
+  const [avoidanceList,    setAvoidanceList]    = useState('');
+
+  // Section 9 — Grocery
+  const [groceryDay,       setGroceryDay]       = useState('');
+  const [preferredStores,  setPreferredStores]  = useState('');
+  const [preferredApps,    setPreferredApps]    = useState('');
+
+  // Section 10 — Recurring Occasions
+  const [occasions,        setOccasions]        = useState<RecurringOccasion[]>([]);
+  const [occasionModal,    setOccasionModal]    = useState(false);
+  const [editOccasionId,   setEditOccasionId]   = useState<string|null>(null);
+  const [occName,          setOccName]          = useState('');
+  const [occDay,           setOccDay]           = useState('');
+  const [occPeople,        setOccPeople]        = useState('');
+
+  // Section 11 — Insurance
+  const [hasInsurance,     setHasInsurance]     = useState(false);
+  const [insuranceExpiry,  setInsuranceExpiry]  = useState('');
+
+  // Section 12 — Notifications
+  const [notifFestivals,   setNotifFestivals]   = useState(true);
+  const [notifLabReports,  setNotifLabReports]  = useState(true);
+  const [notifInsurance,   setNotifInsurance]   = useState(true);
+
+  // Section 13 — App Settings
+  const [cookingSkill,     setCookingSkill]     = useState('');
+  const [budgetPref,       setBudgetPref]       = useState('');
+
+  // Section 14 — Language
+  const [appLanguage,      setAppLanguage]      = useState('English');
+  const [planSummaryLanguage,   setPlanSummaryLanguage]   = useState('English');
+  const [shoppingLanguage, setShoppingLanguage] = useState('English');
+
+  // Cuisine accordion
+  const [expandedGroups,   setExpandedGroups]   = useState<Record<string,boolean>>({});
+
+  // First setup
+  const [isFirstSetup,     setIsFirstSetup]     = useState(false);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    async function loadHousehold() {
-      // Load subscription from Supabase profiles
+    async function loadAll() {
+      // Supabase profile
       try {
         const user = await getSessionUser();
         if (user) {
-          const { data: prof } = await supabase.from('profiles').select('subscription_tier, subscription_expires_at').eq('id', user.id).maybeSingle();
+          const { data: prof } = await supabase.from('profiles').select('subscription_tier, subscription_expires_at, full_name, phone_number').eq('id', user.id).maybeSingle();
           if (prof?.subscription_tier) setSubTier(prof.subscription_tier);
           if (prof?.subscription_expires_at) setSubExpiry(new Date(prof.subscription_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+          setFullName((prof?.full_name ?? user.user_metadata?.full_name ?? '') as string);
+          setUserEmail(user.email ?? '');
+          if (prof?.phone_number) setPhoneNumber(prof.phone_number);
         }
       } catch {}
-      const [ins, insExp, ref, fast, store, del, cook, bud, mDay] = await Promise.all([
-        AsyncStorage.getItem('household_insurance'), AsyncStorage.getItem('insurance_expiry'),
-        AsyncStorage.getItem('referral_consent'), AsyncStorage.getItem('fasting_days'),
-        AsyncStorage.getItem('store_prefs'), AsyncStorage.getItem('delivery_prefs'),
-        AsyncStorage.getItem('cooking_skill'), AsyncStorage.getItem('budget_pref'),
-        AsyncStorage.getItem('maharaj_day'),
+
+      // AsyncStorage fields
+      const keys = await AsyncStorage.multiGet([
+        'community', 'community_other', 'additional_dietary_rules',
+        'jain_family', 'jain_allow_non_jain',
+        'meal_template_curry', 'meal_template_veg', 'meal_template_raita', 'meal_template_bread', 'meal_template_rice',
+        'sunday_extra_curry', 'sunday_sweet',
+        'breakfast_preferences', 'cooking_pattern', 'avoidance_list',
+        'grocery_day', 'preferred_supermarkets', 'preferred_delivery_apps',
+        'recurring_occasions',
+        'household_insurance', 'insurance_expiry',
+        'notif_festivals', 'notif_lab_reports', 'notif_insurance_reminders',
+        'cooking_skill', 'budget_pref',
+        'app_language', 'plan_summary_language', 'shopping_list_language',
+        'phone_number', 'profile_setup_complete',
       ]);
-      if (mDay) setMaharajDay(mDay);
-      const jf = await AsyncStorage.getItem('jain_family');
-      const jnj = await AsyncStorage.getItem('jain_allow_non_jain');
-      if (jf === 'true') setIsJainFamily(true);
-      if (jnj === 'false') setJainAllowNonJain(false);
-      if (ins === 'true') setHasInsurance(true); if (insExp) setInsuranceExpiry(insExp);
-      if (ref === 'true') setReferralConsent(true);
-      if (fast) try { setFastingDays(JSON.parse(fast)); } catch {}
-      if (store) try { setStorePrefs(JSON.parse(store)); } catch {}
-      if (del) try { setDeliveryPrefs(JSON.parse(del)); } catch {}
-      if (cook) setCookingSkill(cook); if (bud) setBudgetPref(bud);
-      // New fields
-      const [langs, fText, nf, nl, ni, phone] = await Promise.all([
-        AsyncStorage.getItem('app_languages'), AsyncStorage.getItem('fasting_days_text'),
-        AsyncStorage.getItem('notif_festivals'), AsyncStorage.getItem('notif_lab_reports'),
-        AsyncStorage.getItem('notif_insurance_reminders'), AsyncStorage.getItem('phone_number'),
-      ]);
-      if (langs) try { setSelectedLanguages(JSON.parse(langs)); } catch {}
-      if (fText) setFastingDaysText(fText);
-      if (nf !== null) setNotifFestivals(nf !== 'false');
-      if (nl !== null) setNotifLabReports(nl !== 'false');
-      if (ni !== null) setNotifInsurance(ni !== 'false');
-      if (phone) setPhoneNumber(phone);
-      // Check first setup
-      const profileDone = await AsyncStorage.getItem('profile_setup_complete');
-      if (!profileDone) setIsFirstSetup(true);
-      // Load user info
-      const user = await getSessionUser();
-      if (user) {
-        setFullName((user.user_metadata?.full_name ?? '') as string);
-        setUserEmail(user.email ?? '');
-      }
+      const kv: Record<string,string|null> = {};
+      keys.forEach(([k,v]) => { kv[k] = v; });
+
+      if (kv['community']) setCommunity(kv['community']);
+      if (kv['community_other']) setCommunityOther(kv['community_other']);
+      if (kv['additional_dietary_rules']) setAdditionalRules(kv['additional_dietary_rules']);
+      if (kv['jain_family'] === 'true') setIsJainFamily(true);
+      if (kv['jain_allow_non_jain'] === 'false') setJainAllowNonJain(false);
+      if (kv['meal_template_curry']) setMealCurry(kv['meal_template_curry']);
+      if (kv['meal_template_veg']) setMealVeg(kv['meal_template_veg']);
+      if (kv['meal_template_raita']) setMealRaita(kv['meal_template_raita']);
+      if (kv['meal_template_bread']) setMealBread(kv['meal_template_bread']);
+      if (kv['meal_template_rice']) setMealRice(kv['meal_template_rice']);
+      if (kv['sunday_extra_curry']) setSundayCurry(kv['sunday_extra_curry']);
+      if (kv['sunday_sweet']) setSundaySweet(kv['sunday_sweet']);
+      if (kv['breakfast_preferences']) setBreakfastPrefs(kv['breakfast_preferences']);
+      if (kv['cooking_pattern']) setCookingPattern(kv['cooking_pattern']);
+      if (kv['avoidance_list']) setAvoidanceList(kv['avoidance_list']);
+      if (kv['grocery_day']) setGroceryDay(kv['grocery_day']);
+      if (kv['preferred_supermarkets']) setPreferredStores(kv['preferred_supermarkets']);
+      if (kv['preferred_delivery_apps']) setPreferredApps(kv['preferred_delivery_apps']);
+      if (kv['recurring_occasions']) try { setOccasions(JSON.parse(kv['recurring_occasions'])); } catch {}
+      if (kv['household_insurance'] === 'true') setHasInsurance(true);
+      if (kv['insurance_expiry']) setInsuranceExpiry(kv['insurance_expiry']);
+      if (kv['notif_festivals'] !== null) setNotifFestivals(kv['notif_festivals'] !== 'false');
+      if (kv['notif_lab_reports'] !== null) setNotifLabReports(kv['notif_lab_reports'] !== 'false');
+      if (kv['notif_insurance_reminders'] !== null) setNotifInsurance(kv['notif_insurance_reminders'] !== 'false');
+      if (kv['cooking_skill']) setCookingSkill(kv['cooking_skill']);
+      if (kv['budget_pref']) setBudgetPref(kv['budget_pref']);
+      if (kv['app_language']) setAppLanguage(kv['app_language']);
+      if (kv['plan_summary_language']) setPlanSummaryLanguage(kv['plan_summary_language']);
+      if (kv['shopping_list_language']) setShoppingLanguage(kv['shopping_list_language']);
+      if (kv['phone_number'] && !phoneNumber) setPhoneNumber(kv['phone_number']);
+      if (!kv['profile_setup_complete']) setIsFirstSetup(true);
+
+      // Jain synced from community
+      const comm = kv['community'] ?? '';
+      if (comm.startsWith('Jain')) setIsJainFamily(true);
     }
-    loadHousehold().then(() => {
-      // Q5: Snapshot current values for change detection
-      setTimeout(() => {
-        snapshotRef.current = JSON.stringify({ isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
-      }, 500);
+    loadAll().then(() => {
+      setTimeout(() => { snapshotRef.current = 'loaded'; }, 500);
     });
   }, []);
 
-  // Q5: Detect changes for Save button state
-  useEffect(() => {
-    if (!snapshotRef.current) return;
-    const current = JSON.stringify({ isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber });
-    setHasChanges(current !== snapshotRef.current);
-  }, [isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber]);
+  // Track changes
+  const markDirty = () => { if (snapshotRef.current) setHasChanges(true); };
 
-  async function saveHousehold() {
-    await Promise.all([
-      AsyncStorage.setItem('household_insurance', hasInsurance ? 'true' : 'false'),
-      AsyncStorage.setItem('insurance_expiry', insuranceExpiry),
-      AsyncStorage.setItem('referral_consent', referralConsent ? 'true' : 'false'),
-      AsyncStorage.setItem('fasting_days', JSON.stringify(fastingDays)), // legacy
-      AsyncStorage.setItem('maharaj_day', maharajDay),
-      AsyncStorage.setItem('jain_family', String(isJainFamily)),
-      AsyncStorage.setItem('jain_allow_non_jain', String(jainAllowNonJain)),
-      AsyncStorage.setItem('store_prefs', JSON.stringify(storePrefs)),
-      AsyncStorage.setItem('delivery_prefs', JSON.stringify(deliveryPrefs)),
-      AsyncStorage.setItem('cooking_skill', cookingSkill),
-      AsyncStorage.setItem('budget_pref', budgetPref),
-      AsyncStorage.setItem('app_languages', JSON.stringify(selectedLanguages)),
-      AsyncStorage.setItem('fasting_days_text', fastingDaysText),
-      AsyncStorage.setItem('notif_festivals', String(notifFestivals)),
-      AsyncStorage.setItem('notif_lab_reports', String(notifLabReports)),
-      AsyncStorage.setItem('notif_insurance_reminders', String(notifInsurance)),
-      AsyncStorage.setItem('phone_number', phoneNumber),
-    ]);
-    // Save full name + phone to Supabase
-    try {
-      const user = await getSessionUser();
-      if (user) { await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, phone_number: phoneNumber, updated_at: new Date().toISOString() }, { onConflict: 'id' }); }
-    } catch {}
-    await AsyncStorage.setItem('profile_setup_complete', 'true');
-    console.log('profile_setup_complete set to true');
-    if (isFirstSetup) {
-      setIsFirstSetup(false);
-      router.replace('/home');
-    } else {
-      Alert.alert('Saved', 'Profile saved successfully.');
-    }
-  }
+  // ── Load members + cuisines ────────────────────────────────────────────────
 
-  function toggleArr(arr: string[], set: React.Dispatch<React.SetStateAction<string[]>>, val: string) {
-    set(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
-  }
-
-  const load = useCallback(async () => {
+  const loadMembers = useCallback(async () => {
     setLoading(true);
     const user = await getSessionUser();
     if (!user) { setLoading(false); return; }
@@ -230,24 +290,25 @@ export default function DietaryProfileScreen() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void loadMembers(); }, []);
+
+  // ── Member CRUD ────────────────────────────────────────────────────────────
 
   function openAdd() { setEditId(null); setForm(emptyForm()); setFormError(''); setModalOpen(true); }
   function openEdit(m: Member) { setEditId(m.id); setForm(memberToForm(m)); setFormError(''); setModalOpen(true); }
 
   function toggleHealth(cond: string) {
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       healthConditions: prev.healthConditions.includes(cond)
-        ? prev.healthConditions.filter((c) => c !== cond)
+        ? prev.healthConditions.filter(c => c !== cond)
         : [...prev.healthConditions, cond],
     }));
   }
 
   function toggleCuisine(cuisine: string) {
-    setSelectedCuisines((prev) =>
-      prev.includes(cuisine) ? prev.filter((c) => c !== cuisine) : [...prev, cuisine]
-    );
+    setSelectedCuisines(prev => prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine]);
+    markDirty();
   }
 
   async function saveMember() {
@@ -264,35 +325,114 @@ export default function DietaryProfileScreen() {
         const { error: e } = await supabase.from('family_members').insert(payload);
         if (e) throw new Error(e.message);
       }
-      setModalOpen(false); await load();
+      setModalOpen(false); await loadMembers();
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Save failed.');
     } finally { setSaving(false); }
   }
 
-  async function saveCuisines() {
-    setCuisineSaving(true);
+  async function deleteMember(id: string) {
+    await supabase.from('family_members').delete().eq('id', id);
+    await loadMembers();
+  }
+
+  // ── Occasion CRUD ──────────────────────────────────────────────────────────
+
+  function openAddOccasion() { setEditOccasionId(null); setOccName(''); setOccDay(''); setOccPeople(''); setOccasionModal(true); }
+  function openEditOccasion(o: RecurringOccasion) { setEditOccasionId(o.id); setOccName(o.name); setOccDay(o.day); setOccPeople(o.people); setOccasionModal(true); }
+
+  function saveOccasion() {
+    if (!occName.trim()) return;
+    if (editOccasionId) {
+      setOccasions(prev => prev.map(o => o.id === editOccasionId ? { ...o, name: occName, day: occDay, people: occPeople } : o));
+    } else {
+      setOccasions(prev => [...prev, { id: Date.now().toString(), name: occName, day: occDay, people: occPeople }]);
+    }
+    setOccasionModal(false);
+    markDirty();
+  }
+
+  function deleteOccasion(id: string) {
+    setOccasions(prev => prev.filter(o => o.id !== id));
+    markDirty();
+  }
+
+  // ── Save all ───────────────────────────────────────────────────────────────
+
+  async function saveProfile() {
+    // AsyncStorage
+    await AsyncStorage.multiSet([
+      ['community', community],
+      ['community_other', communityOther],
+      ['additional_dietary_rules', additionalRules],
+      ['jain_family', String(isJainFamily)],
+      ['jain_allow_non_jain', String(jainAllowNonJain)],
+      ['meal_template_curry', mealCurry],
+      ['meal_template_veg', mealVeg],
+      ['meal_template_raita', mealRaita],
+      ['meal_template_bread', mealBread],
+      ['meal_template_rice', mealRice],
+      ['sunday_extra_curry', sundayCurry],
+      ['sunday_sweet', sundaySweet],
+      ['breakfast_preferences', breakfastPrefs],
+      ['cooking_pattern', cookingPattern],
+      ['avoidance_list', avoidanceList],
+      ['grocery_day', groceryDay],
+      ['preferred_supermarkets', preferredStores],
+      ['preferred_delivery_apps', preferredApps],
+      ['recurring_occasions', JSON.stringify(occasions)],
+      ['household_insurance', hasInsurance ? 'true' : 'false'],
+      ['insurance_expiry', insuranceExpiry],
+      ['notif_festivals', String(notifFestivals)],
+      ['notif_lab_reports', String(notifLabReports)],
+      ['notif_insurance_reminders', String(notifInsurance)],
+      ['cooking_skill', cookingSkill],
+      ['budget_pref', budgetPref],
+      ['app_language', appLanguage],
+      ['plan_summary_language', planSummaryLanguage],
+      ['shopping_list_language', shoppingLanguage],
+      ['phone_number', phoneNumber],
+      ['maharaj_day', groceryDay],
+      ['profile_setup_complete', 'true'],
+    ]);
+
+    // Supabase profiles upsert
+    // NOTE: plan_summary_language column needs to be added to Supabase profiles table (migration pending)
+    try {
+      const user = await getSessionUser();
+      if (user) {
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          full_name: fullName,
+          phone_number: phoneNumber,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      }
+    } catch {}
+
+    // Cuisine preferences: delete-all then insert
     try {
       const user = await getSessionUser();
       if (!user) return;
-
-      // Delete ALL cuisines for this user first
       await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
-
-      // Then insert the new selection fresh
       if (selectedCuisines.length > 0) {
-        const { error: insertErr } = await supabase.from('cuisine_preferences').insert(
-          selectedCuisines.map((c) => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
+        await supabase.from('cuisine_preferences').insert(
+          selectedCuisines.map(c => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
         );
-        if (insertErr) console.error('[DietaryProfile] cuisine insert error:', insertErr.message);
       }
-    } catch (e) { console.error('[DietaryProfile] saveCuisines error:', e); } finally { setCuisineSaving(false); }
+    } catch {}
+
+    if (isFirstSetup) {
+      setIsFirstSetup(false);
+      router.replace('/home');
+    } else {
+      setHasChanges(false);
+      setSavedMsg(true);
+      setTimeout(() => setSavedMsg(false), 2000);
+    }
   }
 
-  async function deleteMember(id: string) {
-    await supabase.from('family_members').delete().eq('id', id);
-    await load();
-  }
+  // ── Health condition colors ────────────────────────────────────────────────
 
   const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
     Diabetic: { bg: '#FEF2F2', fg: '#DC2626' }, BP: { bg: '#FFF7ED', fg: '#C2410C' },
@@ -302,384 +442,352 @@ export default function DietaryProfileScreen() {
     Lactose: { bg: '#F0FDF4', fg: '#166534' }, Gluten: { bg: '#FFFBEB', fg: '#92400E' },
   };
 
+  const CUISINE_GROUPS = getCuisineGroups(isJainFamily);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <ScreenWrapper title="Family Profile Settings">
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* Welcome banner for first setup */}
         {isFirstSetup && (
-          <View style={{backgroundColor:'#FFF8E7',borderRadius:10,padding:14,marginBottom:14,borderWidth:1,borderColor:'rgba(201,162,39,0.3)'}}>
-            <Text style={{fontSize:12,fontWeight:'700',color:'#854F0B',marginBottom:4}}>Welcome to My Maharaj Beta</Text>
-            <Text style={{fontSize:10,color:'#854F0B',lineHeight:16}}>Set up your family profile so Maharaj can personalise your meal plans. Add family members, health conditions and cuisine preferences below.</Text>
+          <View style={[cards.frostedGreen, {padding:14,marginBottom:14}]}>
+            <Text style={{fontSize:12,fontWeight:'700',color:colors.navy,marginBottom:4}}>Welcome to My Maharaj Beta</Text>
+            <Text style={{fontSize:10,color:colors.navy,lineHeight:16}}>Set up your family profile so Maharaj can personalise your meal plans.</Text>
           </View>
         )}
 
-        {/* Jain family questions */}
-        <View style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:12}}>
-          <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:10}}>Are you a Jain family?</Text>
-          <View style={{flexDirection:'row',gap:10}}>
-            <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(isJainFamily ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setIsJainFamily(true); setHasChanges(true); void AsyncStorage.setItem('jain_family','true'); }}>
-              <Text style={{fontSize:15,fontWeight:isJainFamily?'700':'500',color:isJainFamily?'white':'#2E5480'}}>Yes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(!isJainFamily ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setIsJainFamily(false); setJainAllowNonJain(false); setHasChanges(true); void AsyncStorage.setItem('jain_family','false'); void AsyncStorage.setItem('jain_allow_non_jain','false'); }}>
-              <Text style={{fontSize:15,fontWeight:!isJainFamily?'700':'500',color:!isJainFamily?'white':'#2E5480'}}>No</Text>
-            </TouchableOpacity>
-          </View>
+        {/* ══════════ 1. MY ACCOUNT ══════════ */}
+        <Text style={s.sectionHead}>My Account</Text>
+
+        <View style={[cards.frostedCyan, {flexDirection:'row',alignItems:'center',gap:8,marginBottom:10}]}>
+          <Text style={{fontSize:11,fontWeight:'600',color:colors.navy}}>{subTier}</Text>
+          <Text style={{fontSize:10,color:colors.textMuted}}>Valid until {subExpiry}</Text>
         </View>
+
+        <Text style={s.fieldLabel}>Full Name</Text>
+        <TextInput style={s.input} value={fullName} onChangeText={v => { setFullName(v); markDirty(); }} placeholder="Your full name" placeholderTextColor={colors.textHint} />
+
+        <Text style={s.fieldLabel}>Phone</Text>
+        <TextInput style={s.input} value={phoneNumber} onChangeText={v => { setPhoneNumber(v); markDirty(); }} placeholder="+971 XX XXX XXXX" placeholderTextColor={colors.textHint} keyboardType="phone-pad" />
+
+        <Text style={s.fieldLabel}>Email</Text>
+        <TextInput style={[s.input, {color:colors.textMuted,backgroundColor:'#F4F6F8'}]} value={userEmail} editable={false} />
+
+        <TouchableOpacity style={[buttons.secondary, {alignItems:'center',marginBottom:14}]} onPress={async () => { try { await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo: 'https://my-maharaj.vercel.app' }); Alert.alert('Password reset email sent.'); } catch { Alert.alert('Error', 'Could not send reset email.'); } }}>
+          <Text style={[buttons.secondaryText, {fontSize:12}]}>Change password</Text>
+        </TouchableOpacity>
+
+        {/* ══════════ 2. COMMUNITY AND DIETARY IDENTITY ══════════ */}
+        <Text style={s.sectionHead}>Community and Dietary Identity</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Maharaj applies appropriate dietary rules based on your community</Text>
+
+        <Dropdown value={community} options={COMMUNITIES} onSelect={v => { setCommunity(v); markDirty(); if (v.startsWith('Jain')) { setIsJainFamily(true); void AsyncStorage.setItem('jain_family','true'); } else { setIsJainFamily(false); void AsyncStorage.setItem('jain_family','false'); } }} placeholder="Select community..." />
+
+        {community === 'Other' && (
+          <>
+            <Text style={s.fieldLabel}>Describe your community dietary rules</Text>
+            <TextInput style={[s.input, {minHeight:60,textAlignVertical:'top'}]} value={communityOther} onChangeText={v => { setCommunityOther(v); markDirty(); }} placeholder="Describe rules..." placeholderTextColor={colors.textHint} multiline />
+          </>
+        )}
+
+        <Text style={s.fieldLabel}>Any additional dietary rules?</Text>
+        <TextInput style={[s.input, {minHeight:60,textAlignVertical:'top'}]} value={additionalRules} onChangeText={v => { setAdditionalRules(v); markDirty(); }} placeholder="e.g. No onion on Tuesdays, Ekadashi fasting..." placeholderTextColor={colors.textHint} multiline />
+
         {isJainFamily && (
-          <View style={{backgroundColor:'white',borderWidth:1.5,borderColor:'#C9A227',borderRadius:14,padding:16,marginBottom:12}}>
-            <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:10}}>Would Maharaj suggest non-Jain recipes also?</Text>
+          <View style={[cards.base, {marginBottom:12}]}>
+            <Text style={{fontSize:12,fontWeight:'700',color:colors.navy,marginBottom:8}}>Would Maharaj suggest non-Jain recipes also?</Text>
             <View style={{flexDirection:'row',gap:10}}>
-              <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(jainAllowNonJain ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setJainAllowNonJain(true); setHasChanges(true); void AsyncStorage.setItem('jain_allow_non_jain','true'); }}>
-                <Text style={{fontSize:15,fontWeight:jainAllowNonJain?'700':'500',color:jainAllowNonJain?'white':'#2E5480'}}>Yes</Text>
+              <TouchableOpacity style={{flex:1,paddingVertical:8,borderRadius:20,alignItems:'center',...(jainAllowNonJain ? {backgroundColor:colors.emerald} : {borderWidth:1,borderColor:colors.navy})}} onPress={() => { setJainAllowNonJain(true); markDirty(); }}>
+                <Text style={{fontSize:12,fontWeight:'600',color:jainAllowNonJain ? colors.white : colors.navy}}>Yes</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{flex:1,paddingVertical:10,borderRadius:8,alignItems:'center',...(!jainAllowNonJain ? {backgroundColor:'#2E5480'} : {borderWidth:1.5,borderColor:'#2E5480',backgroundColor:'transparent'})}} onPress={() => { setJainAllowNonJain(false); setHasChanges(true); void AsyncStorage.setItem('jain_allow_non_jain','false'); }}>
-                <Text style={{fontSize:15,fontWeight:!jainAllowNonJain?'700':'500',color:!jainAllowNonJain?'white':'#2E5480'}}>No</Text>
+              <TouchableOpacity style={{flex:1,paddingVertical:8,borderRadius:20,alignItems:'center',...(!jainAllowNonJain ? {backgroundColor:colors.emerald} : {borderWidth:1,borderColor:colors.navy})}} onPress={() => { setJainAllowNonJain(false); markDirty(); }}>
+                <Text style={{fontSize:12,fontWeight:'600',color:!jainAllowNonJain ? colors.white : colors.navy}}>No</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Q7: My Maharaj Day */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderWidth:1,borderColor:'rgba(201,162,39,0.2)',borderLeftWidth:3,borderLeftColor:gold}}>
-          <Text style={{fontSize:13,fontWeight:'700',color:navy,marginBottom:4}}>My Maharaj Day</Text>
-          <Text style={{fontSize:10,color:'#6B7280',marginBottom:10}}>Maharaj will automatically plan your week on this day.</Text>
-          <View style={{flexDirection:'row',gap:4}}>
-            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-              <TouchableOpacity key={d} style={{flex:1,paddingVertical:8,borderRadius:8,borderWidth:1.5,borderColor:maharajDay===d?gold:'#D1D5DB',backgroundColor:maharajDay===d?gold:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setMaharajDay(d)}>
-                <Text style={{fontSize:10,fontWeight:'700',color:maharajDay===d?'#1B2A0C':navy}}>{d}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        {/* ══════════ 3. FAMILY MEMBERS ══════════ */}
+        <Text style={s.sectionHead}>Family Members</Text>
 
-        {/* Subscription Card */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:14,borderLeftWidth:2,borderLeftColor:gold,borderWidth:1,borderColor:'rgba(27,58,92,0.08)'}}>
-          <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:6}}>
-            <Text style={{fontSize:12,color:textSec}}>Plan</Text>
-            <Text style={{fontSize:12,fontWeight:'700',color:subTier==='Pro'?gold:subTier==='Family'?successGreen:textSec}}>{subTier}</Text>
-          </View>
-          <View style={{flexDirection:'row',justifyContent:'space-between'}}>
-            <Text style={{fontSize:12,color:textSec}}>Valid until</Text>
-            <Text style={{fontSize:12,fontWeight:'600',color:navy}}>{subExpiry}</Text>
-          </View>
-        </View>
-
-        {/* Family Members */}
         {loading ? (
-          <Text style={s.loadingText}>Loading...</Text>
+          <Text style={{textAlign:'center',color:colors.textMuted,marginVertical:20}}>Loading...</Text>
         ) : members.length === 0 ? (
-          <View style={s.emptyState}>
-            <Text style={s.emptyIcon}></Text>
-            <Text style={s.emptyTitle}>No family members yet</Text>
-            <Text style={s.emptySub}>Add your family members to personalise meal plans</Text>
+          <View style={{alignItems:'center',paddingVertical:30}}>
+            <Text style={{fontSize:14,color:colors.textMuted,textAlign:'center'}}>No family members yet</Text>
           </View>
-        ) : members.map((m) => {
-          const pills = HEALTH_PILLS.filter((p) => (m.health_notes ?? '').toLowerCase().includes(p.toLowerCase()));
-          const otherNotes = pills.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), m.health_notes ?? '').replace(/^,+|,+$/g, '').trim();
+        ) : members.map(m => {
+          const pills = HEALTH_PILLS.filter(p => (m.health_notes ?? '').toLowerCase().includes(p.toLowerCase()));
+          const hasLab = (m.health_notes ?? '').includes('Lab (');
           return (
-            <View key={m.id} style={s.card}>
-              <View style={s.cardHeader}>
-                <View style={s.memberInfo}>
-                  <Text style={s.memberName}>{m.name}</Text>
-                  {m.age > 0 && <Text style={s.metaText}>{m.age} yrs</Text>}
+            <View key={m.id} style={[cards.base, {marginBottom:10}]}>
+              <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                <View style={{flex:1}}>
+                  <Text style={{fontSize:13,fontWeight:'700',color:colors.navy}}>{m.name}</Text>
+                  {m.age > 0 && <Text style={{fontSize:10,color:colors.textMuted}}>{m.age} yrs</Text>}
                 </View>
-                <TouchableOpacity onPress={() => openEdit(m)} style={s.editBtn}>
-                  <Text style={s.editBtnText}>Edit</Text>
+                <TouchableOpacity style={[buttons.back, {paddingVertical:5,paddingHorizontal:10}]} onPress={() => openEdit(m)}>
+                  <Text style={{fontSize:11,fontWeight:'600',color:colors.navy}}>Edit</Text>
                 </TouchableOpacity>
               </View>
               {pills.length > 0 && (
-                <View style={s.pillWrap}>
-                  {pills.map((p) => (
-                    <View key={p} style={[s.healthPill, { backgroundColor: HEALTH_COLORS[p]?.bg ?? '#F3F4F6' }]}>
-                      <Text style={[s.healthPillText, { color: HEALTH_COLORS[p]?.fg ?? '#374151' }]}>{p}</Text>
+                <View style={{flexDirection:'row',flexWrap:'wrap',gap:4,marginBottom:4}}>
+                  {pills.map(p => (
+                    <View key={p} style={{borderRadius:6,paddingHorizontal:6,paddingVertical:2,backgroundColor:HEALTH_COLORS[p]?.bg ?? '#F3F4F6'}}>
+                      <Text style={{fontSize:10,fontWeight:'600',color:HEALTH_COLORS[p]?.fg ?? '#374151'}}>{p}</Text>
                     </View>
                   ))}
                 </View>
               )}
-              {otherNotes ? <Text style={s.notesText}>{otherNotes}</Text> : null}
-              <TouchableOpacity onPress={() => deleteMember(m.id)} style={s.deleteBtn}>
-                <Text style={s.deleteBtnText}>Remove member</Text>
+              {hasLab && (
+                <View style={{borderRadius:6,paddingHorizontal:6,paddingVertical:2,backgroundColor:'rgba(124,58,237,0.1)',alignSelf:'flex-start',marginBottom:4}}>
+                  <Text style={{fontSize:10,fontWeight:'600',color:'#7C3AED'}}>Lab report uploaded</Text>
+                </View>
+              )}
+              <TouchableOpacity onPress={() => deleteMember(m.id)}>
+                <Text style={{fontSize:10,color:colors.danger,marginTop:4}}>Remove member</Text>
               </TouchableOpacity>
             </View>
           );
         })}
 
-        <View style={s.addWrap}>
-          <View style={{flexDirection:'row',gap:12}}>
-          <View style={{flex:2}}>
-            <Button title="+ Add Family Member" onPress={openAdd} />
-          </View>
-          <View style={{flex:1}}>
-            <Button title="Done" onPress={() => router.push('/home' as never)} variant="outline" />
-          </View>
-        </View>
-        </View>
+        <Text style={{fontSize:9,color:colors.textMuted,marginBottom:8}}>Fasting days and lab reports are set inside each member's profile</Text>
 
-        {/* Lab Report Link */}
-        <TouchableOpacity
-          style={s.labReportLink}
-          onPress={() => router.push('/lab-report' as never)}
-          activeOpacity={0.85}
-        >
-          <Text style={s.labReportIcon}></Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.labReportTitle}>Lab Report Analysis</Text>
-            <Text style={s.labReportSub}>Upload blood test results — Maharaj updates dietary recommendations automatically</Text>
-          </View>
-          <Text style={{ fontSize: 22, color: '#7C3AED', fontWeight: '300' }}>›</Text>
+        <TouchableOpacity style={s.dashedBtn} onPress={openAdd}>
+          <Text style={{fontSize:12,fontWeight:'600',color:colors.emerald}}>+ Add family member</Text>
         </TouchableOpacity>
 
-        {/* Cuisine Preferences */}
-        <View style={s.cuisineSection}>
-          <Text style={s.cuisineTitle}>Cuisine Preferences</Text>
-          <Text style={s.cuisineSub}>Select cuisines to guide your meal plans</Text>
-
-          <Text style={s.cuisineCount}>{selectedCuisines.length} cuisine{selectedCuisines.length !== 1 ? 's' : ''} selected</Text>
-
-          <TextInput
-            style={{borderWidth:1.5,borderColor:'#E5E7EB',borderRadius:12,paddingHorizontal:14,paddingVertical:10,fontSize:14,color:'#1F2937',backgroundColor:'rgba(255,255,255,0.9)',marginBottom:12}}
-            placeholder="Search cuisines..."
-            placeholderTextColor="#9CA3AF"
-            value={cuisineSearch}
-            onChangeText={setCuisineSearch}
-          />
-
-          <View style={s.pillRow}>
-            {getCuisineGroups(isJainFamily).flatMap(g => g.cuisines)
-              .filter(c => !cuisineSearch || c.toLowerCase().includes(cuisineSearch.toLowerCase()))
-              .map((c) => (
-                <TouchableOpacity key={c} onPress={() => toggleCuisine(c)} activeOpacity={0.75}
-                  style={[s.cuisinePill, selectedCuisines.includes(c) && s.cuisinePillActive]}>
-                  <Text style={[s.cuisinePillTxt, selectedCuisines.includes(c) && s.cuisinePillTxtActive]}>{c}</Text>
-                </TouchableOpacity>
-              ))}
+        {/* Lab Report Link */}
+        <TouchableOpacity style={[cards.frostedNavy, {flexDirection:'row',alignItems:'center',gap:10,marginTop:8,marginBottom:14}]} onPress={() => router.push('/lab-report' as never)} activeOpacity={0.85}>
+          <View style={{flex:1}}>
+            <Text style={{fontSize:12,fontWeight:'700',color:'#7C3AED',marginBottom:2}}>Lab Report Analysis</Text>
+            <Text style={{fontSize:10,color:colors.textSecondary,lineHeight:16}}>Upload blood test results — Maharaj updates dietary recommendations automatically</Text>
           </View>
+          <Text style={{fontSize:18,color:colors.textMuted}}>›</Text>
+        </TouchableOpacity>
 
-          <View style={{ marginTop: 16 }}>
-            <Button title={cuisineSaving ? 'Saving...' : '✓ Save Cuisine Preferences'} onPress={() => void saveCuisines()} loading={cuisineSaving} />
+        {/* ══════════ 4. MEAL TEMPLATE ══════════ */}
+        <Text style={s.sectionHead}>Meal Template</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Weekday lunch and dinner structure</Text>
+
+        {[
+          { label: 'Curry', val: mealCurry, set: setMealCurry },
+          { label: 'Veg dish', val: mealVeg, set: setMealVeg },
+          { label: 'Raita / Salad', val: mealRaita, set: setMealRaita },
+          { label: 'Bread', val: mealBread, set: setMealBread },
+          { label: 'Rice', val: mealRice, set: setMealRice },
+        ].map(({ label, val, set }) => (
+          <View key={label} style={{flexDirection:'row',alignItems:'center',marginBottom:6,gap:8}}>
+            <Text style={{fontSize:11,color:colors.navy,width:80}}>{label}</Text>
+            <TextInput style={[s.input, {flex:1,marginBottom:0}]} value={val} onChangeText={v => { set(v); markDirty(); }} placeholder={`e.g. ${label}...`} placeholderTextColor={colors.textHint} />
           </View>
+        ))}
+
+        <View style={{height:1,backgroundColor:'rgba(26,58,92,0.1)',marginVertical:10}} />
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Sunday template</Text>
+
+        <View style={{flexDirection:'row',alignItems:'center',marginBottom:6,gap:8}}>
+          <Text style={{fontSize:11,color:colors.navy,width:80}}>Extra curry</Text>
+          <TextInput style={[s.input, {flex:1,marginBottom:0}]} value={sundayCurry} onChangeText={v => { setSundayCurry(v); markDirty(); }} placeholder="e.g. Special curry..." placeholderTextColor={colors.textHint} />
+        </View>
+        <View style={{flexDirection:'row',alignItems:'center',marginBottom:10,gap:8}}>
+          <Text style={{fontSize:11,color:colors.navy,width:80}}>Sweet dish</Text>
+          <TextInput style={[s.input, {flex:1,marginBottom:0}]} value={sundaySweet} onChangeText={v => { setSundaySweet(v); markDirty(); }} placeholder="e.g. Sheera, Puran Poli..." placeholderTextColor={colors.textHint} />
         </View>
 
-        {/* Household Settings */}
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Household Settings</Text>
+        {/* ══════════ 5. BREAKFAST PREFERENCES ══════════ */}
+        <Text style={s.sectionHead}>Breakfast Preferences</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Tell Maharaj what your family enjoys for breakfast</Text>
+        <TextInput style={[s.input, {minHeight:70,textAlignVertical:'top'}]} value={breakfastPrefs} onChangeText={v => { setBreakfastPrefs(v); markDirty(); }} placeholder="e.g. Dosa, Amboli, Thepla, Koki, Idli. Sundays we like something elaborate. Avoid oats and cereal." placeholderTextColor={colors.textHint} multiline />
 
-        {/* My Maharaj Day moved to top of profile (Q7) */}
+        {/* ══════════ 6. COOKING PATTERN ══════════ */}
+        <Text style={s.sectionHead}>Cooking Pattern</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>How does your family cook?</Text>
+        <Dropdown value={cookingPattern} options={COOKING_PATTERNS} onSelect={v => { setCookingPattern(v); markDirty(); }} placeholder="Select cooking pattern..." />
 
-        {/* Insurance */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
+        {/* ══════════ 7. CUISINE PREFERENCES ══════════ */}
+        <Text style={s.sectionHead}>Cuisine Preferences</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>{selectedCuisines.length} cuisine{selectedCuisines.length !== 1 ? 's' : ''} selected</Text>
+
+        {CUISINE_GROUPS.map(group => {
+          const isOpen = expandedGroups[group.label] ?? false;
+          const selectedInGroup = group.cuisines.filter(c => selectedCuisines.includes(c));
+          return (
+            <View key={group.label} style={{marginBottom:6}}>
+              <TouchableOpacity style={[cards.base, {flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:0}]} onPress={() => setExpandedGroups(prev => ({...prev, [group.label]: !isOpen}))}>
+                <Text style={{fontSize:11,fontWeight:'700',color:colors.navy}}>{group.label}</Text>
+                <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+                  {selectedInGroup.length > 0 && <Text style={{fontSize:9,color:colors.emerald}}>{selectedInGroup.join(', ')}</Text>}
+                  <Text style={{fontSize:10,color:colors.textMuted}}>{isOpen ? '\u25B2' : '\u25BC'}</Text>
+                </View>
+              </TouchableOpacity>
+              {isOpen && (
+                <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,paddingHorizontal:8,paddingVertical:8}}>
+                  {group.cuisines.map(c => {
+                    const active = selectedCuisines.includes(c);
+                    return (
+                      <TouchableOpacity key={c} style={{paddingVertical:5,paddingHorizontal:10,borderRadius:20,...(active ? {backgroundColor:colors.emerald} : {borderWidth:1,borderColor:colors.navy})}} onPress={() => toggleCuisine(c)}>
+                        <Text style={{fontSize:11,fontWeight:'500',color:active ? colors.white : colors.navy}}>{c}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {/* ══════════ 8. FAMILY AVOIDS ══════════ */}
+        <Text style={s.sectionHead}>Family Avoids</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Dishes or ingredients Maharaj will never suggest</Text>
+        <TextInput style={[s.input, {minHeight:70,textAlignVertical:'top'}]} value={avoidanceList} onChangeText={v => { setAvoidanceList(v); markDirty(); }} placeholder="e.g. Bitter gourd, ragi, millets, drumstick. Aanya dislikes mushrooms." placeholderTextColor={colors.textHint} multiline />
+
+        {/* ══════════ 9. GROCERY AND SHOPPING ══════════ */}
+        <Text style={s.sectionHead}>Grocery and Shopping</Text>
+
+        <Text style={s.fieldLabel}>My Maharaj Day</Text>
+        <TextInput style={s.input} value={groceryDay} onChangeText={v => { setGroceryDay(v); markDirty(); }} placeholder="e.g. Saturday" placeholderTextColor={colors.textHint} />
+
+        <Text style={s.fieldLabel}>Preferred supermarkets</Text>
+        <TextInput style={s.input} value={preferredStores} onChangeText={v => { setPreferredStores(v); markDirty(); }} placeholder="e.g. Carrefour, Lulu Hypermarket" placeholderTextColor={colors.textHint} />
+
+        <Text style={s.fieldLabel}>Preferred delivery apps</Text>
+        <TextInput style={s.input} value={preferredApps} onChangeText={v => { setPreferredApps(v); markDirty(); }} placeholder="e.g. Noon Daily, Amazon Fresh" placeholderTextColor={colors.textHint} />
+
+        {/* ══════════ 10. RECURRING OCCASIONS ══════════ */}
+        <Text style={s.sectionHead}>Recurring Occasions</Text>
+
+        {occasions.map(o => (
+          <View key={o.id} style={[cards.base, {flexDirection:'row',alignItems:'center',marginBottom:8}]}>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:12,fontWeight:'700',color:colors.navy}}>{o.name}</Text>
+              <Text style={{fontSize:10,color:colors.textMuted}}>{o.day} — {o.people}</Text>
+              <Text style={{fontSize:9,color:colors.emerald}}>Recurring every week</Text>
+            </View>
+            <View style={{flexDirection:'row',gap:6}}>
+              <TouchableOpacity onPress={() => openEditOccasion(o)}><Text style={{fontSize:10,color:colors.navy,fontWeight:'600'}}>Edit</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => deleteOccasion(o.id)}><Text style={{fontSize:10,color:colors.danger}}>Remove</Text></TouchableOpacity>
+            </View>
+          </View>
+        ))}
+
+        <TouchableOpacity style={s.dashedBtn} onPress={openAddOccasion}>
+          <Text style={{fontSize:12,fontWeight:'600',color:colors.emerald}}>+ Add recurring occasion</Text>
+        </TouchableOpacity>
+
+        {/* ══════════ 11. INSURANCE ══════════ */}
+        <Text style={s.sectionHead}>Insurance</Text>
+        <View style={[cards.base, {marginBottom:10}]}>
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-            <Text style={{fontSize:11,color:navy}}>Family insurance</Text>
-            <Switch value={hasInsurance} onValueChange={v=>{setHasInsurance(v);}} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
+            <Text style={{fontSize:11,color:colors.navy}}>Family has health insurance</Text>
+            <Switch value={hasInsurance} onValueChange={v => { setHasInsurance(v); markDirty(); }} trackColor={{false:'#D1D5DB',true:colors.emerald}} thumbColor={colors.white} />
           </View>
           {hasInsurance && (
             <View style={{marginTop:8}}>
-              <TextInput style={{borderWidth:1,borderColor:border,borderRadius:8,paddingHorizontal:10,paddingVertical:8,fontSize:12,color:navy}} placeholder="DD/MM/YYYY" placeholderTextColor={textSec} value={insuranceExpiry} onChangeText={setInsuranceExpiry} />
-              <Text style={{fontSize:8,color:textSec,marginTop:4}}>Maharaj will remind you 1 week before expiry</Text>
+              <Text style={s.fieldLabel}>Policy expiry date</Text>
+              <TextInput style={s.input} placeholder="DD/MM/YYYY" placeholderTextColor={colors.textHint} value={insuranceExpiry} onChangeText={v => { setInsuranceExpiry(v); markDirty(); }} />
             </View>
           )}
         </View>
 
-        {/* Referral Consent */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-            <Text style={{fontSize:11,color:navy,flex:1}}>Allow specialist referrals</Text>
-            <Switch value={referralConsent} onValueChange={setReferralConsent} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
-          </View>
-          <Text style={{fontSize:8,color:textSec,marginTop:4}}>Maharaj may suggest connecting you with a partner health professional when lab reports show values needing attention. You confirm before anything is shared.</Text>
-        </View>
-
-        {/* Fasting */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>Fasting days / observances</Text>
-          <TextInput
-            style={{backgroundColor:white,borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:10,fontSize:11,color:'#2E5480',minHeight:70,textAlignVertical:'top'}}
-            value={fastingDaysText}
-            onChangeText={setFastingDaysText}
-            placeholder="e.g. Ekadashi, Monday fast, Navratri, Ramadan..."
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        {/* Store Prefs */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Preferred supermarkets</Text>
-          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-            {['Lulu','Carrefour','Spinneys','Nesto','Al Adil'].map(st => (
-              <TouchableOpacity key={st} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:storePrefs.includes(st)?navy:'#D1D5DB',backgroundColor:storePrefs.includes(st)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(storePrefs,setStorePrefs,st)}>
-                <Text style={{fontSize:11,fontWeight:'500',color:storePrefs.includes(st)?white:navy}}>{st}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Delivery Prefs */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Preferred delivery apps</Text>
-          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-            {['Talabat','Deliveroo','Noon Food','Careem Food'].map(d => (
-              <TouchableOpacity key={d} style={{paddingHorizontal:10,paddingVertical:6,borderRadius:14,borderWidth:1.5,borderColor:deliveryPrefs.includes(d)?navy:'#D1D5DB',backgroundColor:deliveryPrefs.includes(d)?navy:'rgba(255,255,255,0.9)'}} onPress={() => toggleArr(deliveryPrefs,setDeliveryPrefs,d)}>
-                <Text style={{fontSize:11,fontWeight:'500',color:deliveryPrefs.includes(d)?white:navy}}>{d}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Cooking Skill */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Cooking style</Text>
-          <View style={{flexDirection:'row',gap:6}}>
-            {['Quick & easy','Moderate','Elaborate'].map(sk => (
-              <TouchableOpacity key={sk} style={{flex:1,paddingVertical:8,borderRadius:14,borderWidth:1.5,borderColor:cookingSkill===sk?navy:'#D1D5DB',backgroundColor:cookingSkill===sk?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setCookingSkill(sk)}>
-                <Text style={{fontSize:10,fontWeight:'600',color:cookingSkill===sk?white:navy}}>{sk}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Budget */}
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:12,padding:14,marginBottom:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)'}}>
-          <Text style={{fontSize:11,fontWeight:'700',color:navy,marginBottom:8}}>Weekly budget</Text>
-          <View style={{flexDirection:'row',gap:6}}>
-            {['Everyday','Moderate','Occasional indulgence'].map(b => (
-              <TouchableOpacity key={b} style={{flex:1,paddingVertical:8,borderRadius:14,borderWidth:1.5,borderColor:budgetPref===b?navy:'#D1D5DB',backgroundColor:budgetPref===b?navy:'rgba(255,255,255,0.9)',alignItems:'center'}} onPress={() => setBudgetPref(b)}>
-                <Text style={{fontSize:10,fontWeight:'600',color:budgetPref===b?white:navy}}>{b}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ── LANGUAGE ── */}
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Language</Text>
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:6}}>App languages (max 3)</Text>
-          {selectedLanguages.length > 0 && (
-            <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:8}}>
-              {selectedLanguages.map(l => (
-                <TouchableOpacity key={l} style={{backgroundColor:navy,borderRadius:6,paddingHorizontal:10,paddingVertical:4,flexDirection:'row',alignItems:'center',gap:4}} onPress={() => setSelectedLanguages(prev => prev.filter(x => x !== l))}>
-                  <Text style={{fontSize:10,color:white}}>{l}</Text>
-                  <Text style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>{'\u2715'}</Text>
-                </TouchableOpacity>
-              ))}
+        {/* ══════════ 12. NOTIFICATIONS ══════════ */}
+        <Text style={s.sectionHead}>Notifications</Text>
+        <View style={[cards.base, {marginBottom:10}]}>
+          {[
+            { label: 'Festival reminders', sub: '48 hours before upcoming festivals', val: notifFestivals, set: setNotifFestivals },
+            { label: 'Lab report reminders', sub: '1 week before 3-month report expiry', val: notifLabReports, set: setNotifLabReports },
+            { label: 'Insurance reminders', sub: '1 week before policy expiry', val: notifInsurance, set: setNotifInsurance },
+          ].map(({ label, sub, val, set }) => (
+            <View key={label} style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4,marginBottom:4}}>
+              <View style={{flex:1}}>
+                <Text style={{fontSize:11,color:colors.navy}}>{label}</Text>
+                <Text style={{fontSize:8,color:colors.textMuted}}>{sub}</Text>
+              </View>
+              <Switch value={val} onValueChange={v => { set(v); markDirty(); }} trackColor={{false:'#D1D5DB',true:colors.emerald}} thumbColor={colors.white} />
             </View>
-          )}
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#2E5480',marginBottom:6}} value={languageSearch} onChangeText={setLanguageSearch} placeholder="Search language..." placeholderTextColor="#9CA3AF" />
-          {languageSearch.length > 0 && (
-            <View style={{backgroundColor:white,maxHeight:160,borderWidth:0.5,borderColor:'rgba(27,58,92,0.15)',borderRadius:8,overflow:'hidden',marginBottom:6}}>
-              {['English','Hindi','Marathi','Gujarati','Punjabi','Tamil','Telugu','Kannada','Malayalam','Bengali','Urdu','Arabic','Odia','Assamese','Sindhi','Kashmiri','Maithili','Sanskrit'].filter(l => l.toLowerCase().includes(languageSearch.toLowerCase()) && !selectedLanguages.includes(l)).map(l => (
-                <TouchableOpacity key={l} style={{paddingVertical:9,paddingHorizontal:12,borderBottomWidth:0.5,borderBottomColor:'rgba(27,58,92,0.08)'}} onPress={() => {
-                  if (selectedLanguages.length >= 3) { Alert.alert('Maximum 3 languages', 'Remove a language before adding another.'); return; }
-                  setSelectedLanguages(prev => [...prev, l]); setLanguageSearch('');
-                }}>
-                  <Text style={{fontSize:11,color:'#2E5480'}}>{l}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          ))}
         </View>
 
-        {/* ── NOTIFICATIONS ── */}
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Notifications</Text>
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4}}>
-            <View style={{flex:1}}><Text style={{fontSize:11,color:navy}}>Festival reminders</Text><Text style={{fontSize:8,color:'#9CA3AF'}}>48 hours before upcoming festivals</Text></View>
-            <Switch value={notifFestivals} onValueChange={setNotifFestivals} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
-          </View>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4,marginTop:6}}>
-            <View style={{flex:1}}><Text style={{fontSize:11,color:navy}}>Lab report reminders</Text><Text style={{fontSize:8,color:'#9CA3AF'}}>1 week before 3-month report expiry</Text></View>
-            <Switch value={notifLabReports} onValueChange={setNotifLabReports} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
-          </View>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:4,marginTop:6}}>
-            <View style={{flex:1}}><Text style={{fontSize:11,color:navy}}>Insurance reminders</Text><Text style={{fontSize:8,color:'#9CA3AF'}}>1 week before policy expiry</Text></View>
-            <Switch value={notifInsurance} onValueChange={setNotifInsurance} trackColor={{false:'#D1D5DB',true:gold}} thumbColor={white} />
-          </View>
-        </View>
+        {/* ══════════ 13. APP SETTINGS ══════════ */}
+        <Text style={s.sectionHead}>App Settings</Text>
+        <Dropdown label="Cooking style" value={cookingSkill} options={['Quick and easy','Moderate','Elaborate']} onSelect={v => { setCookingSkill(v); markDirty(); }} placeholder="Select..." />
+        <Dropdown label="Weekly budget" value={budgetPref} options={['Everyday','Moderate','Occasional indulgence']} onSelect={v => { setBudgetPref(v); markDirty(); }} placeholder="Select..." />
 
-        {/* ── ACCOUNT ── */}
-        <Text style={{fontSize:14,fontWeight:'700',color:navy,marginTop:20,marginBottom:12}}>Account</Text>
-        <View style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,borderWidth:0.5,borderColor:'rgba(27,58,92,0.1)',padding:10,marginBottom:10}}>
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Full name</Text>
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#2E5480',marginBottom:8}} value={fullName} onChangeText={setFullName} placeholder="Your full name" placeholderTextColor="#9CA3AF" />
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Email</Text>
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#9CA3AF',backgroundColor:'#F9FAFB',marginBottom:8}} value={userEmail} editable={false} />
-          <Text style={{fontSize:10,fontWeight:'700',color:navy,marginBottom:4}}>Phone number</Text>
-          <TextInput style={{borderWidth:0.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:8,padding:8,fontSize:11,color:'#2E5480',marginBottom:8}} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="+971 XX XXX XXXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
-          <TouchableOpacity style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:8}} onPress={async () => { try { await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo: 'https://my-maharaj.vercel.app' }); Alert.alert('Password reset email sent to your email address.'); } catch { Alert.alert('Error', 'Could not send reset email.'); } }}>
-            <Text style={{fontSize:10,color:'#2E5480'}}>Change password</Text>
-            <Text style={{fontSize:14,color:'#D1D5DB'}}>{'\u203A'}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* ══════════ 14. LANGUAGE SETTINGS ══════════ */}
+        <Text style={s.sectionHead}>Language Settings</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Three separate language settings — for different people in your household</Text>
+        <Dropdown label="App language (what you see)" value={appLanguage} options={LANG_OPTIONS} onSelect={v => { setAppLanguage(v); markDirty(); }} />
+        <Dropdown label="Plan summary language (for your cook)" value={planSummaryLanguage} options={LANG_OPTIONS} onSelect={v => { setPlanSummaryLanguage(v); markDirty(); }} />
+        <Dropdown label="Shopping list language (for your househelp)" value={shoppingLanguage} options={LANG_OPTIONS} onSelect={v => { setShoppingLanguage(v); markDirty(); }} />
 
-        {/* App Info removed — now in About My Maharaj page (P9) */}
-
-        {/* Save button — three states: inactive, active (dirty), saved */}
+        {/* ══════════ SAVE BUTTON ══════════ */}
         <TouchableOpacity
-          style={{backgroundColor: hasChanges ? '#C9A227' : '#CCCCCC', borderRadius:12, paddingVertical:14, alignItems:'center', marginTop:8, marginBottom:4}}
-          onPress={() => { if (hasChanges) { saveHousehold(); snapshotRef.current = JSON.stringify({ isJainFamily, jainAllowNonJain, maharajDay, hasInsurance, insuranceExpiry, referralConsent, fastingDaysText, storePrefs, deliveryPrefs, cookingSkill, budgetPref, selectedLanguages, notifFestivals, notifLabReports, notifInsurance, fullName, phoneNumber }); setHasChanges(false); setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000); } }}
+          style={{backgroundColor: hasChanges ? colors.emerald : '#CCCCCC', borderRadius:20, paddingVertical:14, alignItems:'center', marginTop:12, marginBottom:4}}
+          onPress={() => { if (hasChanges) void saveProfile(); }}
           disabled={!hasChanges}
         >
-          <Text style={{fontSize:14,fontWeight: hasChanges ? '700' : '500', color: hasChanges ? '#1A1A1A' : '#888888'}}>Save Profile</Text>
+          <Text style={{fontSize:14,fontWeight: hasChanges ? '700' : '500', color: hasChanges ? colors.white : '#888888'}}>Save Profile</Text>
         </TouchableOpacity>
-        {savedMsg && <Text style={{fontSize:13,color:'#1A6B5C',textAlign:'center',marginBottom:20}}>Saved</Text>}
+        {savedMsg && <Text style={{fontSize:13,color:colors.teal,textAlign:'center',marginBottom:20}}>Saved</Text>}
         {!savedMsg && <View style={{height:24}} />}
 
       </ScrollView>
 
-      {/* Add/Edit Modal */}
+      {/* ── Add/Edit Member Modal ──────────────────────────────────────────── */}
       <Modal visible={modalOpen} animationType="slide" transparent>
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{editId ? 'Edit Member' : 'Add Member'}</Text>
               <TouchableOpacity onPress={() => setModalOpen(false)} style={s.modalClose}>
-                <Text style={s.modalCloseTxt}>✕</Text>
+                <Text style={s.modalCloseTxt}>X</Text>
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={s.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Input label="Name *" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Full name" />
-              <View style={{ flexDirection: 'row' }}>
-                <View style={{ flex: 2, marginRight: 10, zIndex: 10 }}>
+              <Input label="Name *" value={form.name} onChangeText={v => setForm(p => ({ ...p, name: v }))} placeholder="Full name" />
+              <View style={{flexDirection:'row'}}>
+                <View style={{flex:2, marginRight:10, zIndex:10}}>
                   <Input label="Nationality" value={form.nationality}
-            onChangeText={v => {
-              setForm(p => ({ ...p, nationality: v }));
-              setNatSuggestions(v.length > 0 ? NATIONALITIES.filter(n => n.toLowerCase().startsWith(v.toLowerCase())).slice(0,5) : []);
-            }}
-            placeholder="e.g. Indian, Pakistani, Filipino..." />
-          {natSuggestions.length > 0 && (
-            <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',position:'absolute',top:'100%',left:0,right:0,zIndex:10,elevation:10,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.1,shadowRadius:4}}>
-              {natSuggestions.map(n => (
-                <TouchableOpacity key={n} style={{paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setForm(p=>({...p,nationality:n})); setNatSuggestions([]); }}>
-                  <Text style={{fontSize:14,color:navy}}>{n}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          <Input label="Age" value={form.age} onChangeText={(v) => setForm((p) => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
+                    onChangeText={v => {
+                      setForm(p => ({ ...p, nationality: v }));
+                      setNatSuggestions(v.length > 0 ? NATIONALITIES.filter(n => n.toLowerCase().startsWith(v.toLowerCase())).slice(0,5) : []);
+                    }}
+                    placeholder="e.g. Indian, Pakistani, Filipino..." />
+                  {natSuggestions.length > 0 && (
+                    <View style={{backgroundColor:'white',borderRadius:10,borderWidth:1,borderColor:'#E5E7EB',position:'absolute',top:'100%',left:0,right:0,zIndex:10,elevation:10}}>
+                      {natSuggestions.map(n => (
+                        <TouchableOpacity key={n} style={{paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1,borderBottomColor:'#F3F4F6'}} onPress={() => { setForm(p=>({...p,nationality:n})); setNatSuggestions([]); }}>
+                          <Text style={{fontSize:14,color:colors.navy}}>{n}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <Input label="Age" value={form.age} onChangeText={v => setForm(p => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
                 </View>
               </View>
-              <Text style={s.sectionLabel}>FOOD PREFERENCE</Text>
+              <Text style={s.modalSectionLabel}>FOOD PREFERENCE</Text>
               <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:12}}>
                 {['Vegetarian','Non-vegetarian','Eggetarian','Mixed'].map(fp => (
-                  <TouchableOpacity key={fp} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:form.foodPreference===fp?navy:'#D1D5DB',backgroundColor:form.foodPreference===fp?navy:'rgba(255,255,255,0.9)'}} onPress={() => setForm(p => ({...p,foodPreference:fp}))}>
-                    <Text style={{fontSize:11,fontWeight:'600',color:form.foodPreference===fp?white:navy}}>{fp}</Text>
+                  <TouchableOpacity key={fp} style={{paddingHorizontal:12,paddingVertical:7,borderRadius:20,...(form.foodPreference===fp ? {backgroundColor:colors.emerald} : {borderWidth:1,borderColor:colors.navy})}} onPress={() => setForm(p => ({...p,foodPreference:fp}))}>
+                    <Text style={{fontSize:11,fontWeight:'600',color:form.foodPreference===fp ? colors.white : colors.navy}}>{fp}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={s.sectionLabel}>HEALTH CONDITIONS</Text>
-              <View style={s.pillRow}>
-                {HEALTH_PILLS.map((cond) => (
+              <Text style={s.modalSectionLabel}>HEALTH CONDITIONS</Text>
+              <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:8}}>
+                {HEALTH_PILLS.map(cond => (
                   <TouchableOpacity key={cond} onPress={() => toggleHealth(cond)} activeOpacity={0.75}
-                    style={[s.cuisinePill, form.healthConditions.includes(cond) && s.cuisinePillActive]}>
-                    <Text style={[s.cuisinePillTxt, form.healthConditions.includes(cond) && s.cuisinePillTxtActive]}>{cond}</Text>
+                    style={{paddingHorizontal:12,paddingVertical:7,borderRadius:20,...(form.healthConditions.includes(cond) ? {backgroundColor:colors.emerald} : {borderWidth:1,borderColor:colors.navy})}}>
+                    <Text style={{fontSize:11,fontWeight:'500',color:form.healthConditions.includes(cond) ? colors.white : colors.navy}}>{cond}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              <Input label="Medical Notes (optional)" value={form.notes} onChangeText={(v) => setForm((p) => ({ ...p, notes: v }))}
+              <Input label="Medical Notes (optional)" value={form.notes} onChangeText={v => setForm(p => ({ ...p, notes: v }))}
                 placeholder="e.g. Low salt, no fried food..." multiline numberOfLines={3} />
               {formError ? <Text style={s.formError}>{formError}</Text> : null}
-              <View style={{ marginTop: 16, gap: 10 }}>
+              <View style={{marginTop:16,gap:10}}>
                 <Button title="Save Member" onPress={() => void saveMember()} loading={saving} />
                 <Button title="Cancel" onPress={() => setModalOpen(false)} variant="outline" />
               </View>
@@ -687,52 +795,52 @@ export default function DietaryProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Occasion Modal ────────────────────────────────────────────────── */}
+      <Modal visible={occasionModal} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>{editOccasionId ? 'Edit Occasion' : 'Add Occasion'}</Text>
+              <TouchableOpacity onPress={() => setOccasionModal(false)} style={s.modalClose}>
+                <Text style={s.modalCloseTxt}>X</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{padding:20}}>
+              <Input label="Occasion name" value={occName} onChangeText={setOccName} placeholder="e.g. Sunday family lunch" />
+              <Input label="Day" value={occDay} onChangeText={setOccDay} placeholder="e.g. Sunday" />
+              <Input label="Who attends?" value={occPeople} onChangeText={setOccPeople} placeholder="e.g. Extended family, 8 people" />
+              <View style={{marginTop:16,gap:10}}>
+                <Button title="Save Occasion" onPress={saveOccasion} />
+                <Button title="Cancel" onPress={() => setOccasionModal(false)} variant="outline" />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ScreenWrapper>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  scroll:      { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
-  loadingText: { textAlign: 'center', color: textSec, marginTop: 40 },
-  labReportLink:  { flexDirection:'row', alignItems:'center', gap:12, backgroundColor:'rgba(124,58,237,0.08)', borderRadius:14, padding:14, marginBottom:16, borderWidth:1, borderColor:'rgba(124,58,237,0.2)' },
-  labReportIcon:  { fontSize:24 },
-  labReportTitle: { fontSize:14, fontWeight:'700', color:'#7C3AED', marginBottom:2 },
-  labReportSub:   { fontSize:12, color:'#6D28D9', lineHeight:18 },
-  emptyState:  { alignItems: 'center', paddingVertical: 60 },
-  emptyIcon:   { fontSize: 56, marginBottom: 16 },
-  emptyTitle:  { fontSize: 18, fontWeight: '700', color: navy, marginBottom: 8 },
-  emptySub:    { fontSize: 14, color: textSec, textAlign: 'center' },
-  card:        { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 14 },
-  cardHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  memberInfo:  { flex: 1 },
-  memberName:  { fontSize: 16, fontWeight: '700', color: navy },
-  metaText:    { fontSize: 13, color: textSec, marginTop: 2 },
-  editBtn:     { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: border },
-  editBtnText: { fontSize: 13, color: navy, fontWeight: '600' },
-  pillWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  healthPill:  { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  healthPillText: { fontSize: 12, fontWeight: '600' },
-  notesText:   { fontSize: 13, color: textSec, fontStyle: 'italic', marginTop: 4 },
-  deleteBtn:   { marginTop: 10, alignSelf: 'flex-end' },
-  deleteBtnText: { fontSize: 12, color: errorRed, fontWeight: '500' },
-  addWrap:     { marginTop: 8, marginBottom: 24 },
-  cuisineSection:  { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 16 },
-  cuisineTitle:    { fontSize: 16, fontWeight: '700', color: navy, marginBottom: 4 },
-  cuisineSub:      { fontSize: 13, color: textSec, marginBottom: 16, lineHeight: 18 },
-  groupLabel:      { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
-  cuisineCount:    { fontSize: 12, color: successGreen, fontWeight: '600', textAlign: 'center', marginTop: 10 },
-  pillRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  cuisinePill:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: 'rgba(255,255,255,0.9)' },
-  cuisinePillActive:{ backgroundColor: navy, borderColor: navy },
-  cuisinePillTxt:  { fontSize: 13, color: navy, fontWeight: '500' },
-  cuisinePillTxtActive: { color: white, fontWeight: '600' },
-  sectionLabel:    { fontSize: 11, fontWeight: '700', color: textSec, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
-  formError:       { fontSize: 13, color: errorRed, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
-  modalOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', alignItems: 'center' },
-  modalSheet:      { backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', maxWidth: '95%', width: '95%', alignSelf: 'center' },
-  modalHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: border },
-  modalTitle:      { fontSize: 18, fontWeight: '700', color: navy },
-  modalClose:      { width: 32, height: 32, borderRadius: 16, backgroundColor: surface, alignItems: 'center', justifyContent: 'center' },
-  modalCloseTxt:   { fontSize: 14, color: textSec, fontWeight: '600' },
-  modalScroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
+  scroll: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
+  sectionHead: { fontSize: 14, fontWeight: '700', color: colors.navy, marginTop: 20, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(30,158,94,0.2)', paddingBottom: 6 },
+  fieldLabel: { fontSize: 10, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, marginTop: 6 },
+  input: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, color: colors.navy, backgroundColor: 'rgba(255,255,255,0.9)', marginBottom: 8 },
+  dropdown: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)' },
+  dropdownList: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, backgroundColor: 'white', marginTop: 2, marginBottom: 6, overflow: 'hidden' },
+  dropdownItem: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: 'rgba(26,58,92,0.08)' },
+  dashedBtn: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.emerald, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginBottom: 14 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', alignItems: 'center' },
+  modalSheet: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', maxWidth: '95%', width: '95%', alignSelf: 'center' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(26,58,92,0.1)' },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.navy },
+  modalClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  modalCloseTxt: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
+  modalScroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
+  modalSectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
+  formError: { fontSize: 13, color: colors.danger, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
 });

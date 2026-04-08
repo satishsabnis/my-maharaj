@@ -1,179 +1,362 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Animated, ImageBackground, SafeAreaView, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
-import ScreenWrapper from '../components/ScreenWrapper';
-import Button from '../components/Button';
-import { navy, white, textSec, border, errorRed } from '../theme/colors';
+import { colors } from '../constants/theme';
 
-const base = 'https://my-maharaj.vercel.app';
+// ── Types ────────────────────────────────────────────────────────────────────
 
-async function callClaude(prompt: string): Promise<string> {
-  const res = await fetch(`${base}/api/claude`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }),
-  });
-  const data = await res.json();
-  if (data?.error) throw new Error(data.error.message ?? data.error);
-  return (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
+interface PrepTask {
+  id: string;
+  dish: string;
+  day: string;
+  meal: string;
+  prepType: string;
+  instruction: string;
+  timing: string;      // 'tonight' | 'tomorrow' | day name
+  urgency: string;     // 'tonight' | 'today' | 'upcoming' | 'done'
+  done: boolean;
 }
 
-interface PrepResult {
-  missing_ingredients: { name: string; qty: string }[];
-  batch_cooking: string[];
-  storage_guide: { item: string; duration: string }[];
-  marinade_timings: { item: string; timing: string }[];
-  weekly_plan: string;
-  prep_sequence: string[];
+// ── Urgency colour map (no hardcoded hex — uses theme + semantic tokens) ─────
+
+const urgencyStyles: Record<string, {
+  borderLeftColor: string;
+  bg: string;
+  labelColor: string;
+}> = {
+  tonight: {
+    borderLeftColor: colors.danger,
+    bg: 'rgba(226,75,74,0.06)',
+    labelColor: '#A32D2D',
+  },
+  today: {
+    borderLeftColor: colors.gold,
+    bg: 'rgba(201,162,39,0.06)',
+    labelColor: '#8B6914',
+  },
+  upcoming: {
+    borderLeftColor: colors.emerald,
+    bg: 'rgba(30,158,94,0.06)',
+    labelColor: '#0E6830',
+  },
+  done: {
+    borderLeftColor: 'rgba(26,58,92,0.2)',
+    bg: 'transparent',
+    labelColor: colors.textMuted,
+  },
+};
+
+// ── Prep-type pill colours ───────────────────────────────────────────────────
+
+const pillStyles: Record<string, { bg: string; color: string }> = {
+  Soak:     { bg: 'rgba(26,122,180,0.12)', color: '#1A5A8A' },
+  Marinate: { bg: 'rgba(26,58,92,0.1)',    color: colors.navy },
+  Defrost:  { bg: 'rgba(201,162,39,0.12)', color: '#8B6914' },
+  Grind:    { bg: 'rgba(30,158,94,0.12)',  color: '#0E6830' },
+  Dough:    { bg: 'rgba(138,90,30,0.1)',   color: '#6B4510' },
+};
+
+const defaultPill = { bg: 'rgba(26,58,92,0.08)', color: colors.textSecondary };
+
+// ── Group helpers ────────────────────────────────────────────────────────────
+
+function groupLabel(task: PrepTask): string {
+  if (task.done) return 'Completed';
+  if (task.urgency === 'tonight') return 'Do tonight';
+  if (task.urgency === 'today') return 'Do tomorrow';
+  return `Do ${task.timing}`;
 }
+
+function groupOrder(label: string): number {
+  if (label === 'Do tonight') return 0;
+  if (label === 'Do tomorrow') return 1;
+  if (label === 'Completed') return 99;
+  return 2;
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MealPrepScreen() {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<PrepResult | null>(null);
-  const [error, setError] = useState('');
+  const [tasks, setTasks] = useState<PrepTask[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  async function generatePrep() {
-    setLoading(true); setError(''); setResult(null);
-    try {
-      const user = await getSessionUser();
-      if (!user) throw new Error('Not authenticated');
+  useEffect(() => {
+    (async () => {
+      try {
+        // Try Supabase first
+        const user = await getSessionUser();
+        if (user) {
+          try {
+            const { data, error } = await supabase
+              .from('meal_prep_tasks')
+              .select('id, dish, day, meal, prep_type, instruction, timing, urgency, done')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false });
+            if (!error && data && data.length > 0) {
+              const mapped: PrepTask[] = data.map((row: any) => ({
+                id: row.id,
+                dish: row.dish,
+                day: row.day,
+                meal: row.meal,
+                prepType: row.prep_type,
+                instruction: row.instruction,
+                timing: row.timing,
+                urgency: row.done ? 'done' : row.urgency,
+                done: row.done,
+              }));
+              setTasks(mapped);
+              setLoaded(true);
+              return;
+            }
+          } catch { /* fall through to AsyncStorage */ }
+        }
+        // Fallback: AsyncStorage
+        const raw = await AsyncStorage.getItem('meal_prep_tasks');
+        if (raw) setTasks(JSON.parse(raw));
+      } catch {}
+      setLoaded(true);
+    })();
+  }, []);
 
-      // Check three sources in order: AsyncStorage → Supabase menu_history → error
-      let mealPlan: any = null;
-
-      // Source 1: AsyncStorage confirmed_meal_plan
-      const localPlan = await AsyncStorage.getItem('confirmed_meal_plan');
-      if (localPlan) { try { mealPlan = JSON.parse(localPlan); } catch {} }
-
-      // Source 2: Supabase menu_history
-      if (!mealPlan) {
-        const { data: historyData } = await supabase.from('menu_history').select('menu_json').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
-        mealPlan = historyData?.[0]?.menu_json ?? null;
+  async function toggleDone(id: string) {
+    setTasks(prev => {
+      const next = prev.map(t =>
+        t.id === id ? { ...t, done: !t.done, urgency: !t.done ? 'done' : 'upcoming' } : t,
+      );
+      // Always write to AsyncStorage
+      AsyncStorage.setItem('meal_prep_tasks', JSON.stringify(next)).catch(() => {});
+      // Fire-and-forget Supabase update
+      const task = next.find(t => t.id === id);
+      if (task) {
+        supabase.from('meal_prep_tasks')
+          .update({ done: task.done, urgency: task.urgency })
+          .eq('id', id)
+          .then(({ error }) => {
+            if (error) console.error('[MealPrep] toggleDone error:', error.message);
+          });
       }
-
-      // Source 3: AsyncStorage menu_history (local fallback)
-      if (!mealPlan) {
-        const localHistory = await AsyncStorage.getItem('menu_history');
-        if (localHistory) { try { const arr = JSON.parse(localHistory); if (arr.length > 0) mealPlan = arr[0]; } catch {} }
-      }
-
-      const { data: fridgeData } = await supabase.from('fridge_inventory').select('item_name, quantity, unit').eq('user_id', user.id);
-      const fridge = (fridgeData ?? []).map((f: any) => `${f.item_name} ${f.quantity ?? ''}${f.unit ?? ''}`).join(', ');
-
-      if (!mealPlan) { setError('No meal plan found. Please generate a plan first.'); setLoading(false); return; }
-
-      const raw = await callClaude(`You are Maharaj, a kitchen prep expert. Given this meal plan and fridge inventory, create a prep guide.
-
-MEAL PLAN: ${JSON.stringify(mealPlan).slice(0, 3000)}
-FRIDGE INVENTORY: ${fridge || 'Empty'}
-
-Respond ONLY with valid JSON:
-{"missing_ingredients":[{"name":"Onions","qty":"2 kg"}],"batch_cooking":["Make dal base for 3 days","Prepare ginger-garlic paste in bulk"],"storage_guide":[{"item":"Dal base","duration":"3 days in fridge"}],"marinade_timings":[{"item":"Chicken tikka","timing":"Overnight minimum, 2 hours if rushed"}],"weekly_plan":"Sunday: 2 hours prep saves 45 mins daily. Prep dal, chop vegetables, make masala paste.","prep_sequence":["1. Soak dal and rice","2. Chop all vegetables","3. Prepare masala paste","4. Marinate proteins","5. Batch cook base gravies"]}`);
-
-      let parsed: PrepResult;
-      try { parsed = JSON.parse(raw); } catch {
-        const match = raw.match(/\{[\s\S]*\}/);
-        if (match) parsed = JSON.parse(match[0]);
-        else throw new Error('Invalid response');
-      }
-      setResult(parsed);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate prep guide.');
-    } finally { setLoading(false); }
+      return next;
+    });
   }
 
+  // Group tasks by timing label
+  const groups: { label: string; items: PrepTask[] }[] = [];
+  const seen = new Map<string, PrepTask[]>();
+  tasks.forEach(t => {
+    const lbl = groupLabel(t);
+    if (!seen.has(lbl)) { seen.set(lbl, []); groups.push({ label: lbl, items: seen.get(lbl)! }); }
+    seen.get(lbl)!.push(t);
+  });
+  groups.sort((a, b) => groupOrder(a.label) - groupOrder(b.label));
+
+  const tonightCount = tasks.filter(t => t.urgency === 'tonight' && !t.done).length;
+
   return (
-    <ScreenWrapper title="Meal Prep">
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.title}>Meal Prep Guide</Text>
-        <Text style={s.sub}>Based on your latest meal plan and fridge inventory</Text>
+    <View style={{ flex: 1 }}>
+      <ImageBackground
+        source={require('../assets/background.png')}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
 
-        <Button title={loading ? 'Generating...' : 'Generate Prep Guide'} onPress={generatePrep} loading={loading} />
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Text style={s.backTxt}>Back</Text>
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Meal Prep</Text>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
+            <Text style={s.homeTxt}>Home</Text>
+          </TouchableOpacity>
+        </View>
 
-        {error ? <Text style={s.error}>{error}</Text> : null}
-
-        {result && (
-          <View style={{marginTop:16}}>
-            {result.weekly_plan && (
-              <View style={s.card}>
-                <Text style={s.cardTitle}>Weekly Prep Plan</Text>
-                <Text style={s.cardText}>{result.weekly_plan}</Text>
-              </View>
-            )}
-
-            {result.missing_ingredients?.length > 0 && (
-              <View style={s.card}>
-                <Text style={s.cardTitle}>Shopping List (Not in Fridge)</Text>
-                {result.missing_ingredients.map((item, i) => (
-                  <View key={i} style={s.row}>
-                    <Text style={s.rowName}>{item.name}</Text>
-                    <Text style={s.rowQty}>{item.qty}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {result.prep_sequence?.length > 0 && (
-              <View style={s.card}>
-                <Text style={s.cardTitle}>Prep Sequence</Text>
-                {result.prep_sequence.map((step, i) => (
-                  <Text key={i} style={s.stepText}>{step}</Text>
-                ))}
-              </View>
-            )}
-
-            {result.batch_cooking?.length > 0 && (
-              <View style={s.card}>
-                <Text style={s.cardTitle}>Batch Cooking</Text>
-                {result.batch_cooking.map((tip, i) => (
-                  <Text key={i} style={s.stepText}>• {tip}</Text>
-                ))}
-              </View>
-            )}
-
-            {result.storage_guide?.length > 0 && (
-              <View style={s.card}>
-                <Text style={s.cardTitle}>Storage Guide</Text>
-                {result.storage_guide.map((item, i) => (
-                  <View key={i} style={s.row}>
-                    <Text style={s.rowName}>{item.item}</Text>
-                    <Text style={s.rowQty}>{item.duration}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {result.marinade_timings?.length > 0 && (
-              <View style={s.card}>
-                <Text style={s.cardTitle}>Marinade Timings</Text>
-                {result.marinade_timings.map((item, i) => (
-                  <View key={i} style={s.row}>
-                    <Text style={s.rowName}>{item.item}</Text>
-                    <Text style={s.rowQty}>{item.timing}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          {/* Tip card */}
+          <View style={s.tipCard}>
+            <Text style={s.tipText}>
+              I have analysed your week's plan and identified every dish that needs advance preparation.
+              Complete each task on time and nothing will be rushed on cooking day.
+            </Text>
           </View>
-        )}
 
-        <View style={{height:40}} />
-      </ScrollView>
-    </ScreenWrapper>
+          {/* Empty state */}
+          {loaded && tasks.length === 0 && (
+            <View style={{ alignItems: 'center', paddingTop: 30 }}>
+              <Text style={{ fontSize: 8.5, color: colors.textSecondary, textAlign: 'center', marginBottom: 14 }}>
+                No prep tasks this week. Generate your meal plan first.
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 20 }}
+                onPress={() => router.push('/meal-wizard' as never)}
+              >
+                <Text style={{ fontSize: 9, fontWeight: '500', color: colors.white }}>Plan My Week</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Tonight banner */}
+          {tonightCount > 0 && (
+            <View style={s.tonightBanner}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 8.5, fontWeight: '700', color: colors.white }}>
+                  Tonight before you sleep
+                </Text>
+                <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
+                  {tonightCount} {tonightCount === 1 ? 'task' : 'tasks'} remaining
+                </Text>
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.emerald }}>{tonightCount}</Text>
+            </View>
+          )}
+
+          {/* Grouped tasks */}
+          {groups.map(group => (
+            <View key={group.label} style={{ marginBottom: 10 }}>
+              {/* Day divider */}
+              <Text style={s.sectionTitle}>{group.label}</Text>
+              <View style={s.sectionDivider} />
+
+              {group.items.map(task => {
+                const uStyle = urgencyStyles[task.urgency] || urgencyStyles.upcoming;
+                const pill = pillStyles[task.prepType] || defaultPill;
+
+                return (
+                  <View
+                    key={task.id}
+                    style={[
+                      s.card,
+                      {
+                        borderLeftWidth: 3,
+                        borderLeftColor: uStyle.borderLeftColor,
+                        backgroundColor: uStyle.bg,
+                      },
+                      task.done && { opacity: 0.6 },
+                    ]}
+                  >
+                    {/* Top row: urgency label + check circle */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 7, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600', color: uStyle.labelColor }}>
+                        {task.urgency === 'tonight' ? 'Urgent' : task.urgency === 'today' ? 'Today' : task.urgency === 'done' ? 'Done' : 'Upcoming'}
+                      </Text>
+                      <TouchableOpacity onPress={() => toggleDone(task.id)}>
+                        <View style={[
+                          s.checkCircle,
+                          task.done && { backgroundColor: colors.emerald, borderColor: colors.emerald },
+                        ]}>
+                          {task.done && <Text style={{ fontSize: 10, color: colors.white, lineHeight: 14 }}>{'✓'}</Text>}
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Dish name */}
+                    <Text style={{ fontSize: 9.5, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>{task.dish}</Text>
+
+                    {/* Instruction */}
+                    <Text style={{ fontSize: 8, color: colors.textSecondary, marginBottom: 5, lineHeight: 12 }}>{task.instruction}</Text>
+
+                    {/* Tags row */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <View style={{ backgroundColor: pill.bg, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 6.5, fontWeight: '600', color: pill.color }}>{task.prepType}</Text>
+                      </View>
+                      <Text style={{ fontSize: 7, color: colors.textMuted }}>
+                        For {task.day} {task.meal}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ))}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 80 },
-  title: { fontSize: 22, fontWeight: '800', color: navy, marginBottom: 4 },
-  sub: { fontSize: 13, color: textSec, marginBottom: 16, lineHeight: 20 },
-  error: { color: errorRed, fontSize: 13, textAlign: 'center', marginTop: 12 },
-  card: { backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: border },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: navy, marginBottom: 10 },
-  cardText: { fontSize: 14, color: textSec, lineHeight: 22 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  rowName: { fontSize: 14, color: navy, fontWeight: '500', flex: 1 },
-  rowQty: { fontSize: 13, color: '#1A6B5C', fontWeight: '600', textAlign: 'right' },
-  stepText: { fontSize: 14, color: textSec, lineHeight: 22, marginBottom: 4 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  backBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.navy,
+    borderRadius: 20,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  backTxt: { fontSize: 8, fontWeight: '700', color: colors.navy },
+  headerTitle: { fontSize: 10, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
+  homeBtn: {
+    backgroundColor: colors.navy,
+    borderRadius: 20,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  homeTxt: { fontSize: 8, fontWeight: '700', color: colors.white },
+  scroll: { padding: 12, paddingBottom: 80 },
+  tipCard: {
+    backgroundColor: 'rgba(30,158,94,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(30,158,94,0.2)',
+    borderRadius: 10,
+    padding: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  tipText: { fontSize: 7.5, color: colors.textSecondary, lineHeight: 11 },
+  tonightBanner: {
+    backgroundColor: colors.navy,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 8,
+    fontWeight: '500',
+    color: colors.navy,
+    marginBottom: 4,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(30,158,94,0.2)',
+    marginBottom: 7,
+  },
+  card: {
+    borderRadius: 12,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    padding: 9,
+    paddingHorizontal: 11,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  checkCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26,58,92,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

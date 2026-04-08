@@ -1,89 +1,123 @@
 import React from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import ScreenWrapper from '../components/ScreenWrapper';
+import { Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { APP_VERSION } from '../constants/version';
+import { colors } from '../constants/theme';
 
-const NAVY = '#2E5480';
-const GOLD = '#C9A227';
-const BODY = '#374151';
-
-function Divider() {
-  return <View style={{ height: 1, backgroundColor: GOLD, opacity: 0.3, marginVertical: 20 }} />;
-}
-
-function BulletRow({ text }: { text: string }) {
+export default function AboutScreen() {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-      <View style={{ width: 8, height: 8, backgroundColor: NAVY, marginTop: 6 }} />
-      <Text style={s.body}>{text}</Text>
+    <View style={{flex:1}}>
+      <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
+      <SafeAreaView style={{flex:1}}>
+        {/* Header */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><Text style={s.backTxt}>Back</Text></TouchableOpacity>
+          <Text style={s.headerTitle}>About My Maharaj</Text>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}><Text style={s.homeTxt}>Home</Text></TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={{padding:14,paddingBottom:60}} showsVerticalScrollIndicator={false}>
+
+          {/* App Identity */}
+          <Text style={s.secTitle}>App Identity</Text>
+          <View style={s.card}>
+            <Image source={require('../assets/logo.png')} style={{width:64,height:64,alignSelf:'center',marginBottom:8}} resizeMode="contain" />
+            <Text style={{fontSize:14,fontWeight:'500',color:colors.navy,textAlign:'center'}}>My Maharaj</Text>
+            <Text style={{fontSize:9,color:colors.teal,textAlign:'center',marginTop:2}}>Your personal Indian meal planner</Text>
+            <View style={{alignSelf:'center',marginTop:8,backgroundColor:'rgba(30,158,94,0.12)',borderWidth:1,borderColor:'rgba(30,158,94,0.3)',borderRadius:20,paddingVertical:3,paddingHorizontal:10}}>
+              <Text style={{fontSize:8,color:colors.emerald}}>Beta {APP_VERSION}</Text>
+            </View>
+          </View>
+
+          {/* About */}
+          <Text style={s.secTitle}>About</Text>
+          <View style={s.card}>
+            <Text style={{fontSize:9,color:colors.navy,lineHeight:14.4}}>My Maharaj is an AI-powered meal planning assistant built for Indian families in the GCC. Maharaj understands your community, your family's preferences, your health conditions, and your kitchen — and plans your entire week so you never have to think about what to cook.</Text>
+          </View>
+
+          {/* Powered by */}
+          <Text style={s.secTitle}>Powered by</Text>
+          <View style={s.card}>
+            <Image source={require('../assets/blueflute-logo.png')} style={{width:100,height:36}} resizeMode="contain" />
+            <Text style={{fontSize:8,fontWeight:'500',color:colors.navy,marginTop:4}}>Blue Flute Consulting LLC-FZ</Text>
+            <Text style={{fontSize:7,color:colors.textMuted}}>Dubai, UAE</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.bluefluteconsulting.com')} style={{marginTop:4}}>
+              <Text style={{fontSize:8,color:colors.emerald}}>www.bluefluteconsulting.com</Text>
+            </TouchableOpacity>
+
+            <View style={{height:1,backgroundColor:'rgba(26,58,92,0.1)',marginVertical:10}} />
+
+            <Text style={{fontSize:8,color:colors.textMuted,textAlign:'center'}}>Powered by Claude AI by Anthropic</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.anthropic.com')}>
+              <Text style={{fontSize:8,color:colors.emerald,textAlign:'center'}}>claude.ai</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Legal */}
+          <Text style={s.secTitle}>Legal</Text>
+
+          <TouchableOpacity style={s.linkRow} onPress={() => router.push('/privacy-policy' as never)}>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:8.5,fontWeight:'500',color:colors.navy}}>Privacy Policy</Text>
+              <Text style={{fontSize:7,color:colors.textMuted}}>How we collect and protect your data</Text>
+            </View>
+            <Text style={{fontSize:12,color:colors.emerald}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+          <View style={s.linkDivider} />
+
+          <TouchableOpacity style={s.linkRow} onPress={() => router.push('/disclaimer' as never)}>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:8.5,fontWeight:'500',color:colors.navy}}>Terms and Disclaimer</Text>
+              <Text style={{fontSize:7,color:colors.textMuted}}>Terms of use and important disclaimers</Text>
+            </View>
+            <Text style={{fontSize:12,color:colors.emerald}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+          <View style={s.linkDivider} />
+
+          <TouchableOpacity style={s.linkRow} onPress={() => router.push('/faq' as never)}>
+            <View style={{flex:1}}>
+              <Text style={{fontSize:8.5,fontWeight:'500',color:colors.navy}}>Frequently Asked Questions</Text>
+              <Text style={{fontSize:7,color:colors.textMuted}}>How to get the most from Maharaj</Text>
+            </View>
+            <Text style={{fontSize:12,color:colors.emerald}}>{'\u203A'}</Text>
+          </TouchableOpacity>
+
+          {/* Version History */}
+          <Text style={[s.secTitle, {marginTop:16}]}>Version History</Text>
+          <View style={s.card}>
+            {[
+              { ver: 'Beta v3.04', desc: 'V3 full redesign — V3 colour system, anticipation feed, meal anatomy, festivals, RLHF' },
+              { ver: 'Beta v2.04', desc: 'Fix batches 1-7 — background, non-veg enforcement, cuisine filter, Jain logic, Scan to Shop' },
+              { ver: 'Beta v1.0', desc: 'Initial release — meal generation, Ask Maharaj, family profile' },
+            ].map((row, i) => (
+              <View key={i} style={{flexDirection:'row',paddingVertical:4,borderBottomWidth:i<2?0.5:0,borderBottomColor:'rgba(26,58,92,0.08)'}}>
+                <Text style={{fontSize:7.5,fontWeight:'500',color:colors.navy,width:90}}>{row.ver}</Text>
+                <Text style={{fontSize:7.5,color:colors.textMuted,flex:1}}>{row.desc}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Footer */}
+          <View style={{marginTop:20,alignItems:'center'}}>
+            <Text style={{fontSize:8,color:colors.textMuted,textAlign:'center'}}>{'\u00A9'} 2026 Blue Flute Consulting LLC-FZ</Text>
+            <Text style={{fontSize:7,color:colors.textMuted,textAlign:'center',marginTop:2}}>All rights reserved</Text>
+          </View>
+
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
 
-export default function AboutScreen() {
-  const today = new Date();
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const buildDate = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
-
-  return (
-    <ScreenWrapper title="About My Maharaj">
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* Spacer where logo was */}
-        <View style={{ alignItems: 'center', marginBottom: 20 }} />
-
-        {/* Section 1 — The Vision */}
-        <Text style={s.heading}>The Vision</Text>
-        <Text style={s.body}>
-          My Maharaj is the world's first Cultural Health Intelligence Engine. We believe people of Indian origin across 195 countries deserve an AI that understands how they eat — not just what they eat.
-        </Text>
-        <Text style={[s.body, { marginTop: 10 }]}>
-          Every dal in Maharashtra differs from dal in Punjab. Every family has its own health story. My Maharaj is built to understand both.
-        </Text>
-
-        <Divider />
-
-        {/* Section 2 — What Maharaj Knows */}
-        <Text style={s.heading}>What Maharaj Knows</Text>
-        <BulletRow text="1,100+ authentic Indian dishes across 20+ regional cuisines" />
-        <BulletRow text="Jain, vegetarian, non-vegetarian and fasting traditions — all respected" />
-        <BulletRow text="Health adaptation: diabetic, PCOS, BP, cholesterol built in" />
-        <BulletRow text="10 Indian languages supported" />
-        <BulletRow text="Festival and fasting calendar intelligence" />
-        <BulletRow text="Dubai grocery intelligence: Carrefour, Spinneys, Lulu" />
-
-        <Divider />
-
-        {/* Section 3 — Build Information */}
-        <Text style={s.heading}>Build Information</Text>
-        <View style={s.infoRow}><Text style={s.infoLabel}>Version</Text><Text style={s.infoValue}>{APP_VERSION}</Text></View>
-        <View style={s.infoRow}><Text style={s.infoLabel}>Build date</Text><Text style={s.infoValue}>{buildDate}</Text></View>
-        <View style={s.infoRow}><Text style={s.infoLabel}>Dish database</Text><Text style={s.infoValue}>1,106 authentic Indian dishes</Text></View>
-        <View style={s.infoRow}><Text style={s.infoLabel}>Web</Text><Text style={s.infoValue}>my-maharaj.vercel.app</Text></View>
-
-        <Divider />
-
-        {/* Section 4 — Legal */}
-        <Text style={s.heading}>Legal</Text>
-        <Text style={s.body}>
-          My Maharaj meal plans are for informational purposes only and do not constitute medical advice. Always consult a qualified dietician or physician for health-specific dietary requirements.
-        </Text>
-        <Text style={[s.legal, { marginTop: 20 }]}>
-          {'\u00A9'} 2026 Blue Flute Consulting LLC-FZ. All rights reserved.
-        </Text>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </ScreenWrapper>
-  );
-}
-
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 80 },
-  heading: { fontSize: 18, fontWeight: '700', color: NAVY, marginBottom: 12 },
-  body: { fontSize: 14, color: BODY, lineHeight: 22 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: 'rgba(27,58,92,0.08)' },
-  infoLabel: { fontSize: 13, color: '#6B7280' },
-  infoValue: { fontSize: 13, fontWeight: '600', color: NAVY },
-  legal: { fontSize: 11, color: '#9CA3AF', textAlign: 'center' },
+  header: { flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14,paddingTop:Platform.OS==='android'?25:Platform.OS==='web'?14:8,paddingBottom:10 },
+  backBtn: { backgroundColor:'transparent',borderRadius:20,borderWidth:1.5,borderColor:colors.navy,paddingVertical:3,paddingHorizontal:8 },
+  backTxt: { fontSize:8,fontWeight:'700',color:colors.navy },
+  headerTitle: { fontSize:10,fontWeight:'700',color:colors.navy },
+  homeBtn: { backgroundColor:colors.navy,borderRadius:20,paddingVertical:3,paddingHorizontal:8 },
+  homeTxt: { fontSize:8,fontWeight:'700',color:colors.white },
+  secTitle: { fontSize:8,fontWeight:'500',color:colors.emerald,textTransform:'uppercase',letterSpacing:0.7,marginBottom:7,paddingBottom:4,borderBottomWidth:1,borderBottomColor:'rgba(30,158,94,0.2)',marginTop:14 },
+  card: { backgroundColor:'rgba(255,255,255,0.85)',borderRadius:12,padding:10,paddingHorizontal:11,marginBottom:6,borderWidth:1,borderColor:'rgba(255,255,255,0.6)' },
+  linkRow: { flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:8,paddingHorizontal:4 },
+  linkDivider: { height:1,backgroundColor:'rgba(26,58,92,0.08)' },
 });
