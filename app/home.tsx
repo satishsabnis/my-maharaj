@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Easing, Image, Linking, Modal,
+  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal,
   Platform, SafeAreaView, ScrollView, StyleSheet, Switch,
   Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
@@ -223,7 +223,7 @@ export default function HomeScreen() {
 
   return (
     <View style={{flex:1}}>
-      <Image source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
+      <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
       <SafeAreaView style={[s.safe,{zIndex:1}]}>
 
         {/* ── HEADER ── */}

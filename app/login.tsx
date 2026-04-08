@@ -50,7 +50,8 @@ export default function LoginScreen() {
   }
 
   return (
-    <ImageBackground source={require('../assets/background.png')} style={{flex:1,width:'100%'}} resizeMode="cover">
+    <View style={{flex:1}}>
+    <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
@@ -100,7 +101,7 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 
