@@ -168,6 +168,9 @@ export default function MealWizardScreen() {
   // Alternatives
   const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string } | null>(null);
 
+  // Recipe modal
+  const [recipeModal, setRecipeModal] = useState<{ visible: boolean; dishName: string }>({ visible: false, dishName: '' });
+
   // Post-selection
   const [recipeDishes, setRecipeDishes] = useState<string[]>([]);
   const [feedbacks,    setFeedbacks]    = useState<FeedbackEntry[]>([]);
@@ -289,8 +292,8 @@ export default function MealWizardScreen() {
     if (step === 'generating') {
       const pulse = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ])
       );
       pulse.start();
@@ -1138,8 +1141,8 @@ export default function MealWizardScreen() {
       <View style={{flex:1,width:'100%'}}>
         {/* Header row with Back button */}
         <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingTop:Platform.OS==='web'?16:10,paddingBottom:12}}>
-          <TouchableOpacity onPress={() => setStep('wizard')} style={{borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:3,paddingHorizontal:8}}>
-            <Text style={{fontSize:8,fontWeight:'700',color:colors.navy}}>Back</Text>
+          <TouchableOpacity onPress={() => setStep('wizard')} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
           </TouchableOpacity>
         </View>
 
@@ -1147,7 +1150,7 @@ export default function MealWizardScreen() {
         <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
           {/* Maharaj logo with pulse */}
           <Animated.View style={{transform:[{scale:pulseAnim}],marginBottom:20}}>
-            <Image source={require('../assets/icon.png')} style={{width:80,height:80,borderRadius:40}} resizeMode="contain" />
+            <Image source={require('../assets/icon.png')} style={{width:160,height:160,borderRadius:80}} resizeMode="contain" />
           </Animated.View>
 
           <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:8,textAlign:'center'}}>Maharaj is planning...</Text>
@@ -1270,7 +1273,7 @@ export default function MealWizardScreen() {
       <View>
         {/* Hint */}
         <View style={{backgroundColor:'rgba(30,158,94,0.08)',borderRadius:10,padding:10,marginBottom:14}}>
-          <Text style={{fontSize:12,color:colors.emerald,textAlign:'center',fontWeight:'600'}}>Tap any dish to see 3 alternatives</Text>
+          <Text style={{fontSize:12,color:colors.emerald,textAlign:'center',fontWeight:'600'}}>Tap any dish to view recipe</Text>
         </View>
 
         {/* Day cards */}
@@ -1282,7 +1285,7 @@ export default function MealWizardScreen() {
           const isSunday = dt.getDay() === 0;
 
           return (
-            <View key={day.date} style={[cards.base, {marginBottom:12}]}>
+            <View key={day.date} style={[cards.base, {marginBottom:6}]}>
               {/* Day header */}
               <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
                 <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
@@ -1319,24 +1322,23 @@ export default function MealWizardScreen() {
                       const compLabel = parts.length > 1 ? parts[0].trim() : label;
                       const dishName = parts.length > 1 ? parts.slice(1).join(':').trim() : comp;
                       return (
-                        <TouchableOpacity
+                        <View
                           key={ci}
-                          style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
-                          onPress={() => {
-                            if (!isCarryForward) {
-                              setAlternativeSlot({ dayIdx, slot: key, component: compLabel });
-                              setStep('alternatives');
-                            }
-                          }}
-                          activeOpacity={isCarryForward ? 1 : 0.7}
+                          style={{flexDirection:'row',alignItems:'center',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
                         >
-                          <View style={{flex:1}}>
+                          <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
                             {isThali && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
                             <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
                             {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
-                          </View>
-                          {!isCarryForward && <Text style={{fontSize:14,color:colors.textMuted,marginLeft:8}}>{'\u270E'}</Text>}
-                        </TouchableOpacity>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{paddingLeft:8,paddingVertical:4}}
+                            disabled={isCarryForward}
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}
+                          >
+                            <Text style={{fontSize:14,color:colors.navy,opacity:isCarryForward ? 0 : 1}}>{'\u270E'}</Text>
+                          </TouchableOpacity>
+                        </View>
                       );
                     })}
                   </View>
@@ -1389,6 +1391,22 @@ export default function MealWizardScreen() {
         }} activeOpacity={0.85}>
           <Text style={{fontSize:16,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
         </TouchableOpacity>
+
+        {/* Recipe placeholder modal */}
+        <Modal visible={recipeModal.visible} transparent animationType="slide" onRequestClose={() => setRecipeModal({ visible: false, dishName: '' })}>
+          <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.45)',justifyContent:'flex-end'}}>
+            <View style={{backgroundColor:colors.white,borderTopLeftRadius:24,borderTopRightRadius:24,padding:20,alignItems:'center'}}>
+              <View style={{width:36,height:4,borderRadius:2,backgroundColor:'#D1D5DB',marginBottom:16}} />
+              <Image source={require('../assets/logo.png')} style={{width:40,height:40,marginBottom:8}} resizeMode="contain" />
+              <Text style={{fontSize:12,fontWeight:'500',color:colors.navy,textAlign:'center',marginBottom:4}}>{recipeModal.dishName}</Text>
+              <Text style={{fontSize:9,color:colors.emerald,textAlign:'center',marginBottom:8}}>Recipe coming soon</Text>
+              <Text style={{fontSize:8,color:colors.textMuted,textAlign:'center',lineHeight:12,marginHorizontal:16,marginBottom:16}}>Full recipes with step-by-step instructions, ingredients scaled to your family size, and printable PDF in your preferred language are coming in the Pro plan.</Text>
+              <TouchableOpacity style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,width:'100%',alignItems:'center'}} onPress={() => setRecipeModal({ visible: false, dishName: '' })}>
+                <Text style={{fontSize:9,fontWeight:'600',color:colors.white}}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <View style={{flexDirection:'row',gap:8,marginTop:10}}>
           <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:colors.navy,alignItems:'center'}} onPress={() => {
@@ -1636,37 +1654,49 @@ export default function MealWizardScreen() {
   }
 
   function renderOnlineShopping() {
-    const stores = ['Carrefour','Noon Daily','Amazon Fresh','Talabat Groceries'];
+    const STORES = [
+      { name: 'Carrefour', sub: 'Supermarket · Dubai', url: 'https://www.carrefouruae.com' },
+      { name: 'Noon Daily', sub: 'Delivery · 2-4 hours', url: 'https://www.noon.com/uae-en/grocery' },
+      { name: 'Amazon Fresh', sub: 'Delivery · same day', url: 'https://www.amazon.ae/fresh' },
+      { name: 'Talabat Groceries', sub: 'Delivery · 30-60 min', url: 'https://www.talabat.com/uae/groceries' },
+    ];
     return (
       <View style={{flex:1}}>
         {/* Header */}
-        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingTop:Platform.OS === 'web' ? 16 : 10,paddingBottom:14,borderBottomWidth:1,borderBottomColor:'rgba(26,58,92,0.1)'}}>
-          <TouchableOpacity onPress={() => setStep('grocery')} style={buttons.back}>
-            <Text style={buttons.backText}>Back</Text>
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingTop:Platform.OS==='web'?16:10,paddingBottom:12,borderBottomWidth:1,borderBottomColor:'rgba(26,58,92,0.1)'}}>
+          <TouchableOpacity onPress={() => setStep('what-next')} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
           </TouchableOpacity>
           <Text style={{flex:1,fontSize:16,fontWeight:'700',color:colors.navy,textAlign:'center'}}>Order Online</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={buttons.home}>
-            <Text style={buttons.homeText}>Home</Text>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Subtitle */}
-        <Text style={{color:colors.textMuted,fontSize:13,textAlign:'center',marginBottom:16,marginTop:12,paddingHorizontal:20}}>Choose your preferred store or delivery app</Text>
+        <ScrollView contentContainerStyle={{padding:16,paddingBottom:24}} showsVerticalScrollIndicator={false}>
+          {/* Maharaj tip card */}
+          <View style={{backgroundColor:'rgba(30,158,94,0.08)',borderWidth:1,borderColor:'rgba(30,158,94,0.2)',borderRadius:10,padding:10,marginBottom:12}}>
+            <Text style={{fontSize:9,color:colors.navy,lineHeight:14}}>Choose your preferred store or delivery app. Your shopping list has been prepared — just pick where you want to order from.</Text>
+          </View>
 
-        {/* 2x2 Grid */}
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:12,paddingHorizontal:20}}>
-          {stores.map(name => (
-            <View key={name} style={{width:'47%',backgroundColor:'white',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,padding:20,alignItems:'center',opacity:0.75}}>
-              <Text style={{color:colors.navy,fontWeight:'700',fontSize:15,textAlign:'center'}}>{name}</Text>
-              <Text style={{color:colors.gold,fontSize:12,fontWeight:'500',textAlign:'center',marginTop:6}}>Coming Soon</Text>
+          {/* Store cards — stacked */}
+          {STORES.map(store => (
+            <View key={store.name} style={{backgroundColor:'rgba(255,255,255,0.85)',borderRadius:12,padding:12,borderWidth:1,borderColor:'rgba(255,255,255,0.6)',marginBottom:6,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+              <View style={{flex:1}}>
+                <Text style={{fontSize:10,fontWeight:'700',color:colors.navy}}>{store.name}</Text>
+                <Text style={{fontSize:8,color:colors.textMuted,marginTop:1}}>{store.sub}</Text>
+              </View>
+              <TouchableOpacity onPress={() => Linking.openURL(store.url)} style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:4,paddingHorizontal:10}}>
+                <Text style={{fontSize:9,fontWeight:'600',color:colors.white}}>Shop now</Text>
+              </TouchableOpacity>
             </View>
           ))}
-        </View>
 
-        {/* Navy banner */}
-        <View style={{backgroundColor:colors.navy,borderRadius:12,padding:14,marginTop:20,marginHorizontal:20}}>
-          <Text style={{color:colors.white,fontSize:13,textAlign:'center'}}>Integrations coming soon. Maharaj will connect directly to your favourite store.</Text>
-        </View>
+          {/* More stores banner */}
+          <View style={{backgroundColor:colors.navy,borderRadius:10,padding:10,marginTop:8}}>
+            <Text style={{fontSize:8,color:colors.white,textAlign:'center'}}>More stores coming soon — Lulu, Spinneys, Nesto</Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -1741,7 +1771,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(26,58,92,0.1)',
   },
 
-  scroll:       { paddingBottom: 48 },
+  scroll:       { paddingBottom: 24 },
   scrollCenter: { flexGrow: 1 },
   body:         { paddingHorizontal: 20, paddingTop: 20, maxWidth: 700, width: '100%', alignSelf: 'center' },
   bodyCenter:   { flex: 1, justifyContent: 'center', alignItems: 'center' },
