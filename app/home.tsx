@@ -309,7 +309,7 @@ export default function HomeScreen() {
                   <DrawerRow label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
                   <DrawerRow label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
                   <DrawerRow label="Festivals and Functions" onPress={() => { closeDrawer(); router.push('/festivals' as never); }} />
-                  <DrawerRow label="FAQ" onPress={() => { closeDrawer(); Alert.alert('Coming soon', 'FAQ will be available in a future update.'); }} />
+                  <DrawerRow label="FAQ" onPress={() => { closeDrawer(); router.push('/faq' as never); }} />
                   <DrawerRow label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
                   <DrawerRow label="Sign Out" signOut onPress={doSignOut} />
                 </ScrollView>
