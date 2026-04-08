@@ -187,7 +187,7 @@ export default function DietaryProfileScreen() {
 
   // Section 14 — Language
   const [appLanguage,      setAppLanguage]      = useState('English');
-  const [recipeLanguage,   setRecipeLanguage]   = useState('English');
+  const [planSummaryLanguage,   setPlanSummaryLanguage]   = useState('English');
   const [shoppingLanguage, setShoppingLanguage] = useState('English');
 
   // Cuisine accordion
@@ -225,7 +225,7 @@ export default function DietaryProfileScreen() {
         'household_insurance', 'insurance_expiry',
         'notif_festivals', 'notif_lab_reports', 'notif_insurance_reminders',
         'cooking_skill', 'budget_pref',
-        'app_language', 'recipe_language', 'shopping_list_language',
+        'app_language', 'plan_summary_language', 'shopping_list_language',
         'phone_number', 'profile_setup_complete',
       ]);
       const kv: Record<string,string|null> = {};
@@ -258,7 +258,7 @@ export default function DietaryProfileScreen() {
       if (kv['cooking_skill']) setCookingSkill(kv['cooking_skill']);
       if (kv['budget_pref']) setBudgetPref(kv['budget_pref']);
       if (kv['app_language']) setAppLanguage(kv['app_language']);
-      if (kv['recipe_language']) setRecipeLanguage(kv['recipe_language']);
+      if (kv['plan_summary_language']) setPlanSummaryLanguage(kv['plan_summary_language']);
       if (kv['shopping_list_language']) setShoppingLanguage(kv['shopping_list_language']);
       if (kv['phone_number'] && !phoneNumber) setPhoneNumber(kv['phone_number']);
       if (!kv['profile_setup_complete']) setIsFirstSetup(true);
@@ -389,7 +389,7 @@ export default function DietaryProfileScreen() {
       ['cooking_skill', cookingSkill],
       ['budget_pref', budgetPref],
       ['app_language', appLanguage],
-      ['recipe_language', recipeLanguage],
+      ['plan_summary_language', planSummaryLanguage],
       ['shopping_list_language', shoppingLanguage],
       ['phone_number', phoneNumber],
       ['maharaj_day', groceryDay],
@@ -397,6 +397,7 @@ export default function DietaryProfileScreen() {
     ]);
 
     // Supabase profiles upsert
+    // NOTE: plan_summary_language column needs to be added to Supabase profiles table (migration pending)
     try {
       const user = await getSessionUser();
       if (user) {
@@ -718,7 +719,7 @@ export default function DietaryProfileScreen() {
         <Text style={s.sectionHead}>Language Settings</Text>
         <Text style={{fontSize:10,color:colors.textMuted,marginBottom:8}}>Three separate language settings — for different people in your household</Text>
         <Dropdown label="App language (what you see)" value={appLanguage} options={LANG_OPTIONS} onSelect={v => { setAppLanguage(v); markDirty(); }} />
-        <Dropdown label="Recipe language (for your cook)" value={recipeLanguage} options={LANG_OPTIONS} onSelect={v => { setRecipeLanguage(v); markDirty(); }} />
+        <Dropdown label="Plan summary language (for your cook)" value={planSummaryLanguage} options={LANG_OPTIONS} onSelect={v => { setPlanSummaryLanguage(v); markDirty(); }} />
         <Dropdown label="Shopping list language (for your househelp)" value={shoppingLanguage} options={LANG_OPTIONS} onSelect={v => { setShoppingLanguage(v); markDirty(); }} />
 
         {/* ══════════ SAVE BUTTON ══════════ */}
