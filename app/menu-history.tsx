@@ -6,6 +6,7 @@ import {
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { colors } from '../constants/theme';
 
@@ -96,9 +97,32 @@ export default function MenuHistoryScreen() {
   async function loadPlans() {
     setLoading(true);
     try {
+      // Try Supabase first
+      const user = await getSessionUser();
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('meal_plans')
+            .select('id, period_start, period_end, date_range, plan_json, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (!error && data && data.length > 0) {
+            const mapped: MenuPlan[] = data.map((row: any) => ({
+              id: row.id,
+              createdAt: row.created_at,
+              dateRange: row.date_range || `${row.period_start} — ${row.period_end}`,
+              days: row.plan_json?.days ?? [],
+            }));
+            setPlans(mapped);
+            setLoading(false);
+            return;
+          }
+        } catch { /* fall through to AsyncStorage */ }
+      }
+      // Fallback: AsyncStorage
       const raw = await AsyncStorage.getItem('menu_history');
       const arr: MenuPlan[] = raw ? JSON.parse(raw) : [];
-      // Sort newest first
       arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPlans(arr);
     } catch { setPlans([]); }
@@ -115,6 +139,7 @@ export default function MenuHistoryScreen() {
   async function submitFeedback(rating: 'loved' | 'ok' | 'disliked') {
     if (!feedbackDish) return;
     try {
+      // Always write to AsyncStorage first
       const raw = await AsyncStorage.getItem('dish_feedback');
       const all: Record<string, DishFeedback> = raw ? JSON.parse(raw) : {};
       const existing = all[feedbackDish] ?? { rating: '', count: 0, isFavourite: false };
@@ -130,6 +155,21 @@ export default function MenuHistoryScreen() {
 
       all[feedbackDish] = existing;
       await AsyncStorage.setItem('dish_feedback', JSON.stringify(all));
+
+      // Fire-and-forget Supabase upsert
+      const user = await getSessionUser();
+      if (user) {
+        supabase.from('dish_feedback').upsert({
+          user_id: user.id,
+          dish_name: feedbackDish,
+          rating,
+          count: existing.count,
+          is_favourite: existing.isFavourite,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,dish_name' }).then(({ error }) => {
+          if (error) console.error('[MenuHistory] dish_feedback upsert error:', error.message);
+        });
+      }
     } catch { /* silent */ }
     setFeedbackVisible(false);
     setFeedbackDish(null);
