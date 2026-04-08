@@ -295,7 +295,7 @@ export default function HomeScreen() {
         {isDrawerOpen && (
           <TouchableOpacity style={s.drawerOverlay} activeOpacity={1} onPress={closeDrawer}>
             <Animated.View style={[s.drawer, {transform:[{translateX:drawerAnim}]}]}>
-              <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+              <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{flex:1}}>
                 <View style={s.drawerHeader}>
                   <View style={s.drawerAvatar}><Text style={s.drawerAvatarTxt}>{initials}</Text></View>
                   <Text style={s.drawerName}>{firstName || 'User'}</Text>
