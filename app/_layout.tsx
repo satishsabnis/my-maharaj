@@ -131,7 +131,7 @@ export default function Layout() {
       <Stack.Screen name="table-etiquettes" />
       <Stack.Screen name="traditional-plating" />
       <Stack.Screen name="menu-history" />
-      <Stack.Screen name="meal-wizard" />
+      <Stack.Screen name="meal-wizard" options={{ gestureEnabled: false }} />
       <Stack.Screen name="outdoor-catering" />
       <Stack.Screen name="ask-maharaj" />
       <Stack.Screen name="order-out" />
