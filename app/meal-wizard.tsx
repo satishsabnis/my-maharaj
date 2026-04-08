@@ -1322,23 +1322,23 @@ export default function MealWizardScreen() {
                       const compLabel = parts.length > 1 ? parts[0].trim() : label;
                       const dishName = parts.length > 1 ? parts.slice(1).join(':').trim() : comp;
                       return (
-                        <TouchableOpacity
+                        <View
                           key={ci}
-                          style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
-                          onPress={() => {
-                            if (!isCarryForward) {
-                              setRecipeModal({ visible: true, dishName });
-                            }
-                          }}
-                          activeOpacity={isCarryForward ? 1 : 0.7}
+                          style={{flexDirection:'row',alignItems:'center',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
                         >
-                          <View style={{flex:1}}>
+                          <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
                             {isThali && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
                             <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
                             {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
-                          </View>
-                          {!isCarryForward && <Text style={{fontSize:14,color:colors.textMuted,marginLeft:8}}>{'\u270E'}</Text>}
-                        </TouchableOpacity>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{paddingLeft:8,paddingVertical:4}}
+                            disabled={isCarryForward}
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}
+                          >
+                            <Text style={{fontSize:14,color:colors.navy,opacity:isCarryForward ? 0 : 1}}>{'\u270E'}</Text>
+                          </TouchableOpacity>
+                        </View>
                       );
                     })}
                   </View>
