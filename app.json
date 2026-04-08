@@ -2,7 +2,7 @@
   "expo": {
     "name": "My Maharaj",
     "slug": "my-maharaj",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mymaharaj",
@@ -13,6 +13,8 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
+      "bundleIdentifier": "com.blueflute.mymaharaj",
+      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Maharaj uses your camera to scan your trolley and product barcodes."
@@ -25,6 +27,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.blueflute.mymaharaj",
+      "versionCode": 1,
       "permissions": ["CAMERA"]
     },
     "web": {
