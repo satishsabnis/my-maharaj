@@ -79,7 +79,7 @@ export default function HomeScreen() {
 
   const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const tickerAnim = useRef(new Animated.Value(0)).current;
-  const heroPulse = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const [tickerContentWidth, setTickerContentWidth] = useState(0);
   const TICKER_TEXT = 'My Maharaj by Blue Flute Consulting \u00B7 Beta \u00B7 Smart meal planning for Indian families \u00B7 Feedback: info@bluefluteconsulting.com     ';
 
@@ -89,22 +89,31 @@ export default function HomeScreen() {
     return () => clearInterval(t);
   }, []);
 
-  // Hero circle pulse — CSS for web, Animated for native
+  // Hero circle pulse — infinite loop, never stops
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       if (!document.getElementById('maharaj-pulse-styles')) {
         const styleEl = document.createElement('style');
         styleEl.id = 'maharaj-pulse-styles';
-        styleEl.textContent = `@keyframes maharajPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } } .maharaj-pulse { animation: maharajPulse 2.5s ease-in-out infinite !important; }`;
+        styleEl.textContent = `@keyframes maharajPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } } .maharaj-pulse { animation: maharajPulse 1.8s ease-in-out infinite !important; }`;
         document.head.appendChild(styleEl);
       }
     } else {
-      const pulse = Animated.loop(Animated.sequence([
-        Animated.timing(heroPulse, { toValue: 1.05, duration: 1200, useNativeDriver: true }),
-        Animated.timing(heroPulse, { toValue: 1.0, duration: 1200, useNativeDriver: true }),
-      ]));
-      pulse.start();
-      return () => pulse.stop();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+        ]),
+        { iterations: -1 }
+      ).start();
     }
   }, []);
 
@@ -251,7 +260,7 @@ export default function HomeScreen() {
               source={require('../assets/logo.png')}
               // @ts-ignore — web-only className
               className={Platform.OS === 'web' ? 'maharaj-pulse' : undefined}
-              style={{width:400,height:400,marginBottom:-12,backgroundColor:'transparent',transform:Platform.OS !== 'web' ? [{scale:heroPulse}] : undefined}}
+              style={{width:400,height:400,marginBottom:-12,backgroundColor:'transparent',transform:Platform.OS !== 'web' ? [{scale:pulseAnim}] : undefined}}
               resizeMode="contain"
             />
           </TouchableOpacity>
