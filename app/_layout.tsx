@@ -142,6 +142,8 @@ export default function Layout() {
       <Stack.Screen name="disclaimer" />
       <Stack.Screen name="upgrade-splash" />
       <Stack.Screen name="about" />
+      <Stack.Screen name="privacy-policy" />
+      <Stack.Screen name="faq" />
     </Stack>
     </LanguageProvider>
   );
