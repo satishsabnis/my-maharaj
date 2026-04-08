@@ -20,7 +20,7 @@ export default function FAQScreen() {
           <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}><Text style={s.homeTxt}>Home</Text></TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={{padding:14,paddingBottom:60}} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{padding:14,paddingBottom:24}} showsVerticalScrollIndicator={false}>
 
           {/* Maharaj tip */}
           <View style={s.tipCard}>
@@ -52,15 +52,15 @@ export default function FAQScreen() {
 
 const s = StyleSheet.create({
   header: { flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14,paddingTop:Platform.OS==='android'?25:Platform.OS==='web'?14:8,paddingBottom:10 },
-  backBtn: { backgroundColor:'transparent',borderRadius:20,borderWidth:1.5,borderColor:colors.navy,paddingVertical:3,paddingHorizontal:8 },
-  backTxt: { fontSize:8,fontWeight:'700',color:colors.navy },
+  backBtn: { backgroundColor:'transparent',borderRadius:8,borderWidth:1.5,borderColor:'#2E5480',paddingVertical:6,paddingHorizontal:12 },
+  backTxt: { fontSize:15,fontWeight:'700',color:'#2E5480' },
   headerTitle: { fontSize:10,fontWeight:'700',color:colors.navy },
-  homeBtn: { backgroundColor:colors.navy,borderRadius:20,paddingVertical:3,paddingHorizontal:8 },
-  homeTxt: { fontSize:8,fontWeight:'700',color:colors.white },
+  homeBtn: { backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12 },
+  homeTxt: { fontSize:15,fontWeight:'700',color:colors.white },
   tipCard: { backgroundColor:'rgba(30,158,94,0.08)',borderWidth:1,borderColor:'rgba(30,158,94,0.2)',borderRadius:10,padding:8,paddingHorizontal:10,marginBottom:12 },
   tipLabel: { fontSize:6.5,color:colors.emerald,textTransform:'uppercase',letterSpacing:0.4,marginBottom:3 },
   tipText: { fontSize:8,color:colors.navy,lineHeight:12 },
-  secTitle: { fontSize:8,fontWeight:'500',color:colors.emerald,textTransform:'uppercase',letterSpacing:0.7,marginBottom:7,paddingBottom:4,borderBottomWidth:1,borderBottomColor:'rgba(30,158,94,0.2)',marginTop:14 },
+  secTitle: { fontSize:8,fontWeight:'500',color:colors.emerald,textTransform:'uppercase',letterSpacing:0.7,marginBottom:6,paddingBottom:4,borderBottomWidth:1,borderBottomColor:'rgba(30,158,94,0.2)',marginTop:10 },
   card: { backgroundColor:'rgba(255,255,255,0.85)',borderRadius:12,padding:10,paddingHorizontal:11,marginBottom:6,borderWidth:1,borderColor:'rgba(255,255,255,0.6)' },
-  comingSoonCard: { backgroundColor:'rgba(201,162,39,0.1)',borderWidth:1,borderColor:'rgba(201,162,39,0.25)',borderRadius:12,padding:16,marginVertical:20,alignItems:'center' },
+  comingSoonCard: { backgroundColor:'rgba(201,162,39,0.1)',borderWidth:1,borderColor:'rgba(201,162,39,0.25)',borderRadius:12,padding:16,marginVertical:12,alignItems:'center' },
 });

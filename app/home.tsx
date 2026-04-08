@@ -59,8 +59,8 @@ export default function HomeScreen() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       ]),
       { iterations: -1 }
     ).start();
@@ -229,15 +229,15 @@ export default function HomeScreen() {
         <ScrollView contentContainerStyle={{paddingBottom:20}} showsVerticalScrollIndicator={false}>
 
           {/* ── HERO ── */}
-          <View style={{alignItems:'center',paddingTop:12}}>
+          <View style={{alignItems:'center',paddingTop:8}}>
             <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
               <Animated.Image
                 source={require('../assets/logo.png')}
-                style={{width:88,height:88,transform:[{scale:pulseAnim}]}}
+                style={{width:176,height:176,transform:[{scale:pulseAnim}]}}
                 resizeMode="contain"
               />
             </TouchableOpacity>
-            <Text style={{fontSize:10,color:colors.gold,fontStyle:'italic',marginTop:4}}>Tap to begin</Text>
+            <Text style={{fontSize:10,color:colors.gold,fontStyle:'italic',marginTop:2}}>Tap to begin</Text>
             <Text style={{fontSize:13,fontWeight:'500',color:colors.navy,marginTop:2}}>Ask Maharaj</Text>
             <Text style={{fontSize:9,color:colors.teal,marginTop:1}}>Your personal meal planner</Text>
           </View>
