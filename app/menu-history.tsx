@@ -1,272 +1,588 @@
-import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  Modal, Platform,
+} from 'react-native';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SkeletonList } from '../components/Skeleton';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { supabase, getSessionUser } from '../lib/supabase';
-import { navy, textSec, white, border, surface, gold, textColor } from '../theme/colors';
+import { colors } from '../constants/theme';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-interface MenuRecord {
+interface MealEntry {
+  name: string;
+}
+
+interface DayPlan {
+  date?: string;
+  day?: string;
+  dayName?: string;
+  breakfast?: MealEntry | string | null;
+  lunch?: MealEntry | string | null;
+  dinner?: MealEntry | string | null;
+  snack?: MealEntry | string | null;
+}
+
+interface MenuPlan {
   id: string;
-  created_at: string;
-  period_start: string;
-  period_end: string;
-  cuisine: string;
-  food_pref: string;
-  dietary_notes: string | null;
-  menu_json: {
-    type?: 'party' | 'outdoor';
-    occasion?: string;
-    recognised?: string;
-    guests?: string;
-    budget?: string;
-    setup?: string;
-    weather?: string;
-    starters?: { name: string; description: string }[];
-    main_course?: { name: string; description: string }[];
-    desserts?: { name: string; description: string }[];
-    beverages?: { name: string; description: string }[];
-    serving_tips?: string[];
-    packing_tips?: string[];
-    days?: Array<{
-      date: string; day: string;
-      breakfast: { name: string } | null;
-      lunch:     { name: string } | null;
-      dinner:    { name: string } | null;
-    }>;
-  } | null;
+  createdAt: string;
+  dateRange: string;
+  days: DayPlan[];
 }
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function fmtDate(d: string): string {
-  const dt = new Date(d);
-  return `${dt.getDate()} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
+interface DishFeedback {
+  rating: string;     // 'loved' | 'ok' | 'disliked'
+  count: number;
+  isFavourite: boolean;
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+const MONTHS_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function monthFromISO(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}`;
+  } catch { return 'Unknown'; }
+}
+
+function formatTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTHS_ABBR[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  } catch { return ''; }
+}
+
+function dishName(entry: MealEntry | string | null | undefined): string {
+  if (!entry) return '';
+  if (typeof entry === 'string') return entry;
+  return entry.name ?? '';
+}
+
+function dayCount(plan: MenuPlan): number {
+  return plan.days?.length ?? 0;
+}
+
+// ─── Group plans by month ────────────────────────────────────────────────────
+
+function groupByMonth(plans: MenuPlan[]): { month: string; plans: MenuPlan[] }[] {
+  const map: Record<string, MenuPlan[]> = {};
+  const order: string[] = [];
+  for (const p of plans) {
+    const m = monthFromISO(p.createdAt);
+    if (!map[m]) { map[m] = []; order.push(m); }
+    map[m].push(p);
+  }
+  return order.map(m => ({ month: m, plans: map[m] }));
+}
+
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function MenuHistoryScreen() {
-  const [records,  setRecords]  = useState<MenuRecord[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [plans, setPlans] = useState<MenuPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<MenuPlan | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const user = await getSessionUser();
-      if (!user) { setLoading(false); return; }
-      const { data } = await supabase
-        .from('menu_history')
-        .select('id, created_at, period_start, period_end, cuisine, food_pref, dietary_notes, menu_json')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      const supaRecords = (data as MenuRecord[]) ?? [];
-      // Also load from AsyncStorage (local plans)
-      try {
-        const local = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]') as any[];
-        const localRecords: MenuRecord[] = local.map((l: any) => {
-          // Party/outdoor entries saved from party-menu or outdoor-catering
-          if (l.menu_json?.type === 'party' || l.menu_json?.type === 'outdoor' || l.type === 'party' || l.type === 'outdoor') {
-            const mj = l.menu_json ?? l;
-            return {
-              id: l.id ?? Date.now().toString(), created_at: l.createdAt ?? new Date().toISOString(),
-              period_start: l.dateRange ?? '', period_end: l.dateRange ?? '',
-              cuisine: mj.type === 'party' ? 'Party Menu' : 'Outdoor Catering',
-              food_pref: mj.foodType ?? 'Mixed', dietary_notes: mj.occasion ?? null,
-              menu_json: mj,
-            };
-          }
-          // Regular weekly plan entries
-          const days = (l.days ?? l.plan ?? []).map((d: any) => ({
-            date: d.date, day: d.dayName || '',
-            breakfast: d.breakfast ? (typeof d.breakfast === 'string' ? { name: d.breakfast } : d.breakfast) : null,
-            lunch: d.lunch ? (typeof d.lunch === 'string' ? { name: d.lunch } : d.lunch) : null,
-            dinner: d.dinner ? (typeof d.dinner === 'string' ? { name: d.dinner } : d.dinner) : null,
-          }));
-          return {
-            id: l.id, created_at: l.createdAt, period_start: l.dateRange?.split(' — ')[0] ?? '', period_end: l.dateRange?.split(' — ')[1] ?? '',
-            cuisine: 'Various', food_pref: 'mixed', dietary_notes: null,
-            menu_json: { days },
-          };
-        });
-        // Deduplicate: skip local entries whose id already exists in supaRecords
-        const supaIds = new Set(supaRecords.map(r => r.id));
-        const uniqueLocal = localRecords.filter(r => !supaIds.has(r.id));
-        const merged = [...uniqueLocal, ...supaRecords].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setRecords(merged);
-      } catch { setRecords(supaRecords); }
-      setLoading(false);
-    }
-    void load();
-  }, []);
+  // Feedback sheet state
+  const [feedbackDish, setFeedbackDish] = useState<string | null>(null);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
 
-  function toggle(id: string) {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  useFocusEffect(useCallback(() => {
+    loadPlans();
+  }, []));
+
+  async function loadPlans() {
+    setLoading(true);
+    try {
+      const raw = await AsyncStorage.getItem('menu_history');
+      const arr: MenuPlan[] = raw ? JSON.parse(raw) : [];
+      // Sort newest first
+      arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPlans(arr);
+    } catch { setPlans([]); }
+    setLoading(false);
   }
 
-  function periodLabel(r: MenuRecord): string {
-    if (r.period_start === r.period_end) return fmtDate(r.period_start);
-    return `${fmtDate(r.period_start)} – ${fmtDate(r.period_end)}`;
+  // ─── Feedback handling ─────────────────────────────────────────────────────
+
+  function openFeedback(name: string) {
+    setFeedbackDish(name);
+    setFeedbackVisible(true);
   }
 
-  const prefColors: Record<string, { bg: string; fg: string }> = {
-    veg:    { bg: '#E8F5E9', fg: '#1A6B3C' },
-    nonveg: { bg: '#FFF3E0', fg: '#C2410C' },
-    normal: { bg: '#E8F5E9', fg: '#1A6B3C' },
-    fasting:{ bg: '#F0F4FF', fg: '#3730A3' },
-  };
-  function prefStyle(pref: string) {
-    const key = Object.keys(prefColors).find((k) => pref.toLowerCase().includes(k)) ?? 'veg';
-    return prefColors[key];
+  async function submitFeedback(rating: 'loved' | 'ok' | 'disliked') {
+    if (!feedbackDish) return;
+    try {
+      const raw = await AsyncStorage.getItem('dish_feedback');
+      const all: Record<string, DishFeedback> = raw ? JSON.parse(raw) : {};
+      const existing = all[feedbackDish] ?? { rating: '', count: 0, isFavourite: false };
+
+      existing.rating = rating;
+      existing.count = existing.count + 1;
+
+      // Mark as favourite if loved 3 or more times
+      const lovedCount = rating === 'loved' ? existing.count : (existing.rating === 'loved' ? existing.count : 0);
+      if (rating === 'loved' && lovedCount >= 3) {
+        existing.isFavourite = true;
+      }
+
+      all[feedbackDish] = existing;
+      await AsyncStorage.setItem('dish_feedback', JSON.stringify(all));
+    } catch { /* silent */ }
+    setFeedbackVisible(false);
+    setFeedbackDish(null);
   }
 
-  const typeBadge: Record<string, { bg: string; fg: string; label: string }> = {
-    party:   { bg: '#FEF2F2', fg: '#8B1A1A', label: 'Party' },
-    outdoor: { bg: '#ECFDF5', fg: '#1A6B3C', label: 'Outdoor' },
-  };
+  // ─── Detail view ───────────────────────────────────────────────────────────
 
-  function renderEventExpanded(mj: NonNullable<MenuRecord['menu_json']>) {
-    const sections: { title: string; items: { name: string; description: string }[] }[] = [
-      { title: 'Starters', items: mj.starters ?? [] },
-      { title: 'Main Course', items: mj.main_course ?? [] },
-      { title: 'Desserts', items: mj.desserts ?? [] },
-      { title: 'Beverages', items: mj.beverages ?? [] },
-    ];
+  if (selectedPlan) {
     return (
-      <View style={s.expandedBody}>
-        {sections.map(sec => sec.items.length > 0 ? (
-          <View key={sec.title} style={{marginBottom:8}}>
-            <Text style={{fontSize:12,fontWeight:'700',color:navy,marginBottom:4}}>{sec.title}</Text>
-            {sec.items.map((it,i) => (
-              <Text key={i} style={{fontSize:12,color:textSec,lineHeight:18}}>{i+1}. {it.name}</Text>
-            ))}
+      <ScreenWrapper title="Menu History">
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          <TouchableOpacity onPress={() => setSelectedPlan(null)} activeOpacity={0.7}>
+            <Text style={s.backLink}>Back to history</Text>
+          </TouchableOpacity>
+
+          <Text style={s.detailRange}>{selectedPlan.dateRange}</Text>
+
+          {(selectedPlan.days ?? []).map((day, idx) => {
+            const label = day.day || day.dayName || `Day ${idx + 1}`;
+            const bf = dishName(day.breakfast);
+            const ln = dishName(day.lunch);
+            const dn = dishName(day.dinner);
+            const sn = dishName(day.snack);
+            return (
+              <View key={idx} style={s.dayCard}>
+                <Text style={s.dayName}>{label}</Text>
+                {bf ? (
+                  <View style={s.mealRow}>
+                    <Text style={s.mealLabel}>Breakfast</Text>
+                    <TouchableOpacity onPress={() => openFeedback(bf)} activeOpacity={0.7}>
+                      <Text style={s.mealDish}>{bf}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+                {ln ? (
+                  <View style={s.mealRow}>
+                    <Text style={s.mealLabel}>Lunch</Text>
+                    <TouchableOpacity onPress={() => openFeedback(ln)} activeOpacity={0.7}>
+                      <Text style={s.mealDish}>{ln}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+                {dn ? (
+                  <View style={s.mealRow}>
+                    <Text style={s.mealLabel}>Dinner</Text>
+                    <TouchableOpacity onPress={() => openFeedback(dn)} activeOpacity={0.7}>
+                      <Text style={s.mealDish}>{dn}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+                {sn ? (
+                  <View style={s.mealRow}>
+                    <Text style={s.mealLabel}>Snack</Text>
+                    <TouchableOpacity onPress={() => openFeedback(sn)} activeOpacity={0.7}>
+                      <Text style={s.mealDish}>{sn}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+
+        {renderFeedbackSheet()}
+      </ScreenWrapper>
+    );
+  }
+
+  // ─── List view ─────────────────────────────────────────────────────────────
+
+  const grouped = groupByMonth(plans);
+
+  function renderFeedbackSheet() {
+    return (
+      <Modal visible={feedbackVisible} transparent animationType="slide">
+        <View style={s.sheetOverlay}>
+          <View style={s.sheetContent}>
+            {/* Navy M circle + label */}
+            <View style={s.sheetHeader}>
+              <View style={s.maharajCircle}>
+                <Text style={s.maharajLetter}>M</Text>
+              </View>
+              <Text style={s.maharajLabel}>Maharaj</Text>
+            </View>
+
+            <Text style={s.sheetQuestion}>
+              You had {feedbackDish}. Did you enjoy it?
+            </Text>
+
+            <TouchableOpacity
+              style={s.feedbackBtnLoved}
+              onPress={() => submitFeedback('loved')}
+              activeOpacity={0.8}
+            >
+              <Text style={s.feedbackBtnLovedText}>Loved it</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={s.feedbackBtnOk}
+              onPress={() => submitFeedback('ok')}
+              activeOpacity={0.8}
+            >
+              <Text style={s.feedbackBtnOkText}>It was ok</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={s.feedbackBtnDislike}
+              onPress={() => submitFeedback('disliked')}
+              activeOpacity={0.8}
+            >
+              <Text style={s.feedbackBtnDislikeText}>Did not like it</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => { setFeedbackVisible(false); setFeedbackDish(null); }}
+              activeOpacity={0.7}
+              style={{ marginTop: 10, alignItems: 'center' }}
+            >
+              <Text style={s.askLater}>Ask me later</Text>
+            </TouchableOpacity>
           </View>
-        ) : null)}
-      </View>
+        </View>
+      </Modal>
     );
   }
 
   return (
     <ScreenWrapper title="Menu History">
-
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {loading ? (
-          <SkeletonList count={4} />
-        ) : records.length === 0 ? (
-          <View style={s.emptyState}>
-            <Text style={s.emptyIcon}></Text>
-            <Text style={s.emptyTitle}>No meal plans yet</Text>
-            <Text style={s.emptySub}>Generate your first plan to see it here</Text>
-            <TouchableOpacity style={s.ctaBtn} onPress={() => router.push('/meal-wizard')} activeOpacity={0.85}>
-              <Text style={s.ctaBtnText}>Generate Meal Plan →</Text>
+
+        {/* Maharaj tip */}
+        <View style={s.tipCard}>
+          <Text style={s.tipText}>
+            All your past meal plans are saved here. Tap any plan to view the full summary. Tap any dish in a past plan and I will ask if you enjoyed it.
+          </Text>
+        </View>
+
+        {/* Empty state */}
+        {!loading && plans.length === 0 && (
+          <View style={s.emptyCard}>
+            <Text style={s.emptyTitle}>No plans generated yet.</Text>
+            <Text style={s.emptySub}>Plan your first week with Maharaj.</Text>
+            <TouchableOpacity
+              style={s.planBtn}
+              onPress={() => router.push('/meal-wizard' as never)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.planBtnText}>Plan My Week</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          records.map((r) => {
-            const isExpanded = expanded[r.id];
-            const pc   = prefStyle(r.food_pref);
-            const days = r.menu_json?.days ?? [];
-            const menuType = r.menu_json?.type;
-            const badge = menuType ? typeBadge[menuType] : null;
-            return (
-              <TouchableOpacity key={r.id} style={s.card} onPress={() => toggle(r.id)} activeOpacity={0.85}>
-                <View style={s.cardHeader}>
-                  <View style={s.cardLeft}>
-                    <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:4}}>
-                      <Text style={s.cardPeriod}>{periodLabel(r)}</Text>
-                      {badge && (
-                        <View style={{backgroundColor:badge.bg,borderRadius:6,paddingHorizontal:8,paddingVertical:2}}>
-                          <Text style={{fontSize:10,fontWeight:'700',color:badge.fg}}>{badge.label}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={s.cardMeta}>
-                      <View style={[s.prefPill, { backgroundColor: pc.bg }]}>
-                        <Text style={[s.prefPillText, { color: pc.fg }]}>{r.food_pref}</Text>
-                      </View>
-                      {r.cuisine && r.cuisine !== 'Various' && <Text style={s.cuisineText}>{r.cuisine}</Text>}
-                    </View>
-                    {r.dietary_notes ? <Text style={s.notesText}>{r.dietary_notes}</Text> : null}
-                    <Text style={s.timeText}>
-                      {new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </Text>
-                  </View>
-                  <Text style={s.chevron}>{isExpanded ? '\u25B2' : '\u25BC'}</Text>
-                </View>
-
-                {isExpanded && menuType && r.menu_json && renderEventExpanded(r.menu_json)}
-
-                {isExpanded && !menuType && days.length > 0 && (
-                  <View style={s.expandedBody}>
-                    {days.map((day, idx) => {
-                      const dayLabel = day.day || (day.date ? new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }) : `Day ${idx+1}`);
-                      const bfName = typeof day.breakfast === 'string' ? day.breakfast : day.breakfast?.name;
-                      const lnName = typeof day.lunch === 'string' ? day.lunch : day.lunch?.name;
-                      const dnName = typeof day.dinner === 'string' ? day.dinner : day.dinner?.name;
-                      return (
-                        <View key={idx} style={[s.dayRow, idx < days.length - 1 && s.dayRowBorder]}>
-                          <Text style={s.dayName}>{dayLabel}</Text>
-                          <View style={s.mealsCol}>
-                            {bfName ? <Text style={s.mealText}>B: {bfName}</Text> : null}
-                            {lnName ? <Text style={s.mealText}>L: {lnName}</Text> : null}
-                            {dnName ? <Text style={s.mealText}>D: {dnName}</Text> : null}
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })
         )}
+
+        {/* Grouped plans */}
+        {grouped.map((group) => (
+          <View key={group.month}>
+            <Text style={s.sectionTitle}>{group.month}</Text>
+            {group.plans.map((plan) => (
+              <TouchableOpacity
+                key={plan.id}
+                style={s.card}
+                onPress={() => setSelectedPlan(plan)}
+                activeOpacity={0.8}
+              >
+                <View style={s.cardTopRow}>
+                  <Text style={s.cardRange}>{plan.dateRange}</Text>
+                  <View style={s.dayCountPill}>
+                    <Text style={s.dayCountText}>{dayCount(plan)} days</Text>
+                  </View>
+                </View>
+                <Text style={s.cuisineSub}>Various</Text>
+                <View style={s.cardBottomRow}>
+                  <Text style={s.timestampText}>{formatTimestamp(plan.createdAt)}</Text>
+                  <Text style={s.chevron}>{'>'}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
+
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      {renderFeedbackSheet()}
     </ScreenWrapper>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: white },
-  header:     {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: border,
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 80,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
-  backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backArrow:  { fontSize: 22, color: navy },
-  headerTitle:{ fontSize: 18, fontWeight: '700', color: navy },
-  scroll:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, maxWidth: 700, width: '100%', alignSelf: 'center' },
-  loadingText:{ textAlign: 'center', color: textSec, marginTop: 40 },
 
-  emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 24 },
-  emptyIcon:  { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: navy, marginBottom: 8 },
-  emptySub:   { fontSize: 14, color: textSec, textAlign: 'center', marginBottom: 24 },
-  ctaBtn:     { backgroundColor: gold, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
-  ctaBtnText: { color: navy, fontWeight: '700', fontSize: 15 },
+  // Maharaj tip
+  tipCard: {
+    backgroundColor: 'rgba(30,158,94,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(30,158,94,0.2)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+  },
+  tipText: {
+    fontSize: 7.5,
+    color: colors.teal,
+    lineHeight: 12,
+  },
 
-  card:        { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 16, borderWidth: 1.5, borderColor: border, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
-  cardHeader:  { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  cardLeft:    { flex: 1 },
-  cardPeriod:  { fontSize: 15, fontWeight: '700', color: navy, marginBottom: 6 },
-  cardMeta:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  prefPill:    { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  prefPillText:{ fontSize: 12, fontWeight: '600' },
-  cuisineText: { fontSize: 13, color: textSec },
-  notesText:   { fontSize: 12, color: textSec, fontStyle: 'italic', marginBottom: 4 },
-  timeText:    { fontSize: 12, color: textSec },
-  chevron:     { fontSize: 13, color: textSec, paddingLeft: 12 },
+  // Section title
+  sectionTitle: {
+    fontSize: 8,
+    fontWeight: '500',
+    color: colors.emerald,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: 7,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(30,158,94,0.2)',
+  },
 
-  expandedBody: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: border },
-  dayRow:       { paddingVertical: 10 },
-  dayRowBorder: { borderBottomWidth: 1, borderBottomColor: border },
-  dayName:      { fontSize: 13, fontWeight: '700', color: navy, marginBottom: 6 },
-  mealsCol:     { gap: 3 },
-  mealText:     { fontSize: 13, color: textSec },
+  // Base card
+  card: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 11,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+
+  // Plan card list view
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  cardRange: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.navy,
+    flex: 1,
+  },
+  dayCountPill: {
+    backgroundColor: 'rgba(30,158,94,0.12)',
+    borderRadius: 20,
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+  },
+  dayCountText: {
+    fontSize: 6.5,
+    color: colors.emerald,
+    fontWeight: '600',
+  },
+  cuisineSub: {
+    fontSize: 7.5,
+    color: colors.textSecondary,
+    marginBottom: 3,
+  },
+  cardBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timestampText: {
+    fontSize: 7,
+    color: colors.textMuted,
+  },
+  chevron: {
+    fontSize: 12,
+    color: colors.emerald,
+    fontWeight: '600',
+  },
+
+  // Empty state
+  emptyCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.navy,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: 7.5,
+    color: colors.textSecondary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  planBtn: {
+    backgroundColor: colors.emerald,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+  },
+  planBtnText: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: colors.white,
+  },
+
+  // Detail view
+  backLink: {
+    fontSize: 8,
+    color: colors.emerald,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  detailRange: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.navy,
+    marginBottom: 10,
+  },
+  dayCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 11,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  dayName: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: colors.navy,
+    marginBottom: 5,
+  },
+  mealRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+  },
+  mealLabel: {
+    fontSize: 7,
+    color: colors.textMuted,
+    fontWeight: '500',
+    width: 50,
+  },
+  mealDish: {
+    fontSize: 7.5,
+    color: colors.textPrimary,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+    textDecorationColor: colors.emerald,
+  },
+
+  // Feedback bottom sheet
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  sheetContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  maharajCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  maharajLetter: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  maharajLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  sheetQuestion: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.navy,
+    marginBottom: 14,
+    lineHeight: 16,
+  },
+  feedbackBtnLoved: {
+    backgroundColor: colors.emerald,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  feedbackBtnLovedText: {
+    fontSize: 8.5,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  feedbackBtnOk: {
+    backgroundColor: 'rgba(90,122,138,0.15)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  feedbackBtnOkText: {
+    fontSize: 8.5,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  feedbackBtnDislike: {
+    backgroundColor: 'rgba(226,75,74,0.1)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  feedbackBtnDislikeText: {
+    fontSize: 8.5,
+    fontWeight: '600',
+    color: colors.danger,
+  },
+  askLater: {
+    fontSize: 7.5,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
 });
