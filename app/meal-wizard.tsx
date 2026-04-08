@@ -2310,7 +2310,7 @@ export default function MealWizardScreen() {
         <View style={{gap:14,marginVertical:20}}>
           <TouchableOpacity style={{backgroundColor:'white',borderRadius:18,padding:20,borderWidth:1.5,borderColor:'rgba(27,58,92,0.12)',flexDirection:'row',alignItems:'center',gap:16,shadowColor:'#2E5480',shadowOffset:{width:0,height:3},shadowOpacity:0.1,shadowRadius:10,elevation:3}} onPress={()=>advance('recipes')} activeOpacity={0.85}>
             <View style={{width:64,height:30,backgroundColor:'#FFFBEB',borderRadius:10,alignItems:'center',justifyContent:'center'}}>
-              <Text style={{fontSize:20}}>👨‍🍳</Text>
+              <Text style={{fontSize:14,fontWeight:'700',color:'#2E5480'}}>Cook</Text>
             </View>
             <View style={{flex:1}}>
               <Text style={{fontSize:16,fontWeight:'800',color:'#2E5480',marginBottom:4}}>Cook at Home</Text>
