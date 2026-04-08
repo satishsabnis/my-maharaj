@@ -5,7 +5,7 @@ import { BarCodeScanner } from 'expo-barcode-scanner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
-import { generateMealPlan, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
+import { generateMealPlan, generateMealPlanFast, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
 import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
@@ -397,16 +397,23 @@ export default function MealWizardScreen() {
       const dates = getDates(selectedFrom, selectedTo);
       setGeneratingProgress({ current: 0, total: dates.length });
 
-      const plan = await generateMealPlan({
+      const allCuisinesPerDay = (() => {
+        const allCuisines = selectedCuisines.length > 0
+          ? selectedCuisines
+          : [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
+        return dates.map((d, i) => {
+          if (perDayCuisine[d]) return perDayCuisine[d];
+          if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
+          return allCuisines.length > 0 ? allCuisines[i % allCuisines.length] : cuisine;
+        });
+      })();
+
+      setGeneratingDay('');  // reset before generation starts
+
+      const plan = await generateMealPlanFast({
         userId,
         dates,
         healthFlags: hf,
-        servings: {
-          breakfast: totalServings,
-          lunch:     totalServings,
-          dinner:    totalServings,
-        },
-        appetite:  profile?.appetite_level ?? 'Normal',
         language:  profile?.app_language   ?? 'en',
         cuisine,
         dishHistory,
@@ -420,33 +427,31 @@ export default function MealWizardScreen() {
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: [nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', freeText, `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
         vegDays:        profile?.veg_days ?? [],
-        cuisinePerDay: (() => {
-          const allCuisines = selectedCuisines.length > 0
-            ? selectedCuisines
-            : [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
-          return dates.map((d, i) => {
-            if (perDayCuisine[d]) return perDayCuisine[d];
-            if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
-            return allCuisines.length > 0 ? allCuisines[i % allCuisines.length] : cuisine;
-          });
-        })(),
+        cuisinePerDay: allCuisinesPerDay,
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
         lunchPrefs:     lnPrefs.length > 0 ? lnPrefs : undefined,
         dinnerPrefs:    dnPrefs.length > 0 ? dnPrefs : undefined,
         snackPrefs:     snPrefs.length > 0 ? snPrefs : undefined,
-        includeDessert,
         locationCity: userLocation.city,
         locationStores: userLocation.stores,
         selectedSlots: slotsToUse,
-      }, (current, total) => {
+        communityRules,
+        familyAvoids,
+        familySize,
+      },
+      // onProgress — called after each day completes
+      (current, total) => {
         setGeneratingProgress({ current, total });
-        // Update generating day text
-        if (current > 0 && current <= dates.length) {
-          const dateStr = dates[current - 1];
-          const dt = new Date(dateStr);
-          setGeneratingDay(WEEKDAYS[dt.getDay()]);
-        }
+        if (current >= total) setGeneratingDay('Finalising');
+      },
+      // onDayStart — called BEFORE each day's API call (Fix 6)
+      (dayName) => {
+        setGeneratingDay(dayName);
       });
+
+      // Brief display of "Plan ready." before advancing
+      setGeneratingDay('Ready');
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       const defaultSel: Record<number, Partial<Record<MealSlotKey, number>>> = {};
       plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
@@ -1121,39 +1126,57 @@ export default function MealWizardScreen() {
     const dates = selectedFrom && selectedTo ? getDates(selectedFrom, selectedTo) : [];
     const totalDays = dates.length || selectedDays.length;
 
+    const statusText = generatingDay === 'Finalising'
+      ? 'Finalising your plan...'
+      : generatingDay === 'Ready'
+      ? 'Plan ready.'
+      : generatingDay
+      ? `Planning ${generatingDay}...`
+      : 'Maharaj is planning...';
+
     return (
-      <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
-        {/* Maharaj logo with pulse */}
-        <Animated.View style={{transform:[{scale:pulseAnim}],marginBottom:20}}>
-          <Image source={require('../assets/icon.png')} style={{width:80,height:80,borderRadius:40}} resizeMode="contain" />
-        </Animated.View>
-
-        <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:8,textAlign:'center'}}>Maharaj is planning...</Text>
-        <Text style={{fontSize:14,color:colors.emerald,marginBottom:20,textAlign:'center'}}>
-          {generatingDay ? `Working on ${generatingDay}...` : 'Starting up...'}
-        </Text>
-
-        {/* Day progress dots */}
-        <View style={{flexDirection:'row',gap:8,marginBottom:16}}>
-          {Array.from({length: totalDays}, (_, i) => {
-            const isDone = i < completedDays;
-            const isCurrent = i === completedDays;
-            return (
-              <View key={i} style={{width:28,height:28,borderRadius:14,backgroundColor:isDone ? colors.emerald : 'transparent',borderWidth:2,borderColor:isDone ? colors.emerald : isCurrent ? colors.navy : '#D1D5DB',alignItems:'center',justifyContent:'center'}}>
-                {isDone ? (
-                  <Text style={{fontSize:12,color:colors.white,fontWeight:'700'}}>{'\u2713'}</Text>
-                ) : (
-                  <Text style={{fontSize:10,fontWeight:'700',color:isCurrent ? colors.navy : '#9CA3AF'}}>{i+1}</Text>
-                )}
-              </View>
-            );
-          })}
+      <View style={{flex:1,width:'100%'}}>
+        {/* Header row with Back button */}
+        <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingTop:Platform.OS==='web'?16:10,paddingBottom:12}}>
+          <TouchableOpacity onPress={() => setStep('wizard')} style={{borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:3,paddingHorizontal:8}}>
+            <Text style={{fontSize:8,fontWeight:'700',color:colors.navy}}>Back</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Pause/Resume */}
-        <TouchableOpacity style={{marginTop:16,backgroundColor:colors.gold,borderRadius:10,paddingVertical:12,paddingHorizontal:28}} onPress={() => setGenPaused(p => !p)}>
-          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>{genPaused ? 'Resume' : 'Pause'}</Text>
-        </TouchableOpacity>
+        {/* Centred generation content */}
+        <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
+          {/* Maharaj logo with pulse */}
+          <Animated.View style={{transform:[{scale:pulseAnim}],marginBottom:20}}>
+            <Image source={require('../assets/icon.png')} style={{width:80,height:80,borderRadius:40}} resizeMode="contain" />
+          </Animated.View>
+
+          <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:8,textAlign:'center'}}>Maharaj is planning...</Text>
+          <Text style={{fontSize:14,color:colors.emerald,marginBottom:20,textAlign:'center'}}>
+            {statusText}
+          </Text>
+
+          {/* Day progress dots */}
+          <View style={{flexDirection:'row',gap:8,marginBottom:16}}>
+            {Array.from({length: totalDays}, (_, i) => {
+              const isDone = i < completedDays;
+              const isCurrent = i === completedDays;
+              return (
+                <View key={i} style={{width:28,height:28,borderRadius:14,backgroundColor:isDone ? colors.emerald : 'transparent',borderWidth:2,borderColor:isDone ? colors.emerald : isCurrent ? colors.navy : '#D1D5DB',alignItems:'center',justifyContent:'center'}}>
+                  {isDone ? (
+                    <Text style={{fontSize:12,color:colors.white,fontWeight:'700'}}>{'\u2713'}</Text>
+                  ) : (
+                    <Text style={{fontSize:10,fontWeight:'700',color:isCurrent ? colors.navy : '#9CA3AF'}}>{i+1}</Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Pause/Resume */}
+          <TouchableOpacity style={{marginTop:16,backgroundColor:colors.gold,borderRadius:10,paddingVertical:12,paddingHorizontal:28}} onPress={() => setGenPaused(p => !p)}>
+            <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>{genPaused ? 'Resume' : 'Pause'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
