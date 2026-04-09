@@ -328,7 +328,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
   },
   backTxt: { fontSize: 15, fontWeight: '700', color: '#2E5480' },
-  headerTitle: { fontSize: 10, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
   homeBtn: {
     backgroundColor: '#2E5480',
     borderRadius: 8,
@@ -346,9 +346,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 10,
   },
-  tipText: { fontSize: 7.5, color: colors.textSecondary, lineHeight: 11 },
+  tipText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },
   label: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -362,7 +362,7 @@ const s = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    fontSize: 8,
+    fontSize: 16,
     color: colors.textPrimary,
   },
   dropdown: {
@@ -379,7 +379,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.cardBorder,
   },
-  error: { fontSize: 7.5, color: colors.danger, textAlign: 'center', marginTop: 10 },
+  error: { fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: 10 },
   generateBtn: {
     backgroundColor: colors.emerald,
     borderRadius: 20,
@@ -387,7 +387,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 14,
   },
-  generateBtnTxt: { fontSize: 9, fontWeight: '600', color: colors.white },
+  generateBtnTxt: { fontSize: 16, fontWeight: '600', color: colors.white },
   loadingOverlay: {
     flex: 1,
     alignItems: 'center',
@@ -402,7 +402,7 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.emerald,
     textTransform: 'uppercase',
