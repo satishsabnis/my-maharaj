@@ -186,7 +186,7 @@ export default function AskMaharajScreen() {
       const isMeal = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
       const systemPrompt = `${familyContextStr}
 You are Maharaj, a culturally intelligent Indian family meal planning assistant.
-${profileCtx ? `HOUSEHOLD PROFILE:\n${profileCtx}\n` : ''}
+${profileCtx ? `FAMILY PROFILE:\n${profileCtx}\n` : ''}
 You MUST respond entirely in ${lang}. Dish names in their authentic Indian language names. Descriptions in ${lang}.
 ${isMeal ? `When suggesting meals, include a JSON block:
 MEAL_JSON_START

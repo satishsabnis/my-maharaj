@@ -123,7 +123,14 @@ export default function MenuHistoryScreen() {
       }
       // Fallback: AsyncStorage
       const raw = await AsyncStorage.getItem('menu_history');
-      const arr: MenuPlan[] = raw ? JSON.parse(raw) : [];
+      let arr: MenuPlan[] = [];
+      try {
+        arr = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(arr)) arr = [];
+      } catch (e) {
+        console.error('[Menu History] corrupted AsyncStorage:', e);
+        arr = [];
+      }
       arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPlans(arr);
     } catch { setPlans([]); }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, ImageBackground, Platform,
+  ActivityIndicator, Alert, Animated, ImageBackground, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -96,9 +96,15 @@ Sections: STARTERS (3-4), MAIN COURSE Rice/Bread (2-3), MAIN COURSE Curries (3-4
 Each item: { dishName, isVeg, note }. Return JSON: { occasion, summary, starters, mainRiceBread, mainCurries, mainAccompaniments, desserts }`;
       const raw = await callClaude(systemPrompt, 'Generate the party menu now.');
       const match = raw.match(/\{[\s\S]*\}/);
-      const parsed: PartyMenuResult = JSON.parse(match ? match[0] : raw);
-      setMenu(parsed);
-      setPhase('output');
+      try {
+        const parsed: PartyMenuResult = JSON.parse(match ? match[0] : raw);
+        setMenu(parsed);
+        setPhase('output');
+      } catch (e) {
+        console.error('[Party Menu] JSON parse failed:', e);
+        Alert.alert('Maharaj had trouble planning', 'Please try again.');
+        setPhase('input');
+      }
     } catch (err) {
       console.error('[PartyMenu]', err);
       setError('Failed to generate. Please try again.');
