@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, BackHandler, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView, Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -1559,7 +1559,7 @@ export default function MealWizardScreen() {
                 <Text style={{fontSize:16,fontWeight:'700',color:colors.navy}}>Scan My Trolley</Text>
                 <Text style={{fontSize:13,color:colors.textMuted,marginTop:4}}>Take a photo of your supermarket trolley — Maharaj will identify what you have picked up</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{backgroundColor:'white',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,padding:16,marginBottom:12}} onPress={async () => { setScanModalOpen(false); const { status } = await BarCodeScanner.requestPermissionsAsync(); if (status === 'granted') setBarcodeScannerOpen(true); else Alert.alert('Camera permission required'); }}>
+              <TouchableOpacity style={{backgroundColor:'white',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,padding:16,marginBottom:12}} onPress={async () => { setScanModalOpen(false); const { status } = await Camera.requestCameraPermissionsAsync(); if (status === 'granted') setBarcodeScannerOpen(true); else Alert.alert('Camera permission required'); }}>
                 <Text style={{fontSize:16,fontWeight:'700',color:colors.navy}}>Scan a Barcode</Text>
                 <Text style={{fontSize:13,color:colors.textMuted,marginTop:4}}>Point your camera at any product barcode — Maharaj will add it to your list</Text>
               </TouchableOpacity>
@@ -1573,7 +1573,7 @@ export default function MealWizardScreen() {
         {/* Barcode scanner full-screen */}
         <Modal visible={barcodeScannerOpen} animationType="slide" onRequestClose={() => setBarcodeScannerOpen(false)}>
           <View style={{flex:1}}>
-            <BarCodeScanner onBarCodeScanned={barcodeScannerOpen ? handleBarcodeScan : undefined} style={{flex:1}} />
+            <CameraView onBarcodeScanned={barcodeScannerOpen ? handleBarcodeScan : undefined} barcodeScannerSettings={{barcodeTypes:['ean13','ean8','upc_a','upc_e','code128','code39','qr']}} style={{flex:1}} />
             <TouchableOpacity style={{position:'absolute',top:50,right:20,backgroundColor:'rgba(0,0,0,0.6)',borderRadius:8,paddingHorizontal:16,paddingVertical:8}} onPress={() => setBarcodeScannerOpen(false)}>
               <Text style={{color:'white',fontWeight:'700'}}>Close</Text>
             </TouchableOpacity>
