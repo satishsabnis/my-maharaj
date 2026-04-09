@@ -110,6 +110,8 @@ export default function MealWizardScreen() {
   const [breakfastPreferences, setBreakfastPreferences] = useState<string[]>([]);
   const [communityRules, setCommunityRules] = useState<string>('');
   const [familyAvoids, setFamilyAvoids] = useState<string[]>([]);
+  const [familyRecipes, setFamilyRecipes] = useState<{recipe_name:string;cuisine:string}[]>([]);
+  const [useMyRecipes, setUseMyRecipes] = useState(true);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const [expandedCuisineGroups, setExpandedCuisineGroups] = useState<Record<string, boolean>>({});
   const [familySize, setFamilySize] = useState(0);
@@ -280,6 +282,10 @@ export default function MealWizardScreen() {
       const fa = await AsyncStorage.getItem('family_avoids');
       if (fa) try { setFamilyAvoids(JSON.parse(fa)); } catch {}
 
+      // Family recipes
+      const fr = await AsyncStorage.getItem('family_recipes');
+      if (fr) try { const recs = JSON.parse(fr); if (Array.isArray(recs)) setFamilyRecipes(recs.map((r: any) => ({ recipe_name: r.recipe_name ?? '', cuisine: r.cuisine ?? '' }))); } catch {}
+
       // Determine first-time user
       const isFirst = saved.length === 0 || !savedFoodPref;
       setIsFirstTimeUser(isFirst);
@@ -443,6 +449,7 @@ export default function MealWizardScreen() {
         communityRules,
         familyAvoids,
         familySize,
+        familyRecipes: useMyRecipes ? familyRecipes : [],
       },
       // onProgress — called after each day completes
       (current, total) => {
@@ -1090,6 +1097,22 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:14,fontWeight:'700',color:colors.emerald}}>Complete your Family Profile</Text>
             <Text style={{fontSize:11,color:colors.textMuted,marginTop:4}}>Help Maharaj plan better meals for your family</Text>
           </TouchableOpacity>
+        )}
+
+        {/* Element 3b: Family Recipes toggle */}
+        {familyRecipes.length > 0 && (
+          <View style={[cards.frostedGreen, {marginBottom:16,borderLeftWidth:3,borderLeftColor:colors.gold,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:12,paddingHorizontal:14}]}>
+            <View style={{flex:1,marginRight:12}}>
+              <Text style={{fontSize:13,fontWeight:'700',color:colors.navy}}>Use My Family Recipes</Text>
+              <Text style={{fontSize:11,color:colors.textMuted,marginTop:2}}>{familyRecipes.length} recipe{familyRecipes.length !== 1 ? 's' : ''} saved — Maharaj will include them in the plan</Text>
+            </View>
+            <Switch
+              value={useMyRecipes}
+              onValueChange={setUseMyRecipes}
+              trackColor={{ false: '#D1D5DB', true: colors.emerald }}
+              thumbColor={useMyRecipes ? colors.gold : '#F3F4F6'}
+            />
+          </View>
         )}
 
         {/* Element 4: Cuisine chips (first time user only) */}

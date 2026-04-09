@@ -325,6 +325,7 @@ export default function HomeScreen() {
                 </View>
                 <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{paddingBottom:60}}>
                   <DrawerRow label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
+                  <DrawerRow label="My Family Recipes" onPress={() => { closeDrawer(); router.push('/family-recipes' as never); }} />
                   <DrawerRow label="Plan Your Week" onPress={() => { closeDrawer(); router.push('/meal-wizard' as never); }} />
                   <DrawerRow label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
                   <DrawerRow label="Meal Prep" onPress={() => { closeDrawer(); router.push('/meal-prep' as never); }} />
