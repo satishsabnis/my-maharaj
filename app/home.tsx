@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Platform,
+  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { colors, cards } from '../constants/theme';
+import { CameraView, Camera } from 'expo-camera';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const [mealPrepCount, setMealPrepCount] = useState(0);
   const [todayMeals, setTodayMeals] = useState<{breakfast:string;lunch:string;dinner:string}|null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -152,7 +154,7 @@ export default function HomeScreen() {
   ];
   const tipOfDay = MAHARAJ_TIPS[now.getDay()];
 
-  type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
+  type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; onCardPress?: () => void; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
   const feedCards: FeedCard[] = [];
 
   // Card A — Today's Plan (always shown)
@@ -166,11 +168,12 @@ export default function HomeScreen() {
     buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: () => router.push('/meal-wizard' as never) }],
   });
 
-  // Card B — Daily Tip (always shown)
+  // Card B — Daily Tip (always shown, taps into Ask Maharaj)
   feedCards.push({
     type: 'daily-tip', bg: { backgroundColor: colors.frostedGreen },
     borderColor: colors.emerald, label: 'Maharaj tip', labelColor: colors.teal,
     title: tipOfDay,
+    onCardPress: () => router.push({ pathname: '/ask-maharaj', params: { initialMessage: tipOfDay, initialLabel: 'Maharaj tip' } } as never),
     buttons: [],
   });
 
@@ -287,20 +290,37 @@ export default function HomeScreen() {
           {/* ── ANTICIPATION FEED ── */}
           <View style={{paddingHorizontal:14}}>
             {feedCards.map((card, i) => (
-              <View key={i} style={[s.feedCard, card.bg]}>
-                <View style={{flex:1}}>
-                  <Text style={{fontSize:13,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
-                  <Text style={{fontSize:16,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
-                  {card.sub && <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+              card.onCardPress ? (
+                <TouchableOpacity key={i} style={[s.feedCard, card.bg]} onPress={card.onCardPress} activeOpacity={0.85}>
+                  <View style={{flex:1}}>
+                    <Text style={{fontSize:13,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
+                    <Text style={{fontSize:16,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
+                    {card.sub && <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+                  </View>
+                  <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
+                    {card.buttons.map((btn, bi) => (
+                      <TouchableOpacity key={bi} style={btn.style === 'emerald' ? s.btnEmerald : btn.style === 'navy' ? s.btnNavy : s.btnOutline} onPress={btn.onPress} activeOpacity={0.8}>
+                        <Text style={btn.style === 'outline' ? s.btnOutlineTxt : s.btnFilledTxt}>{btn.text}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View key={i} style={[s.feedCard, card.bg]}>
+                  <View style={{flex:1}}>
+                    <Text style={{fontSize:13,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
+                    <Text style={{fontSize:16,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
+                    {card.sub && <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+                  </View>
+                  <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
+                    {card.buttons.map((btn, bi) => (
+                      <TouchableOpacity key={bi} style={btn.style === 'emerald' ? s.btnEmerald : btn.style === 'navy' ? s.btnNavy : s.btnOutline} onPress={btn.onPress} activeOpacity={0.8}>
+                        <Text style={btn.style === 'outline' ? s.btnOutlineTxt : s.btnFilledTxt}>{btn.text}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
-                <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
-                  {card.buttons.map((btn, bi) => (
-                    <TouchableOpacity key={bi} style={btn.style === 'emerald' ? s.btnEmerald : btn.style === 'navy' ? s.btnNavy : s.btnOutline} onPress={btn.onPress} activeOpacity={0.8}>
-                      <Text style={btn.style === 'outline' ? s.btnOutlineTxt : s.btnFilledTxt}>{btn.text}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+              )
             ))}
           </View>
 
@@ -313,13 +333,22 @@ export default function HomeScreen() {
               { label: 'Plan week', onPress: () => router.push('/meal-wizard' as never) },
               { label: 'My fridge', onPress: () => router.push('/my-fridge' as never) },
               { label: 'Party menu', onPress: () => router.push('/party-menu' as never) },
-              { label: 'Scan to shop', onPress: () => router.push('/my-fridge' as never) },
             ].map((c, i) => (
               <TouchableOpacity key={i} style={s.quickChip} onPress={c.onPress} activeOpacity={0.8}>
                 <Text style={s.quickChipTxt}>{c.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* ── SCAN TO SHOP BANNER ── */}
+          <TouchableOpacity
+            style={{backgroundColor:colors.emerald,borderRadius:10,padding:12,marginHorizontal:16,marginTop:8,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}
+            onPress={() => setShowScanner(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={{fontSize:12,color:colors.white,fontWeight:'500'}}>Scan to Shop</Text>
+            <Text style={{fontSize:9,color:'rgba(255,255,255,0.8)'}}>Open camera</Text>
+          </TouchableOpacity>
 
         </ScrollView>
 
@@ -330,6 +359,52 @@ export default function HomeScreen() {
             <Text style={{fontSize:13,color:'rgba(255,255,255,0.6)',marginTop:2}}>www.bluefluteconsulting.com</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── SCAN TO SHOP MODAL ── */}
+        <Modal visible={showScanner} animationType="slide" onRequestClose={() => setShowScanner(false)}>
+          <SafeAreaView style={{flex:1,backgroundColor:'#000'}}>
+            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',paddingHorizontal:16,paddingVertical:12}}>
+              <Text style={{fontSize:16,fontWeight:'700',color:colors.white,textAlign:'center',flex:1}}>Scan to Shop</Text>
+              <TouchableOpacity onPress={() => setShowScanner(false)} style={{borderWidth:1.5,borderColor:'rgba(255,255,255,0.4)',borderRadius:8,paddingVertical:5,paddingHorizontal:12}}>
+                <Text style={{fontSize:13,fontWeight:'600',color:colors.white}}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{fontSize:9,color:colors.textMuted,textAlign:'center',marginBottom:8}}>Scan any item barcode to check it off your shopping list</Text>
+            {Platform.OS !== 'web' ? (
+              <CameraView
+                style={{flex:1}}
+                facing="back"
+                onBarcodeScanned={async ({ data: barcodeValue }) => {
+                  try {
+                    const raw = await AsyncStorage.getItem('shopping_list_items');
+                    const list: {name:string;quantity:string;category:string;collected?:boolean}[] = raw ? JSON.parse(raw) : [];
+                    const idx = list.findIndex(item => item.name.toLowerCase().includes(barcodeValue.toLowerCase()));
+                    if (idx >= 0) {
+                      list[idx].collected = true;
+                      await AsyncStorage.setItem('shopping_list_items', JSON.stringify(list));
+                      setShowScanner(false);
+                      Alert.alert('Checked off', `${list[idx].name} — marked as collected`);
+                    } else {
+                      Alert.alert('Not on your list', 'This item is not on your shopping list. Add it?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Add', onPress: async () => {
+                          list.push({ name: barcodeValue, quantity: '1', category: 'General' });
+                          await AsyncStorage.setItem('shopping_list_items', JSON.stringify(list));
+                          setShowScanner(false);
+                        }},
+                      ]);
+                    }
+                  } catch { setShowScanner(false); }
+                }}
+                barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'qr'] }}
+              />
+            ) : (
+              <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
+                <Text style={{color:colors.textMuted,fontSize:14,textAlign:'center',padding:24}}>Barcode scanning is available on the mobile app only.</Text>
+              </View>
+            )}
+          </SafeAreaView>
+        </Modal>
 
         {/* ── DRAWER OVERLAY ── */}
         {isDrawerOpen && (
