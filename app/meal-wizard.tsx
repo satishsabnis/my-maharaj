@@ -13,6 +13,7 @@ import MarqueeTicker from '../components/MarqueeTicker';
 import MaharajSpinner from '../components/MaharajSpinner';
 import { getCuisineGroups } from '../lib/cuisineGroups';
 import { colors, cards, buttons } from '../constants/theme';
+import { track } from '../lib/analytics';
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -874,6 +875,7 @@ export default function MealWizardScreen() {
     const url = Platform.OS === 'web'
       ? `https://wa.me/?text=${encodeURIComponent(text)}`
       : `whatsapp://send?text=${encodeURIComponent(text)}`;
+    track('cook_export_sent', { channel: 'whatsapp' });
     void Linking.openURL(url);
   }
 
@@ -1394,6 +1396,7 @@ export default function MealWizardScreen() {
                 await AsyncStorage.setItem('dish_history', JSON.stringify([...dishNames, ...oldDishHist].slice(0, 60)));
                 // Fire-and-forget Supabase save (never blocks UI)
                 void savePlanToSupabase(confirmedPlan);
+                track('plan_generated', { days: generatedPlan.length });
               } catch {}
             }
           })();

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { track, identifyUser } from '../lib/analytics';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -42,6 +43,11 @@ export default function SignupScreen() {
         options: { data: { full_name: name.trim() } },
       });
       if (error) { setFormError(error.message); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        identifyUser(user.id, { name: name.trim(), email: email.trim().toLowerCase() });
+        track('user_registered');
+      }
       router.replace('/profile-setup');
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Sign up failed. Please try again.');

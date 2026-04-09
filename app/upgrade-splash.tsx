@@ -1,12 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ImageBackground, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { track } from '../lib/analytics';
 
 export default function UpgradeSplashScreen() {
   const router = useRouter();
   const barWidth = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    track('upgrade_shown');
     Animated.timing(barWidth, {
       toValue: 200,
       duration: 5000,
