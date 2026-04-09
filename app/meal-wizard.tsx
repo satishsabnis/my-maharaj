@@ -240,6 +240,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
   }, [recipeModal.visible, recipeModal.dishName]);
 
   const scrollRef = useRef<ScrollView>(null);
+  const planScrollRef = useRef<ScrollView>(null);
   const prevStepRef = useRef<WizardStep | null>(null);
   const scrollYRef = useRef<Record<string, number>>({});
   useEffect(() => {
@@ -968,25 +969,18 @@ Return ONLY valid JSON (no markdown) in this exact format:
   }
 
   async function downloadGrocery() {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     const grocery = buildGrocery();
-    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    let html = '<html><head><title>Shopping List</title><style>body{font-family:Arial,sans-serif;padding:24px}h1{color:#1A3A5C;font-size:20px}p{color:#666;font-size:12px}h2{color:#1A6B5C;font-size:13px;margin-top:18px;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1A3A5C;color:white;padding:8px;text-align:left;font-size:11px}td{padding:8px;border-bottom:1px solid #E5E7EB;font-size:13px}.qty{text-align:right;color:#1A6B5C;font-weight:600;width:80px}</style></head><body>';
-    html += '<h1>My Maharaj Shopping List</h1><p>' + today + '</p>';
-    CAT_ORDER.forEach(cat => {
-      const items = grocery[cat];
-      if (!items || !items.length) return;
-      html += '<h2>' + cat + '</h2><table><tr><th>#</th><th>Item</th><th class="qty">Qty</th></tr>';
-      items.forEach((it, i) => { html += '<tr><td>' + (i+1) + '</td><td>' + it.name + '</td><td class="qty">' + (it.qty ? it.qty + (it.unit||'') : '—') + '</td></tr>'; });
-      html += '</table>';
-    });
-    html += '</body></html>';
-    const blob = new Blob([html], { type: 'text/html' });
-    const _now = new Date();
-    const _dd = String(_now.getDate()).padStart(2, '0');
-    const _mm = String(_now.getMonth() + 1).padStart(2, '0');
-    const _yyyy = _now.getFullYear();
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `maharaj-shopping-list-${_dd}${_mm}${_yyyy}.pdf`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const categories = CAT_ORDER
+      .filter(cat => (grocery[cat]?.length ?? 0) > 0)
+      .map(cat => ({
+        name: cat,
+        items: (grocery[cat] ?? []).map(it => ({
+          quantity: it.qty ? String(Math.round(it.qty * 10) / 10) : '',
+          unit: it.unit || '',
+          name: it.name,
+        })),
+      }));
+    await downloadPDF('Shopping List', { categories }, 'maharaj-shopping-list-DDMMYYYY.pdf');
   }
 
   // ── Scan functions ───────────────────────────────────────────────────────
@@ -1072,6 +1066,64 @@ Return ONLY valid JSON (no markdown) in this exact format:
     const prev = backMap[step];
     if (prev) setStep(prev);
     else router.back();
+  }
+
+  // ── PDF download helper (web-only) ────────────────────────────────────────
+
+  async function downloadPDF(type: string, content: object, filename: string) {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    try {
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, '0');
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const yyyy = today.getFullYear();
+      const familyName = (await AsyncStorage.getItem('family_name')) || 'Your Family';
+      const dateRange = generatedPlan && generatedPlan.length > 0
+        ? `${generatedPlan[0].date} to ${generatedPlan[generatedPlan.length - 1].date}`
+        : today.toLocaleDateString();
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, familyName, dateRange, content }),
+      });
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename.replace('DDMMYYYY', `${dd}${mm}${yyyy}`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      Alert.alert('Download failed', 'Please try again.');
+    }
+  }
+
+  // ── Confirm plan helper ───────────────────────────────────────────────────
+
+  function handleConfirmPlan() {
+    (async () => {
+      if (generatedPlan) {
+        try {
+          const confirmedPlan = generatedPlan.map((day, idx) => ({ date: day.date, dayName: day.day, breakfast: day.breakfast?.options[selections[idx]?.breakfast ?? 0], lunch: day.lunch?.options[selections[idx]?.lunch ?? 0], snack: day.snack?.options[selections[idx]?.snack ?? 0], dinner: day.dinner?.options[selections[idx]?.dinner ?? 0] }));
+          await AsyncStorage.setItem('confirmed_meal_plan', JSON.stringify(confirmedPlan));
+          await AsyncStorage.setItem('meal_plan_date', new Date().toISOString());
+          const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
+          const dateRange = `${selectedFrom?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo?.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+          const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange, days: confirmedPlan.map(d => ({ date: d.date, dayName: d.dayName, breakfast: d.breakfast?.name || '\u2014', lunch: d.lunch?.name || '\u2014', snack: d.snack?.name || '\u2014', dinner: d.dinner?.name || '\u2014' })) };
+          await AsyncStorage.setItem('menu_history', JSON.stringify([newEntry, ...existing].slice(0, 20)));
+          await AsyncStorage.setItem('maharaj_plan_ready', 'true');
+          const dishNames = confirmedPlan.flatMap(d => [d.breakfast?.name, d.lunch?.name, d.snack?.name, d.dinner?.name].filter(Boolean));
+          const oldDishHist = JSON.parse(await AsyncStorage.getItem('dish_history') || '[]');
+          await AsyncStorage.setItem('dish_history', JSON.stringify([...dishNames, ...oldDishHist].slice(0, 60)));
+          void savePlanToSupabase(confirmedPlan);
+          track('plan_generated', { days: generatedPlan.length });
+          void scheduleSundayReminder();
+        } catch {}
+      }
+    })();
+    setStep('confirmed-plan');
   }
 
   // ── Step Renders ──────────────────────────────────────────────────────────
@@ -1403,32 +1455,86 @@ Return ONLY valid JSON (no markdown) in this exact format:
       (sl.key !== 'snack' || generatedPlan.some(d => d.snack?.options?.length))
     );
 
+    const { width: FULL_WIDTH } = Dimensions.get('window');
+    const CARD_HEIGHT = Dimensions.get('window').height * 0.62;
+
+    // Build downloadable plan content for PDF
+    const planPDFContent = {
+      days: generatedPlan.map((day, idx) => ({
+        dayName: day.day,
+        date: day.date,
+        meals: [
+          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.breakfast?.options?.[selections[idx]?.breakfast ?? 0]?.name || '' },
+          { label: 'Lunch Curry', dish: day.anatomy?.lunch?.curry?.dishName || '' },
+          { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
+          { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
+          { label: 'Lunch Bread', dish: day.anatomy?.lunch?.bread?.dishName || '' },
+          { label: 'Lunch Rice', dish: day.anatomy?.lunch?.rice?.dishName || '' },
+          { label: 'Dinner Curry', dish: day.anatomy?.dinner?.curry?.dishName || '' },
+          { label: 'Dinner Veg', dish: day.anatomy?.dinner?.veg?.dishName || '' },
+          { label: 'Dinner Raita', dish: day.anatomy?.dinner?.raita?.dishName || '' },
+          { label: 'Dinner Bread', dish: day.anatomy?.dinner?.bread?.dishName || '' },
+          { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
+          { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
+        ],
+      })),
+    };
+
     return (
-      <View>
+      <View style={{marginHorizontal:-20}}>
         {/* Hint */}
-        <View style={{backgroundColor:'rgba(30,158,94,0.08)',borderRadius:10,padding:10,marginBottom:14}}>
-          <Text style={{fontSize:12,color:colors.emerald,textAlign:'center',fontWeight:'600'}}>Tap any dish to view recipe</Text>
-        </View>
+        <Text style={{fontSize:9,color:colors.teal,textAlign:'center',marginBottom:6}}>
+          Swipe to see each day. Tap dish to view recipe. Tap pencil to change.
+        </Text>
 
-        {/* Day cards */}
-        {generatedPlan.map((day, dayIdx) => {
-          const dt = new Date(day.date);
-          const dayLabel = `${day.day}, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
-          // FIX 7: Parse string components to avoid UTC timezone off-by-one bug
-          const [, festMonth, festDayNum] = day.date.split('-').map(Number);
-          const festivalMatch = FESTIVALS_2026.find(f => f.month === festMonth && f.day === festDayNum);
-          const isSunday = dt.getDay() === 0;
+        {/* Day tab strip */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={{paddingHorizontal:16,paddingVertical:8}}
+          contentContainerStyle={{gap:6}}>
+          {generatedPlan.map((day, index) => (
+            <TouchableOpacity key={day.date}
+              onPress={() => {
+                setActiveDay(index);
+                planScrollRef.current?.scrollTo({ x: index * FULL_WIDTH, animated: true });
+              }}
+              style={{paddingHorizontal:14,paddingVertical:6,borderRadius:20,
+                backgroundColor: activeDay === index ? colors.navy : 'transparent',
+                borderWidth:1.5,borderColor:colors.navy}}>
+              <Text style={{fontSize:12,fontWeight:'600',color: activeDay === index ? colors.white : colors.navy}}>
+                {day.day.substring(0,3)} {new Date(day.date).getDate()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-          return (
-            <View key={day.date} style={[cards.base, {marginBottom:6}]}>
-              {/* Day header */}
-              <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-                <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
-                  <Text style={{fontSize:15,fontWeight:'800',color:colors.navy}}>{dayLabel}</Text>
-                  {isSunday && <View style={{backgroundColor:colors.gold,borderRadius:8,paddingHorizontal:6,paddingVertical:2}}><Text style={{fontSize:9,fontWeight:'700',color:'#1A1A1A'}}>Sunday</Text></View>}
-                  {festivalMatch && <View style={{backgroundColor:'#FEF3C7',borderRadius:8,paddingHorizontal:6,paddingVertical:2}}><Text style={{fontSize:9,fontWeight:'700',color:'#92400E'}}>{festivalMatch.name}</Text></View>}
-                </View>
-              </View>
+        {/* Horizontal day cards */}
+        <ScrollView ref={planScrollRef} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+          style={{height: CARD_HEIGHT}}
+          onMomentumScrollEnd={(e) => {
+            const index = Math.round(e.nativeEvent.contentOffset.x / FULL_WIDTH);
+            setActiveDay(index);
+          }}>
+          {generatedPlan.map((day, dayIdx) => {
+            const dt = new Date(day.date);
+            // FIX 7: Parse string components to avoid UTC timezone off-by-one bug
+            const [, festMonth, festDayNum] = day.date.split('-').map(Number);
+            const festivalMatch = FESTIVALS_2026.find(f => f.month === festMonth && f.day === festDayNum);
+            const isSunday = dt.getDay() === 0;
+
+            return (
+              <View key={day.date} style={{width: FULL_WIDTH, paddingHorizontal:16}}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* Date header */}
+                  <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:4,marginTop:8}}>
+                    {day.day}, {dt.getDate()} {MONTHS_L[dt.getMonth()]}
+                  </Text>
+                  {/* Badges */}
+                  {(isSunday || festivalMatch) && (
+                    <View style={{flexDirection:'row',gap:6,marginBottom:10}}>
+                      {isSunday && <View style={{backgroundColor:colors.gold,borderRadius:8,paddingHorizontal:6,paddingVertical:2}}><Text style={{fontSize:9,fontWeight:'700',color:'#1A1A1A'}}>Sunday</Text></View>}
+                      {festivalMatch && <View style={{backgroundColor:'#FEF3C7',borderRadius:8,paddingHorizontal:6,paddingVertical:2}}><Text style={{fontSize:9,fontWeight:'700',color:'#92400E'}}>{festivalMatch.name}</Text></View>}
+                    </View>
+                  )}
 
               {/* Meal slots */}
               {slotsToShow.map(({ key, label }) => {
@@ -1551,41 +1657,27 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   </View>
                 );
               })()}
-            </View>
-          );
-        })}
+                </ScrollView>
+              </View>
+            );
+          })}
+        </ScrollView>
 
-        {/* Bottom actions */}
-        <TouchableOpacity style={{backgroundColor:colors.emerald,borderRadius:14,paddingVertical:16,alignItems:'center',marginTop:8}} onPress={() => {
-          // Auto-save confirmed plan
-          (async () => {
-            if (generatedPlan) {
-              try {
-                const confirmedPlan = generatedPlan.map((day, idx) => ({ date: day.date, dayName: day.day, breakfast: day.breakfast?.options[selections[idx]?.breakfast ?? 0], lunch: day.lunch?.options[selections[idx]?.lunch ?? 0], snack: day.snack?.options[selections[idx]?.snack ?? 0], dinner: day.dinner?.options[selections[idx]?.dinner ?? 0] }));
-                await AsyncStorage.setItem('confirmed_meal_plan', JSON.stringify(confirmedPlan));
-                await AsyncStorage.setItem('meal_plan_date', new Date().toISOString());
-                const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
-                const dateRange = `${selectedFrom?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo?.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
-                const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange, days: confirmedPlan.map(d => ({ date: d.date, dayName: d.dayName, breakfast: d.breakfast?.name || '\u2014', lunch: d.lunch?.name || '\u2014', snack: d.snack?.name || '\u2014', dinner: d.dinner?.name || '\u2014' })) };
-                await AsyncStorage.setItem('menu_history', JSON.stringify([newEntry, ...existing].slice(0, 20)));
-                await AsyncStorage.setItem('maharaj_plan_ready', 'true');
-                const dishNames = confirmedPlan.flatMap(d => [d.breakfast?.name, d.lunch?.name, d.snack?.name, d.dinner?.name].filter(Boolean));
-                const oldDishHist = JSON.parse(await AsyncStorage.getItem('dish_history') || '[]');
-                await AsyncStorage.setItem('dish_history', JSON.stringify([...dishNames, ...oldDishHist].slice(0, 60)));
-                // Fire-and-forget Supabase save (never blocks UI)
-                void savePlanToSupabase(confirmedPlan);
-                track('plan_generated', { days: generatedPlan.length });
-                // Warm permission ask + Sunday reminder — only fires after first plan confirmed
-                void scheduleSundayReminder();
-              } catch {}
-            }
-          })();
-          setStep('confirmed-plan');
-        }} activeOpacity={0.85}>
-          <Text style={{fontSize:16,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
-        </TouchableOpacity>
+        {/* Bottom action row */}
+        <View style={{flexDirection:'row',gap:8,paddingHorizontal:16,paddingTop:12,paddingBottom:8}}>
+          <TouchableOpacity
+            style={{flex:1,borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
+            onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
+            <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download Plan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{flex:2,backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,alignItems:'center'}}
+            onPress={handleConfirmPlan}>
+            <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Recipe placeholder modal */}
+        {/* Recipe modal */}
         <Modal visible={recipeModal.visible} transparent animationType="slide" onRequestClose={() => setRecipeModal({ visible: false, dishName: '' })}>
           <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.45)',justifyContent:'flex-end'}}>
             <View style={{backgroundColor:colors.white,borderTopLeftRadius:24,borderTopRightRadius:24,padding:20,maxHeight:Dimensions.get('window').height * 0.85}}>
@@ -1617,16 +1709,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   {Platform.OS === 'web' && (
                     <TouchableOpacity style={{backgroundColor:colors.navy,borderRadius:12,paddingVertical:12,alignItems:'center',marginTop:8,marginBottom:4}} onPress={() => {
                       if (!recipeData) return;
-                      const today = new Date();
-                      const dd = String(today.getDate()).padStart(2,'0');
-                      const mm = String(today.getMonth()+1).padStart(2,'0');
-                      const yyyy = today.getFullYear();
                       const slug = recipeData.title.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-                      const ingList = recipeData.ingredients.map(i => `<li>${i}</li>`).join('');
-                      const methodList = recipeData.method.map(s => `<li style="margin-bottom:6px">${s}</li>`).join('');
-                      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;max-width:600px;margin:40px auto;color:#1A3A5C}h1{font-size:24px;font-weight:800;margin-bottom:4px}h2{font-size:14px;font-weight:700;margin:20px 0 8px;color:#1A3A5C}li{font-size:12px;margin-bottom:3px;color:#4B5563}.tip{background:#f0fdf4;border-radius:8px;padding:12px;margin-top:20px;font-size:11px;color:#065f46}.ft{text-align:center;font-size:9px;color:#9CA3AF;margin-top:32px}</style></head><body><h1>${recipeData.title}</h1><p style="font-size:11px;color:#6B7280">Serves ${recipeData.serves} · My Maharaj</p><h2>Ingredients</h2><ul>${ingList}</ul><h2>Method</h2><ol>${methodList}</ol>${recipeData.maharajNote ? `<div class="tip"><strong>Maharaj's tip:</strong> ${recipeData.maharajNote}</div>` : ''}<div class="ft">Powered by My Maharaj</div><script>setTimeout(function(){window.print()},600)</script></body></html>`;
-                      const blob = new Blob([html], {type:'text/html'});
-                      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `maharaj-recipe-${slug}-${dd}${mm}${yyyy}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                      void downloadPDF('Recipe', {
+                        recipeName: recipeData.title,
+                        ingredients: recipeData.ingredients,
+                        method: recipeData.method,
+                        maharajNote: recipeData.maharajNote,
+                      }, `maharaj-recipe-${slug}-DDMMYYYY.pdf`);
                     }}>
                       <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Download Recipe</Text>
                     </TouchableOpacity>
@@ -1643,33 +1732,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
             </View>
           </View>
         </Modal>
-
-        <View style={{flexDirection:'row',gap:8,marginTop:10}}>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:colors.navy,alignItems:'center'}} onPress={() => {
-            if (!generatedPlan || Platform.OS !== 'web') return;
-            const dateRange = selectedFrom && selectedTo ? `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : '';
-            const slots: MealSlotKey[] = ['breakfast','lunch','snack','dinner'];
-            const dayHeaders = generatedPlan.map(d => `<th>${d.day?.substring(0,3)}<br>${new Date(d.date).getDate()}-${MONTHS[new Date(d.date).getMonth()]}</th>`).join('');
-            const mealRows = slots.filter(sl => selectedSlots.length === 0 || selectedSlots.includes(sl)).map(sl => {
-              const label = sl.charAt(0).toUpperCase() + sl.slice(1);
-              const cells = generatedPlan.map((day, idx) => `<td>${day[sl]?.options?.[selections[idx]?.[sl] ?? 0]?.name ?? '\u2014'}</td>`).join('');
-              return `<tr><td class="sl">${label}</td>${cells}</tr>`;
-            }).join('');
-            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:A4 landscape;margin:15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;-webkit-print-color-adjust:exact}.hd{background:#1A3A5C;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}.hd-l{color:white;font-size:18px;font-weight:bold}.hd-h{color:#C9A227;font-size:11px;margin-top:3px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#1A3A5C;color:white;padding:8px;font-size:11px;text-align:center;border:1px solid #1A3A5C}td{padding:8px;font-size:10px;border:1px solid #E5E7EB;text-align:center}tr:nth-child(even) td{background:#F9FAFB}.sl{font-weight:bold;color:#1A3A5C;text-align:left;width:80px}.ft{margin-top:20px;text-align:center;font-size:9px;color:#6B7280}</style></head><body><div class="hd"><div><div class="hd-l">My Maharaj</div><div class="hd-h">Weekly Meal Plan</div></div></div><table><tr><th class="sl">Meal</th>${dayHeaders}</tr>${mealRows}</table><div class="ft">Powered by My Maharaj</div><script>setTimeout(function(){window.print()},800)</script></body></html>`;
-            const blob = new Blob([html], { type: 'text/html' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'maharaj-meal-plan.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          }}>
-            <Text style={{fontSize:13,fontWeight:'600',color:colors.navy}}>Download</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{flex:1,paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'#D1D5DB',alignItems:'center'}} onPress={() => {
-            setGeneratedPlan(null);
-            setSelections({});
-            setActiveDay(0);
-            setStep('generating');
-          }}>
-            <Text style={{fontSize:13,fontWeight:'600',color:colors.textMuted}}>Redo</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     );
   }
@@ -1810,9 +1872,36 @@ Return ONLY valid JSON (no markdown) in this exact format:
         <TouchableOpacity style={{width:'100%',backgroundColor:colors.emerald,borderRadius:14,paddingVertical:16,alignItems:'center',marginBottom:12}} onPress={() => setStep('what-next')} activeOpacity={0.85}>
           <Text style={{fontSize:16,fontWeight:'700',color:colors.white}}>What would you like to do?</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={() => setStep('plan-summary')} activeOpacity={0.85}>
+        <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,paddingVertical:14,alignItems:'center',marginBottom:12}} onPress={() => setStep('plan-summary')} activeOpacity={0.85}>
           <Text style={{fontSize:15,fontWeight:'600',color:colors.navy}}>View My Plan</Text>
         </TouchableOpacity>
+        {Platform.OS === 'web' && generatedPlan && (
+          <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:colors.emerald,borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={() => {
+            const planPDFContent = {
+              days: generatedPlan.map((day, idx) => ({
+                dayName: day.day,
+                date: day.date,
+                meals: [
+                  { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.breakfast?.options?.[selections[idx]?.breakfast ?? 0]?.name || '' },
+                  { label: 'Lunch Curry', dish: day.anatomy?.lunch?.curry?.dishName || '' },
+                  { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
+                  { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
+                  { label: 'Lunch Bread', dish: day.anatomy?.lunch?.bread?.dishName || '' },
+                  { label: 'Lunch Rice', dish: day.anatomy?.lunch?.rice?.dishName || '' },
+                  { label: 'Dinner Curry', dish: day.anatomy?.dinner?.curry?.dishName || '' },
+                  { label: 'Dinner Veg', dish: day.anatomy?.dinner?.veg?.dishName || '' },
+                  { label: 'Dinner Raita', dish: day.anatomy?.dinner?.raita?.dishName || '' },
+                  { label: 'Dinner Bread', dish: day.anatomy?.dinner?.bread?.dishName || '' },
+                  { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
+                  { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
+                ],
+              })),
+            };
+            void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf');
+          }} activeOpacity={0.85}>
+            <Text style={{fontSize:15,fontWeight:'600',color:colors.emerald}}>Download Plan (PDF)</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
