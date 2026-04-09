@@ -3,7 +3,7 @@ import Mixpanel from 'mixpanel-react-native';
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-const TOKEN = '4b2f9a1e8c3d7f6e0a5b2c4d8e1f3a7b'; // replace with real token from Mixpanel dashboard
+const TOKEN = '79c6ffac416f5ed569beb3ca100d7f6b';
 const mixpanel = new Mixpanel(TOKEN, /* trackAutomaticEvents */ true);
 
 export async function initAnalytics() {
