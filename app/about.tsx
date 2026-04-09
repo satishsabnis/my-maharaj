@@ -104,7 +104,7 @@ export default function AboutScreen() {
             style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,alignItems:'center',marginBottom:8}}
             activeOpacity={0.85}
             onPress={() => {
-              Share.share({ message: "I have been using My Maharaj to plan my family's meals. It knows Indian food \u2014 our community, our fasting days, even sends the recipe in Hindi to our cook. Try it free: https://my-maharaj.vercel.app" });
+              Share.share({ message: "I have been using My Maharaj to plan my family's meals. It knows Indian food, our community, our fasting days, and even sends the recipe in Hindi to our cook. Try it free: https://my-maharaj.vercel.app" });
               track('referral_shared', { source: 'about' });
             }}
           >
