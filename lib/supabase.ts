@@ -57,6 +57,7 @@ export type Profile = {
   lunch_count: number;
   dinner_count: number;
   store_preference: string | null;
+  plan_summary_language: string;
   created_at?: string;
   updated_at?: string;
 };
