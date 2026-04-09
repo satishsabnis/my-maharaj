@@ -1,8 +1,9 @@
 import React from 'react';
-import { Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { APP_VERSION } from '../constants/version';
 import { colors } from '../constants/theme';
+import { track } from '../lib/analytics';
 
 export default function AboutScreen() {
   return (
@@ -96,6 +97,19 @@ export default function AboutScreen() {
               </View>
             ))}
           </View>
+
+          {/* Share */}
+          <View style={{height:1,backgroundColor:'rgba(26,58,92,0.1)',marginVertical:16}} />
+          <TouchableOpacity
+            style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,alignItems:'center',marginBottom:8}}
+            activeOpacity={0.85}
+            onPress={() => {
+              Share.share({ message: "I have been using My Maharaj to plan my family's meals. It knows Indian food \u2014 our community, our fasting days, even sends the recipe in Hindi to our cook. Try it free: https://my-maharaj.vercel.app" });
+              track('referral_shared', { source: 'about' });
+            }}
+          >
+            <Text style={{fontSize:14,fontWeight:'700',color:'#FFFFFF'}}>Share My Maharaj</Text>
+          </TouchableOpacity>
 
           {/* Footer */}
           <View style={{marginTop:20,alignItems:'center'}}>
