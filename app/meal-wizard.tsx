@@ -5,7 +5,7 @@ import { CameraView, Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
-import { generateMealPlan, generateMealPlanFast, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags } from '../lib/ai';
+import { generateMealPlan, generateMealPlanFast, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags, AnatomyComponent, MealAnatomy } from '../lib/ai';
 import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
@@ -617,20 +617,39 @@ export default function MealWizardScreen() {
 
     const slotsToUse = (selectedSlots.length > 0 ? selectedSlots.filter(s => ['breakfast','lunch','dinner','snack'].includes(s)) : ['breakfast','lunch','dinner']) as MealSlotKey[];
     let totalIngs = 0;
+
+    function addIng(ing: string) {
+      totalIngs++;
+      const { name, qty, unit } = parseIngredient(ing);
+      const key = normaliseKey(name);
+      if (itemMap[key]) {
+        if (unit === itemMap[key].unit) itemMap[key].qty += qty;
+        else if (qty > 0 && !itemMap[key].qty) { itemMap[key].qty = qty; itemMap[key].unit = unit; }
+      } else {
+        itemMap[key] = { baseName: name.charAt(0).toUpperCase() + name.slice(1), qty, unit, cat: categorise(ing) };
+      }
+    }
+
     generatedPlan.forEach((day, dayIdx) => {
+      // ── Anatomy path: typed structure with per-component ingredients ──────
+      if (day.anatomy) {
+        const a = day.anatomy;
+        const anatComps: AnatomyComponent[] = [];
+        if (slotsToUse.includes('breakfast') && a.breakfast) anatComps.push(a.breakfast);
+        if (slotsToUse.includes('lunch') && a.lunch) {
+          anatComps.push(a.lunch.curry, a.lunch.veg, a.lunch.raita, a.lunch.bread, a.lunch.rice);
+        }
+        if (slotsToUse.includes('dinner') && a.dinner) {
+          anatComps.push(a.dinner.curry, a.dinner.veg, a.dinner.raita, a.dinner.bread, a.dinner.rice);
+        }
+        if (slotsToUse.includes('snack') && a.snack) anatComps.push(a.snack);
+        anatComps.forEach(comp => comp.ingredients.forEach(addIng));
+        return;
+      }
+      // ── Legacy slot path: ingredients on MealOption ───────────────────────
       slotsToUse.forEach((slot) => {
         const opt = getOpt(dayIdx, slot) ?? day[slot]?.options?.[0] ?? null;
-        opt?.ingredients?.forEach((ing: string) => {
-          totalIngs++;
-          const { name, qty, unit } = parseIngredient(ing);
-          const key = normaliseKey(name);
-          if (itemMap[key]) {
-            if (unit === itemMap[key].unit) itemMap[key].qty += qty;
-            else if (qty > 0 && !itemMap[key].qty) { itemMap[key].qty = qty; itemMap[key].unit = unit; }
-          } else {
-            itemMap[key] = { baseName: name.charAt(0).toUpperCase() + name.slice(1), qty, unit, cat: categorise(ing) };
-          }
-        });
+        opt?.ingredients?.forEach((ing: string) => addIng(ing));
         if (!opt?.ingredients?.length && opt?.description?.includes(' | ') && opt?.description?.includes(':')) {
           opt.description.split(' | ').forEach((comp: string) => {
             const dishName = comp.includes(':') ? comp.split(':').slice(1).join(':').trim() : comp.trim();
@@ -1307,17 +1326,76 @@ export default function MealWizardScreen() {
 
               {/* Meal slots */}
               {slotsToShow.map(({ key, label }) => {
+                const slotLabel = <Text style={{fontSize:10,fontWeight:'700',color:colors.textMuted,letterSpacing:0.5,textTransform:'uppercase',marginBottom:4}}>{label}</Text>;
+                const rowStyle = {flexDirection:'row' as const,alignItems:'center' as const,paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2};
+
+                // ── Anatomy path ────────────────────────────────────────────
+                if (day.anatomy) {
+                  const nightCarry = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
+                  const prevDayName = nightCarry ? generatedPlan[dayIdx - 1].day : '';
+                  const prevDinnerAnat = nightCarry ? generatedPlan[dayIdx - 1].anatomy?.dinner : undefined;
+
+                  if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
+                    const ms = day.anatomy[key] as MealAnatomy;
+                    const ROWS: { compLabel: string; comp: AnatomyComponent }[] = [
+                      { compLabel: 'Curry', comp: ms.curry },
+                      { compLabel: 'Veg',   comp: ms.veg   },
+                      { compLabel: 'Raita', comp: ms.raita },
+                      { compLabel: 'Bread', comp: ms.bread },
+                      { compLabel: 'Rice',  comp: ms.rice  },
+                    ];
+                    return (
+                      <View key={key} style={{marginBottom:8}}>
+                        {slotLabel}
+                        {ROWS.map(({ compLabel, comp }) => {
+                          const isCarry = compLabel === 'Curry' && nightCarry && !!prevDinnerAnat;
+                          const dishName = isCarry ? prevDinnerAnat!.curry.dishName : comp.dishName;
+                          return (
+                            <View key={compLabel} style={rowStyle}>
+                              <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
+                                <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>
+                                <Text style={{fontSize:13,fontWeight:'600',color:isCarry ? colors.emerald : colors.navy,fontStyle:isCarry ? 'italic' : 'normal'}}>{dishName}</Text>
+                                {isCarry && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
+                              </TouchableOpacity>
+                              <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarry}
+                                onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}>
+                                <Text style={{fontSize:14,color:colors.navy,opacity:isCarry ? 0 : 1}}>{'\u270E'}</Text>
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    );
+                  }
+
+                  if ((key === 'breakfast' || key === 'snack') && day.anatomy[key]) {
+                    const comp = day.anatomy[key] as AnatomyComponent;
+                    return (
+                      <View key={key} style={{marginBottom:8}}>
+                        {slotLabel}
+                        <View style={rowStyle}>
+                          <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName: comp.dishName })} activeOpacity={0.7}>
+                            <Text style={{fontSize:13,fontWeight:'600',color:colors.navy}}>{comp.dishName}</Text>
+                            {key === 'snack' && <Text style={{fontSize:10,color:colors.textMuted}}>Fresh · 15 min</Text>}
+                          </TouchableOpacity>
+                          <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}}
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label }); setStep('alternatives'); }}>
+                            <Text style={{fontSize:14,color:colors.navy}}>{'\u270E'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  }
+                }
+
+                // ── Legacy path (slow generator / old plans) ────────────────
                 const opt = getOpt(dayIdx, key);
                 if (!opt) return null;
 
-                // Carry-forward lunch: if cooking pattern is night_carry, lunch (day 2+) shows previous dinner
-                const isCarryForward = key === 'lunch'
-                  && dayIdx > 0
-                  && cookingPattern === 'Cook at night — dinner carries to next day lunch';
+                const isCarryForward = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
                 const prevDinnerOpt = isCarryForward ? getOpt(dayIdx - 1, 'dinner') : null;
                 const prevDayName = isCarryForward && generatedPlan[dayIdx - 1] ? generatedPlan[dayIdx - 1].day : '';
 
-                // Parse thali/anatomy components
                 const displayOpt = isCarryForward && prevDinnerOpt ? prevDinnerOpt : opt;
                 const isThali = displayOpt.name.toLowerCase().includes('thali');
                 const hasAnatomy = displayOpt.description?.includes(' | ') && displayOpt.description?.includes(':');
@@ -1328,26 +1406,20 @@ export default function MealWizardScreen() {
 
                 return (
                   <View key={key} style={{marginBottom:8}}>
-                    <Text style={{fontSize:10,fontWeight:'700',color:colors.textMuted,letterSpacing:0.5,textTransform:'uppercase',marginBottom:4}}>{label}</Text>
+                    {slotLabel}
                     {components.map((comp, ci) => {
                       const parts = comp.split(':');
                       const compLabel = parts.length > 1 ? parts[0].trim() : label;
                       const dishName = parts.length > 1 ? parts.slice(1).join(':').trim() : comp;
                       return (
-                        <View
-                          key={ci}
-                          style={{flexDirection:'row',alignItems:'center',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
-                        >
+                        <View key={ci} style={rowStyle}>
                           <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
                             {(isThali || hasAnatomy) && parts.length > 1 && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
                             <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
                             {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                           </TouchableOpacity>
-                          <TouchableOpacity
-                            style={{paddingLeft:8,paddingVertical:4}}
-                            disabled={isCarryForward}
-                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}
-                          >
+                          <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarryForward}
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}>
                             <Text style={{fontSize:14,color:colors.navy,opacity:isCarryForward ? 0 : 1}}>{'\u270E'}</Text>
                           </TouchableOpacity>
                         </View>

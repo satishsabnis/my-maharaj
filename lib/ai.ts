@@ -16,6 +16,28 @@ export interface MealSlot {
   options: MealOption[];
 }
 
+export interface AnatomyComponent {
+  dishName: string;
+  isVeg?: boolean;
+  cuisine?: string;
+  ingredients: string[];
+}
+
+export interface MealAnatomy {
+  curry: AnatomyComponent;
+  veg: AnatomyComponent;
+  raita: AnatomyComponent;
+  bread: AnatomyComponent;
+  rice: AnatomyComponent;
+}
+
+export interface DayAnatomy {
+  breakfast?: AnatomyComponent;
+  lunch?: MealAnatomy;
+  dinner?: MealAnatomy;
+  snack?: AnatomyComponent;
+}
+
 export interface MealPlanDay {
   date: string;
   day: string;
@@ -23,6 +45,7 @@ export interface MealPlanDay {
   lunch: MealSlot;
   dinner: MealSlot;
   snack?: MealSlot;
+  anatomy?: DayAnatomy;
 }
 
 export interface GroceryItem {
@@ -656,18 +679,38 @@ export async function generateMealPlan(
 
 const FAST_NON_VEG_KW = ['chicken','mutton','lamb','fish','prawn','shrimp','beef','pork','egg','keema','gosht','murg','machli','jhinga','tuna','crab','pomfret','rohu','hilsa','surmai'];
 
+interface FastMealComp { dishName: string; isVeg?: boolean; cuisine?: string; ingredients?: string[] }
+interface FastMealSlot { curry: FastMealComp; veg: FastMealComp; raita: FastMealComp; bread: FastMealComp; rice: FastMealComp }
 interface FastDayResponse {
-  breakfast?: { dishName: string; isVeg: boolean; cuisine?: string };
-  lunch?: { curry: string; veg: string; raita: string; bread: string; rice: string };
-  dinner?: { curry: string; veg: string; raita: string; bread: string; rice: string };
-  snack?: { dishName: string; isVeg: boolean };
+  breakfast?: FastMealComp;
+  lunch?: FastMealSlot;
+  dinner?: FastMealSlot;
+  snack?: FastMealComp;
+}
+
+// Normalize raw Claude response — handles both old (string values) and new (object values) formats
+function normComp(raw: any): FastMealComp {
+  if (!raw) return { dishName: '', ingredients: [] };
+  if (typeof raw === 'string') return { dishName: raw, ingredients: [] };
+  return { dishName: raw.dishName ?? raw.name ?? '', isVeg: raw.isVeg, cuisine: raw.cuisine, ingredients: raw.ingredients ?? [] };
+}
+function normSlot(raw: any): FastMealSlot {
+  return { curry: normComp(raw?.curry), veg: normComp(raw?.veg), raita: normComp(raw?.raita), bread: normComp(raw?.bread), rice: normComp(raw?.rice) };
+}
+function normalizeFastDay(raw: any): FastDayResponse {
+  return {
+    breakfast: raw?.breakfast ? normComp(raw.breakfast) : undefined,
+    lunch:     raw?.lunch     ? normSlot(raw.lunch)     : undefined,
+    dinner:    raw?.dinner    ? normSlot(raw.dinner)    : undefined,
+    snack:     raw?.snack     ? normComp(raw.snack)     : undefined,
+  };
 }
 
 function extractFastDishNames(day: FastDayResponse): string[] {
   const names: string[] = [];
   if (day.breakfast?.dishName) names.push(day.breakfast.dishName);
-  if (day.lunch) names.push(day.lunch.curry, day.lunch.veg, day.lunch.raita, day.lunch.bread, day.lunch.rice);
-  if (day.dinner) names.push(day.dinner.curry, day.dinner.veg, day.dinner.raita, day.dinner.bread, day.dinner.rice);
+  if (day.lunch) names.push(day.lunch.curry.dishName, day.lunch.veg.dishName, day.lunch.raita.dishName, day.lunch.bread.dishName, day.lunch.rice.dishName);
+  if (day.dinner) names.push(day.dinner.curry.dishName, day.dinner.veg.dishName, day.dinner.raita.dishName, day.dinner.bread.dishName, day.dinner.rice.dishName);
   if (day.snack?.dishName) names.push(day.snack.dishName);
   return names.filter(Boolean);
 }
@@ -675,30 +718,45 @@ function extractFastDishNames(day: FastDayResponse): string[] {
 function fastDayToMealPlanDay(date: string, dayName: string, day: FastDayResponse, slots: string[]): MealPlanDay {
   const emptySlot: MealSlot = { options: [] };
 
-  const toMealOption = (components: { curry: string; veg: string; raita: string; bread: string; rice: string }): MealOption => {
-    const isVeg = !FAST_NON_VEG_KW.some(kw => components.curry.toLowerCase().includes(kw));
+  const toMealOption = (ms: FastMealSlot): MealOption => {
+    const isVeg = ms.curry.isVeg ?? !FAST_NON_VEG_KW.some(kw => ms.curry.dishName.toLowerCase().includes(kw));
     return {
-      name: components.curry,
-      description: `Curry: ${components.curry} | Veg: ${components.veg} | Raita: ${components.raita} | Bread: ${components.bread} | Rice: ${components.rice}`,
+      name: ms.curry.dishName,
+      description: `Curry: ${ms.curry.dishName} | Veg: ${ms.veg.dishName} | Raita: ${ms.raita.dishName} | Bread: ${ms.bread.dishName} | Rice: ${ms.rice.dishName}`,
       vegetarian: isVeg,
       tags: [isVeg ? 'vegetarian' : 'non-vegetarian'],
-      ingredients: [],
+      ingredients: [
+        ...(ms.curry.ingredients ?? []),
+        ...(ms.veg.ingredients ?? []),
+        ...(ms.raita.ingredients ?? []),
+        ...(ms.bread.ingredients ?? []),
+        ...(ms.rice.ingredients ?? []),
+      ],
       steps: [],
     };
   };
 
   const breakfast = slots.includes('breakfast') && day.breakfast
-    ? { options: [{ name: day.breakfast.dishName, vegetarian: day.breakfast.isVeg, tags: [day.breakfast.isVeg ? 'vegetarian' : 'non-vegetarian'], ingredients: [], steps: [] }] }
+    ? { options: [{ name: day.breakfast.dishName, vegetarian: day.breakfast.isVeg ?? true, tags: [day.breakfast.isVeg ? 'vegetarian' : 'non-vegetarian'], ingredients: day.breakfast.ingredients ?? [], steps: [] }] }
     : emptySlot;
 
-  const lunch = slots.includes('lunch') && day.lunch ? { options: [toMealOption(day.lunch)] } : emptySlot;
+  const lunch  = slots.includes('lunch')  && day.lunch  ? { options: [toMealOption(day.lunch)]  } : emptySlot;
   const dinner = slots.includes('dinner') && day.dinner ? { options: [toMealOption(day.dinner)] } : emptySlot;
 
   const snack = slots.includes('snack') && day.snack
-    ? { options: [{ name: day.snack.dishName, vegetarian: day.snack.isVeg, tags: ['snack'], ingredients: [], steps: [] }] }
+    ? { options: [{ name: day.snack.dishName, vegetarian: day.snack.isVeg ?? true, tags: ['snack'], ingredients: day.snack.ingredients ?? [], steps: [] }] }
     : undefined;
 
-  const result: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };
+  // Build typed anatomy
+  const anatomy: DayAnatomy = {};
+  const toAnatComp = (c: FastMealComp): AnatomyComponent => ({ dishName: c.dishName, isVeg: c.isVeg, cuisine: c.cuisine, ingredients: c.ingredients ?? [] });
+  const toAnatSlot = (ms: FastMealSlot): MealAnatomy => ({ curry: toAnatComp(ms.curry), veg: toAnatComp(ms.veg), raita: toAnatComp(ms.raita), bread: toAnatComp(ms.bread), rice: toAnatComp(ms.rice) });
+  if (day.breakfast && slots.includes('breakfast')) anatomy.breakfast = toAnatComp(day.breakfast);
+  if (day.lunch    && slots.includes('lunch'))    anatomy.lunch    = toAnatSlot(day.lunch);
+  if (day.dinner   && slots.includes('dinner'))   anatomy.dinner   = toAnatSlot(day.dinner);
+  if (day.snack    && slots.includes('snack'))    anatomy.snack    = toAnatComp(day.snack);
+
+  const result: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner, anatomy };
   if (snack) result.snack = snack;
   return result;
 }
@@ -794,10 +852,10 @@ export async function generateMealPlanFast(
     if (slots.includes('snack')) mealLines.push('- Snack: 1 freshly cookable snack (15 mins max, never packaged)');
 
     const jsonShape: string[] = [];
-    if (slots.includes('breakfast')) jsonShape.push('"breakfast": { "dishName": "Authentic Indian name", "isVeg": true }');
-    if (slots.includes('lunch')) jsonShape.push('"lunch": { "curry": "name", "veg": "name", "raita": "name", "bread": "name", "rice": "name" }');
-    if (slots.includes('dinner')) jsonShape.push('"dinner": { "curry": "name", "veg": "name", "raita": "name", "bread": "name", "rice": "name" }');
-    if (slots.includes('snack')) jsonShape.push('"snack": { "dishName": "name", "isVeg": true }');
+    if (slots.includes('breakfast')) jsonShape.push('"breakfast": { "dishName": "Authentic Indian name", "isVeg": true, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"] }');
+    if (slots.includes('lunch')) jsonShape.push('"lunch": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }');
+    if (slots.includes('dinner')) jsonShape.push('"dinner": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }');
+    if (slots.includes('snack')) jsonShape.push('"snack": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x3-4"] }');
 
     const buildPrompt = (retry = false): string => `Generate a complete meal plan for ${dayName} (${date}).
 
@@ -812,6 +870,7 @@ ABSOLUTE RULES:
 4. AVOIDANCE: Never suggest: ${avoidanceList}
 5. HEALTH: ${healthInfo}
 ${retry ? `\nRETRY INSTRUCTION: Previous response was invalid. You MUST include at least one non-vegetarian dish (containing meat, fish, or eggs) for this non-vegetarian family. An all-vegetarian response is rejected.\n` : ''}
+INGREDIENTS RULE: Every "ingredients" array is MANDATORY and must contain 4-8 entries. Format each entry as "quantity unit ingredient" — e.g. "500g mutton", "2 medium onions", "1 tbsp ginger-garlic paste", "2 tomatoes", "1 tsp cumin seeds". An empty ingredients array is invalid and will be rejected.
 Return JSON only, no markdown, no explanation:
 { ${jsonShape.join(', ')} }`;
 
@@ -819,7 +878,7 @@ Return JSON only, no markdown, no explanation:
 
     try {
       const text = await askClaude(buildPrompt());
-      const parsed = JSON.parse(text) as FastDayResponse;
+      const parsed = normalizeFastDay(JSON.parse(text));
       const dishNames = extractFastDishNames(parsed);
 
       // Validation: non-veg check
@@ -830,7 +889,7 @@ Return JSON only, no markdown, no explanation:
         // Retry once with stricter prompt
         try {
           const retryText = await askClaude(buildPrompt(true));
-          const retryParsed = JSON.parse(retryText) as FastDayResponse;
+          const retryParsed = normalizeFastDay(JSON.parse(retryText));
           dayResult = fastDayToMealPlanDay(date, dayName, retryParsed, slots);
           extractFastDishNames(retryParsed).forEach(n => weekHistory.push(n));
         } catch {
