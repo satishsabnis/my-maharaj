@@ -218,7 +218,7 @@ export default function HomeScreen() {
         {/* ── TICKER ── */}
         <View style={{backgroundColor:colors.amber,paddingVertical:5,overflow:'hidden'}}>
           <Animated.Text
-            style={{fontSize:10,color:'#1A1A1A',fontWeight:'500',transform:[{translateX:scrollAnim}]}}
+            style={{fontSize:14,color:'#1A1A1A',fontWeight:'500',transform:[{translateX:scrollAnim}]}}
             onLayout={(e) => { if (tickerTextWidth === 0) setTickerTextWidth(e.nativeEvent.layout.width); }}
             numberOfLines={1}
           >
@@ -229,11 +229,11 @@ export default function HomeScreen() {
         <ScrollView contentContainerStyle={{paddingBottom:20}} showsVerticalScrollIndicator={false}>
 
           {/* ── HERO ── */}
-          <View style={{alignItems:'center',paddingTop:8}}>
+          <View style={{alignItems:'center',paddingTop:4}}>
             <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
               <Animated.Image
                 source={require('../assets/logo.png')}
-                style={{width:176,height:176,transform:[{scale:pulseAnim}]}}
+                style={{width:240,height:240,transform:[{scale:pulseAnim}]}}
                 resizeMode="contain"
               />
             </TouchableOpacity>
@@ -244,18 +244,18 @@ export default function HomeScreen() {
 
           {/* ── GREETING ── */}
           <View style={{paddingHorizontal:16,paddingTop:4}}>
-            <Text style={{fontSize:12,fontWeight:'500',color:colors.navy}}>{getGreeting()}, {firstName || 'there'}</Text>
-            <Text style={{fontSize:9,color:colors.textMuted}}>{dayOfWeek} · {userCity} · {feedCount} thing{feedCount !== 1 ? 's' : ''} need your attention</Text>
+            <Text style={{fontSize:16,fontWeight:'500',color:colors.navy}}>{getGreeting()}, {firstName || 'there'}</Text>
+            <Text style={{fontSize:13,color:colors.textMuted}}>{dayOfWeek} · {userCity} · {feedCount} thing{feedCount !== 1 ? 's need' : ' needs'} your attention</Text>
 
             {/* Plan pill */}
             {hasWeekPlan ? (
               <View style={s.planPill}>
                 <View style={{width:4,height:4,borderRadius:2,backgroundColor:colors.emerald}} />
-                <Text style={{fontSize:8,color:colors.teal}}>This week's plan is active — Day {planDayX} of {planDayY}</Text>
+                <Text style={{fontSize:13,color:colors.teal}}>This week's plan is active — Day {planDayX} of {planDayY}</Text>
               </View>
             ) : (
               <TouchableOpacity style={[s.planPill, {borderColor:'rgba(201,162,39,0.3)',backgroundColor:'rgba(201,162,39,0.1)'}]} onPress={() => router.push('/meal-wizard' as never)}>
-                <Text style={{fontSize:8,color:colors.gold}}>No plan this week — tap to plan</Text>
+                <Text style={{fontSize:13,color:colors.gold}}>No plan this week — tap to plan</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -271,9 +271,9 @@ export default function HomeScreen() {
             {feedCards.map((card, i) => (
               <View key={i} style={[s.feedCard, card.bg]}>
                 <View style={{flex:1}}>
-                  <Text style={{fontSize:7,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
-                  <Text style={{fontSize:10,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
-                  {card.sub && <Text style={{fontSize:8,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+                  <Text style={{fontSize:13,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
+                  <Text style={{fontSize:16,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
+                  {card.sub && <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
                 </View>
                 <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
                   {card.buttons.map((btn, bi) => (
@@ -307,9 +307,9 @@ export default function HomeScreen() {
 
         {/* ── FOOTER ── */}
         <View style={s.footer}>
-          <Text style={{fontSize:8,color:colors.emerald}}>Powered by Blue Flute Consulting LLC-FZ</Text>
+          <Text style={{fontSize:13,color:colors.emerald}}>Powered by Blue Flute Consulting LLC-FZ</Text>
           <TouchableOpacity onPress={() => Linking.openURL('https://www.bluefluteconsulting.com')}>
-            <Text style={{fontSize:7,color:'rgba(255,255,255,0.6)',marginTop:2}}>www.bluefluteconsulting.com</Text>
+            <Text style={{fontSize:13,color:'rgba(255,255,255,0.6)',marginTop:2}}>www.bluefluteconsulting.com</Text>
           </TouchableOpacity>
         </View>
 
@@ -357,15 +357,15 @@ const s = StyleSheet.create({
   avatarTxt: { color: colors.white, fontSize: 13, fontWeight: '800' },
   planPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(30,158,94,0.15)', borderWidth: 1, borderColor: 'rgba(30,158,94,0.3)', borderRadius: 20, paddingVertical: 2, paddingHorizontal: 8, marginTop: 4, alignSelf: 'flex-start' },
   divider: { height: 1, backgroundColor: 'rgba(26,58,92,0.12)', marginVertical: 8, marginHorizontal: 14 },
-  sectionLabel: { fontSize: 9, fontWeight: '500', color: colors.teal, textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 14, paddingBottom: 5 },
+  sectionLabel: { fontSize: 13, fontWeight: '500', color: colors.teal, textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 14, paddingBottom: 5 },
   feedCard: { borderRadius: 12, padding: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)', marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 8 },
   btnEmerald: { backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 8 },
   btnNavy: { backgroundColor: colors.navy, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 8 },
   btnOutline: { borderRadius: 20, paddingVertical: 4, paddingHorizontal: 8, borderWidth: 1, borderColor: colors.navy },
-  btnFilledTxt: { fontSize: 9, fontWeight: '500', color: colors.white },
-  btnOutlineTxt: { fontSize: 9, fontWeight: '500', color: colors.navy },
+  btnFilledTxt: { fontSize: 16, fontWeight: '500', color: colors.white },
+  btnOutlineTxt: { fontSize: 16, fontWeight: '500', color: colors.navy },
   quickChip: { flex: 1, backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 5, alignItems: 'center' },
-  quickChipTxt: { fontSize: 9, color: colors.white, fontWeight: '500' },
+  quickChipTxt: { fontSize: 16, color: colors.white, fontWeight: '500' },
   footer: { backgroundColor: colors.navy, paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', marginTop: 10 },
   // Drawer
   drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 999 },

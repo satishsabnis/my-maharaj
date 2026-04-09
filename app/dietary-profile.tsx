@@ -827,9 +827,9 @@ export default function DietaryProfileScreen() {
 
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
-  sectionHead: { fontSize: 14, fontWeight: '700', color: colors.navy, marginTop: 20, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(30,158,94,0.2)', paddingBottom: 6 },
-  fieldLabel: { fontSize: 10, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, marginTop: 6 },
-  input: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, color: colors.navy, backgroundColor: 'rgba(255,255,255,0.9)', marginBottom: 8 },
+  sectionHead: { fontSize: 18, fontWeight: '700', color: colors.navy, marginTop: 20, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(30,158,94,0.2)', paddingBottom: 6 },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, marginTop: 6 },
+  input: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.navy, backgroundColor: 'rgba(255,255,255,0.9)', marginBottom: 8 },
   dropdown: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)' },
   dropdownList: { borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10, backgroundColor: 'white', marginTop: 2, marginBottom: 6, overflow: 'hidden' },
   dropdownItem: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: 'rgba(26,58,92,0.08)' },
@@ -841,6 +841,6 @@ const s = StyleSheet.create({
   modalClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
   modalCloseTxt: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
   modalScroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
-  modalSectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
+  modalSectionLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
   formError: { fontSize: 13, color: colors.danger, textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
 });

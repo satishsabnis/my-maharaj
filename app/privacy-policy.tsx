@@ -72,10 +72,10 @@ const s = StyleSheet.create({
   header: { flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14,paddingTop:Platform.OS==='android'?25:Platform.OS==='web'?14:8,paddingBottom:10 },
   backBtn: { backgroundColor:'transparent',borderRadius:8,borderWidth:1.5,borderColor:'#2E5480',paddingVertical:6,paddingHorizontal:12 },
   backTxt: { fontSize:15,fontWeight:'700',color:'#2E5480' },
-  headerTitle: { fontSize:10,fontWeight:'700',color:colors.navy },
+  headerTitle: { fontSize:18,fontWeight:'700',color:colors.navy },
   homeBtn: { backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12 },
   homeTxt: { fontSize:15,fontWeight:'700',color:colors.white },
-  secTitle: { fontSize:8,fontWeight:'500',color:colors.emerald,textTransform:'uppercase',letterSpacing:0.7,marginBottom:6,paddingBottom:4,borderBottomWidth:1,borderBottomColor:'rgba(30,158,94,0.2)',marginTop:8 },
-  bodyText: { fontSize:8.5,color:colors.navy,lineHeight:13.6 },
+  secTitle: { fontSize:13,fontWeight:'500',color:colors.emerald,textTransform:'uppercase',letterSpacing:0.7,marginBottom:6,paddingBottom:4,borderBottomWidth:1,borderBottomColor:'rgba(30,158,94,0.2)',marginTop:8 },
+  bodyText: { fontSize:13,color:colors.navy,lineHeight:20 },
   noticeCard: { backgroundColor:'rgba(201,162,39,0.1)',borderWidth:1,borderColor:'rgba(201,162,39,0.25)',borderRadius:10,padding:10,marginBottom:14 },
 });

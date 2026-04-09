@@ -382,14 +382,14 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   tipText: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.teal,
-    lineHeight: 12,
+    lineHeight: 20,
   },
 
   // Section title
   sectionTitle: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.emerald,
     textTransform: 'uppercase',
@@ -419,7 +419,7 @@ const s = StyleSheet.create({
     marginBottom: 3,
   },
   cardRange: {
-    fontSize: 9,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.navy,
     flex: 1,
@@ -431,12 +431,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
   },
   dayCountText: {
-    fontSize: 6.5,
+    fontSize: 13,
     color: colors.emerald,
     fontWeight: '600',
   },
   cuisineSub: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 3,
   },
@@ -446,7 +446,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
   },
   timestampText: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textMuted,
   },
   chevron: {
@@ -465,14 +465,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   emptyTitle: {
-    fontSize: 9,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
     marginBottom: 4,
     textAlign: 'center',
   },
   emptySub: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 12,
     textAlign: 'center',
@@ -484,20 +484,20 @@ const s = StyleSheet.create({
     paddingHorizontal: 18,
   },
   planBtnText: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.white,
   },
 
   // Detail view
   backLink: {
-    fontSize: 8,
+    fontSize: 13,
     color: colors.emerald,
     fontWeight: '600',
     marginBottom: 10,
   },
   detailRange: {
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
     marginBottom: 10,
@@ -512,7 +512,7 @@ const s = StyleSheet.create({
     borderColor: colors.cardBorder,
   },
   dayName: {
-    fontSize: 8.5,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
     marginBottom: 5,
@@ -524,13 +524,13 @@ const s = StyleSheet.create({
     marginBottom: 3,
   },
   mealLabel: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textMuted,
     fontWeight: '500',
     width: 50,
   },
   mealDish: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.textPrimary,
     fontWeight: '500',
     textDecorationLine: 'underline',
@@ -573,16 +573,16 @@ const s = StyleSheet.create({
     color: colors.white,
   },
   maharajLabel: {
-    fontSize: 9,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.navy,
   },
   sheetQuestion: {
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
     marginBottom: 14,
-    lineHeight: 16,
+    lineHeight: 22,
   },
   feedbackBtnLoved: {
     backgroundColor: colors.emerald,
@@ -592,7 +592,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   feedbackBtnLovedText: {
-    fontSize: 8.5,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.white,
   },
@@ -604,7 +604,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   feedbackBtnOkText: {
-    fontSize: 8.5,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -616,12 +616,12 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   feedbackBtnDislikeText: {
-    fontSize: 8.5,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.danger,
   },
   askLater: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.textMuted,
     fontWeight: '500',
   },
