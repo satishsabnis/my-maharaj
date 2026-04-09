@@ -301,7 +301,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
   },
   backTxt: { fontSize: 15, fontWeight: '700', color: '#2E5480' },
-  headerTitle: { fontSize: 10, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
   homeBtn: {
     backgroundColor: '#2E5480',
     borderRadius: 8,
@@ -319,7 +319,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 10,
   },
-  tipText: { fontSize: 7.5, color: colors.textSecondary, lineHeight: 11 },
+  tipText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },
   tonightBanner: {
     backgroundColor: colors.navy,
     borderRadius: 10,
@@ -330,7 +330,7 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.navy,
     marginBottom: 4,

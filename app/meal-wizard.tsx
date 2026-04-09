@@ -630,6 +630,16 @@ export default function MealWizardScreen() {
             itemMap[key] = { baseName: name.charAt(0).toUpperCase() + name.slice(1), qty, unit, cat: categorise(ing) };
           }
         });
+        if (!opt?.ingredients?.length && opt?.description?.includes(' | ') && opt?.description?.includes(':')) {
+          opt.description.split(' | ').forEach((comp: string) => {
+            const dishName = comp.includes(':') ? comp.split(':').slice(1).join(':').trim() : comp.trim();
+            if (!dishName) return;
+            const key = normaliseKey(dishName);
+            if (!itemMap[key]) {
+              itemMap[key] = { baseName: dishName.charAt(0).toUpperCase() + dishName.slice(1), qty: 0, unit: '', cat: 'Pantry' };
+            }
+          });
+        }
       });
     });
     const grouped = {} as Record<GroceryCat, { name: string; qty?: number; unit?: string }[]>;
@@ -1139,13 +1149,6 @@ export default function MealWizardScreen() {
 
     return (
       <View style={{flex:1,width:'100%'}}>
-        {/* Header row with Back button */}
-        <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingTop:Platform.OS==='web'?16:10,paddingBottom:12}}>
-          <TouchableOpacity onPress={() => setStep('wizard')} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
-            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Centred generation content */}
         <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
           {/* Maharaj logo with pulse */}
@@ -1160,7 +1163,7 @@ export default function MealWizardScreen() {
 
           {/* Day progress dots */}
           <View style={{flexDirection:'row',gap:8,marginBottom:16}}>
-            {Array.from({length: totalDays}, (_, i) => {
+            {selectedDays.map((dayName, i) => {
               const isDone = i < completedDays;
               const isCurrent = i === completedDays;
               return (
@@ -1175,10 +1178,15 @@ export default function MealWizardScreen() {
             })}
           </View>
 
-          {/* Pause/Resume */}
-          <TouchableOpacity style={{marginTop:16,backgroundColor:colors.gold,borderRadius:10,paddingVertical:12,paddingHorizontal:28}} onPress={() => setGenPaused(p => !p)}>
-            <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>{genPaused ? 'Resume' : 'Pause'}</Text>
-          </TouchableOpacity>
+          {/* Bottom row: Back + Pause/Resume */}
+          <View style={{flexDirection:'row',gap:12,marginTop:16,alignItems:'center'}}>
+            <TouchableOpacity onPress={() => setStep('wizard')} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
+              <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{backgroundColor:colors.gold,borderRadius:10,paddingVertical:12,paddingHorizontal:28}} onPress={() => setGenPaused(p => !p)}>
+              <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>{genPaused ? 'Resume' : 'Pause'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -1307,11 +1315,13 @@ export default function MealWizardScreen() {
                 const prevDinnerOpt = isCarryForward ? getOpt(dayIdx - 1, 'dinner') : null;
                 const prevDayName = isCarryForward && generatedPlan[dayIdx - 1] ? generatedPlan[dayIdx - 1].day : '';
 
-                // Parse thali components
+                // Parse thali/anatomy components
                 const displayOpt = isCarryForward && prevDinnerOpt ? prevDinnerOpt : opt;
                 const isThali = displayOpt.name.toLowerCase().includes('thali');
-                const components = isThali && displayOpt.description?.includes(' | ')
-                  ? displayOpt.description.split(' | ').map(c => c.trim())
+                const hasAnatomy = displayOpt.description?.includes(' | ') && displayOpt.description?.includes(':');
+                const shouldShowComponents = (isThali || hasAnatomy) && displayOpt.description?.includes(' | ');
+                const components = shouldShowComponents
+                  ? displayOpt.description!.split(' | ').map(c => c.trim())
                   : [displayOpt.name];
 
                 return (
@@ -1327,7 +1337,7 @@ export default function MealWizardScreen() {
                           style={{flexDirection:'row',alignItems:'center',paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2}}
                         >
                           <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
-                            {isThali && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
+                            {(isThali || hasAnatomy) && parts.length > 1 && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
                             <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
                             {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                           </TouchableOpacity>
@@ -1746,7 +1756,7 @@ export default function MealWizardScreen() {
         </View>
       )}
 
-      {!isFullScreen && <MarqueeTicker />}
+      {!isFullScreen && step !== 'plan-summary' && <MarqueeTicker />}
 
       <ScrollView ref={scrollRef} contentContainerStyle={[s.scroll, isFullScreen && s.scrollCenter]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={[s.body, isFullScreen && s.bodyCenter]}>
@@ -1764,7 +1774,7 @@ export default function MealWizardScreen() {
 // ─── Main styles ─────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: colors.white },
+  safe:   { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: Platform.OS === 'web' ? 16 : 10, paddingBottom: 14,
