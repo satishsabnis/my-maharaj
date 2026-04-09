@@ -9,6 +9,7 @@ import { requestNotificationPermissions } from '../lib/notifications';
 import Logo from '../components/Logo';
 import { white } from '../theme/colors';
 import { LanguageProvider } from '../lib/LanguageProvider';
+import { initAnalytics, identifyUser, track } from '../lib/analytics';
 
 // ─── One-time AsyncStorage → Supabase migration ─────────────────────────────
 
@@ -113,13 +114,18 @@ export default function Layout() {
 
   // Route notification taps to plan-summary inside meal-wizard
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((_response) => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      track('push_notification_tapped', {
+        notification_id: response.notification.request.identifier,
+        action_identifier: response.actionIdentifier,
+      });
       router.push('/meal-wizard?step=plan-summary' as never);
     });
     return () => sub.remove();
   }, []);
 
   useEffect(() => {
+    void initAnalytics();
     requestNotificationPermissions();
 
     // Force logout check via API + session + profile check
@@ -150,6 +156,7 @@ export default function Layout() {
         return;
       }
       setSession(sess);
+      identifyUser(sess.user.id, { email: sess.user.email });
 
       // Profile setup check
       const profileSetup = await AsyncStorage.getItem('profile_setup_complete');
@@ -224,6 +231,7 @@ export default function Layout() {
       <Stack.Screen name="about" />
       <Stack.Screen name="privacy-policy" />
       <Stack.Screen name="faq" />
+      <Stack.Screen name="forgot-password" />
     </Stack>
     </LanguageProvider>
   );

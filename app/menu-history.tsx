@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
+import { track } from '../lib/analytics';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { colors } from '../constants/theme';
 
@@ -138,6 +139,7 @@ export default function MenuHistoryScreen() {
 
   async function submitFeedback(rating: 'loved' | 'ok' | 'disliked') {
     if (!feedbackDish) return;
+    track('dish_feedback_given', { dish: feedbackDish, rating });
     try {
       // Always write to AsyncStorage first
       const raw = await AsyncStorage.getItem('dish_feedback');
