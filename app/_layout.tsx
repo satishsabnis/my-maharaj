@@ -233,6 +233,7 @@ export default function Layout() {
       <Stack.Screen name="faq" />
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="onboarding" />
+      <Stack.Screen name="family-recipes" />
     </Stack>
     </LanguageProvider>
   );
