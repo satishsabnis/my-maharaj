@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const [planDayY, setPlanDayY] = useState(0);
   const [occasions, setOccasions] = useState<{name:string;day:string;people:string}[]>([]);
   const [mealPrepCount, setMealPrepCount] = useState(0);
+  const [todayMeals, setTodayMeals] = useState<{breakfast:string;lunch:string;dinner:string}|null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
@@ -94,6 +95,14 @@ export default function HomeScreen() {
             const dayIdx = plan.findIndex((d: any) => d.date >= today);
             setPlanDayX(dayIdx >= 0 ? dayIdx + 1 : plan.length);
             setPlanDayY(plan.length);
+            const todayPlan = plan.find((d: any) => d.date === today);
+            if (todayPlan) {
+              setTodayMeals({
+                breakfast: todayPlan.breakfast?.name || '',
+                lunch: todayPlan.lunch?.name || '',
+                dinner: todayPlan.dinner?.name || '',
+              });
+            }
           }
         } catch {}
       }
@@ -132,8 +141,38 @@ export default function HomeScreen() {
   const dayOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
   const hour = now.getHours();
 
+  const MAHARAJ_TIPS = [
+    'Soak your dal overnight — it cooks faster and is easier to digest.',
+    'Use the water used to wash rice when kneading dough for softer rotis.',
+    'A pinch of hing in dal enhances flavour and aids digestion.',
+    'Marinate chicken overnight in curd and spices for deeper flavour.',
+    'Add jeera to hot ghee first — it unlocks full flavour before other spices.',
+    'Wrap fresh coriander in a damp cloth and refrigerate to keep it fresh for a week.',
+    'Dried curry leaves freeze beautifully — add directly to tempering from frozen.',
+  ];
+  const tipOfDay = MAHARAJ_TIPS[now.getDay()];
+
   type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
   const feedCards: FeedCard[] = [];
+
+  // Card A — Today's Plan (always shown)
+  const todayPlanTitle = todayMeals
+    ? [todayMeals.breakfast, todayMeals.lunch, todayMeals.dinner].filter(Boolean).join('  ·  ')
+    : hasWeekPlan ? 'No meals planned for today' : 'No plan this week — tap to create one';
+  feedCards.push({
+    type: 'today-plan', bg: { backgroundColor: colors.frostedNavy, borderLeftWidth: 3, borderLeftColor: colors.navy },
+    borderColor: colors.navy, label: "Today's plan", labelColor: colors.navy,
+    title: todayPlanTitle,
+    buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: () => router.push('/meal-wizard' as never) }],
+  });
+
+  // Card B — Daily Tip (always shown)
+  feedCards.push({
+    type: 'daily-tip', bg: { backgroundColor: colors.frostedGreen },
+    borderColor: colors.emerald, label: 'Maharaj tip', labelColor: colors.teal,
+    title: tipOfDay,
+    buttons: [],
+  });
 
   // Card 1 — Saturday grocery
   if (dayOfWeek === 'Saturday' || (dayOfWeek === 'Friday' && hour >= 18 && maharajDay === 'Saturday')) {
@@ -155,18 +194,7 @@ export default function HomeScreen() {
     });
   }
 
-  // Card 3 — Weather (demo placeholder)
-  feedCards.push({
-    type: 'weather', bg: { backgroundColor: colors.frostedCyan, borderLeftWidth: 3, borderLeftColor: colors.skyBlue },
-    borderColor: colors.skyBlue, label: 'Weather change', labelColor: colors.skyBlue,
-    title: 'Rain expected tonight — swap dinner to Varan Bhaat?',
-    buttons: [
-      { text: 'Swap it', style: 'emerald', onPress: () => {} },
-      { text: 'Keep plan', style: 'outline', onPress: () => {} },
-    ],
-  });
-
-  // Card 4 — Occasion reminder
+  // Card 3 — Occasion reminder
   const tomorrow = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][(now.getDay() + 1) % 7];
   const todayOcc = occasions.find(o => o.day === dayOfWeek);
   const tomorrowOcc = occasions.find(o => o.day === tomorrow);
@@ -182,16 +210,6 @@ export default function HomeScreen() {
         { text: 'Plan it', style: 'emerald', onPress: () => router.push('/meal-wizard' as never) },
         { text: 'Skip this week', style: 'outline', onPress: () => {} },
       ],
-    });
-  }
-
-  // Fallback
-  if (feedCards.length === 0) {
-    feedCards.push({
-      type: 'fallback', bg: { backgroundColor: colors.frostedGreen },
-      borderColor: colors.emerald, label: 'Ready when you are', labelColor: colors.teal,
-      title: 'Tap to plan your week with Maharaj',
-      buttons: [{ text: 'Plan My Week', style: 'emerald', onPress: () => router.push('/meal-wizard' as never) }],
     });
   }
 
@@ -233,7 +251,7 @@ export default function HomeScreen() {
             <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
               <Animated.Image
                 source={require('../assets/logo.png')}
-                style={{width:240,height:240,transform:[{scale:pulseAnim}]}}
+                style={{width:240,height:240,transform:[{scale:pulseAnim}],marginBottom:0}}
                 resizeMode="contain"
               />
             </TouchableOpacity>
@@ -295,7 +313,7 @@ export default function HomeScreen() {
               { label: 'Plan week', onPress: () => router.push('/meal-wizard' as never) },
               { label: 'My fridge', onPress: () => router.push('/my-fridge' as never) },
               { label: 'Party menu', onPress: () => router.push('/party-menu' as never) },
-              { label: 'Scan to shop', onPress: () => router.push('/meal-wizard' as never) },
+              { label: 'Scan to shop', onPress: () => router.push('/my-fridge' as never) },
             ].map((c, i) => (
               <TouchableOpacity key={i} style={s.quickChip} onPress={c.onPress} activeOpacity={0.8}>
                 <Text style={s.quickChipTxt}>{c.label}</Text>
