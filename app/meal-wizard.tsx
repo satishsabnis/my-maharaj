@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, BackHandler, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, BackHandler, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1608,6 +1608,22 @@ export default function MealWizardScreen() {
           <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:4}}>Order Online</Text>
           <Text style={{fontSize:13,color:colors.textSecondary,lineHeight:19}}>Order ingredients from your favourite delivery service. Integrations coming soon.</Text>
         </TouchableOpacity>
+
+        {/* Card 3: Share My Maharaj */}
+        <View style={[cards.frostedGreen, {padding:20,marginBottom:14,borderLeftWidth:3,borderLeftColor:colors.gold}]}>
+          <Text style={{fontSize:7,fontWeight:'700',color:colors.gold,letterSpacing:0.6,textTransform:'uppercase',marginBottom:4}}>Share My Maharaj</Text>
+          <Text style={{fontSize:10,fontWeight:'700',color:colors.navy,marginBottom:12,lineHeight:15}}>Know an Indian family in the GCC who struggles with meal planning?</Text>
+          <TouchableOpacity
+            style={{alignSelf:'flex-start',backgroundColor:colors.emerald,borderRadius:20,paddingVertical:4,paddingHorizontal:8}}
+            activeOpacity={0.8}
+            onPress={() => {
+              Share.share({ message: "I have been using My Maharaj to plan my family's meals. It knows Indian food \u2014 our community, our fasting days, even sends the recipe in Hindi to our cook. Try it free: https://my-maharaj.vercel.app" });
+              track('referral_shared', { source: 'what_next' });
+            }}
+          >
+            <Text style={{fontSize:9,fontWeight:'700',color:'#FFFFFF'}}>Share</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
