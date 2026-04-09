@@ -103,16 +103,22 @@ export default function FamilyRecipesScreen() {
   }, []));
 
   async function loadRecipes() {
+    // Load local first for instant display
     const raw = await AsyncStorage.getItem('family_recipes');
-    if (raw) { try { setRecipes(JSON.parse(raw)); } catch {} }
-    // Also sync from Supabase
+    const local: FamilyRecipe[] = raw ? (() => { try { return JSON.parse(raw); } catch { return []; } })() : [];
+    if (local.length > 0) setRecipes(local);
+
+    // Fetch from Supabase and merge/dedup (Supabase is source of truth for any id that exists)
     const user = await getSessionUser();
     if (!user) return;
     const { data } = await supabase.from('family_recipes').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    if (data && data.length > 0) {
-      setRecipes(data as FamilyRecipe[]);
-      await AsyncStorage.setItem('family_recipes', JSON.stringify(data));
-    }
+    const remote = (data ?? []) as FamilyRecipe[];
+    // Merge: start with remote, then append any local-only entries (no id or id not in remote)
+    const remoteIds = new Set(remote.map(r => r.id).filter(Boolean));
+    const localOnly = local.filter(r => !r.id || !remoteIds.has(r.id));
+    const merged = [...remote, ...localOnly];
+    setRecipes(merged);
+    await AsyncStorage.setItem('family_recipes', JSON.stringify(merged));
   }
 
   // ── Upload handlers ───────────────────────────────────────────────────────
@@ -197,6 +203,7 @@ export default function FamilyRecipesScreen() {
       setPending(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      await loadRecipes();
     } catch { Alert.alert('Save failed', 'Please check your connection and try again.'); }
     finally { setLoading(false); setLoadingMsg(''); }
   }

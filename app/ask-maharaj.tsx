@@ -5,7 +5,7 @@ import {
   TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Poppins_400Regular } from '@expo-google-fonts/poppins';
 import { supabase, getSessionUser } from '../lib/supabase';
@@ -72,6 +72,7 @@ function renderResponseText(text: string) {
 }
 
 export default function AskMaharajScreen() {
+  const { initialMessage, initialLabel } = useLocalSearchParams<{ initialMessage?: string; initialLabel?: string }>();
   const [fontsLoaded] = useFonts({ Poppins_400Regular });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -122,6 +123,37 @@ export default function AskMaharajScreen() {
       } catch {}
     })();
   }, []);
+
+  // Auto-send initialMessage from tip card tap
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (!initialMessage || autoSentRef.current) return;
+    autoSentRef.current = true;
+    const tipMsg = String(initialMessage);
+    const userMsg: Message = { role: 'user', content: tipMsg };
+    setMessages([userMsg]);
+    setLoading(true);
+    (async () => {
+      try {
+        const profileCtx = await getProfileContext();
+        const lang = userLanguages[0] || 'English';
+        const tipSystemPrompt = `CRITICAL: You MUST respond ENTIRELY in ${lang}. Never switch languages mid-response. Even if the user writes in another language, always reply in ${lang}.
+
+${familyContextStr}
+You are Maharaj, a culturally intelligent Indian family meal planning assistant.
+${profileCtx ? `FAMILY PROFILE:\n${profileCtx}\n` : ''}
+The user has tapped on a Maharaj tip card. Explain this tip in detail, give practical examples relevant to an Indian family in the GCC, and suggest how they can apply it this week. Be warm, specific, and practical.`;
+        const response = await callClaude([{ role: 'user', content: tipMsg }], tipSystemPrompt);
+        const clean = stripMarkdown(response.trim());
+        setMessages([userMsg, { role: 'assistant', content: clean }]);
+      } catch {
+        setMessages([userMsg, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+      } finally {
+        setLoading(false);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    })();
+  }, [initialMessage]);
 
   async function getProfileContext(): Promise<string> {
     try {

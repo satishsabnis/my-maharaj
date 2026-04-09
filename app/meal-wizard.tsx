@@ -181,10 +181,13 @@ export default function MealWizardScreen() {
   const [observations, setObservations] = useState<Observation[]>([]);
 
   // Alternatives
-  const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string; dishName: string } | null>(null);
+  const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string; dishName: string; anatomyAlts?: { dishName: string; isVeg?: boolean; cuisine?: string }[] } | null>(null);
+  const [altModalVisible, setAltModalVisible] = useState(false);
 
   // Recipe modal
   const [recipeModal, setRecipeModal] = useState<{ visible: boolean; dishName: string }>({ visible: false, dishName: '' });
+  const [recipeData, setRecipeData] = useState<{ title: string; serves: number; ingredients: string[]; method: string[]; maharajNote: string } | null>(null);
+  const [recipeLoading, setRecipeLoading] = useState(false);
 
   // Post-selection
   const [recipeDishes, setRecipeDishes] = useState<string[]>([]);
@@ -206,6 +209,35 @@ export default function MealWizardScreen() {
   // Jain
   const [isJainFamily, setIsJainFamily] = useState(false);
   const CUISINE_GROUPS = getCuisineGroups(isJainFamily);
+
+  // FIX 6: Fetch recipe when modal opens
+  useEffect(() => {
+    if (!recipeModal.visible || !recipeModal.dishName) return;
+    const dishName = recipeModal.dishName;
+    const cacheKey = `recipe_${dishName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    setRecipeData(null);
+    setRecipeLoading(true);
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) { setRecipeData(JSON.parse(cached)); setRecipeLoading(false); return; }
+        const serves = familySize > 0 ? familySize : 4;
+        const prompt = `Write a complete Indian home recipe for "${dishName}" for ${serves} people.
+Return ONLY valid JSON (no markdown) in this exact format:
+{ "title": "${dishName}", "serves": ${serves}, "ingredients": ["qty ingredient", ...8-12 items], "method": ["Step 1: ...", ...5-8 steps], "maharajNote": "one warm family tip about this dish" }`;
+        const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+        });
+        const data = await res.json();
+        const text = (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(text);
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(parsed));
+        setRecipeData(parsed);
+      } catch { setRecipeData(null); } finally { setRecipeLoading(false); }
+    })();
+  }, [recipeModal.visible, recipeModal.dishName]);
 
   const scrollRef = useRef<ScrollView>(null);
   const prevStepRef = useRef<WizardStep | null>(null);
@@ -519,11 +551,11 @@ export default function MealWizardScreen() {
       });
     }
 
-    // Check for festivals
+    // Check for festivals (parse string components to avoid UTC timezone off-by-one)
     FESTIVALS_2026.forEach(fest => {
       if (dates.some(d => {
-        const dt = new Date(d);
-        return dt.getMonth() + 1 === fest.month && dt.getDate() === fest.day;
+        const [, dMonth, dDay] = d.split('-').map(Number);
+        return dMonth === fest.month && dDay === fest.day;
       })) {
         obs.push({
           id: String(++obsId),
@@ -1382,9 +1414,9 @@ export default function MealWizardScreen() {
         {generatedPlan.map((day, dayIdx) => {
           const dt = new Date(day.date);
           const dayLabel = `${day.day}, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
-          // Check for festivals
-          const dt2 = new Date(day.date);
-          const festivalMatch = FESTIVALS_2026.find(f => f.month === dt2.getMonth() + 1 && f.day === dt2.getDate());
+          // FIX 7: Parse string components to avoid UTC timezone off-by-one bug
+          const [, festMonth, festDayNum] = day.date.split('-').map(Number);
+          const festivalMatch = FESTIVALS_2026.find(f => f.month === festMonth && f.day === festDayNum);
           const isSunday = dt.getDay() === 0;
 
           return (
@@ -1432,7 +1464,7 @@ export default function MealWizardScreen() {
                                 {isCarry && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                               </TouchableOpacity>
                               <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarry}
-                                onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName }); setStep('alternatives'); }}>
+                                onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName, anatomyAlts: comp.alternatives }); setAltModalVisible(true); }}>
                                 <Text style={{fontSize:14,color:colors.navy,opacity:isCarry ? 0 : 1}}>{'\u270E'}</Text>
                               </TouchableOpacity>
                             </View>
@@ -1453,7 +1485,7 @@ export default function MealWizardScreen() {
                             {key === 'snack' && <Text style={{fontSize:10,color:colors.textMuted}}>Fresh · 15 min</Text>}
                           </TouchableOpacity>
                           <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}}
-                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label, dishName: comp.dishName }); setStep('alternatives'); }}>
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label, dishName: comp.dishName, anatomyAlts: comp.alternatives }); setAltModalVisible(true); }}>
                             <Text style={{fontSize:14,color:colors.navy}}>{'\u270E'}</Text>
                           </TouchableOpacity>
                         </View>
@@ -1493,7 +1525,7 @@ export default function MealWizardScreen() {
                             {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                           </TouchableOpacity>
                           <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarryForward}
-                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}>
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName }); setAltModalVisible(true); }}>
                             <Text style={{fontSize:14,color:colors.navy,opacity:isCarryForward ? 0 : 1}}>{'\u270E'}</Text>
                           </TouchableOpacity>
                         </View>
@@ -1556,14 +1588,57 @@ export default function MealWizardScreen() {
         {/* Recipe placeholder modal */}
         <Modal visible={recipeModal.visible} transparent animationType="slide" onRequestClose={() => setRecipeModal({ visible: false, dishName: '' })}>
           <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.45)',justifyContent:'flex-end'}}>
-            <View style={{backgroundColor:colors.white,borderTopLeftRadius:24,borderTopRightRadius:24,padding:20,alignItems:'center'}}>
-              <View style={{width:36,height:4,borderRadius:2,backgroundColor:'#D1D5DB',marginBottom:16}} />
-              <Image source={require('../assets/logo.png')} style={{width:40,height:40,marginBottom:8}} resizeMode="contain" />
-              <Text style={{fontSize:12,fontWeight:'500',color:colors.navy,textAlign:'center',marginBottom:4}}>{recipeModal.dishName}</Text>
-              <Text style={{fontSize:9,color:colors.emerald,textAlign:'center',marginBottom:8}}>Recipe coming soon</Text>
-              <Text style={{fontSize:8,color:colors.textMuted,textAlign:'center',lineHeight:12,marginHorizontal:16,marginBottom:16}}>Full recipes with step-by-step instructions, ingredients scaled to your family size, and printable PDF in your preferred language are coming in the Pro plan.</Text>
-              <TouchableOpacity style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,width:'100%',alignItems:'center'}} onPress={() => setRecipeModal({ visible: false, dishName: '' })}>
-                <Text style={{fontSize:9,fontWeight:'600',color:colors.white}}>Got it</Text>
+            <View style={{backgroundColor:colors.white,borderTopLeftRadius:24,borderTopRightRadius:24,padding:20,maxHeight:Dimensions.get('window').height * 0.85}}>
+              <View style={{width:36,height:4,borderRadius:2,backgroundColor:'#D1D5DB',marginBottom:12,alignSelf:'center'}} />
+              {recipeLoading ? (
+                <View style={{alignItems:'center',paddingVertical:32}}>
+                  <Image source={require('../assets/logo.png')} style={{width:56,height:56,marginBottom:12}} resizeMode="contain" />
+                  <Text style={{fontSize:13,fontWeight:'600',color:colors.navy,textAlign:'center',marginBottom:4}}>Maharaj is writing the recipe...</Text>
+                  <ActivityIndicator size="small" color={colors.emerald} style={{marginTop:8}} />
+                </View>
+              ) : recipeData ? (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <Text style={{fontSize:18,fontWeight:'800',color:colors.navy,textAlign:'center',marginBottom:2}}>{recipeData.title}</Text>
+                  <Text style={{fontSize:11,color:colors.textMuted,textAlign:'center',marginBottom:16}}>Serves {recipeData.serves}</Text>
+                  <Text style={{fontSize:13,fontWeight:'700',color:colors.navy,marginBottom:8}}>Ingredients</Text>
+                  {recipeData.ingredients.map((ing, i) => (
+                    <Text key={i} style={{fontSize:12,color:colors.textSecondary,marginBottom:3}}>• {ing}</Text>
+                  ))}
+                  <Text style={{fontSize:13,fontWeight:'700',color:colors.navy,marginTop:16,marginBottom:8}}>Method</Text>
+                  {recipeData.method.map((step, i) => (
+                    <Text key={i} style={{fontSize:12,color:colors.textSecondary,marginBottom:6,lineHeight:18}}>{step}</Text>
+                  ))}
+                  {recipeData.maharajNote ? (
+                    <View style={{backgroundColor:'rgba(30,158,94,0.08)',borderRadius:12,padding:12,marginTop:16,marginBottom:8}}>
+                      <Text style={{fontSize:11,fontWeight:'700',color:colors.emerald,marginBottom:4}}>Maharaj's tip</Text>
+                      <Text style={{fontSize:11,color:colors.textSecondary,lineHeight:16}}>{recipeData.maharajNote}</Text>
+                    </View>
+                  ) : null}
+                  {Platform.OS === 'web' && (
+                    <TouchableOpacity style={{backgroundColor:colors.navy,borderRadius:12,paddingVertical:12,alignItems:'center',marginTop:8,marginBottom:4}} onPress={() => {
+                      if (!recipeData) return;
+                      const today = new Date();
+                      const dd = String(today.getDate()).padStart(2,'0');
+                      const mm = String(today.getMonth()+1).padStart(2,'0');
+                      const yyyy = today.getFullYear();
+                      const slug = recipeData.title.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+                      const ingList = recipeData.ingredients.map(i => `<li>${i}</li>`).join('');
+                      const methodList = recipeData.method.map(s => `<li style="margin-bottom:6px">${s}</li>`).join('');
+                      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;max-width:600px;margin:40px auto;color:#1A3A5C}h1{font-size:24px;font-weight:800;margin-bottom:4px}h2{font-size:14px;font-weight:700;margin:20px 0 8px;color:#1A3A5C}li{font-size:12px;margin-bottom:3px;color:#4B5563}.tip{background:#f0fdf4;border-radius:8px;padding:12px;margin-top:20px;font-size:11px;color:#065f46}.ft{text-align:center;font-size:9px;color:#9CA3AF;margin-top:32px}</style></head><body><h1>${recipeData.title}</h1><p style="font-size:11px;color:#6B7280">Serves ${recipeData.serves} · My Maharaj</p><h2>Ingredients</h2><ul>${ingList}</ul><h2>Method</h2><ol>${methodList}</ol>${recipeData.maharajNote ? `<div class="tip"><strong>Maharaj's tip:</strong> ${recipeData.maharajNote}</div>` : ''}<div class="ft">Powered by My Maharaj</div><script>setTimeout(function(){window.print()},600)</script></body></html>`;
+                      const blob = new Blob([html], {type:'text/html'});
+                      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `maharaj-recipe-${slug}-${dd}${mm}${yyyy}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    }}>
+                      <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Download Recipe</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              ) : (
+                <View style={{alignItems:'center',paddingVertical:24}}>
+                  <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Could not load recipe. Please try again.</Text>
+                </View>
+              )}
+              <TouchableOpacity style={{paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'#D1D5DB',alignItems:'center',marginTop:12}} onPress={() => setRecipeModal({ visible: false, dishName: '' })}>
+                <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1602,19 +1677,18 @@ export default function MealWizardScreen() {
   function renderAlternatives() {
     if (!generatedPlan || !alternativeSlot) return null;
 
-    const { dayIdx, slot, component, dishName: altDishName } = alternativeSlot;
+    const { dayIdx, slot, component, dishName: altDishName, anatomyAlts } = alternativeSlot;
     const day = generatedPlan[dayIdx];
-    const dt = new Date(day.date);
     const currentOpt = getOpt(dayIdx, slot);
     const currentName = altDishName || currentOpt?.name || 'Current dish';
 
-    // Get alternative options from the plan
+    // Anatomy pre-generated alternatives take priority; fall back to legacy slot options
+    const hasAnatomyAlts = anatomyAlts && anatomyAlts.length > 0;
     const slotData = day[slot];
-    const alternatives = slotData?.options?.filter((_, i) => i !== (selections[dayIdx]?.[slot] ?? 0)).slice(0, 3) ?? [];
+    const legacyAlts = slotData?.options?.filter((_, i) => i !== (selections[dayIdx]?.[slot] ?? 0)).slice(0, 3) ?? [];
 
     return (
-      <View style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.4)',justifyContent:'flex-end',zIndex:100}}>
-        <View style={{backgroundColor:colors.white,borderTopLeftRadius:24,borderTopRightRadius:24,padding:20,maxHeight:Dimensions.get('window').height * 0.7}}>
+      <View style={{backgroundColor:colors.white,borderTopLeftRadius:24,borderTopRightRadius:24,padding:20,maxHeight:Dimensions.get('window').height * 0.7}}>
           {/* Context */}
           <Text style={{fontSize:12,color:colors.textMuted,textAlign:'center',marginBottom:4}}>{day.day} {'\u00B7'} {slot.charAt(0).toUpperCase() + slot.slice(1)} {'\u00B7'} {component}</Text>
 
@@ -1623,7 +1697,29 @@ export default function MealWizardScreen() {
 
           {/* Alternative cards */}
           <ScrollView style={{maxHeight:300}}>
-            {alternatives.length > 0 ? alternatives.map((alt, i) => (
+            {hasAnatomyAlts ? anatomyAlts!.map((alt, i) => (
+              <View key={i} style={[cards.base, {marginBottom:10}]}>
+                <Text style={{fontSize:15,fontWeight:'700',color:colors.navy,marginBottom:4}}>{alt.dishName}</Text>
+                {alt.cuisine && <Text style={{fontSize:11,color:colors.textMuted,marginBottom:8}}>{alt.cuisine}</Text>}
+                <TouchableOpacity style={{backgroundColor:colors.emerald,borderRadius:10,paddingVertical:10,alignItems:'center'}} onPress={() => {
+                  // Update anatomy component in place
+                  if (day.anatomy) {
+                    const slotAnat = day.anatomy[slot];
+                    if (slotAnat && typeof slotAnat === 'object' && 'dishName' in slotAnat) {
+                      (slotAnat as AnatomyComponent).dishName = alt.dishName;
+                    } else if (slotAnat && typeof slotAnat === 'object') {
+                      const compKey = component.toLowerCase() as keyof MealAnatomy;
+                      if ((slotAnat as MealAnatomy)[compKey]) (slotAnat as MealAnatomy)[compKey].dishName = alt.dishName;
+                    }
+                    setGeneratedPlan([...generatedPlan]);
+                  }
+                  setAlternativeSlot(null);
+                  setAltModalVisible(false);
+                }}>
+                  <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Pick this</Text>
+                </TouchableOpacity>
+              </View>
+            )) : legacyAlts.length > 0 ? legacyAlts.map((alt, i) => (
               <View key={i} style={[cards.base, {marginBottom:10}]}>
                 <Text style={{fontSize:15,fontWeight:'700',color:colors.navy,marginBottom:4}}>{alt.name}</Text>
                 {alt.description && <Text style={{fontSize:12,color:colors.textSecondary,marginBottom:8,lineHeight:17}}>{alt.description}</Text>}
@@ -1640,7 +1736,7 @@ export default function MealWizardScreen() {
                     setSelections(prev => ({...prev, [dayIdx]: {...(prev[dayIdx] ?? {}), [slot]: altIdx}}));
                   }
                   setAlternativeSlot(null);
-                  setStep('plan-summary');
+                  setAltModalVisible(false);
                 }}>
                   <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Pick this</Text>
                 </TouchableOpacity>
@@ -1655,12 +1751,11 @@ export default function MealWizardScreen() {
           {/* Keep current button */}
           <TouchableOpacity style={{paddingVertical:14,borderRadius:12,borderWidth:1.5,borderColor:'#D1D5DB',alignItems:'center',marginTop:8}} onPress={() => {
             setAlternativeSlot(null);
-            setStep('plan-summary');
+            setAltModalVisible(false);
           }}>
             <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Keep {currentName}</Text>
           </TouchableOpacity>
         </View>
-      </View>
     );
   }
 
@@ -1954,8 +2049,12 @@ export default function MealWizardScreen() {
         </View>
       </ScrollView>
 
-      {/* Alternatives overlay */}
-      {step === 'alternatives' && renderAlternatives()}
+      {/* Alternatives modal */}
+      <Modal visible={altModalVisible} transparent animationType="slide" onRequestClose={() => setAltModalVisible(false)}>
+        <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.4)',justifyContent:'flex-end'}}>
+          {renderAlternatives()}
+        </View>
+      </Modal>
     </SafeAreaView>
     </View>
   );
