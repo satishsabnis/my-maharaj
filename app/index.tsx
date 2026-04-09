@@ -12,9 +12,9 @@ export default function SplashScreen() {
 
   useEffect(() => {
     Animated.sequence([
-      Animated.timing(opacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      Animated.delay(4000),
-      Animated.timing(opacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.delay(3000),
+      Animated.timing(opacity, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start(async () => {
       if (navigated) return;
       setNavigated(true);

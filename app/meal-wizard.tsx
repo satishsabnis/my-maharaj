@@ -21,7 +21,7 @@ import { scheduleSundayReminder } from '../lib/notifications';
 
 type WizardStep =
   | 'wizard' | 'generating' | 'observations' | 'plan-summary' | 'alternatives'
-  | 'what-next' | 'grocery' | 'online-shopping';
+  | 'what-next' | 'confirmed-plan' | 'grocery' | 'online-shopping';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -82,17 +82,28 @@ const CAT_ORDER: GroceryCat[] = ['Vegetables', 'Protein', 'Dairy', 'Spices', 'Pa
 // ─── Festivals ────────────────────────────────────────────────────────────────
 
 const FESTIVALS_2026 = [
-  { name: 'Baisakhi', date: '2026-04-14' },
-  { name: 'Akshaya Tritiya', date: '2026-04-19' },
-  { name: 'Eid al-Adha', date: '2026-05-27' },
-  { name: 'Guru Purnima', date: '2026-07-29' },
-  { name: 'Raksha Bandhan', date: '2026-08-28' },
-  { name: 'Janmashtami', date: '2026-09-04' },
-  { name: 'Ganesh Chaturthi', date: '2026-09-14' },
-  { name: 'Navratri', date: '2026-10-11' },
-  { name: 'Dussehra', date: '2026-10-20' },
-  { name: 'Diwali', date: '2026-11-08' },
-  { name: 'Christmas', date: '2026-12-25' },
+  { name: 'Lohri', month: 1, day: 13 },
+  { name: 'Makar Sankranti', month: 1, day: 14 },
+  { name: 'Maha Shivratri', month: 2, day: 26 },
+  { name: 'Holi', month: 3, day: 4 },
+  { name: 'Eid ul Fitr', month: 3, day: 20 },
+  { name: 'Gudi Padwa', month: 3, day: 21 },
+  { name: 'Ram Navami', month: 3, day: 27 },
+  { name: 'Hanuman Jayanti', month: 4, day: 10 },
+  { name: 'Baisakhi', month: 4, day: 14 },
+  { name: 'Akshaya Tritiya', month: 4, day: 29 },
+  { name: 'Eid ul Adha', month: 5, day: 27 },
+  { name: 'Guru Purnima', month: 7, day: 3 },
+  { name: 'Independence Day', month: 8, day: 15 },
+  { name: 'Janmashtami', month: 8, day: 17 },
+  { name: 'Ganesh Chaturthi', month: 8, day: 24 },
+  { name: 'Raksha Bandhan', month: 9, day: 3 },
+  { name: 'Navratri', month: 10, day: 12 },
+  { name: 'Karwa Chauth', month: 10, day: 16 },
+  { name: 'Dussehra', month: 10, day: 21 },
+  { name: 'Guru Nanak Jayanti', month: 11, day: 5 },
+  { name: 'Diwali', month: 11, day: 8 },
+  { name: 'Christmas', month: 12, day: 25 },
 ];
 
 // ─── Main Wizard ──────────────────────────────────────────────────────────────
@@ -170,7 +181,7 @@ export default function MealWizardScreen() {
   const [observations, setObservations] = useState<Observation[]>([]);
 
   // Alternatives
-  const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string } | null>(null);
+  const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string; dishName: string } | null>(null);
 
   // Recipe modal
   const [recipeModal, setRecipeModal] = useState<{ visible: boolean; dishName: string }>({ visible: false, dishName: '' });
@@ -197,7 +208,12 @@ export default function MealWizardScreen() {
   const CUISINE_GROUPS = getCuisineGroups(isJainFamily);
 
   const scrollRef = useRef<ScrollView>(null);
-  useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: true }); }, [step]);
+  const prevStepRef = useRef<WizardStep | null>(null);
+  const scrollYRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    prevStepRef.current = step;
+  }, [step]);
 
   // Intercept hardware back button — route through internal wizard navigation
   useFocusEffect(
@@ -505,7 +521,10 @@ export default function MealWizardScreen() {
 
     // Check for festivals
     FESTIVALS_2026.forEach(fest => {
-      if (dates.includes(fest.date)) {
+      if (dates.some(d => {
+        const dt = new Date(d);
+        return dt.getMonth() + 1 === fest.month && dt.getDate() === fest.day;
+      })) {
         obs.push({
           id: String(++obsId),
           label: fest.name,
@@ -931,7 +950,11 @@ export default function MealWizardScreen() {
     });
     html += '</body></html>';
     const blob = new Blob([html], { type: 'text/html' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'maharaj-shopping-list.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const _now = new Date();
+    const _dd = String(_now.getDate()).padStart(2, '0');
+    const _mm = String(_now.getMonth() + 1).padStart(2, '0');
+    const _yyyy = _now.getFullYear();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `maharaj-shopping-list-${_dd}${_mm}${_yyyy}.pdf`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   // ── Scan functions ───────────────────────────────────────────────────────
@@ -994,12 +1017,23 @@ export default function MealWizardScreen() {
 
   function goBack() {
     setError('');
+    if (step === 'plan-summary') {
+      Alert.alert(
+        'Go back?',
+        'Going back will lose your generated plan. Are you sure?',
+        [
+          { text: 'Stay', style: 'cancel' },
+          { text: 'Go back', style: 'destructive', onPress: () => setStep('observations') },
+        ]
+      );
+      return;
+    }
     const backMap: Partial<Record<WizardStep, WizardStep>> = {
       'generating': 'wizard',
       'observations': 'generating',
-      'plan-summary': 'observations',
       'alternatives': 'plan-summary',
       'what-next': 'plan-summary',
+      'confirmed-plan': 'plan-summary',
       'grocery': 'what-next',
       'online-shopping': 'grocery',
     };
@@ -1202,7 +1236,7 @@ export default function MealWizardScreen() {
         <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
           {/* Maharaj logo with pulse */}
           <Animated.View style={{transform:[{scale:pulseAnim}],marginBottom:20}}>
-            <Image source={require('../assets/icon.png')} style={{width:160,height:160,borderRadius:80}} resizeMode="contain" />
+            <Image source={require('../assets/icon.png')} style={{width:200,height:200,borderRadius:100}} resizeMode="contain" />
           </Animated.View>
 
           <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:8,textAlign:'center'}}>Maharaj is planning...</Text>
@@ -1349,7 +1383,8 @@ export default function MealWizardScreen() {
           const dt = new Date(day.date);
           const dayLabel = `${day.day}, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
           // Check for festivals
-          const festivalMatch = FESTIVALS_2026.find(f => f.date === day.date);
+          const dt2 = new Date(day.date);
+          const festivalMatch = FESTIVALS_2026.find(f => f.month === dt2.getMonth() + 1 && f.day === dt2.getDate());
           const isSunday = dt.getDay() === 0;
 
           return (
@@ -1397,7 +1432,7 @@ export default function MealWizardScreen() {
                                 {isCarry && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                               </TouchableOpacity>
                               <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarry}
-                                onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel }); setStep('alternatives'); }}>
+                                onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName }); setStep('alternatives'); }}>
                                 <Text style={{fontSize:14,color:colors.navy,opacity:isCarry ? 0 : 1}}>{'\u270E'}</Text>
                               </TouchableOpacity>
                             </View>
@@ -1418,7 +1453,7 @@ export default function MealWizardScreen() {
                             {key === 'snack' && <Text style={{fontSize:10,color:colors.textMuted}}>Fresh · 15 min</Text>}
                           </TouchableOpacity>
                           <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}}
-                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label }); setStep('alternatives'); }}>
+                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label, dishName: comp.dishName }); setStep('alternatives'); }}>
                             <Text style={{fontSize:14,color:colors.navy}}>{'\u270E'}</Text>
                           </TouchableOpacity>
                         </View>
@@ -1513,7 +1548,7 @@ export default function MealWizardScreen() {
               } catch {}
             }
           })();
-          setStep('what-next');
+          setStep('confirmed-plan');
         }} activeOpacity={0.85}>
           <Text style={{fontSize:16,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
         </TouchableOpacity>
@@ -1567,11 +1602,11 @@ export default function MealWizardScreen() {
   function renderAlternatives() {
     if (!generatedPlan || !alternativeSlot) return null;
 
-    const { dayIdx, slot, component } = alternativeSlot;
+    const { dayIdx, slot, component, dishName: altDishName } = alternativeSlot;
     const day = generatedPlan[dayIdx];
     const dt = new Date(day.date);
     const currentOpt = getOpt(dayIdx, slot);
-    const currentName = currentOpt?.name ?? 'Current dish';
+    const currentName = altDishName || currentOpt?.name || 'Current dish';
 
     // Get alternative options from the plan
     const slotData = day[slot];
@@ -1612,7 +1647,7 @@ export default function MealWizardScreen() {
               </View>
             )) : (
               <View style={{alignItems:'center',paddingVertical:20}}>
-                <Text style={{fontSize:14,color:colors.textMuted}}>No alternatives available for this slot.</Text>
+                <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center',lineHeight:20}}>No pre-generated alternatives for {currentName}. Go back and regenerate with different preferences to see more options.</Text>
               </View>
             )}
           </ScrollView>
@@ -1662,6 +1697,27 @@ export default function MealWizardScreen() {
             <Text style={{fontSize:9,fontWeight:'700',color:'#FFFFFF'}}>Share</Text>
           </TouchableOpacity>
         </View>
+      </View>
+    );
+  }
+
+  function renderConfirmedPlan() {
+    const numDays = generatedPlan?.length ?? 0;
+    return (
+      <View style={{alignItems:'center',paddingTop:24,paddingHorizontal:4}}>
+        <View style={{width:64,height:64,borderRadius:32,backgroundColor:'rgba(30,158,94,0.12)',alignItems:'center',justifyContent:'center',marginBottom:16}}>
+          <Text style={{fontSize:30,color:colors.emerald,fontWeight:'800'}}>{'✓'}</Text>
+        </View>
+        <Text style={{fontSize:22,fontWeight:'800',color:colors.navy,marginBottom:8,textAlign:'center'}}>Your week is confirmed</Text>
+        <Text style={{fontSize:14,color:colors.textSecondary,textAlign:'center',marginBottom:28,lineHeight:22}}>
+          Maharaj has locked in your {numDays}-day meal plan. You can view, edit, or download it any time.
+        </Text>
+        <TouchableOpacity style={{width:'100%',backgroundColor:colors.emerald,borderRadius:14,paddingVertical:16,alignItems:'center',marginBottom:12}} onPress={() => setStep('what-next')} activeOpacity={0.85}>
+          <Text style={{fontSize:16,fontWeight:'700',color:colors.white}}>What would you like to do?</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={() => setStep('plan-summary')} activeOpacity={0.85}>
+          <Text style={{fontSize:15,fontWeight:'600',color:colors.navy}}>View My Plan</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -1851,6 +1907,7 @@ export default function MealWizardScreen() {
     'observations':    renderObservations,
     'plan-summary':    renderPlanSummaryV3,
     'alternatives':    renderPlanSummaryV3,
+    'confirmed-plan':  renderConfirmedPlan,
     'what-next':       renderWhatNext,
     'grocery':         renderGrocery,
     'online-shopping': renderOnlineShopping,
@@ -1866,6 +1923,7 @@ export default function MealWizardScreen() {
     'observations': "Maharaj's Observations",
     'plan-summary': 'My Maharaj Meal Plan',
     'alternatives': 'My Maharaj Meal Plan',
+    'confirmed-plan': 'Plan Confirmed',
     'what-next': 'What Would You Like to Do?',
     'grocery': 'Shopping List',
     'online-shopping': 'Order Online',
@@ -1890,7 +1948,7 @@ export default function MealWizardScreen() {
 
       {!isFullScreen && step !== 'plan-summary' && <MarqueeTicker />}
 
-      <ScrollView ref={scrollRef} contentContainerStyle={[s.scroll, isFullScreen && s.scrollCenter]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={[s.scroll, isFullScreen && s.scrollCenter]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" onScroll={(e) => { scrollYRef.current[step] = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}>
         <View style={[s.body, isFullScreen && s.bodyCenter]}>
           {STEP_RENDER[step]?.()}
         </View>

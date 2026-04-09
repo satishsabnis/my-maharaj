@@ -184,7 +184,9 @@ export default function AskMaharajScreen() {
       const profileCtx = await getProfileContext();
       const lang = userLanguages[0] || 'English';
       const isMeal = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
-      const systemPrompt = `${familyContextStr}
+      const systemPrompt = `CRITICAL: You MUST respond ENTIRELY in ${lang}. Never switch languages mid-response. Even if the user writes in another language, always reply in ${lang}.
+
+${familyContextStr}
 You are Maharaj, a culturally intelligent Indian family meal planning assistant.
 ${profileCtx ? `FAMILY PROFILE:\n${profileCtx}\n` : ''}
 You MUST respond entirely in ${lang}. Dish names in their authentic Indian language names. Descriptions in ${lang}.
@@ -278,9 +280,15 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
                       if (isSpeaking && isPaused) { window.speechSynthesis.resume(); setIsPaused(false); return; }
                       window.speechSynthesis.cancel();
                       const u = new SpeechSynthesisUtterance(stripForSpeech(msg.content).slice(0,500));
-                      u.lang = 'en-IN'; u.rate = 0.9;
+                      u.lang = 'en-IN'; u.rate = 0.9; u.pitch = 0.85;
                       const voices = window.speechSynthesis.getVoices();
-                      u.voice = voices.find(v => v.name.includes('Rishi')) || voices.find(v => v.name.includes('David')) || voices.find(v => v.lang.startsWith('en')) || null;
+                      u.voice = voices.find(v => v.name.includes('Rishi'))
+                        || voices.find(v => v.name.includes('David'))
+                        || voices.find(v => v.name.includes('Daniel'))
+                        || voices.find(v => v.name.includes('Google UK English Male'))
+                        || voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('female'))
+                        || voices.find(v => v.lang.startsWith('en'))
+                        || null;
                       u.onend = () => { setIsSpeaking(false); setIsPaused(false); };
                       setIsSpeaking(true); setIsPaused(false);
                       window.speechSynthesis.speak(u);
