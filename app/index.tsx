@@ -22,7 +22,9 @@ export default function SplashScreen() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }
       const langSet = await AsyncStorage.getItem('maharaj_lang_set');
-      if (!langSet) { router.replace('/language-select'); } else { router.replace('/home'); }
+      if (!langSet) { router.replace('/language-select'); return; }
+      const onboardingDone = await AsyncStorage.getItem('onboarding_complete');
+      if (!onboardingDone) { router.replace('/onboarding'); } else { router.replace('/home'); }
     });
   }, []);
 
