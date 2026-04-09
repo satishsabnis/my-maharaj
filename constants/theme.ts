@@ -36,7 +36,7 @@ export const buttons = {
   },
   primaryText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 16,
     fontWeight: '500' as const,
   },
   secondary: {
@@ -49,7 +49,7 @@ export const buttons = {
   },
   secondaryText: {
     color: '#1A3A5C',
-    fontSize: 9,
+    fontSize: 16,
     fontWeight: '500' as const,
   },
   back: {
@@ -121,28 +121,28 @@ export const cards = {
 
 export const typography = {
   sectionTitle: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '500' as const,
     color: '#1E9E5E',
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.7,
+    letterSpacing: 0.8,
     marginBottom: 7,
     paddingBottom: 4,
   },
   fieldLabel: {
-    fontSize: 7,
+    fontSize: 13,
     color: '#4A7A6A',
     textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
     marginBottom: 4,
   },
   body: {
-    fontSize: 8.5,
+    fontSize: 16,
     color: '#1A3A5C',
     lineHeight: 1.4,
   },
   muted: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: '#5A7A8A',
   },
 };

@@ -311,14 +311,14 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   tipText: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.teal,
-    lineHeight: 12,
+    lineHeight: 20,
   },
 
   // Section title
   sectionTitle: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.emerald,
     textTransform: 'uppercase',
@@ -379,17 +379,17 @@ const s = StyleSheet.create({
     marginBottom: 3,
   },
   festName: {
-    fontSize: 8.5,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
   },
   festDate: {
-    fontSize: 7,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.gold,
   },
   festFood: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 5,
   },
@@ -406,7 +406,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 7,
   },
   greenPillText: {
-    fontSize: 6.5,
+    fontSize: 13,
     color: colors.emerald,
     fontWeight: '600',
   },
@@ -417,19 +417,19 @@ const s = StyleSheet.create({
     paddingHorizontal: 7,
   },
   navyPillText: {
-    fontSize: 6.5,
+    fontSize: 13,
     color: colors.navy,
     fontWeight: '600',
   },
 
   mutedText: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.textMuted,
   },
 
   // Family occasions section
   occasionName: {
-    fontSize: 8.5,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.navy,
     marginBottom: 2,
@@ -448,12 +448,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
   },
   editPillText: {
-    fontSize: 6.5,
+    fontSize: 13,
     color: colors.emerald,
     fontWeight: '600',
   },
   removeLink: {
-    fontSize: 6.5,
+    fontSize: 13,
     color: colors.danger,
     fontWeight: '500',
   },
@@ -468,29 +468,29 @@ const s = StyleSheet.create({
     marginBottom: 6,
   },
   dashedBtnText: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.emerald,
     fontWeight: '600',
   },
 
   // Full calendar cards
   calName: {
-    fontSize: 8.5,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
   },
   calDate: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   calFood: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 5,
   },
 
   viewAllLink: {
-    fontSize: 7.5,
+    fontSize: 13,
     color: colors.teal,
     fontWeight: '600',
     textAlign: 'center',
@@ -514,13 +514,13 @@ const s = StyleSheet.create({
     alignSelf: 'center',
   },
   modalTitle: {
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.navy,
     marginBottom: 12,
   },
   fieldLabel: {
-    fontSize: 7,
+    fontSize: 13,
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -533,7 +533,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 9,
-    fontSize: 8.5,
+    fontSize: 16,
     color: colors.textPrimary,
     backgroundColor: colors.white,
   },
