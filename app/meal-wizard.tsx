@@ -14,6 +14,7 @@ import MaharajSpinner from '../components/MaharajSpinner';
 import { getCuisineGroups } from '../lib/cuisineGroups';
 import { colors, cards, buttons } from '../constants/theme';
 import { track } from '../lib/analytics';
+import { scheduleSundayReminder } from '../lib/notifications';
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -1469,6 +1470,8 @@ export default function MealWizardScreen() {
                 // Fire-and-forget Supabase save (never blocks UI)
                 void savePlanToSupabase(confirmedPlan);
                 track('plan_generated', { days: generatedPlan.length });
+                // Warm permission ask + Sunday reminder — only fires after first plan confirmed
+                void scheduleSundayReminder();
               } catch {}
             }
           })();

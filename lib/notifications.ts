@@ -150,6 +150,36 @@ export async function scheduleFestivalReminder(festivalName: string, festivalDat
   });
 }
 
+// ─── Sunday weekly meal plan push ────────────────────────────────────────────
+
+export async function scheduleSundayReminder(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  // Request permission warm — only call this after user has confirmed a plan
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return; // silently skip if denied
+
+  // Cancel any existing Sunday reminder before rescheduling
+  const existingId = await AsyncStorage.getItem('notif_sunday_reminder');
+  if (existingId) {
+    try { await Notifications.cancelScheduledNotificationAsync(existingId); } catch {}
+  }
+
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Aaj Khaane mein kya hai?',
+      body: 'Plan your week with Maharaj. Takes 30 seconds.',
+      data: { screen: 'meal-wizard' },
+    },
+    trigger: {
+      weekday: 1, // 1 = Sunday in expo-notifications
+      hour: 20,
+      minute: 0,
+      repeats: true,
+    } as any,
+  });
+  await AsyncStorage.setItem('notif_sunday_reminder', id);
+}
+
 // ─── Cancel notification ─────────────────────────────────────────────────────
 
 export async function cancelNotification(notifId: string): Promise<void> {
