@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, ImageBackground, Platform,
+  ActivityIndicator, Alert, Animated, ImageBackground, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -122,8 +122,16 @@ Return JSON: { day1:{breakfast?:[{dishName,isVeg,note}],lunch?:[...],dinner?:[..
 Only include the meal types requested.`;
         const raw = await callClaude(sys, 'Generate the 2-day rotating canteen menu now.');
         const match = raw.match(/\{[\s\S]*\}/);
-        const parsed: CanteenResult = JSON.parse(match ? match[0] : raw);
-        setCanteenResult(parsed);
+        try {
+          const parsed: CanteenResult = JSON.parse(match ? match[0] : raw);
+          setCanteenResult(parsed);
+          setPhase('output');
+        } catch (e) {
+          console.error('[Outdoor Catering] JSON parse failed:', e);
+          Alert.alert('Maharaj had trouble planning', 'Please try again.');
+          setPhase('input');
+        }
+        return;
       } else {
         if (!occasion.trim()) { setError('Please describe the occasion.'); setLoading(false); return; }
         const label = useCase === 'corporate' ? 'corporate event' : 'group outdoor trip';
@@ -132,10 +140,16 @@ Occasion: ${occasion}, Date: ${date || 'not specified'}, People: ${people || 'no
 Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg,note}], accompaniments:[{dishName,isVeg,note}], notes:["string"] }`;
         const raw = await callClaude(sys, 'Generate the outdoor catering menu now.');
         const match = raw.match(/\{[\s\S]*\}/);
-        const parsed: GroupResult = JSON.parse(match ? match[0] : raw);
-        setGroupResult(parsed);
+        try {
+          const parsed: GroupResult = JSON.parse(match ? match[0] : raw);
+          setGroupResult(parsed);
+          setPhase('output');
+        } catch (e) {
+          console.error('[Outdoor Catering] JSON parse failed:', e);
+          Alert.alert('Maharaj had trouble planning', 'Please try again.');
+          setPhase('input');
+        }
       }
-      setPhase('output');
     } catch (err) {
       console.error('[OutdoorCatering]', err);
       setError('Failed to generate. Please try again.');

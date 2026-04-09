@@ -608,7 +608,11 @@ export default function MealWizardScreen() {
 
   function buildGrocery(): Record<GroceryCat, { name: string; qty?: number; unit?: string }[]> {
     const itemMap: Record<string, { baseName: string; qty: number; unit: string; cat: GroceryCat }> = {};
-    if (!generatedPlan) return {} as any;
+    if (!generatedPlan) {
+      Alert.alert('No plan found', 'Please generate a meal plan first.');
+      setStep('wizard');
+      return {} as any;
+    }
 
     function parseIngredient(ing: string): { name: string; qty: number; unit: string } {
       const s = ing.trim();
@@ -1309,7 +1313,18 @@ export default function MealWizardScreen() {
   }
 
   function renderPlanSummaryV3() {
-    if (!generatedPlan) return null;
+    if (!generatedPlan) return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 16, color: colors.navy, textAlign: 'center' }}>
+          No plan found. Please generate a new plan.
+        </Text>
+        <TouchableOpacity
+          onPress={() => setStep('wizard')}
+          style={{ marginTop: 16, backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 10, paddingHorizontal: 24 }}>
+          <Text style={{ color: colors.white, fontSize: 15, fontWeight: '700' }}>Plan My Week</Text>
+        </TouchableOpacity>
+      </View>
+    );
 
     const SLOT_LABELS: { key: MealSlotKey; label: string }[] = [
       { key: 'breakfast', label: 'Breakfast' },
