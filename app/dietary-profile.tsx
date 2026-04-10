@@ -200,16 +200,52 @@ export default function DietaryProfileScreen() {
 
   useEffect(() => {
     async function loadAll() {
-      // Supabase profile
+      // Supabase profile — fetch all fields, write back to AsyncStorage as local cache
       try {
         const user = await getSessionUser();
         if (user) {
-          const { data: prof } = await supabase.from('profiles').select('subscription_tier, subscription_expires_at, full_name, phone_number').eq('id', user.id).maybeSingle();
+          const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
           if (prof?.subscription_tier) setSubTier(prof.subscription_tier);
           if (prof?.subscription_expires_at) setSubExpiry(new Date(prof.subscription_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
           setFullName((prof?.full_name ?? user.user_metadata?.full_name ?? '') as string);
           setUserEmail(user.email ?? '');
           if (prof?.phone_number) setPhoneNumber(prof.phone_number);
+
+          // Restore all profile fields from Supabase into AsyncStorage (survives logout/reinstall)
+          if (prof) {
+            const updates: [string, string][] = [];
+            if (prof.community)                updates.push(['community', prof.community]);
+            if (prof.community_other)          updates.push(['community_other', prof.community_other]);
+            if (prof.additional_dietary_rules) updates.push(['additional_dietary_rules', prof.additional_dietary_rules]);
+            if (prof.jain_family != null)      updates.push(['jain_family', String(prof.jain_family)]);
+            if (prof.jain_allow_non_jain != null) updates.push(['jain_allow_non_jain', String(prof.jain_allow_non_jain)]);
+            if (prof.meal_template_curry)      updates.push(['meal_template_curry', prof.meal_template_curry]);
+            if (prof.meal_template_veg)        updates.push(['meal_template_veg', prof.meal_template_veg]);
+            if (prof.meal_template_raita)      updates.push(['meal_template_raita', prof.meal_template_raita]);
+            if (prof.meal_template_bread)      updates.push(['meal_template_bread', prof.meal_template_bread]);
+            if (prof.meal_template_rice)       updates.push(['meal_template_rice', prof.meal_template_rice]);
+            if (prof.sunday_extra_curry)       updates.push(['sunday_extra_curry', prof.sunday_extra_curry]);
+            if (prof.sunday_sweet)             updates.push(['sunday_sweet', prof.sunday_sweet]);
+            if (prof.breakfast_preferences)    updates.push(['breakfast_preferences', prof.breakfast_preferences]);
+            if (prof.cooking_pattern)          updates.push(['cooking_pattern', prof.cooking_pattern]);
+            if (prof.avoidance_list)           updates.push(['avoidance_list', prof.avoidance_list]);
+            if (prof.grocery_day)              updates.push(['grocery_day', prof.grocery_day]);
+            if (prof.preferred_supermarkets)   updates.push(['preferred_supermarkets', prof.preferred_supermarkets]);
+            if (prof.preferred_delivery_apps)  updates.push(['preferred_delivery_apps', prof.preferred_delivery_apps]);
+            if (prof.recurring_occasions)      updates.push(['recurring_occasions', JSON.stringify(prof.recurring_occasions)]);
+            if (prof.cooking_skill)            updates.push(['cooking_skill', prof.cooking_skill]);
+            if (prof.budget_pref)              updates.push(['budget_pref', prof.budget_pref]);
+            if (prof.app_language)             updates.push(['app_language', prof.app_language]);
+            if (prof.plan_summary_language)    updates.push(['plan_summary_language', prof.plan_summary_language]);
+            if (prof.shopping_list_language)   updates.push(['shopping_list_language', prof.shopping_list_language]);
+            if (prof.household_insurance)      updates.push(['household_insurance', prof.household_insurance]);
+            if (prof.insurance_expiry)         updates.push(['insurance_expiry', prof.insurance_expiry]);
+            if (prof.notif_festivals != null)  updates.push(['notif_festivals', String(prof.notif_festivals)]);
+            if (prof.notif_lab_reports != null) updates.push(['notif_lab_reports', String(prof.notif_lab_reports)]);
+            if (prof.notif_insurance_reminders != null) updates.push(['notif_insurance_reminders', String(prof.notif_insurance_reminders)]);
+            if (prof.phone_number)             updates.push(['phone_number', prof.phone_number]);
+            if (updates.length > 0) await AsyncStorage.multiSet(updates);
+          }
         }
       } catch {}
 
@@ -396,8 +432,7 @@ export default function DietaryProfileScreen() {
       ['profile_setup_complete', 'true'],
     ]);
 
-    // Supabase profiles upsert
-    // NOTE: plan_summary_language column needs to be added to Supabase profiles table (migration pending)
+    // Supabase profiles upsert — full profile, all fields, source of truth for cross-device persistence
     try {
       const user = await getSessionUser();
       if (user) {
@@ -405,6 +440,35 @@ export default function DietaryProfileScreen() {
           id: user.id,
           full_name: fullName,
           phone_number: phoneNumber,
+          community,
+          community_other: communityOther,
+          additional_dietary_rules: additionalRules,
+          jain_family: isJainFamily,
+          jain_allow_non_jain: jainAllowNonJain,
+          meal_template_curry: mealCurry,
+          meal_template_veg: mealVeg,
+          meal_template_raita: mealRaita,
+          meal_template_bread: mealBread,
+          meal_template_rice: mealRice,
+          sunday_extra_curry: sundayCurry,
+          sunday_sweet: sundaySweet,
+          breakfast_preferences: breakfastPrefs,
+          cooking_pattern: cookingPattern,
+          avoidance_list: avoidanceList,
+          grocery_day: groceryDay,
+          preferred_supermarkets: preferredStores,
+          preferred_delivery_apps: preferredApps,
+          recurring_occasions: occasions,
+          cooking_skill: cookingSkill,
+          budget_pref: budgetPref,
+          app_language: appLanguage,
+          plan_summary_language: planSummaryLanguage,
+          shopping_list_language: shoppingLanguage,
+          household_insurance: hasInsurance ? 'true' : 'false',
+          insurance_expiry: insuranceExpiry,
+          notif_festivals: notifFestivals,
+          notif_lab_reports: notifLabReports,
+          notif_insurance_reminders: notifInsurance,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
       }

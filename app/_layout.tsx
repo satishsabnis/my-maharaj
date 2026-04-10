@@ -140,7 +140,13 @@ export default function Layout() {
         const storedVersion = await AsyncStorage.getItem('app_version');
         if (data.forceLogout && storedVersion !== data.version) {
           await supabase.auth.signOut();
-          await AsyncStorage.clear();
+          // Targeted clear — preserve all profile fields; only remove session/flow keys
+          await AsyncStorage.multiRemove([
+            'wizard_step', 'current_week_plan', 'confirmed_meal_plan',
+            'partial_plan', 'onboarding_complete', 'maharaj_lang_set',
+            'maharaj_plan_ready', 'meal_plan_date', 'menu_history',
+            'dish_history', 'dish_feedback', 'supabase_migration_done',
+          ]);
           await AsyncStorage.setItem('app_version', data.version);
           router.replace('/upgrade-splash');
           setLoading(false);
