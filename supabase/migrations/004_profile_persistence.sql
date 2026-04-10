@@ -1,0 +1,32 @@
+-- Migration 004: Add all profile fields to profiles table for full cross-device persistence
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS community TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS community_other TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS additional_dietary_rules TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS jain_family BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS jain_allow_non_jain BOOLEAN DEFAULT true;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS meal_template_curry TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS meal_template_veg TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS meal_template_raita TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS meal_template_bread TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS meal_template_rice TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS sunday_extra_curry TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS sunday_sweet TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS breakfast_preferences TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cooking_pattern TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avoidance_list TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS grocery_day TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS preferred_supermarkets TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS preferred_delivery_apps TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS recurring_occasions JSONB DEFAULT '[]';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cooking_skill TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS budget_pref TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS app_language TEXT DEFAULT 'en';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan_summary_language TEXT DEFAULT 'en';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS shopping_list_language TEXT DEFAULT 'en';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone_number TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS household_insurance TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS insurance_expiry TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notif_festivals BOOLEAN DEFAULT true;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notif_lab_reports BOOLEAN DEFAULT true;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notif_insurance_reminders BOOLEAN DEFAULT true;
