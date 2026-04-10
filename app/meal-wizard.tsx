@@ -1560,7 +1560,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                 const rowStyle = {flexDirection:'row' as const,alignItems:'center' as const,paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2};
 
                 // ── Anatomy path ────────────────────────────────────────────
-                if (day.anatomy) {
+                if (day.anatomy?.lunch?.curry?.dishName || day.anatomy?.breakfast?.dishName) {
                   const nightCarry = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
                   const prevDayName = nightCarry ? generatedPlan[dayIdx - 1].day : '';
                   const prevDinnerAnat = nightCarry ? generatedPlan[dayIdx - 1].anatomy?.dinner : undefined;
