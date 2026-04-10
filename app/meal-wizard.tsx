@@ -497,14 +497,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       setGeneratingDay('');  // reset before generation starts
 
-      console.log('[GENERATION PARAMS]', JSON.stringify({
-        mealTemplateCurry,
-        sundayExtraCurry,
-        cookingPattern,
-        jainFamily,
-        community: communityRules,
-        cuisines: allCuisinesPerDay,
-      }));
+      const communityFromProfile = await AsyncStorage.getItem('community') || '';
 
       const plan = await generateMealPlanFast({
         userId,
@@ -531,7 +524,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         locationCity: userLocation.city,
         locationStores: userLocation.stores,
         selectedSlots: slotsToUse,
-        communityRules,
+        communityRules: communityFromProfile || communityRules || '',
         familyAvoids,
         familySize,
         familyRecipes: useMyRecipes ? familyRecipes : [],
