@@ -97,7 +97,7 @@ async function askClaude(prompt: string): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -113,7 +113,7 @@ async function askClaudeStream(prompt: string): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -693,8 +693,7 @@ interface FastDayResponse {
 function normComp(raw: any): FastMealComp {
   if (!raw) return { dishName: '', ingredients: [] };
   if (typeof raw === 'string') return { dishName: raw, ingredients: [] };
-  const alts = Array.isArray(raw.alternatives) ? raw.alternatives.map((a: any) => ({ dishName: a.dishName ?? a.name ?? String(a), isVeg: a.isVeg, cuisine: a.cuisine })) : undefined;
-  return { dishName: raw.dishName ?? raw.name ?? '', isVeg: raw.isVeg, cuisine: raw.cuisine, ingredients: raw.ingredients ?? [], alternatives: alts };
+  return { dishName: raw.dishName ?? raw.name ?? '', isVeg: raw.isVeg, cuisine: raw.cuisine, ingredients: raw.ingredients ?? [] };
 }
 function normSlot(raw: any): FastMealSlot {
   return { curry: normComp(raw?.curry), veg: normComp(raw?.veg), raita: normComp(raw?.raita), bread: normComp(raw?.bread), rice: normComp(raw?.rice) };
@@ -751,7 +750,7 @@ function fastDayToMealPlanDay(date: string, dayName: string, day: FastDayRespons
 
   // Build typed anatomy
   const anatomy: DayAnatomy = {};
-  const toAnatComp = (c: FastMealComp): AnatomyComponent => ({ dishName: c.dishName, isVeg: c.isVeg, cuisine: c.cuisine, ingredients: c.ingredients ?? [], alternatives: c.alternatives });
+  const toAnatComp = (c: FastMealComp): AnatomyComponent => ({ dishName: c.dishName, isVeg: c.isVeg, cuisine: c.cuisine, ingredients: c.ingredients ?? [] });
   const toAnatSlot = (ms: FastMealSlot): MealAnatomy => ({ curry: toAnatComp(ms.curry), veg: toAnatComp(ms.veg), raita: toAnatComp(ms.raita), bread: toAnatComp(ms.bread), rice: toAnatComp(ms.rice) });
   if (day.breakfast && slots.includes('breakfast')) anatomy.breakfast = toAnatComp(day.breakfast);
   if (day.lunch    && slots.includes('lunch'))    anatomy.lunch    = toAnatSlot(day.lunch);
@@ -859,12 +858,11 @@ export async function generateMealPlanFast(
     if (slots.includes('dinner')) mealLines.push('- Dinner: { curry: one main curry, veg: one vegetable dish, raita: one raita, bread: chapati/paratha/puri/naan, rice: one rice preparation }');
     if (slots.includes('snack')) mealLines.push('- Snack: 1 freshly cookable snack (15 mins max, never packaged)');
 
-    const altShape = '"alternatives": [{"dishName": "alt1", "isVeg": true, "cuisine": "..."}, {"dishName": "alt2", "isVeg": true, "cuisine": "..."}, {"dishName": "alt3", "isVeg": true, "cuisine": "..."}]';
     const jsonShape: string[] = [];
-    if (slots.includes('breakfast')) jsonShape.push(`"breakfast": { "dishName": "Authentic Indian name", "isVeg": true, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"], ${altShape} }`);
-    if (slots.includes('lunch')) jsonShape.push(`"lunch": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"], ${altShape} }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"], ${altShape} }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"], ${altShape} }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"], ${altShape} }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"], ${altShape} } }`);
-    if (slots.includes('dinner')) jsonShape.push(`"dinner": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"], ${altShape} }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"], ${altShape} }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"], ${altShape} }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"], ${altShape} }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"], ${altShape} } }`);
-    if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x3-4"], ${altShape} }`);
+    if (slots.includes('breakfast')) jsonShape.push(`"breakfast": { "dishName": "Authentic Indian name", "isVeg": true, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"] }`);
+    if (slots.includes('lunch')) jsonShape.push(`"lunch": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
+    if (slots.includes('dinner')) jsonShape.push(`"dinner": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
+    if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x3-4"] }`);
 
     const buildPrompt = (retry = false): string => `Generate a complete meal plan for ${dayName} (${date}).
 
@@ -918,8 +916,6 @@ Return JSON only, no markdown, no explanation:
       dayResult = { date, day: dayName, breakfast: fbBf, lunch: fbLn, dinner: fbDn };
     }
 
-    console.log('[ANATOMY DEBUG] Day result:', JSON.stringify(dayResult, null, 2));
-    console.log('[ANATOMY DEBUG] anatomy attached?', !!dayResult.anatomy, dayResult.anatomy?.lunch?.curry?.dishName);
     dayResults.push(dayResult);
     onProgress?.(i + 1, total);
   }
