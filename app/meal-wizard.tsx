@@ -1540,8 +1540,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
             const isSunday = dt.getDay() === 0;
 
             return (
-              <View key={day.date} style={{width: FULL_WIDTH, paddingHorizontal:16}}>
-                <ScrollView showsVerticalScrollIndicator={false}>
+              <View key={day.date} style={{width: FULL_WIDTH, paddingHorizontal:16, flex:1}}>
+                <ScrollView showsVerticalScrollIndicator={false} style={{flex:1}} contentContainerStyle={{paddingBottom:24}}>
                   {/* Date header */}
                   <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:4,marginTop:8}}>
                     {day.day}, {dt.getDate()} {MONTHS_L[dt.getMonth()]}
