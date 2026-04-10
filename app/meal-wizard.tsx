@@ -1591,12 +1591,20 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   )}
 
               {/* Meal slots */}
-              {slotsToShow.map(({ key, label }) => {
+              {(() => {
+                const hasAnatomy = !!(day.anatomy?.lunch?.curry?.dishName || day.anatomy?.breakfast?.dishName);
+                const hasLegacy = !!(day.breakfast || day.lunch || day.dinner);
+                if (!hasAnatomy && !hasLegacy) return (
+                  <View style={{padding:16,alignItems:'center'}}>
+                    <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Maharaj is still planning this day. Please regenerate.</Text>
+                  </View>
+                );
+                return slotsToShow.map(({ key, label }) => {
                 const slotLabel = <Text style={{fontSize:10,fontWeight:'700',color:colors.textMuted,letterSpacing:0.5,textTransform:'uppercase',marginBottom:4}}>{label}</Text>;
                 const rowStyle = {flexDirection:'row' as const,alignItems:'center' as const,paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2};
 
                 // ── Anatomy path ────────────────────────────────────────────
-                if (day.anatomy?.lunch?.curry?.dishName || day.anatomy?.breakfast?.dishName) {
+                if (hasAnatomy) {
                   const nightCarry = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
                   const prevDayName = nightCarry ? generatedPlan[dayIdx - 1].day : '';
                   const prevDinnerAnat = nightCarry ? generatedPlan[dayIdx - 1].anatomy?.dinner : undefined;
@@ -1693,7 +1701,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
                     })}
                   </View>
                 );
-              })}
+              });
+              })()}
 
               {/* Fasting gold strip */}
               {(() => {
