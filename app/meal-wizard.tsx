@@ -497,6 +497,15 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       setGeneratingDay('');  // reset before generation starts
 
+      console.log('[GENERATION PARAMS]', JSON.stringify({
+        mealTemplateCurry,
+        sundayExtraCurry,
+        cookingPattern,
+        jainFamily,
+        community: communityRules,
+        cuisines: allCuisinesPerDay,
+      }));
+
       const plan = await generateMealPlanFast({
         userId,
         dates,
