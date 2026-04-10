@@ -445,7 +445,7 @@ export default function DietaryProfileScreen() {
           id: session.user.id,
           full_name: fullName,
           updated_at: new Date().toISOString(),
-        })
+        }, { onConflict: 'id' })
         .select();
 
       console.log('[PROFILE SAVE] result:', JSON.stringify({ data, error }));
