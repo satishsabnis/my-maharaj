@@ -472,7 +472,11 @@ export default function DietaryProfileScreen() {
           updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
       }
-    } catch {}
+    } catch (err) {
+      console.error('[PROFILE SAVE] Supabase upsert failed:', err);
+      Alert.alert('Save failed', 'Could not save your profile. Please try again.');
+      return;
+    }
 
     // Cuisine preferences: delete-all then insert
     try {
@@ -484,7 +488,9 @@ export default function DietaryProfileScreen() {
           selectedCuisines.map(c => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
         );
       }
-    } catch {}
+    } catch (err) {
+      console.error('[PROFILE SAVE] Cuisine save failed:', err);
+    }
 
     if (isFirstSetup) {
       setIsFirstSetup(false);
@@ -788,11 +794,10 @@ export default function DietaryProfileScreen() {
 
         {/* ══════════ SAVE BUTTON ══════════ */}
         <TouchableOpacity
-          style={{backgroundColor: hasChanges ? colors.emerald : '#CCCCCC', borderRadius:20, paddingVertical:14, alignItems:'center', marginTop:12, marginBottom:4}}
-          onPress={() => { if (hasChanges) void saveProfile(); }}
-          disabled={!hasChanges}
+          style={{backgroundColor: colors.emerald, borderRadius:20, paddingVertical:14, alignItems:'center', marginTop:12, marginBottom:4}}
+          onPress={() => { void saveProfile(); }}
         >
-          <Text style={{fontSize:14,fontWeight: hasChanges ? '700' : '500', color: hasChanges ? colors.white : '#888888'}}>Save Profile</Text>
+          <Text style={{fontSize:14, fontWeight:'700', color: colors.white}}>Save Profile</Text>
         </TouchableOpacity>
         {savedMsg && <Text style={{fontSize:13,color:colors.teal,textAlign:'center',marginBottom:20}}>Saved</Text>}
         {!savedMsg && <View style={{height:24}} />}
