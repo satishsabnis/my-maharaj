@@ -1156,12 +1156,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
       if (selectedDays.length === 0) { setError('Please select at least one day'); return; }
       // Compute dates from selected days
       const today = startOfDay(new Date());
-      const dayMap: Record<string, number> = { 'Mon':1,'Tue':2,'Wed':3,'Thu':4,'Fri':5,'Sat':6,'Sun':0 };
+      const dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
       const todayDow = today.getDay();
       const targetDates = selectedDays.map(d => {
         const targetDow = dayMap[d] ?? 0;
         let diff = targetDow - todayDow;
-        if (diff < 0) diff += 7;
+        if (diff <= 0) diff += 7;
         return addDays(today, diff);
       }).sort((a, b) => a.getTime() - b.getTime());
       setSelectedFrom(targetDates[0]);
@@ -1315,7 +1315,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
   function renderGeneratingV3() {
     const completedDays = generatingProgress?.current || 0;
-    const dates = selectedFrom && selectedTo ? getDates(selectedFrom, selectedTo) : [];
+    const dates = selectedDays.map(d => {
+      const targetDow = ({ Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 } as Record<string,number>)[d] ?? 0;
+      const todayDow2 = new Date().getDay();
+      let diff = targetDow - todayDow2;
+      if (diff <= 0) diff += 7;
+      return toYMD(addDays(new Date(), diff));
+    }).sort();
     const totalDays = dates.length || selectedDays.length;
 
     const statusText = generatingDay === 'Finalising'
