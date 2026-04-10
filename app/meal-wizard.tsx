@@ -2026,9 +2026,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
           <Text style={{fontSize:13,fontWeight:'500',color:colors.white}}>Download Shopping List</Text>
         </TouchableOpacity>
 
-        {/* Next — Online Shopping */}
-        <TouchableOpacity style={{backgroundColor:colors.gold,borderRadius:8,paddingVertical:14,width:'100%',alignItems:'center',marginTop:16}} onPress={() => setStep('online-shopping')}>
-          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Next</Text>
+        {/* Done — return to what-next */}
+        <TouchableOpacity style={{backgroundColor:colors.gold,borderRadius:8,paddingVertical:14,width:'100%',alignItems:'center',marginTop:16}} onPress={() => setStep('what-next')}>
+          <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Done</Text>
         </TouchableOpacity>
 
       </View>
