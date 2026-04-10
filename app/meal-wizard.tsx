@@ -20,7 +20,7 @@ import { scheduleSundayReminder } from '../lib/notifications';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type WizardStep =
-  | 'wizard' | 'generating' | 'observations' | 'plan-summary' | 'alternatives'
+  | 'wizard' | 'generating' | 'observations' | 'plan-summary'
   | 'what-next' | 'confirmed-plan' | 'grocery' | 'online-shopping';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -1069,7 +1069,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     const backMap: Partial<Record<WizardStep, WizardStep>> = {
       'generating': 'wizard',
       'observations': 'generating',
-      'alternatives': 'plan-summary',
       'what-next': 'plan-summary',
       'confirmed-plan': 'plan-summary',
       'grocery': 'what-next',
@@ -2108,7 +2107,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     'generating':      renderGeneratingV3,
     'observations':    renderObservations,
     'plan-summary':    renderPlanSummaryV3,
-    'alternatives':    renderPlanSummaryV3,
     'confirmed-plan':  renderConfirmedPlan,
     'what-next':       renderWhatNext,
     'grocery':         renderGrocery,
@@ -2124,7 +2122,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     'generating': 'Planning Your Week',
     'observations': "Maharaj's Observations",
     'plan-summary': 'My Maharaj Meal Plan',
-    'alternatives': 'My Maharaj Meal Plan',
     'confirmed-plan': 'Plan Confirmed',
     'what-next': 'What Would You Like to Do?',
     'grocery': 'Shopping List',
