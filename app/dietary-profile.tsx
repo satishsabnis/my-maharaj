@@ -432,46 +432,31 @@ export default function DietaryProfileScreen() {
       ['profile_setup_complete', 'true'],
     ]);
 
-    // Supabase profiles upsert — full profile, all fields, source of truth for cross-device persistence
+    // Supabase profiles upsert — DEBUG minimal test
     try {
-      const user = await getSessionUser();
-      if (user) {
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          full_name: fullName,
-          phone_number: phoneNumber,
-          community,
-          community_other: communityOther,
-          additional_dietary_rules: additionalRules,
-          jain_family: isJainFamily,
-          jain_allow_non_jain: jainAllowNonJain,
-          meal_template_curry: mealCurry,
-          meal_template_veg: mealVeg,
-          meal_template_raita: mealRaita,
-          meal_template_bread: mealBread,
-          meal_template_rice: mealRice,
-          sunday_extra_curry: sundayCurry,
-          sunday_sweet: sundaySweet,
-          breakfast_preferences: breakfastPrefs,
-          cooking_pattern: cookingPattern,
-          avoidance_list: avoidanceList,
-          grocery_day: groceryDay,
-          preferred_supermarkets: preferredStores,
-          preferred_delivery_apps: preferredApps,
-          recurring_occasions: occasions,
-          cooking_skill: cookingSkill,
-          budget_pref: budgetPref,
-          app_language: appLanguage,
-          plan_summary_language: planSummaryLanguage,
-          shopping_list_language: shoppingLanguage,
-          household_insurance: hasInsurance ? 'true' : 'false',
-          insurance_expiry: insuranceExpiry,
-          notif_festivals: notifFestivals,
-          notif_lab_reports: notifLabReports,
-          notif_insurance_reminders: notifInsurance,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert('Save failed', 'No active session — please log out and log in again.');
+        return;
       }
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: session.user.id,
+          full_name: fullName,
+          updated_at: new Date().toISOString(),
+        })
+        .select();
+
+      console.log('[PROFILE SAVE] result:', JSON.stringify({ data, error }));
+
+      if (error) {
+        console.error('[PROFILE SAVE] error:', error.message, error.code, error.details);
+        Alert.alert('Save failed', error.message || 'Unknown error');
+        return;
+      }
+
+      Alert.alert('Saved', 'Profile saved successfully to Supabase');
     } catch (err) {
       console.error('[PROFILE SAVE] Supabase upsert failed:', err);
       Alert.alert('Save failed', 'Could not save your profile. Please try again.');
