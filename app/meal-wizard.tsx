@@ -461,6 +461,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const cookingPattern = cookingPatternRaw || undefined;
       const jainFamilyRaw = await AsyncStorage.getItem('jain_family');
       const jainFamily = jainFamilyRaw === 'true' ? true : jainFamilyRaw === 'false' ? false : undefined;
+      const mealTemplateCurry = await AsyncStorage.getItem('meal_template_curry') || '';
+      const mealTemplateVeg = await AsyncStorage.getItem('meal_template_veg') || '';
+      const mealTemplateRaita = await AsyncStorage.getItem('meal_template_raita') || '';
+      const mealTemplateBread = await AsyncStorage.getItem('meal_template_bread') || '';
+      const mealTemplateRice = await AsyncStorage.getItem('meal_template_rice') || '';
+      const sundayExtraCurry = await AsyncStorage.getItem('sunday_extra_curry') || '';
+      const sundaySweet = await AsyncStorage.getItem('sunday_sweet') || '';
 
       const _dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
       const _today = new Date();
@@ -521,6 +528,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
         familyRecipes: useMyRecipes ? familyRecipes : [],
         cookingPattern,
         jainFamily,
+        mealTemplateCurry,
+        mealTemplateVeg,
+        mealTemplateRaita,
+        mealTemplateBread,
+        mealTemplateRice,
+        sundayExtraCurry,
+        sundaySweet,
       },
       // onProgress — called after each day completes
       (current, total) => {
