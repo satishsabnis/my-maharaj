@@ -758,8 +758,12 @@ function fastDayToMealPlanDay(date: string, dayName: string, day: FastDayRespons
   if (day.dinner   && slots.includes('dinner'))   anatomy.dinner   = toAnatSlot(day.dinner);
   if (day.snack    && slots.includes('snack'))    anatomy.snack    = toAnatComp(day.snack);
 
-  const result: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner, anatomy };
+  const result: MealPlanDay = { date, day: dayName, breakfast, lunch, dinner };
   if (snack) result.snack = snack;
+  // Only attach anatomy if core slots have real data — prevents empty object causing blank plan summary
+  if (anatomy.lunch?.curry?.dishName && anatomy.dinner?.curry?.dishName) {
+    result.anatomy = anatomy;
+  }
   return result;
 }
 
