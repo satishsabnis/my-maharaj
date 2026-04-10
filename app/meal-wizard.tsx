@@ -464,7 +464,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
           if (diff <= 0) diff += 7;
           const date = new Date(_today);
           date.setDate(_today.getDate() + diff);
-          return date.toISOString().split('T')[0];
+          return toYMD(date);
         })
         .sort();
       setGeneratingProgress({ current: 0, total: dates.length });
