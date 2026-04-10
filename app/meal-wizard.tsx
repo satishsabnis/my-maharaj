@@ -1574,6 +1574,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
             const [, festMonth, festDayNum] = day.date.split('-').map(Number);
             const festivalMatch = FESTIVALS_2026.find(f => f.month === festMonth && f.day === festDayNum);
             const isSunday = dt.getDay() === 0;
+            const hasAnatomy = !!(day.anatomy?.lunch?.curry?.dishName || day.anatomy?.breakfast?.dishName);
+            const hasLegacy = !!(day.breakfast?.options?.[0]?.name || day.lunch?.options?.[0]?.name || day.dinner?.options?.[0]?.name);
 
             return (
               <View key={day.date} style={{width: FULL_WIDTH, paddingHorizontal:16, flex:1}}>
@@ -1591,15 +1593,11 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   )}
 
               {/* Meal slots */}
-              {(() => {
-                const hasAnatomy = !!(day.anatomy?.lunch?.curry?.dishName || day.anatomy?.breakfast?.dishName);
-                const hasLegacy = !!(day.breakfast || day.lunch || day.dinner);
-                if (!hasAnatomy && !hasLegacy) return (
-                  <View style={{padding:16,alignItems:'center'}}>
-                    <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Maharaj is still planning this day. Please regenerate.</Text>
-                  </View>
-                );
-                return slotsToShow.map(({ key, label }) => {
+              {!hasAnatomy && !hasLegacy ? (
+                <View style={{padding:16,alignItems:'center'}}>
+                  <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Maharaj is still planning this day. Please regenerate.</Text>
+                </View>
+              ) : slotsToShow.map(({ key, label }) => {
                 const slotLabel = <Text style={{fontSize:10,fontWeight:'700',color:colors.textMuted,letterSpacing:0.5,textTransform:'uppercase',marginBottom:4}}>{label}</Text>;
                 const rowStyle = {flexDirection:'row' as const,alignItems:'center' as const,paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2};
 
@@ -1672,8 +1670,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
                 const displayOpt = isCarryForward && prevDinnerOpt ? prevDinnerOpt : opt;
                 const isThali = displayOpt.name.toLowerCase().includes('thali');
-                const hasAnatomy = displayOpt.description?.includes(' | ') && displayOpt.description?.includes(':');
-                const shouldShowComponents = (isThali || hasAnatomy) && displayOpt.description?.includes(' | ');
+                const hasAnatomyDesc = displayOpt.description?.includes(' | ') && displayOpt.description?.includes(':');
+                const shouldShowComponents = (isThali || hasAnatomyDesc) && displayOpt.description?.includes(' | ');
                 const components = shouldShowComponents
                   ? displayOpt.description!.split(' | ').map(c => c.trim())
                   : [displayOpt.name];
@@ -1688,7 +1686,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                       return (
                         <View key={ci} style={rowStyle}>
                           <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
-                            {(isThali || hasAnatomy) && parts.length > 1 && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
+                            {(isThali || hasAnatomyDesc) && parts.length > 1 && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
                             <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
                             {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
                           </TouchableOpacity>
@@ -1701,8 +1699,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                     })}
                   </View>
                 );
-              });
-              })()}
+              })}
 
               {/* Fasting gold strip */}
               {(() => {
