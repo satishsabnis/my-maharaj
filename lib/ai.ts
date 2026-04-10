@@ -794,6 +794,13 @@ export async function generateMealPlanFast(
     familyRecipes?: { recipe_name: string; cuisine: string }[];
     cookingPattern?: string;
     jainFamily?: boolean;
+    mealTemplateCurry?: string;
+    mealTemplateVeg?: string;
+    mealTemplateRaita?: string;
+    mealTemplateBread?: string;
+    mealTemplateRice?: string;
+    sundayExtraCurry?: string;
+    sundaySweet?: string;
   },
   onProgress?: (current: number, total: number) => void,
   onDayStart?: (dayName: string) => void,
@@ -866,11 +873,24 @@ export async function generateMealPlanFast(
     if (slots.includes('dinner')) jsonShape.push(`"dinner": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
     if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x3-4"] }`);
 
+    const isSunday = new Date(date).getDay() === 0;
     const buildPrompt = (retry = false): string => `Generate a complete meal plan for ${dayName} (${date}).
 
 FAMILY: ${communityRules}, ${familySize} members
-MEAL TEMPLATE: Generate exactly:
-${mealLines.join('\n')}
+MEAL TEMPLATE: Generate exactly for ${isSunday ? 'Sunday' : 'this day'}:
+- Breakfast: 1 breakfast dish per family preference
+- Lunch curry: ${isSunday && params.sundayExtraCurry ? params.sundayExtraCurry : params.mealTemplateCurry || 'one main curry'}
+- Lunch veg: ${params.mealTemplateVeg || 'one vegetable dish'}
+- Lunch raita: ${params.mealTemplateRaita || 'one raita'}
+- Lunch bread: ${params.mealTemplateBread || 'chapati or paratha'}
+- Lunch rice: ${params.mealTemplateRice || 'steamed rice'}
+- Dinner curry: ${isSunday && params.sundayExtraCurry ? params.sundayExtraCurry : params.mealTemplateCurry || 'one main curry'}
+- Dinner veg: ${params.mealTemplateVeg || 'one vegetable dish'}
+- Dinner raita: ${params.mealTemplateRaita || 'one raita'}
+- Dinner bread: ${params.mealTemplateBread || 'chapati or paratha'}
+- Dinner rice: ${params.mealTemplateRice || 'steamed rice'}
+- Snack: 1 freshly cookable snack under 15 minutes
+${params.sundaySweet && isSunday ? `- Sunday sweet: ${params.sundaySweet}` : ''}
 
 ABSOLUTE RULES:
 1. DIETARY: ${foodPref}. ${allowedProteins?.length ? `Allowed proteins: ${allowedProteins.join(', ')} ONLY.` : ''}
