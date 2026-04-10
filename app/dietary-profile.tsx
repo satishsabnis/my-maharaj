@@ -445,7 +445,7 @@ export default function DietaryProfileScreen() {
         .upsert({
           id: session.user.id,
           full_name: fullName,
-          phone_number: phoneNumber,
+          mobile_number: phoneNumber,
           community,
           community_other: communityOther,
           additional_dietary_rules: additionalRules,
