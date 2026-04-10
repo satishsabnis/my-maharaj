@@ -13,7 +13,17 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   try {
-    const { type, familyName, dateRange, content } = req.body;
+    const { type, familyName, dateRange, content, language } = req.body;
+
+    const labels = {
+      en: { ingredients: 'INGREDIENTS', method: 'METHOD' },
+      hi: { ingredients: 'सामग्री', method: 'विधि' },
+      mr: { ingredients: 'साहित्य', method: 'कृती' },
+      gu: { ingredients: 'સામગ્રી', method: 'પ્રક્રિયા' },
+      ta: { ingredients: 'பொருட்கள்', method: 'முறை' },
+      ml: { ingredients: 'ചേരുവകൾ', method: 'രീതി' },
+    };
+    const L = labels[language] || labels['en'];
 
     const pdfDoc = await PDFDocument.create();
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -113,7 +123,7 @@ export default async function handler(req, res) {
 
       if (content?.ingredients?.length) {
         ensureSpace(2);
-        page.drawText('INGREDIENTS', {
+        page.drawText(L.ingredients, {
           x: 20, y: yPosition, size: 10, font: boldFont, color: rgb(0.102, 0.42, 0.36)
         });
         yPosition -= lineH;
@@ -131,7 +141,7 @@ export default async function handler(req, res) {
 
       if (content?.method?.length) {
         ensureSpace(2);
-        page.drawText('METHOD', {
+        page.drawText(L.method, {
           x: 20, y: yPosition, size: 10, font: boldFont, color: rgb(0.102, 0.42, 0.36)
         });
         yPosition -= lineH;
