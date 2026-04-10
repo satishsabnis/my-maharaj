@@ -454,7 +454,19 @@ Return ONLY valid JSON (no markdown) in this exact format:
       await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));
       await AsyncStorage.setItem('dietary_is_mixed', String(effectiveIsMixed));
 
-      const dates = getDates(selectedFrom, selectedTo);
+      const _dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+      const _today = new Date();
+      const _currentDay = _today.getDay();
+      const dates = selectedDays
+        .map(d => {
+          const target = _dayMap[d];
+          let diff = target - _currentDay;
+          if (diff <= 0) diff += 7;
+          const date = new Date(_today);
+          date.setDate(_today.getDate() + diff);
+          return date.toISOString().split('T')[0];
+        })
+        .sort();
       setGeneratingProgress({ current: 0, total: dates.length });
 
       const allCuisinesPerDay = (() => {
