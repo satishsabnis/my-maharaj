@@ -176,6 +176,7 @@ export default function MealWizardScreen() {
   const [expandedDays,    setExpandedDays]    = useState<Record<number, boolean>>({ 0: true });
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
   const [activeDay,       setActiveDay]       = useState(0);
+  const [confirmedDays,   setConfirmedDays]   = useState<string[]>([]);
 
   // Observations
   const [observations, setObservations] = useState<Observation[]>([]);
@@ -1530,7 +1531,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
           onMomentumScrollEnd={(e) => {
             const index = Math.round(e.nativeEvent.contentOffset.x / FULL_WIDTH);
             setActiveDay(index);
-          }}>
+          }}
+          onScroll={(e) => {
+            const index = Math.round(e.nativeEvent.contentOffset.x / FULL_WIDTH);
+            if (index !== activeDay) setActiveDay(index);
+          }}
+          scrollEventThrottle={16}>
           {generatedPlan.map((day, dayIdx) => {
             const dt = new Date(day.date);
             // FIX 7: Parse string components to avoid UTC timezone off-by-one bug
@@ -1674,6 +1680,19 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   </View>
                 );
               })()}
+
+              {/* Per-day confirm */}
+              {confirmedDays.includes(day.date) ? (
+                <View style={{alignItems:'center',paddingVertical:12}}>
+                  <Text style={{fontSize:13,fontWeight:'700',color:colors.teal}}>✓ {day.day} confirmed</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={{backgroundColor:colors.emerald,borderRadius:12,paddingVertical:12,alignItems:'center',marginTop:12,marginBottom:4}}
+                  onPress={() => setConfirmedDays(prev => [...prev, day.date])}>
+                  <Text style={{fontSize:14,fontWeight:'700',color:colors.white}}>Confirm {day.day}</Text>
+                </TouchableOpacity>
+              )}
                 </ScrollView>
               </View>
             );
@@ -1681,17 +1700,19 @@ Return ONLY valid JSON (no markdown) in this exact format:
         </ScrollView>
 
         {/* Bottom action row */}
-        <View style={{flexDirection:'row',gap:8,paddingHorizontal:16,paddingTop:12,paddingBottom:8}}>
+        <View style={{paddingHorizontal:16,paddingTop:8,paddingBottom:8,gap:8}}>
           <TouchableOpacity
-            style={{flex:1,borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
+            style={{borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
             onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
             <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download Plan</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={{flex:2,backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,alignItems:'center'}}
-            onPress={handleConfirmPlan}>
-            <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
-          </TouchableOpacity>
+          {confirmedDays.length === generatedPlan.length && (
+            <TouchableOpacity
+              style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:12,alignItems:'center'}}
+              onPress={handleConfirmPlan}>
+              <Text style={{fontSize:15,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Recipe modal */}
