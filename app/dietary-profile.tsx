@@ -439,6 +439,7 @@ export default function DietaryProfileScreen() {
         Alert.alert('Save failed', 'No active session — please log out and log in again.');
         return;
       }
+      console.log('[PROFILE VALUES]', JSON.stringify({ community, cookingPattern, avoidanceList, mealCurry }));
       const { data, error } = await supabase
         .from('profiles')
         .upsert({
