@@ -439,7 +439,6 @@ export default function DietaryProfileScreen() {
         Alert.alert('Save failed', 'No active session — please log out and log in again.');
         return;
       }
-      console.log('[PROFILE VALUES]', JSON.stringify({ community, cookingPattern, avoidanceList, mealCurry }));
       const { data, error } = await supabase
         .from('profiles')
         .upsert({
@@ -479,15 +478,11 @@ export default function DietaryProfileScreen() {
         }, { onConflict: 'id' })
         .select();
 
-      console.log('[PROFILE SAVE] result:', JSON.stringify({ data, error }));
-
       if (error) {
-        console.error('[PROFILE SAVE] error:', error.message, error.code);
         Alert.alert('Save failed', error.message || 'Unknown error');
         return;
       }
     } catch (err) {
-      console.error('[PROFILE SAVE] Supabase upsert failed:', err);
       Alert.alert('Save failed', 'Could not save your profile. Please try again.');
       return;
     }
@@ -502,8 +497,7 @@ export default function DietaryProfileScreen() {
           selectedCuisines.map(c => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
         );
       }
-    } catch (err) {
-      console.error('[PROFILE SAVE] Cuisine save failed:', err);
+    } catch {
     }
 
     if (isFirstSetup) {
