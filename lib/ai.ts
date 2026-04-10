@@ -895,7 +895,7 @@ ${params.sundaySweet && isSunday ? `- Sunday sweet: ${params.sundaySweet}` : ''}
 ABSOLUTE RULES:
 1. DIETARY: ${foodPref}. ${allowedProteins?.length ? `Allowed proteins: ${allowedProteins.join(', ')} ONLY.` : ''}
 2. UNIQUENESS: Do NOT use any of these dishes already planned this week: ${historyStr}
-3. CUISINE: ONLY from ${dayCuisine} cuisine. Use authentic Indian regional names. No generic English names.
+3. CUISINE: ONLY authentic dishes from ${dayCuisine} cuisine. Every single dish — breakfast, lunch curry, lunch veg, raita, bread, rice, dinner curry, dinner veg, snack — must be a traditional ${dayCuisine} dish. No dishes from any other cuisine. No generic Indian dishes.
 4. AVOIDANCE: Never suggest: ${avoidanceList}
 5. HEALTH: ${healthInfo}
 ${params.cookingPattern ? `6. COOKING PATTERN: ${params.cookingPattern}\n` : ''}${params.jainFamily ? `7. JAIN: Jain family — no onion, no garlic, no root vegetables (potatoes, carrots, radish, beetroot, turnip)\n` : ''}${familyRecipesList.length > 0 ? `8. FAMILY RECIPES: This family has saved these recipes — rotate them into the plan where appropriate (do not repeat every day): ${familyRecipesList.map(r => `${r.recipe_name} (${r.cuisine})`).join(', ')}\n` : ''}${retry ? `\nRETRY INSTRUCTION: Previous response was invalid. You MUST include at least one non-vegetarian dish (containing meat, fish, or eggs) for this non-vegetarian family. An all-vegetarian response is rejected.\n` : ''}
