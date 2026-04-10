@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform,
+  Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
@@ -8,7 +8,6 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { colors, cards } from '../constants/theme';
-import { CameraView, Camera } from 'expo-camera';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -36,7 +35,6 @@ export default function HomeScreen() {
   const [mealPrepCount, setMealPrepCount] = useState(0);
   const [todayMeals, setTodayMeals] = useState<{breakfast:string;lunch:string;dinner:string}|null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -251,16 +249,14 @@ export default function HomeScreen() {
 
           {/* ── HERO ── */}
           <View style={{alignItems:'center',paddingTop:4}}>
-            <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
-              <Animated.Image
-                source={require('../assets/logo.png')}
-                style={{width:240,height:240,transform:[{scale:pulseAnim}],marginBottom:0}}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-            <Text style={{fontSize:10,color:colors.gold,fontStyle:'italic',marginTop:2}}>Tap to begin</Text>
-            <Text style={{fontSize:13,fontWeight:'500',color:colors.navy,marginTop:2}}>Ask Maharaj</Text>
-            <Text style={{fontSize:9,color:colors.teal,marginTop:1}}>Your personal meal planner</Text>
+            <Animated.Image
+              source={require('../assets/logo.png')}
+              style={{width:240,height:240,transform:[{scale:pulseAnim}],marginBottom:0}}
+              resizeMode="contain"
+            />
+            <Text style={{fontSize:11,fontWeight:'500',color:colors.gold,fontStyle:'italic',marginTop:0}}>Tap to begin</Text>
+            <Text style={{fontSize:20,fontWeight:'700',color:colors.navy,marginTop:2}}>Ask Maharaj</Text>
+            <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>Your personal meal planner</Text>
           </View>
 
           {/* ── GREETING ── */}
@@ -340,16 +336,6 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          {/* ── SCAN TO SHOP BANNER ── */}
-          <TouchableOpacity
-            style={{backgroundColor:colors.emerald,borderRadius:10,padding:12,marginHorizontal:16,marginTop:8,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}
-            onPress={() => setShowScanner(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={{fontSize:12,color:colors.white,fontWeight:'500'}}>Scan to Shop</Text>
-            <Text style={{fontSize:9,color:'rgba(255,255,255,0.8)'}}>Open camera</Text>
-          </TouchableOpacity>
-
         </ScrollView>
 
         {/* ── FOOTER ── */}
@@ -359,52 +345,6 @@ export default function HomeScreen() {
             <Text style={{fontSize:13,color:'rgba(255,255,255,0.6)',marginTop:2}}>www.bluefluteconsulting.com</Text>
           </TouchableOpacity>
         </View>
-
-        {/* ── SCAN TO SHOP MODAL ── */}
-        <Modal visible={showScanner} animationType="slide" onRequestClose={() => setShowScanner(false)}>
-          <SafeAreaView style={{flex:1,backgroundColor:'#000'}}>
-            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',paddingHorizontal:16,paddingVertical:12}}>
-              <Text style={{fontSize:16,fontWeight:'700',color:colors.white,textAlign:'center',flex:1}}>Scan to Shop</Text>
-              <TouchableOpacity onPress={() => setShowScanner(false)} style={{borderWidth:1.5,borderColor:'rgba(255,255,255,0.4)',borderRadius:8,paddingVertical:5,paddingHorizontal:12}}>
-                <Text style={{fontSize:13,fontWeight:'600',color:colors.white}}>Close</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={{fontSize:9,color:colors.textMuted,textAlign:'center',marginBottom:8}}>Scan any item barcode to check it off your shopping list</Text>
-            {Platform.OS !== 'web' ? (
-              <CameraView
-                style={{flex:1}}
-                facing="back"
-                onBarcodeScanned={async ({ data: barcodeValue }) => {
-                  try {
-                    const raw = await AsyncStorage.getItem('shopping_list_items');
-                    const list: {name:string;quantity:string;category:string;collected?:boolean}[] = raw ? JSON.parse(raw) : [];
-                    const idx = list.findIndex(item => item.name.toLowerCase().includes(barcodeValue.toLowerCase()));
-                    if (idx >= 0) {
-                      list[idx].collected = true;
-                      await AsyncStorage.setItem('shopping_list_items', JSON.stringify(list));
-                      setShowScanner(false);
-                      Alert.alert('Checked off', `${list[idx].name} — marked as collected`);
-                    } else {
-                      Alert.alert('Not on your list', 'This item is not on your shopping list. Add it?', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Add', onPress: async () => {
-                          list.push({ name: barcodeValue, quantity: '1', category: 'General' });
-                          await AsyncStorage.setItem('shopping_list_items', JSON.stringify(list));
-                          setShowScanner(false);
-                        }},
-                      ]);
-                    }
-                  } catch { setShowScanner(false); }
-                }}
-                barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'qr'] }}
-              />
-            ) : (
-              <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
-                <Text style={{color:colors.textMuted,fontSize:14,textAlign:'center',padding:24}}>Barcode scanning is available on the mobile app only.</Text>
-              </View>
-            )}
-          </SafeAreaView>
-        </Modal>
 
         {/* ── DRAWER OVERLAY ── */}
         {isDrawerOpen && (

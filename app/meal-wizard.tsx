@@ -21,7 +21,7 @@ import { scheduleSundayReminder } from '../lib/notifications';
 
 type WizardStep =
   | 'wizard' | 'generating' | 'observations' | 'plan-summary'
-  | 'what-next' | 'confirmed-plan' | 'grocery' | 'online-shopping';
+  | 'what-next' | 'grocery' | 'online-shopping';
 
 type MealSlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -177,6 +177,7 @@ export default function MealWizardScreen() {
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
   const [activeDay,       setActiveDay]       = useState(0);
   const [confirmedDays,   setConfirmedDays]   = useState<string[]>([]);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Observations
   const [observations, setObservations] = useState<Observation[]>([]);
@@ -455,6 +456,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
       await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));
       await AsyncStorage.setItem('dietary_is_mixed', String(effectiveIsMixed));
 
+      // Read additional family profile fields for generation
+      const cookingPatternRaw = await AsyncStorage.getItem('cooking_pattern');
+      const cookingPattern = cookingPatternRaw || undefined;
+      const jainFamilyRaw = await AsyncStorage.getItem('jain_family');
+      const jainFamily = jainFamilyRaw === 'true' ? true : jainFamilyRaw === 'false' ? false : undefined;
+
       const _dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
       const _today = new Date();
       const _currentDay = _today.getDay();
@@ -512,6 +519,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
         familyAvoids,
         familySize,
         familyRecipes: useMyRecipes ? familyRecipes : [],
+        cookingPattern,
+        jainFamily,
       },
       // onProgress — called after each day completes
       (current, total) => {
@@ -1071,7 +1080,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
       'generating': 'wizard',
       'observations': 'generating',
       'what-next': 'plan-summary',
-      'confirmed-plan': 'plan-summary',
       'grocery': 'what-next',
       'online-shopping': 'grocery',
     };
@@ -1090,13 +1098,14 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const yyyy = today.getFullYear();
       const familyName = (await AsyncStorage.getItem('family_name')) || 'Your Family';
+      const pdfLang = (await AsyncStorage.getItem('plan_summary_language')) || 'en';
       const dateRange = generatedPlan && generatedPlan.length > 0
         ? `${generatedPlan[0].date} to ${generatedPlan[generatedPlan.length - 1].date}`
         : today.toLocaleDateString();
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, familyName, dateRange, content }),
+        body: JSON.stringify({ type, familyName, dateRange, content, language: pdfLang }),
       });
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -1135,7 +1144,11 @@ Return ONLY valid JSON (no markdown) in this exact format:
         } catch {}
       }
     })();
-    setStep('confirmed-plan');
+    setShowCelebration(true);
+    setTimeout(() => {
+      setShowCelebration(false);
+      setStep('what-next');
+    }, 2500);
   }
 
   // ── Step Renders ──────────────────────────────────────────────────────────
@@ -1700,20 +1713,39 @@ Return ONLY valid JSON (no markdown) in this exact format:
         </ScrollView>
 
         {/* Bottom action row */}
-        <View style={{paddingHorizontal:16,paddingTop:8,paddingBottom:8,gap:8}}>
-          <TouchableOpacity
-            style={{borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
-            onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
-            <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download Plan</Text>
-          </TouchableOpacity>
-          {confirmedDays.length === generatedPlan.length && (
+        {confirmedDays.length === generatedPlan.length ? (
+          <View style={{paddingHorizontal:16,paddingTop:8,paddingBottom:8,flexDirection:'row',gap:8}}>
             <TouchableOpacity
-              style={{backgroundColor:colors.emerald,borderRadius:20,paddingVertical:12,alignItems:'center'}}
-              onPress={handleConfirmPlan}>
-              <Text style={{fontSize:15,fontWeight:'700',color:colors.white}}>Confirm My Week</Text>
+              style={{flex:1,borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
+              onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
+              <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download</Text>
             </TouchableOpacity>
-          )}
-        </View>
+            <TouchableOpacity
+              style={{flex:2,backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,alignItems:'center'}}
+              onPress={handleConfirmPlan}>
+              <Text style={{fontSize:15,fontWeight:'700',color:colors.white}}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{paddingHorizontal:16,paddingTop:8,paddingBottom:8}}>
+            <TouchableOpacity
+              style={{borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
+              onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
+              <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download Plan</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Celebration modal */}
+        <Modal visible={showCelebration} transparent animationType="fade">
+          <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.45)',alignItems:'center',justifyContent:'center'}}>
+            <View style={{backgroundColor:colors.white,borderRadius:20,padding:32,alignItems:'center',marginHorizontal:32}}>
+              <Text style={{fontSize:64,marginBottom:16}}>🎉</Text>
+              <Text style={{fontSize:20,fontWeight:'700',color:colors.navy,textAlign:'center',marginBottom:8}}>Your weekly plan is confirmed!</Text>
+              <Text style={{fontSize:13,color:colors.teal,textAlign:'center'}}>Maharaj has planned your week. Time to cook!</Text>
+            </View>
+          </View>
+        </Modal>
 
         {/* Recipe modal */}
         <Modal visible={recipeModal.visible} transparent animationType="slide" onRequestClose={() => setRecipeModal({ visible: false, dishName: '' })}>
@@ -1896,54 +1928,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     );
   }
 
-  function renderConfirmedPlan() {
-    const numDays = generatedPlan?.length ?? 0;
-    return (
-      <View style={{alignItems:'center',paddingTop:24,paddingHorizontal:4}}>
-        <View style={{width:64,height:64,borderRadius:32,backgroundColor:'rgba(30,158,94,0.12)',alignItems:'center',justifyContent:'center',marginBottom:16}}>
-          <Text style={{fontSize:30,color:colors.emerald,fontWeight:'800'}}>{'✓'}</Text>
-        </View>
-        <Text style={{fontSize:22,fontWeight:'800',color:colors.navy,marginBottom:8,textAlign:'center'}}>Your week is confirmed</Text>
-        <Text style={{fontSize:14,color:colors.textSecondary,textAlign:'center',marginBottom:28,lineHeight:22}}>
-          Maharaj has locked in your {numDays}-day meal plan. You can view, edit, or download it any time.
-        </Text>
-        <TouchableOpacity style={{width:'100%',backgroundColor:colors.emerald,borderRadius:14,paddingVertical:16,alignItems:'center',marginBottom:12}} onPress={() => setStep('what-next')} activeOpacity={0.85}>
-          <Text style={{fontSize:16,fontWeight:'700',color:colors.white}}>What would you like to do?</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:colors.navy,borderRadius:14,paddingVertical:14,alignItems:'center',marginBottom:12}} onPress={() => setStep('plan-summary')} activeOpacity={0.85}>
-          <Text style={{fontSize:15,fontWeight:'600',color:colors.navy}}>View My Plan</Text>
-        </TouchableOpacity>
-        {Platform.OS === 'web' && generatedPlan && (
-          <TouchableOpacity style={{width:'100%',borderWidth:1.5,borderColor:colors.emerald,borderRadius:14,paddingVertical:14,alignItems:'center'}} onPress={() => {
-            const planPDFContent = {
-              days: generatedPlan.map((day, idx) => ({
-                dayName: day.day,
-                date: day.date,
-                meals: [
-                  { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.breakfast?.options?.[selections[idx]?.breakfast ?? 0]?.name || '' },
-                  { label: 'Lunch Curry', dish: day.anatomy?.lunch?.curry?.dishName || '' },
-                  { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
-                  { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
-                  { label: 'Lunch Bread', dish: day.anatomy?.lunch?.bread?.dishName || '' },
-                  { label: 'Lunch Rice', dish: day.anatomy?.lunch?.rice?.dishName || '' },
-                  { label: 'Dinner Curry', dish: day.anatomy?.dinner?.curry?.dishName || '' },
-                  { label: 'Dinner Veg', dish: day.anatomy?.dinner?.veg?.dishName || '' },
-                  { label: 'Dinner Raita', dish: day.anatomy?.dinner?.raita?.dishName || '' },
-                  { label: 'Dinner Bread', dish: day.anatomy?.dinner?.bread?.dishName || '' },
-                  { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
-                  { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
-                ],
-              })),
-            };
-            void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf');
-          }} activeOpacity={0.85}>
-            <Text style={{fontSize:15,fontWeight:'600',color:colors.emerald}}>Download Plan (PDF)</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
-
   function renderGrocery() {
     const grocery = buildGrocery();
     const totalItems = CAT_ORDER.reduce((acc, cat) => acc + (grocery[cat]?.length ?? 0), 0);
@@ -1956,8 +1940,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
         <Text style={s.stepSub}>{totalItems} items for {selectedFrom && selectedTo ? selectedFrom.getTime() === selectedTo.getTime() ? fmtL(selectedFrom) : `${fmt(selectedFrom)} – ${fmt(selectedTo)}` : 'your plan'}</Text>
 
         {/* Scan to Shop */}
-        <TouchableOpacity style={{backgroundColor:colors.navy,borderRadius:8,paddingHorizontal:16,paddingVertical:10,alignItems:'center',marginBottom:12}} onPress={() => setScanModalOpen(true)}>
-          <Text style={{color:colors.white,fontWeight:'700',fontSize:15}}>Scan to Shop</Text>
+        <TouchableOpacity style={{backgroundColor:colors.emerald,borderRadius:10,padding:12,marginBottom:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}} onPress={() => setScanModalOpen(true)} activeOpacity={0.85}>
+          <Text style={{fontSize:12,color:colors.white,fontWeight:'500'}}>Scan to Shop</Text>
+          <Text style={{fontSize:9,color:'rgba(255,255,255,0.8)'}}>Open camera</Text>
         </TouchableOpacity>
 
         {/* Scan Modal — choose mode */}
@@ -2128,7 +2113,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     'generating':      renderGeneratingV3,
     'observations':    renderObservations,
     'plan-summary':    renderPlanSummaryV3,
-    'confirmed-plan':  renderConfirmedPlan,
     'what-next':       renderWhatNext,
     'grocery':         renderGrocery,
     'online-shopping': renderOnlineShopping,
@@ -2143,7 +2127,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     'generating': 'Planning Your Week',
     'observations': "Maharaj's Observations",
     'plan-summary': 'My Maharaj Meal Plan',
-    'confirmed-plan': 'Plan Confirmed',
     'what-next': 'What Would You Like to Do?',
     'grocery': 'Shopping List',
     'online-shopping': 'Order Online',
