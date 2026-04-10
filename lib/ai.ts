@@ -918,6 +918,8 @@ Return JSON only, no markdown, no explanation:
       dayResult = { date, day: dayName, breakfast: fbBf, lunch: fbLn, dinner: fbDn };
     }
 
+    console.log('[ANATOMY DEBUG] Day result:', JSON.stringify(dayResult, null, 2));
+    console.log('[ANATOMY DEBUG] anatomy attached?', !!dayResult.anatomy, dayResult.anatomy?.lunch?.curry?.dishName);
     dayResults.push(dayResult);
     onProgress?.(i + 1, total);
   }
