@@ -249,11 +249,13 @@ export default function HomeScreen() {
 
           {/* ── HERO ── */}
           <View style={{alignItems:'center',paddingTop:4}}>
-            <Animated.Image
-              source={require('../assets/logo.png')}
-              style={{width:240,height:240,transform:[{scale:pulseAnim}],marginBottom:0}}
-              resizeMode="contain"
-            />
+            <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
+              <Animated.Image
+                source={require('../assets/logo.png')}
+                style={{width:240,height:240,transform:[{scale:pulseAnim}],marginBottom:0}}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
             <Text style={{fontSize:11,fontWeight:'500',color:colors.gold,fontStyle:'italic',marginTop:0}}>Tap to begin</Text>
             <Text style={{fontSize:20,fontWeight:'700',color:colors.navy,marginTop:2}}>Ask Maharaj</Text>
             <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>Your personal meal planner</Text>
