@@ -880,17 +880,19 @@ export async function generateMealPlanFast(
     if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x3-4"] }`);
 
     const isSunday = new Date(date).getDay() === 0;
-    const buildPrompt = (retry = false): string => `Generate a complete meal plan for ${dayName} (${date}).
+    const buildPrompt = (retry = false): string => `${params.foodPrefs?.type === 'nonveg' ? 'IMPORTANT: This is a NON-VEGETARIAN family. You MUST include meat, fish, or eggs in lunch and dinner. Do NOT generate an all-vegetarian plan.\n\n' : ''}Generate a complete meal plan for ${dayName} (${date}).
 
 FAMILY: ${communityRules}, ${familySize} members
 MEAL TEMPLATE: Generate exactly for ${isSunday ? 'Sunday' : 'this day'}:
 - Breakfast: 1 breakfast dish per family preference
-- Lunch curries: ${isSunday && params.sundayExtraCurry ? params.sundayExtraCurry : params.mealTemplateCurry || 'one main curry'} — generate ALL of these as separate dishes
+${isSunday && params.sundayExtraCurry ? `- Lunch curry 1: ${params.sundayExtraCurry?.split(',')[0]?.trim() || 'chicken dish'}
+- Lunch curry 2: ${params.sundayExtraCurry?.split(',')[1]?.trim() || 'fish dish'}` : `- Lunch curries: ${params.mealTemplateCurry || 'one main curry'} — generate ALL of these as separate dishes`}
 - Lunch veg: ${params.mealTemplateVeg || 'one vegetable dish'}
 - Lunch raita: ${params.mealTemplateRaita || 'one raita'}
 - Lunch bread: ${params.mealTemplateBread || 'chapati or paratha'}
 - Lunch rice: ${params.mealTemplateRice || 'steamed rice'}
-- Dinner curries: same as lunch curries
+${isSunday && params.sundayExtraCurry ? `- Dinner curry 1: ${params.sundayExtraCurry?.split(',')[0]?.trim() || 'chicken dish'}
+- Dinner curry 2: ${params.sundayExtraCurry?.split(',')[1]?.trim() || 'fish dish'}` : `- Dinner curries: same as lunch curries`}
 - Dinner veg: ${params.mealTemplateVeg || 'one vegetable dish'}
 - Dinner raita: ${params.mealTemplateRaita || 'one raita'}
 - Dinner bread: ${params.mealTemplateBread || 'chapati or paratha'}
@@ -899,7 +901,7 @@ MEAL TEMPLATE: Generate exactly for ${isSunday ? 'Sunday' : 'this day'}:
 ${params.sundaySweet && isSunday ? `- Sunday sweet: ${params.sundaySweet}` : ''}
 
 ABSOLUTE RULES:
-${isSunday && params.sundayExtraCurry ? `RULE 0 — SUNDAY SPECIAL (MANDATORY): Today is Sunday. The family has requested: "${params.sundayExtraCurry}". You MUST include exactly these dishes on Sunday. This overrides all other curry rules for Sunday only.\n` : ''}1. DIETARY: ${params.foodPrefs?.type === 'nonveg' ? 'NON-VEGETARIAN family. You MUST include at least one non-vegetarian dish (meat, fish, eggs, or poultry) in BOTH lunch and dinner. An all-vegetarian plan for a non-vegetarian family is WRONG and will be rejected.' : 'Strictly vegetarian — no meat, fish or eggs.'}
+1. DIETARY: ${params.foodPrefs?.type === 'nonveg' ? 'NON-VEGETARIAN family. You MUST include at least one non-vegetarian dish (meat, fish, eggs, or poultry) in BOTH lunch and dinner. An all-vegetarian plan for a non-vegetarian family is WRONG and will be rejected.' : 'Strictly vegetarian — no meat, fish or eggs.'}
 2. UNIQUENESS: Do NOT use any of these dishes already planned this week: ${historyStr}
 3. CUISINE: ONLY authentic dishes from these cuisines: ${cuisineList}. Every dish must be from one of these cuisines only.
 4. AVOIDANCE: Never suggest: ${avoidanceList}
