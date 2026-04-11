@@ -1669,9 +1669,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
                     const ms = day.anatomy[key] as MealAnatomy;
                     const curryArr: AnatomyComponent[] = ms.curry
-                      ? (Array.isArray(ms.curry) ? ms.curry : [ms.curry]).filter(Boolean)
+                      ? (Array.isArray(ms.curry) ? ms.curry : [ms.curry]).filter(c => !!c && !!c.dishName)
                       : [];
-                    if (curryArr.length === 0) return null;
                     const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => {
                       const dn = (c.dishName || '').toLowerCase();
                       const typeLabel = dn.includes('fry') || dn.includes('fried') ? 'Fry'

@@ -963,14 +963,17 @@ Return JSON:
 }
 
 async function getIngredientsForDish(dishName: string, familySize: number): Promise<string[]> {
-  try {
-    const prompt = `List 6 ingredients for ${dishName} for ${familySize} people.\nReturn JSON array only: ["qty unit ingredient", ...]`;
-    const text = await askClaudeJson(prompt, 200);
-    const parsed = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const prompt = `List 6 ingredients for ${dishName} for ${familySize} people.\nReturn JSON array only: ["qty unit ingredient", ...]`;
+      const text = await askClaudeJson(prompt, 200);
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+      if (attempt === 2) console.warn(`[INGREDIENTS] Failed for "${dishName}" after 2 attempts`);
+    }
   }
+  return [];
 }
 
 export async function generateMealPlanFast(
@@ -1056,7 +1059,7 @@ export async function generateMealPlanFast(
 
   onProgress?.(0, total);
 
-  const NON_VEG_KEYWORDS = ['chicken','mutton','fish','prawn','lamb','beef','pork','egg','crab','lobster','shrimp','meat','keema','mince','gosht','murg','machli','jhinga','tuna','pomfret','rohu','hilsa','surmai'];
+  const NON_VEG_KEYWORDS = ['chicken','mutton','fish','prawn','lamb','beef','pork','egg','crab','lobster','shrimp','meat','keema','mince','gosht','murg','machli','jhinga','tuna','pomfret','rohu','hilsa','surmai','paplet','bangda','tisreo','kingfish','rawas','mandeli','halwa','kolambi','kekda','tambuse','modso','iswan'];
   const isNonVegDish = (dish: string) => NON_VEG_KEYWORDS.some(k => dish.toLowerCase().includes(k));
 
   for (let i = 0; i < params.dates.length; i++) {
