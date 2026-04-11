@@ -820,12 +820,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
         dinner:    getOpt(i, 'dinner'),
       })) },
     };
-    // DISABLED - schema mismatch
-    // const [menuRes, dishRes] = await Promise.all([
-    //   supabase.from('menu_history').insert(menuPayload),
-    //   dishRows.length > 0 ? supabase.from('dish_history').insert(dishRows) : Promise.resolve({ error: null }),
-    // ]);
-    console.log('[SKIPPED] menu_history/dish_history write - schema fix pending');
+    const [menuRes, dishRes] = await Promise.all([
+      supabase.from('menu_history').insert(menuPayload),
+      dishRows.length > 0 ? supabase.from('dish_history').insert(dishRows) : Promise.resolve({ error: null }),
+    ]);
     // Deduct ingredients from fridge
     await deductFromFridge();
   }
