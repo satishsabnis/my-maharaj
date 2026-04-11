@@ -1059,7 +1059,18 @@ export async function generateMealPlanFast(
   for (let i = 0; i < params.dates.length; i++) {
     const date = params.dates[i];
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-    const isVegDay = params.vegDays?.includes(dayName) ?? false;
+    let isVegDay = params.vegDays?.includes(dayName) ?? false;
+    const avoidanceText = (params.familyAvoids ?? []).join(' ').toLowerCase();
+    const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    DAY_NAMES.forEach(d => {
+      if (
+        avoidanceText.includes(`no non-veg ${d}`) ||
+        avoidanceText.includes(`veg ${d}`) ||
+        avoidanceText.includes(`${d} veg`)
+      ) {
+        if (dayName.toLowerCase() === d) isVegDay = true;
+      }
+    });
     const dayCuisine = params.cuisinePerDay?.[i] || cuisine;
     const cuisineList = Array.isArray(dayCuisine) ? dayCuisine.join(', ') : dayCuisine;
     const isSunday = new Date(date).getDay() === 0;
