@@ -185,6 +185,8 @@ export default function MealWizardScreen() {
   // Alternatives
   const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string; dishName: string; anatomyAlts?: { dishName: string; isVeg?: boolean; cuisine?: string }[] } | null>(null);
   const [altModalVisible, setAltModalVisible] = useState(false);
+  const [fetchingAlts, setFetchingAlts] = useState(false);
+  const [fetchedAlts, setFetchedAlts] = useState<{dishName:string;isVeg:boolean}[]>([]);
 
   // Recipe modal
   const [recipeModal, setRecipeModal] = useState<{ visible: boolean; dishName: string }>({ visible: false, dishName: '' });
@@ -224,7 +226,13 @@ export default function MealWizardScreen() {
         const cached = await AsyncStorage.getItem(cacheKey);
         if (cached) { setRecipeData(JSON.parse(cached)); setRecipeLoading(false); return; }
         const serves = familySize > 0 ? familySize : 4;
-        const prompt = `Write a complete Indian home recipe for "${dishName}" for ${serves} people.
+        const prompt = `Write a complete authentic Indian home recipe for the dish named exactly "${dishName}".
+This is specifically: ${dishName}. Do NOT write a recipe for any other dish.
+If "${dishName}" is a rice dish, write a rice recipe.
+If "${dishName}" is a fry or tawa dish, write a fry recipe.
+If "${dishName}" is a curry, write a curry recipe.
+If "${dishName}" is a bread, write a bread recipe.
+If "${dishName}" is a raita or chutney, write a raita or chutney recipe.
 Return ONLY valid JSON (no markdown) in this exact format:
 { "title": "${dishName}", "serves": ${serves}, "ingredients": ["qty ingredient", ...8-12 items], "method": ["Step 1: ...", ...5-8 steps], "maharajNote": "one warm family tip about this dish" }`;
         const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
@@ -240,6 +248,32 @@ Return ONLY valid JSON (no markdown) in this exact format:
       } catch { setRecipeData(null); } finally { setRecipeLoading(false); }
     })();
   }, [recipeModal.visible, recipeModal.dishName]);
+
+  useEffect(() => {
+    if (!altModalVisible || !alternativeSlot) { setFetchedAlts([]); return; }
+    const hasAnatomyAlts = alternativeSlot.anatomyAlts && alternativeSlot.anatomyAlts.length > 0;
+    const day = generatedPlan?.[alternativeSlot.dayIdx];
+    const slotData = day?.[alternativeSlot.slot as MealSlotKey];
+    const legacyAlts = slotData?.options?.filter((_, i) => i !== (selections[alternativeSlot.dayIdx]?.[alternativeSlot.slot as MealSlotKey] ?? 0)).slice(0, 3) ?? [];
+    if (hasAnatomyAlts || legacyAlts.length > 0) return;
+    setFetchingAlts(true);
+    setFetchedAlts([]);
+    const cuisine = selectedCuisines.join(', ') || 'Indian';
+    const prompt = `Suggest 3 alternative dishes for "${alternativeSlot.dishName}" from ${cuisine} cuisine. Same meal type. Return ONLY valid JSON array with no markdown: [{"dishName":"name","isVeg":true},{"dishName":"name","isVeg":false},{"dishName":"name","isVeg":false}]`;
+    fetch('https://my-maharaj.vercel.app/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const text = (data?.content?.[0]?.text ?? '[]').replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) setFetchedAlts(parsed);
+      })
+      .catch(() => {})
+      .finally(() => setFetchingAlts(false));
+  }, [altModalVisible]);
 
   const scrollRef = useRef<ScrollView>(null);
   const planScrollRef = useRef<ScrollView>(null);
@@ -1638,10 +1672,17 @@ Return ONLY valid JSON (no markdown) in this exact format:
                       ? (Array.isArray(ms.curry) ? ms.curry : [ms.curry]).filter(Boolean)
                       : [];
                     if (curryArr.length === 0) return null;
-                    const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => ({
-                      compLabel: curryArr.length > 1 ? `Curry ${ci + 1}` : 'Curry',
-                      comp: c,
-                    }));
+                    const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => {
+                      const dn = (c.dishName || '').toLowerCase();
+                      const typeLabel = dn.includes('fry') || dn.includes('fried') ? 'Fry'
+                        : dn.includes('tawa') ? 'Tawa'
+                        : dn.includes('roast') ? 'Roast'
+                        : dn.includes('grill') ? 'Grilled'
+                        : dn.includes('sukhem') || dn.includes('sukha') ? 'Dry'
+                        : dn.includes('tikka') ? 'Tikka'
+                        : curryArr.length > 1 ? `Curry ${ci + 1}` : 'Curry';
+                      return { compLabel: typeLabel, comp: c };
+                    });
                     const ROWS: { compLabel: string; comp: AnatomyComponent }[] = [
                       ...curryRows,
                       { compLabel: 'Veg',   comp: ms.veg   },
@@ -1932,9 +1973,38 @@ Return ONLY valid JSON (no markdown) in this exact format:
                   <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Pick this</Text>
                 </TouchableOpacity>
               </View>
+            )) : fetchingAlts ? (
+              <View style={{alignItems:'center',paddingVertical:20}}>
+                <ActivityIndicator size="small" color={colors.emerald} />
+                <Text style={{fontSize:12,color:colors.textMuted,marginTop:8}}>Maharaj is finding alternatives...</Text>
+              </View>
+            ) : fetchedAlts.length > 0 ? fetchedAlts.map((alt, i) => (
+              <View key={i} style={[cards.base, {marginBottom:10}]}>
+                <Text style={{fontSize:15,fontWeight:'700',color:colors.navy,marginBottom:4}}>{alt.dishName}</Text>
+                <TouchableOpacity style={{backgroundColor:colors.emerald,borderRadius:10,paddingVertical:10,alignItems:'center'}} onPress={() => {
+                  if (generatedPlan && alternativeSlot) {
+                    const d = generatedPlan[alternativeSlot.dayIdx];
+                    if (d?.anatomy) {
+                      const slotAnat = d.anatomy[alternativeSlot.slot as MealSlotKey];
+                      if (slotAnat && typeof slotAnat === 'object' && 'dishName' in slotAnat) {
+                        (slotAnat as AnatomyComponent).dishName = alt.dishName;
+                      } else if (slotAnat && typeof slotAnat === 'object') {
+                        const compKey = alternativeSlot.component.toLowerCase() as keyof MealAnatomy;
+                        if ((slotAnat as MealAnatomy)[compKey]) (slotAnat as MealAnatomy)[compKey].dishName = alt.dishName;
+                      }
+                      setGeneratedPlan([...generatedPlan]);
+                    }
+                  }
+                  setFetchedAlts([]);
+                  setAlternativeSlot(null);
+                  setAltModalVisible(false);
+                }}>
+                  <Text style={{fontSize:13,fontWeight:'700',color:colors.white}}>Pick this</Text>
+                </TouchableOpacity>
+              </View>
             )) : (
               <View style={{alignItems:'center',paddingVertical:20}}>
-                <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center',lineHeight:20}}>No pre-generated alternatives for {currentName}. Go back and regenerate with different preferences to see more options.</Text>
+                <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Could not find alternatives. Please try again.</Text>
               </View>
             )}
           </ScrollView>
