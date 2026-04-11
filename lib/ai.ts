@@ -96,7 +96,7 @@ async function askClaude(prompt: string): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -112,7 +112,7 @@ async function askClaudeStream(prompt: string): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -912,8 +912,7 @@ Return JSON only, no markdown, no explanation:
 
     try {
       const text = await askClaude(buildPrompt());
-      console.log('[CLAUDE RESPONSE]', text.substring(0, 500));
-      const parsed = normalizeFastDay(JSON.parse(text));
+const parsed = normalizeFastDay(JSON.parse(text));
       const dishNames = extractFastDishNames(parsed);
 
       // Validation: non-veg check
