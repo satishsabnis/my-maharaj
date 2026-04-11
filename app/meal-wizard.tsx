@@ -1575,7 +1575,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
             const [, festMonth, festDayNum] = day.date.split('-').map(Number);
             const festivalMatch = FESTIVALS_2026.find(f => f.month === festMonth && f.day === festDayNum);
             const isSunday = dt.getDay() === 0;
-            const hasAnatomy = !!(day.anatomy?.lunch?.curry?.dishName || day.anatomy?.breakfast?.dishName);
+            const lunchCurry = day.anatomy?.lunch?.curry;
+            const lunchCurryDishName = Array.isArray(lunchCurry) ? lunchCurry[0]?.dishName : lunchCurry?.dishName;
+            const hasAnatomy = !!(lunchCurryDishName || day.anatomy?.breakfast?.dishName);
             const hasLegacy = !!(day.breakfast?.options?.[0]?.name || day.lunch?.options?.[0]?.name || day.dinner?.options?.[0]?.name);
 
             return (
@@ -1610,8 +1612,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
                   if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
                     const ms = day.anatomy[key] as MealAnatomy;
+                    const curryArr: AnatomyComponent[] = Array.isArray(ms.curry) ? ms.curry : [ms.curry];
+                    const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => ({
+                      compLabel: curryArr.length > 1 ? `Curry ${ci + 1}` : 'Curry',
+                      comp: c,
+                    }));
                     const ROWS: { compLabel: string; comp: AnatomyComponent }[] = [
-                      { compLabel: 'Curry', comp: ms.curry },
+                      ...curryRows,
                       { compLabel: 'Veg',   comp: ms.veg   },
                       { compLabel: 'Raita', comp: ms.raita },
                       { compLabel: 'Bread', comp: ms.bread },
@@ -1622,7 +1629,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
                         {slotLabel}
                         {ROWS.map(({ compLabel, comp }) => {
                           const isCarry = compLabel === 'Curry' && nightCarry && !!prevDinnerAnat;
-                          const dishName = isCarry ? prevDinnerAnat!.curry.dishName : comp.dishName;
+                          const prevCurry = prevDinnerAnat?.curry;
+                          const prevCurryDish = Array.isArray(prevCurry) ? prevCurry[0]?.dishName : prevCurry?.dishName;
+                          const dishName = isCarry ? (prevCurryDish ?? comp.dishName) : comp.dishName;
                           return (
                             <View key={compLabel} style={rowStyle}>
                               <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
