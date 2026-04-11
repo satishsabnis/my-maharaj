@@ -489,11 +489,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
         const allCuisines = selectedCuisines.length > 0
           ? selectedCuisines
           : [...savedCuisines.filter(c => !removedCuisines.includes(c)), ...extraCuisines];
-        return dates.map((d, i) => {
+        const allCuisinesForAllDays = dates.map((d, i) => {
           if (perDayCuisine[d]) return perDayCuisine[d];
           if (hasGuests && guestCuisine && i < guestDays) return guestCuisine;
-          return allCuisines.length > 0 ? allCuisines[i % allCuisines.length] : cuisine;
+          return allCuisines.length > 0 ? allCuisines : cuisine;
         });
+        return allCuisinesForAllDays;
       })();
 
       console.log('[CUISINES PER DAY]', allCuisinesPerDay);

@@ -474,7 +474,7 @@ export async function generateMealPlan(
     tiffinRestrictions?: string;
     includeDessert?: boolean;
     vegDays?: string[];
-    cuisinePerDay?: string[];
+    cuisinePerDay?: (string | string[])[];
     festivalContext?: string;
     breakfastPrefs?: string[];
     lunchPrefs?: string[];
@@ -780,7 +780,7 @@ export async function generateMealPlanFast(
     unwellMembers?: string[];
     nutritionFocus?: string;
     vegDays?: string[];
-    cuisinePerDay?: string[];
+    cuisinePerDay?: (string | string[])[];
     breakfastPrefs?: string[];
     lunchPrefs?: string[];
     dinnerPrefs?: string[];
@@ -855,6 +855,7 @@ export async function generateMealPlanFast(
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
     const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
     const dayCuisine = params.cuisinePerDay?.[i] || cuisine;
+    const cuisineList = Array.isArray(dayCuisine) ? dayCuisine.join(', ') : dayCuisine;
 
     // Update day label BEFORE the API call (Fix 6)
     onDayStart?.(dayName);
@@ -900,7 +901,7 @@ ${params.sundaySweet && isSunday ? `- Sunday sweet: ${params.sundaySweet}` : ''}
 ABSOLUTE RULES:
 ${isSunday && params.sundayExtraCurry ? `RULE 0 — SUNDAY SPECIAL (MANDATORY): Today is Sunday. The family has requested: "${params.sundayExtraCurry}". You MUST include exactly these dishes on Sunday. This overrides all other curry rules for Sunday only.\n` : ''}1. DIETARY: ${params.foodPrefs?.type === 'nonveg' ? 'NON-VEGETARIAN family. You MUST include at least one non-vegetarian dish (meat, fish, eggs, or poultry) in BOTH lunch and dinner. An all-vegetarian plan for a non-vegetarian family is WRONG and will be rejected.' : 'Strictly vegetarian — no meat, fish or eggs.'}
 2. UNIQUENESS: Do NOT use any of these dishes already planned this week: ${historyStr}
-3. CUISINE: ONLY authentic dishes from ${dayCuisine} cuisine. Every single dish — breakfast, lunch curry, lunch veg, raita, bread, rice, dinner curry, dinner veg, snack — must be a traditional ${dayCuisine} dish. No dishes from any other cuisine. No generic Indian dishes.
+3. CUISINE: ONLY authentic dishes from these cuisines: ${cuisineList}. Every dish must be from one of these cuisines only.
 4. AVOIDANCE: Never suggest: ${avoidanceList}
 5. HEALTH: ${healthInfo}
 ${params.cookingPattern ? `6. COOKING PATTERN: ${params.cookingPattern}\n` : ''}${params.jainFamily ? `7. JAIN: Jain family — no onion, no garlic, no root vegetables (potatoes, carrots, radish, beetroot, turnip)\n` : ''}${familyRecipesList.length > 0 ? `8. FAMILY RECIPES: This family has saved these recipes — rotate them into the plan where appropriate (do not repeat every day): ${familyRecipesList.map(r => `${r.recipe_name} (${r.cuisine})`).join(', ')}\n` : ''}${retry ? `\nRETRY INSTRUCTION: Previous response was invalid. You MUST include at least one non-vegetarian dish (containing meat, fish, or eggs) for this non-vegetarian family. An all-vegetarian response is rejected.\n` : ''}
