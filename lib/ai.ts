@@ -1135,10 +1135,10 @@ export async function generateMealPlanFast(
         allDishNames.map(dish => getIngredientsForDish(dish, familySize))
       );
       const [
-        bfIngs,
-        lc1Ings, lc2Ings, lvIngs, lrIngs, lbIngs, lriIngs,
-        dc1Ings, dc2Ings, dvIngs, drIngs, dbIngs, driIngs,
-        snackIngs,
+        bfIngs = [],
+        lc1Ings = [], lc2Ings = [], lvIngs = [], lrIngs = [], lbIngs = [], lriIngs = [],
+        dc1Ings = [], dc2Ings = [], dvIngs = [], drIngs = [], dbIngs = [], driIngs = [],
+        snackIngs = [],
       ] = allIngredients;
 
       // ── Stage 3: assemble anatomy ─────────────────────────────────────────
