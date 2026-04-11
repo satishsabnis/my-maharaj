@@ -574,6 +574,14 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const defaultSel: Record<number, Partial<Record<MealSlotKey, number>>> = {};
       plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
       setGeneratedPlan(plan.days);
+      const allSwapNotes: string[] = [];
+      plan.days.forEach(d => {
+        const notes = (d as any).__swapNotes;
+        if (Array.isArray(notes)) allSwapNotes.push(...notes);
+      });
+      if (allSwapNotes.length > 0) {
+        Alert.alert('Maharaj made some swaps', allSwapNotes.join('\n'), [{ text: 'OK' }]);
+      }
       setSelections(defaultSel);
       setActiveDay(0);
 
@@ -920,7 +928,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       }).select('id').single();
       if (error) { console.error('[MealWizard] savePlanToSupabase error:', error.message); return; }
       // Generate prep tasks linked to this plan
-      if (data?.id) generateMealPrepTasks(confirmedPlan, user.id, data.id);
+      if (data?.id) await generateMealPrepTasks(confirmedPlan, user.id, data.id);
     } catch (e) { console.error('[MealWizard] savePlanToSupabase catch:', e); }
   }
 
@@ -1628,7 +1636,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
                   if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
                     const ms = day.anatomy[key] as MealAnatomy;
-                    const curryArr: AnatomyComponent[] = Array.isArray(ms.curry) ? ms.curry : [ms.curry];
+                    const curryArr: AnatomyComponent[] = ms.curry
+                      ? (Array.isArray(ms.curry) ? ms.curry : [ms.curry]).filter(Boolean)
+                      : [];
+                    if (curryArr.length === 0) return null;
                     const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => ({
                       compLabel: curryArr.length > 1 ? `Curry ${ci + 1}` : 'Curry',
                       comp: c,

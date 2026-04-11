@@ -919,7 +919,6 @@ async function selectDishesForDay(p: {
   isNonVeg: boolean; isSunday: boolean; sundayExtraCurry?: string;
   avoidanceList: string; historyStr: string; retry?: boolean;
 }): Promise<DishSelection> {
-  console.log('[SUNDAY DEBUG]', { isSunday: p.isSunday, sundayExtraCurry: p.sundayExtraCurry, date: p.date, dayName: p.dayName });
   const sundayDishes = p.sundayExtraCurry
     ? p.sundayExtraCurry.split(',').map(d => d.trim()).filter(Boolean)
     : [];
@@ -956,7 +955,11 @@ Return JSON:
   "snack": "dish name"
 }`;
   const text = await askClaudeJson(prompt, 400);
-  return JSON.parse(text) as DishSelection;
+  try {
+    return JSON.parse(text) as DishSelection;
+  } catch {
+    throw new Error(`selectDishesForDay: malformed JSON from Claude — ${text.slice(0, 100)}`);
+  }
 }
 
 async function getIngredientsForDish(dishName: string, familySize: number): Promise<string[]> {
@@ -1117,7 +1120,6 @@ export async function generateMealPlanFast(
           ? (params.cuisinePerDay![i] as string[])[0]
           : (params.cuisinePerDay?.[i] as string) || params.cuisine;
         dishes.dinner_curry_1 = `${cuisineStr} ${protein} Curry`;
-        console.warn(`[NON-VEG FORCED] dinner_curry_1 forced to ${dishes.dinner_curry_1} on ${dayName}`);
       }
 
       // ── Stage 2: parallel ingredients for all 14 dishes ──────────────────
@@ -1227,20 +1229,31 @@ export async function generateMealPlanFast(
     .filter(w => w.length > 3);
 
   if (avoidKeywords.length > 0) {
+    const swapNote: string[] = [];
     dayResults.forEach(day => {
-      const checkAndFlag = (dishName: string) => {
+      const checkViolation = (dishName: string) => {
         const lower = dishName.toLowerCase();
         return avoidKeywords.some(kw => lower.includes(kw));
       };
-      ['breakfast','lunch','dinner','snack'].forEach(slot => {
+      (['breakfast','lunch','dinner','snack'] as const).forEach(slot => {
         const s = day[slot as keyof MealPlanDay] as any;
         s?.options?.forEach((opt: any) => {
-          if (checkAndFlag(opt.name)) {
-            console.error(`[AVOIDANCE VIOLATION] ${opt.name} contains avoided ingredient — day ${day.day}, slot ${slot}`);
+          if (checkViolation(opt.name)) {
+            const original = opt.name;
+            const cuisine = Array.isArray(params.cuisinePerDay?.[0])
+              ? (params.cuisinePerDay![0] as string[])[0]
+              : (params.cuisinePerDay?.[0] as string) || params.cuisine;
+            const protein = params.allowedProteins?.[0] || 'Chicken';
+            opt.name = slot === 'breakfast' ? 'Pohe' : slot === 'snack' ? 'Fruit Chaat' : `${cuisine} ${protein} Curry`;
+            swapNote.push(`Maharaj swapped "${original}" because of your avoidance settings`);
+            console.warn(`[AVOIDANCE REPLACED] ${original} → ${opt.name} on ${day.day}, slot ${slot}`);
           }
         });
       });
     });
+    if (swapNote.length > 0) {
+      (dayResults as any).__swapNotes = swapNote;
+    }
   }
 
   return { days: dayResults, grocery_list: [] };
