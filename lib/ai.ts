@@ -1106,6 +1106,20 @@ export async function generateMealPlanFast(
         }
       }
 
+      const nonVegKw = ['chicken','mutton','fish','prawn','lamb','egg','pork','crab','keema','gosht','murg','machli','jhinga','pomfret','bangda','tisreo','surmai'];
+      const dinnerHasNonVeg = nonVegKw.some(k =>
+        dishes.dinner_curry_1.toLowerCase().includes(k) ||
+        dishes.dinner_curry_2.toLowerCase().includes(k)
+      );
+      if (isEffectivelyNonVeg && !dinnerHasNonVeg) {
+        const protein = params.allowedProteins?.[0] || 'Chicken';
+        const cuisineStr = Array.isArray(params.cuisinePerDay?.[i])
+          ? (params.cuisinePerDay![i] as string[])[0]
+          : (params.cuisinePerDay?.[i] as string) || params.cuisine;
+        dishes.dinner_curry_1 = `${cuisineStr} ${protein} Curry`;
+        console.warn(`[NON-VEG FORCED] dinner_curry_1 forced to ${dishes.dinner_curry_1} on ${dayName}`);
+      }
+
       // ── Stage 2: parallel ingredients for all 14 dishes ──────────────────
       const allDishNames = [
         dishes.breakfast,
