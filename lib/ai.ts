@@ -910,6 +910,7 @@ Return JSON only, no markdown, no explanation:
     let dayResult: MealPlanDay | null = null;
 
     try {
+      console.log('[PROMPT DEBUG]', buildPrompt());
       const text = await askClaude(buildPrompt());
       const parsed = normalizeFastDay(JSON.parse(text));
       const dishNames = extractFastDishNames(parsed);
