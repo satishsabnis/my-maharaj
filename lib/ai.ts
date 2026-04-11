@@ -869,8 +869,12 @@ export async function generateMealPlanFast(
 
     const jsonShape: string[] = [];
     if (slots.includes('breakfast')) jsonShape.push(`"breakfast": { "dishName": "Authentic Indian name", "isVeg": true, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"] }`);
-    if (slots.includes('lunch')) jsonShape.push(`"lunch": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
-    if (slots.includes('dinner')) jsonShape.push(`"dinner": { "curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
+    const multiCurry = !!(params.mealTemplateCurry?.includes(','));
+    const curryShape = multiCurry
+      ? `"curry": [{ "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, { "dishName": "name2", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }]`
+      : `"curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }`;
+    if (slots.includes('lunch')) jsonShape.push(`"lunch": { ${curryShape}, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
+    if (slots.includes('dinner')) jsonShape.push(`"dinner": { ${curryShape}, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
     if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x3-4"] }`);
 
     const isSunday = new Date(date).getDay() === 0;
@@ -879,12 +883,12 @@ export async function generateMealPlanFast(
 FAMILY: ${communityRules}, ${familySize} members
 MEAL TEMPLATE: Generate exactly for ${isSunday ? 'Sunday' : 'this day'}:
 - Breakfast: 1 breakfast dish per family preference
-- Lunch curry: ${isSunday && params.sundayExtraCurry ? params.sundayExtraCurry : params.mealTemplateCurry || 'one main curry'}
+- Lunch curries: ${isSunday && params.sundayExtraCurry ? params.sundayExtraCurry : params.mealTemplateCurry || 'one main curry'} — generate ALL of these as separate dishes
 - Lunch veg: ${params.mealTemplateVeg || 'one vegetable dish'}
 - Lunch raita: ${params.mealTemplateRaita || 'one raita'}
 - Lunch bread: ${params.mealTemplateBread || 'chapati or paratha'}
 - Lunch rice: ${params.mealTemplateRice || 'steamed rice'}
-- Dinner curry: ${isSunday && params.sundayExtraCurry ? params.sundayExtraCurry : params.mealTemplateCurry || 'one main curry'}
+- Dinner curries: same as lunch curries
 - Dinner veg: ${params.mealTemplateVeg || 'one vegetable dish'}
 - Dinner raita: ${params.mealTemplateRaita || 'one raita'}
 - Dinner bread: ${params.mealTemplateBread || 'chapati or paratha'}
@@ -893,7 +897,7 @@ MEAL TEMPLATE: Generate exactly for ${isSunday ? 'Sunday' : 'this day'}:
 ${params.sundaySweet && isSunday ? `- Sunday sweet: ${params.sundaySweet}` : ''}
 
 ABSOLUTE RULES:
-1. DIETARY: ${foodPref}. ${allowedProteins?.length ? `Allowed proteins: ${allowedProteins.join(', ')} ONLY.` : ''}
+${isSunday && params.sundayExtraCurry ? `RULE 0 — SUNDAY SPECIAL (MANDATORY): Today is Sunday. The family has requested: "${params.sundayExtraCurry}". You MUST include exactly these dishes on Sunday. This overrides all other curry rules for Sunday only.\n` : ''}1. DIETARY: ${params.foodPrefs?.type === 'nonveg' ? 'NON-VEGETARIAN family. You MUST include at least one non-vegetarian dish (meat, fish, eggs, or poultry) in BOTH lunch and dinner. An all-vegetarian plan for a non-vegetarian family is WRONG and will be rejected.' : 'Strictly vegetarian — no meat, fish or eggs.'}
 2. UNIQUENESS: Do NOT use any of these dishes already planned this week: ${historyStr}
 3. CUISINE: ONLY authentic dishes from ${dayCuisine} cuisine. Every single dish — breakfast, lunch curry, lunch veg, raita, bread, rice, dinner curry, dinner veg, snack — must be a traditional ${dayCuisine} dish. No dishes from any other cuisine. No generic Indian dishes.
 4. AVOIDANCE: Never suggest: ${avoidanceList}
