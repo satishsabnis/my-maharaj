@@ -955,11 +955,39 @@ Return JSON:
   "snack": "dish name"
 }`;
   const text = await askClaudeJson(prompt, 400);
+  let raw: Partial<DishSelection>;
   try {
-    return JSON.parse(text) as DishSelection;
+    raw = JSON.parse(text) as Partial<DishSelection>;
   } catch {
     throw new Error(`selectDishesForDay: malformed JSON from Claude — ${text.slice(0, 100)}`);
   }
+  const fallbackDish = (val: any, slot: string): string => {
+    if (typeof val === 'string' && val.trim().length > 0) return val.trim();
+    console.warn(`[DISH MISSING] selectDishesForDay: missing field "${slot}" — using fallback`);
+    return slot.includes('breakfast') ? 'Poee with Butter'
+      : slot.includes('snack') ? 'Banana Chips'
+      : slot.includes('veg') ? 'Tendli Bhaji'
+      : slot.includes('raita') ? 'Coconut Raita'
+      : slot.includes('bread') ? 'Chapati'
+      : slot.includes('rice') ? 'Ukde Sheeth'
+      : 'Chicken Xacuti';
+  };
+  return {
+    breakfast:      fallbackDish(raw.breakfast,      'breakfast'),
+    lunch_curry_1:  fallbackDish(raw.lunch_curry_1,  'lunch_curry_1'),
+    lunch_curry_2:  fallbackDish(raw.lunch_curry_2,  'lunch_curry_2'),
+    lunch_veg:      fallbackDish(raw.lunch_veg,      'lunch_veg'),
+    lunch_raita:    fallbackDish(raw.lunch_raita,    'lunch_raita'),
+    lunch_bread:    fallbackDish(raw.lunch_bread,    'lunch_bread'),
+    lunch_rice:     fallbackDish(raw.lunch_rice,     'lunch_rice'),
+    dinner_curry_1: fallbackDish(raw.dinner_curry_1, 'dinner_curry_1'),
+    dinner_curry_2: fallbackDish(raw.dinner_curry_2, 'dinner_curry_2'),
+    dinner_veg:     fallbackDish(raw.dinner_veg,     'dinner_veg'),
+    dinner_raita:   fallbackDish(raw.dinner_raita,   'dinner_raita'),
+    dinner_bread:   fallbackDish(raw.dinner_bread,   'dinner_bread'),
+    dinner_rice:    fallbackDish(raw.dinner_rice,    'dinner_rice'),
+    snack:          fallbackDish(raw.snack,          'snack'),
+  };
 }
 
 async function getIngredientsForDish(dishName: string, familySize: number): Promise<string[]> {
@@ -1060,7 +1088,10 @@ export async function generateMealPlanFast(
   onProgress?.(0, total);
 
   const NON_VEG_KEYWORDS = ['chicken','mutton','fish','prawn','lamb','beef','pork','egg','crab','lobster','shrimp','meat','keema','mince','gosht','murg','machli','jhinga','tuna','pomfret','rohu','hilsa','surmai','paplet','bangda','tisreo','kingfish','rawas','mandeli','halwa','kolambi','kekda','tambuse','modso','iswan'];
-  const isNonVegDish = (dish: string) => NON_VEG_KEYWORDS.some(k => dish.toLowerCase().includes(k));
+  const isNonVegDish = (dish: string | undefined | null) => {
+    if (!dish) return false;
+    return NON_VEG_KEYWORDS.some(k => dish.toLowerCase().includes(k));
+  };
 
   for (let i = 0; i < params.dates.length; i++) {
     const date = params.dates[i];
@@ -1213,7 +1244,8 @@ export async function generateMealPlanFast(
       // Update week history for deduplication
       allDishNames.forEach(n => { if (n) weekHistory.push(n); });
 
-    } catch {
+    } catch (dayErr) {
+      console.error(`[DAY FAILED] ${dayName} (${date}): ${dayErr instanceof Error ? dayErr.message : String(dayErr)}`);
       // Fallback: empty slots, no anatomy
       const emptySlot: MealSlot = { options: [] };
       const fbBf = slots.includes('breakfast') ? fallbackSlot('breakfast', i) : emptySlot;
