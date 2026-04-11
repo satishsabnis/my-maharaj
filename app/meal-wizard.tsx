@@ -689,12 +689,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
       if (!user) return;
       await supabase.from('dish_feedback').insert({ user_id: user.id, dish_name: dishName, feedback });
       console.log(`[Feedback] ${feedback} for "${dishName}"`);
-      // Auto-ban: if 10+ thumbs down across all users
       if (feedback === 'down') {
-        const { count } = await supabase.from('dish_feedback').select('id', { count: 'exact', head: true }).eq('dish_name', dishName).eq('feedback', 'down');
-        if ((count ?? 0) >= 10) {
-          await supabase.from('dishes').update({ is_banned: true }).eq('name', dishName);
-          console.log(`[Feedback] "${dishName}" auto-banned (10+ thumbs down)`);
+        const { count } = await supabase.from('dish_feedback').select('id', { count: 'exact', head: true }).eq('dish_name', dishName).eq('feedback', 'down').eq('user_id', user.id);
+        if ((count ?? 0) >= 3) {
+          console.warn(`[FEEDBACK] "${dishName}" disliked ${count} times by this user — deprioritised for this user only`);
         }
       }
     } catch (e) { console.log('[Feedback] save failed:', e); }
