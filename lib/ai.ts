@@ -912,6 +912,7 @@ Return JSON only, no markdown, no explanation:
 
     try {
       const text = await askClaude(buildPrompt());
+      console.log('[CLAUDE RESPONSE]', text.substring(0, 500));
       const parsed = normalizeFastDay(JSON.parse(text));
       const dishNames = extractFastDishNames(parsed);
 
