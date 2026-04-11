@@ -467,8 +467,24 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const mealTemplateRaita = await AsyncStorage.getItem('meal_template_raita') || '';
       const mealTemplateBread = await AsyncStorage.getItem('meal_template_bread') || '';
       const mealTemplateRice = await AsyncStorage.getItem('meal_template_rice') || '';
-      const sundayExtraCurry = await AsyncStorage.getItem('sunday_extra_curry') || '';
-      const sundaySweet = await AsyncStorage.getItem('sunday_sweet') || '';
+      let sundayExtraCurry = await AsyncStorage.getItem('sunday_extra_curry') || '';
+      let sundaySweet = await AsyncStorage.getItem('sunday_sweet') || '';
+      // Fallback: if AsyncStorage empty, read from Supabase profiles
+      if (!sundayExtraCurry || !sundaySweet) {
+        try {
+          const { data: profileRow } = await supabase.from('profiles').select('sunday_extra_curry, sunday_sweet').eq('id', userId).maybeSingle();
+          if (profileRow) {
+            if (!sundayExtraCurry && profileRow.sunday_extra_curry) {
+              sundayExtraCurry = profileRow.sunday_extra_curry;
+              await AsyncStorage.setItem('sunday_extra_curry', sundayExtraCurry);
+            }
+            if (!sundaySweet && profileRow.sunday_sweet) {
+              sundaySweet = profileRow.sunday_sweet;
+              await AsyncStorage.setItem('sunday_sweet', sundaySweet);
+            }
+          }
+        } catch { /* non-fatal — generation continues without Sunday special */ }
+      }
 
       const _dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
       const _today = new Date();
