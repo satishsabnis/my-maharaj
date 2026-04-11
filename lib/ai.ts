@@ -1207,5 +1207,27 @@ export async function generateMealPlanFast(
     onProgress?.(i + 1, total);
   }
 
+  const avoidKeywords = (params.familyAvoids ?? [])
+    .join(' ').toLowerCase()
+    .split(/[\s,]+/)
+    .filter(w => w.length > 3);
+
+  if (avoidKeywords.length > 0) {
+    dayResults.forEach(day => {
+      const checkAndFlag = (dishName: string) => {
+        const lower = dishName.toLowerCase();
+        return avoidKeywords.some(kw => lower.includes(kw));
+      };
+      ['breakfast','lunch','dinner','snack'].forEach(slot => {
+        const s = day[slot as keyof MealPlanDay] as any;
+        s?.options?.forEach((opt: any) => {
+          if (checkAndFlag(opt.name)) {
+            console.error(`[AVOIDANCE VIOLATION] ${opt.name} contains avoided ingredient — day ${day.day}, slot ${slot}`);
+          }
+        });
+      });
+    });
+  }
+
   return { days: dayResults, grocery_list: [] };
 }
