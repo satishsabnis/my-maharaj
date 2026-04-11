@@ -867,15 +867,16 @@ export async function generateMealPlanFast(
     if (slots.includes('dinner')) mealLines.push('- Dinner: { curry: one main curry, veg: one vegetable dish, raita: one raita, bread: chapati/paratha/puri/naan, rice: one rice preparation }');
     if (slots.includes('snack')) mealLines.push('- Snack: 1 freshly cookable snack (15 mins max, never packaged)');
 
+    const isVegExample = params.foodPrefs?.type !== 'nonveg';
     const jsonShape: string[] = [];
-    if (slots.includes('breakfast')) jsonShape.push(`"breakfast": { "dishName": "Authentic Indian name", "isVeg": true, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"] }`);
+    if (slots.includes('breakfast')) jsonShape.push(`"breakfast": { "dishName": "Authentic Indian name", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"] }`);
     const multiCurry = !!(params.mealTemplateCurry?.includes(','));
     const curryShape = multiCurry
-      ? `"curry": [{ "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }, { "dishName": "name2", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }]`
-      : `"curry": { "dishName": "name", "isVeg": true, "cuisine": "...", "ingredients": ["qty item x4-8"] }`;
-    if (slots.includes('lunch')) jsonShape.push(`"lunch": { ${curryShape}, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
-    if (slots.includes('dinner')) jsonShape.push(`"dinner": { ${curryShape}, "veg": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
-    if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": true, "ingredients": ["qty item x3-4"] }`);
+      ? `"curry": [{ "dishName": "name", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["qty item x4-8"] }, { "dishName": "name2", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["qty item x4-8"] }]`
+      : `"curry": { "dishName": "name", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["qty item x4-8"] }`;
+    if (slots.includes('lunch')) jsonShape.push(`"lunch": { ${curryShape}, "veg": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
+    if (slots.includes('dinner')) jsonShape.push(`"dinner": { ${curryShape}, "veg": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
+    if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x3-4"] }`);
 
     const isSunday = new Date(date).getDay() === 0;
     const buildPrompt = (retry = false): string => `Generate a complete meal plan for ${dayName} (${date}).
@@ -910,7 +911,6 @@ Return JSON only, no markdown, no explanation:
     let dayResult: MealPlanDay | null = null;
 
     try {
-      console.log('[PROMPT DEBUG]', buildPrompt());
       const text = await askClaude(buildPrompt());
       const parsed = normalizeFastDay(JSON.parse(text));
       const dishNames = extractFastDishNames(parsed);
