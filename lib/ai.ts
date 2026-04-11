@@ -806,6 +806,7 @@ async function selectDishesForDay(p: {
   isNonVeg: boolean; isSunday: boolean; sundayExtraCurry?: string;
   avoidanceList: string; historyStr: string; retry?: boolean;
 }): Promise<DishSelection> {
+  console.log('[SUNDAY DEBUG]', { isSunday: p.isSunday, sundayExtraCurry: p.sundayExtraCurry, date: p.date, dayName: p.dayName });
   const sundayLine = p.isSunday && p.sundayExtraCurry
     ? `SUNDAY SPECIAL — Lunch curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Lunch curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}, Dinner curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Dinner curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}`
     : '';
