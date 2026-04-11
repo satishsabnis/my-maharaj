@@ -421,6 +421,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         .eq('user_id', userId).eq('is_excluded', false);
       if (cuisineErr) console.error('[MealWizard] cuisine_preferences query error:', cuisineErr.message);
       const cuisines = (cuisineData ?? []).map((r: { cuisine_name: string }) => r.cuisine_name);
+      console.log('[CUISINES FROM DB]', cuisines);
       const cuisine  = cuisines.length > 0 ? cuisines[Math.floor(Math.random() * cuisines.length)] : 'Konkani';
 
       const since = toYMD(addDays(new Date(), -14));
@@ -495,6 +496,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         });
       })();
 
+      console.log('[CUISINES PER DAY]', allCuisinesPerDay);
       setGeneratingDay('');  // reset before generation starts
 
       const communityFromProfile = await AsyncStorage.getItem('community') || '';
