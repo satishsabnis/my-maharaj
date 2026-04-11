@@ -766,6 +766,119 @@ function fastDayToMealPlanDay(date: string, dayName: string, day: FastDayRespons
   return result;
 }
 
+// ── Authentic dish reference by cuisine ───────────────────────────────────────
+
+const AUTHENTIC_DISHES: Record<string, string> = {
+  'Goan': `GOAN AUTHENTIC NAMES ONLY — never use "Goan Chicken Curry" or "Goan Fish Curry":
+Curries (non-veg): Chicken Xacuti, Chicken Cafreal, Chicken Vindaloo, Mutton Xacuti, Pork Sorpotel, Pork Vindaloo, Bangda Uddamethi, Bangda Recheado, Tisreo Sukhem, Prawn Balchao, Prawn Hooman, Paplet Fry, Kingfish Recheado, Crab Xec Xec
+Curries (veg): Khatkhate, Dalitoy, Bharli Vaangi, Alsande Tonak, Tendli Bhaji, Mooga Gathi, Valval
+Breakfast: Poee with Butter, Sanna, Amboli, Konkan Pohe, Ros Omelette, Alle Belle
+Rice: Ukde Sheeth, Tambde Tandool, Goan Red Rice
+Raita/sides: Coconut Raita, Kachumber, Sol Kadhi
+Snack: Bebinca, Doce, Neureos, Banana Chips`,
+
+  'Maharashtrian': `MAHARASHTRIAN AUTHENTIC NAMES ONLY:
+Curries (non-veg): Kolhapuri Chicken, Malvani Fish Curry, Kombdi Vade, Mutton Rassa, Prawns Koliwada
+Curries (veg): Pithla, Bharli Vangi, Shevgyachi Amti, Matki Usal, Kala Vatana Usal, Moong Usal
+Breakfast: Kanda Pohe, Sabudana Khichdi, Upma, Thalipeeth, Amboli, Ghavan
+Rice: Varan Bhaat, Masale Bhaat, Vangi Bhaat
+Bread: Bhakri, Chapati, Puran Poli, Ghavan
+Raita/sides: Koshimbir, Taak, Lonche
+Snack: Misal Pav, Sabudana Vada, Batata Vada, Chakli`,
+
+  'Malvani': `MALVANI AUTHENTIC NAMES ONLY:
+Curries: Malvani Chicken Curry, Malvani Fish Curry, Tisrya Masala, Kombdi Vade, Bangda Masala, Kolambi Masala
+Veg: Kala Vatana Usal, Drumstick Curry, Raw Banana Bhaji
+Bread: Vade, Bhakri
+Breakfast: Ghavan, Amboli`,
+
+  'Konkani': `KONKANI AUTHENTIC NAMES ONLY:
+Curries (non-veg): Chicken Gassi, Fish Gassi, Prawn Gassi, Bangda Rava Fry, Neer Dosa with Chicken Curry, Kori Rotti
+Curries (veg): Dalitoy, Khatkhate, Southe Koddel, Bimbul Gojju
+Breakfast: Neer Dosa, Sanna Idli, Kori Rotti, Undi
+Rice: Ukde Rice, Red Boiled Rice`,
+
+  'Parsi': `PARSI AUTHENTIC NAMES ONLY:
+Mains: Dhansak, Sali Boti, Patra ni Machhi, Jardaloo Sali Murgi, Mutton Cutlets, Akuri
+Breakfast: Akuri on Toast, Sali Par Edu
+Rice: Brown Rice with Dhansak, Pulao Dal
+Dessert: Lagan nu Custard`,
+
+  'Punjabi': `PUNJABI AUTHENTIC NAMES ONLY — never use "Punjabi Curry":
+Curries (non-veg): Butter Chicken, Chicken Curry Dhaba Style, Mutton Rogan Josh, Keema Matar
+Curries (veg): Dal Makhani, Rajma Chawal, Sarson da Saag, Kadhi Pakora, Chole, Aloo Gobi
+Breakfast: Aloo Paratha with Makhan, Missi Roti, Amritsari Kulcha, Puri Aloo
+Bread: Makki di Roti, Tandoori Roti, Laccha Paratha
+Raita: Boondi Raita, Pudina Raita`,
+
+  'Gujarati': `GUJARATI AUTHENTIC NAMES ONLY:
+Curries (veg): Undhiyu, Sev Tameta, Ringan Bateta nu Shaak, Dudhi Chana Dal, Gujarati Kadhi, Dal Dhokli
+Breakfast: Thepla, Fafda Jalebi, Khaman Dhokla, Handvo, Methi Thepla
+Snack: Khakhra, Muthia, Chakri, Ganthia`,
+
+  'Rajasthani': `RAJASTHANI AUTHENTIC NAMES ONLY:
+Curries (non-veg): Laal Maas, Jungli Maas, Murgh Rajasthani
+Curries (veg): Dal Baati Churma, Gatte ki Sabzi, Ker Sangri, Papad ki Sabzi, Besan Chakki
+Breakfast: Pyaaz Kachori, Mirchi Bada, Mawa Kachori
+Bread: Baati, Missi Roti`,
+
+  'Bengali': `BENGALI AUTHENTIC NAMES ONLY — never use "Bengali Fish Curry":
+Curries (non-veg): Shorshe Ilish, Macher Jhol, Kosha Mangsho, Chingri Malaikari, Doi Maach, Bhetki Paturi
+Curries (veg): Aloo Posto, Shukto, Cholar Dal, Mochar Ghonto, Labra
+Breakfast: Luchi Alur Dom, Radhaballabi, Koraishutir Kochuri
+Rice: Gobindobhog Rice, Khichuri`,
+
+  'Tamil Nadu': `TAMIL NADU AUTHENTIC NAMES ONLY:
+Curries (non-veg): Chettinad Chicken Curry, Meen Kuzhambu, Mutton Kola Urundai, Nalli Nihari
+Curries (veg): Sambhar, Kootu, Avial, Rasavangi, Poriyal
+Breakfast: Idli Sambhar, Masala Dosa, Ven Pongal, Upma Kozhukattai, Appam
+Rice: Lemon Rice, Tamarind Rice, Curd Rice, Tomato Rice`,
+
+  'Kerala': `KERALA AUTHENTIC NAMES ONLY:
+Curries (non-veg): Fish Moilee, Prawn Gassi, Kerala Chicken Curry, Meen Pollichathu, Karimeen Fry
+Curries (veg): Avial, Erissery, Olan, Thoran, Kootu Curry
+Breakfast: Appam with Stew, Puttu Kadala, Idiyappam, Kallappam
+Rice: Matta Rice, Kanji`,
+
+  'Karnataka': `KARNATAKA AUTHENTIC NAMES ONLY:
+Curries (non-veg): Koli Saaru, Nati Koli Curry, Mangalorean Fish Curry, Prawn Sukka
+Curries (veg): Bisi Bele Bath, Saagu, Huli, Gojju, Palya
+Breakfast: Rava Idli, Set Dosa, Akki Rotti, Neer Dosa, Jolada Rotti`,
+
+  'Andhra': `ANDHRA AUTHENTIC NAMES ONLY:
+Curries (non-veg): Kodi Kura, Gongura Mutton, Royyala Iguru, Chepala Pulusu
+Curries (veg): Gutti Vankaya, Pesarattu, Gongura Pachadi, Pappu
+Breakfast: Pesarattu Upma, Punugulu, Dibba Rotti`,
+
+  'Kashmiri': `KASHMIRI AUTHENTIC NAMES ONLY:
+Curries (non-veg): Rogan Josh, Yakhni, Gushtaba, Tabak Maaz, Aab Gosht
+Curries (veg): Dum Aloo Kashmiri, Haak Saag, Nadroo Yakhni, Chok Wangun
+Breakfast: Girda with Noon Chai, Sheermal
+Rice: Modur Pulao, Kashmiri Pulao`,
+
+  'Sindhi': `SINDHI AUTHENTIC NAMES ONLY:
+Curries (non-veg): Sindhi Mutton Curry, Teevan, Macchi Palida
+Curries (veg): Sindhi Kadhi, Sai Bhaji, Bhuga Chawal, Dal Pakwan
+Breakfast: Dal Pakwan, Koki, Sindhi Seyal Maani`,
+
+  'Mughlai': `MUGHLAI AUTHENTIC NAMES ONLY:
+Curries (non-veg): Murgh Musallam, Nihari, Pasanda, Korma, Seekh Kebab, Shami Kebab
+Curries (veg): Shahi Paneer, Navratan Korma, Dum Aloo Mughlai
+Bread: Roomali Roti, Sheermal, Warqi Paratha
+Rice: Yakhni Pulao, Zarda`,
+
+  'Delhi': `DELHI AUTHENTIC NAMES ONLY:
+Street: Chole Kulche, Dahi Bhalle, Aloo Tikki Chaat, Ram Ladoo, Papdi Chaat
+Mains: Butter Chicken, Dal Makhani, Nihari, Paranthe Wali Gali ka Paratha`,
+
+  'Mumbai': `MUMBAI STREET AUTHENTIC NAMES ONLY:
+Street: Vada Pav, Pav Bhaji, Bhel Puri, Sev Puri, Ragda Pattice, Misal Pav, Keema Pav, Bombay Sandwich`,
+
+  'Indo-Chinese': `INDO-CHINESE AUTHENTIC NAMES ONLY:
+Mains: Chilli Chicken, Chicken Manchurian, Gobi Manchurian, Paneer Chilli
+Noodles/Rice: Hakka Noodles, Schezwan Noodles, Veg Fried Rice, Egg Fried Rice`,
+};
+
 // ── Two-stage generation helpers ──────────────────────────────────────────────
 
 async function askClaudeJson(prompt: string, maxTokens: number): Promise<string> {
@@ -810,12 +923,17 @@ async function selectDishesForDay(p: {
   const sundayLine = p.isSunday && p.sundayExtraCurry
     ? `SUNDAY SPECIAL — Lunch curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Lunch curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}, Dinner curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Dinner curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}`
     : '';
+  const authenticRef = p.cuisineList
+    .split(',')
+    .map(c => AUTHENTIC_DISHES[c.trim()])
+    .filter(Boolean)
+    .join('\n\n');
   const prompt = `Select dishes for ${p.dayName} (${p.date}) for a ${p.communityRules} family.
 
 CUISINE: ${p.cuisineList} only.
 DIETARY: ${p.isNonVeg ? 'Non-vegetarian. Must include meat or fish in lunch and dinner.' : 'Strictly vegetarian.'}${sundayLine ? `\n${sundayLine}` : ''}
 AVOID: ${p.avoidanceList}
-DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}
+DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}${authenticRef ? `\n\nAUTHENTIC DISH REFERENCE — choose dish names from this list:\n${authenticRef}` : ''}
 
 Return JSON:
 {
