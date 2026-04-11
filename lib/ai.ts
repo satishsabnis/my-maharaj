@@ -920,8 +920,11 @@ async function selectDishesForDay(p: {
   avoidanceList: string; historyStr: string; retry?: boolean;
 }): Promise<DishSelection> {
   console.log('[SUNDAY DEBUG]', { isSunday: p.isSunday, sundayExtraCurry: p.sundayExtraCurry, date: p.date, dayName: p.dayName });
-  const sundayLine = p.isSunday && p.sundayExtraCurry
-    ? `SUNDAY SPECIAL — Lunch curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Lunch curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}, Dinner curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Dinner curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}`
+  const sundayDishes = p.sundayExtraCurry
+    ? p.sundayExtraCurry.split(',').map(d => d.trim()).filter(Boolean)
+    : [];
+  const sundayLine = p.isSunday && sundayDishes.length > 0
+    ? `SUNDAY SPECIAL — these exact dishes MUST appear: lunch_curry_1="${sundayDishes[0] || ''}", lunch_curry_2="${sundayDishes[1] || ''}", dinner_curry_1="${sundayDishes[2] || sundayDishes[0] || ''}", dinner_curry_2="${sundayDishes[1] || ''}". Do not substitute or rename these dishes.`
     : '';
   const authenticRef = p.cuisineList
     .split(',')
