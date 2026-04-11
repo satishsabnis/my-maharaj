@@ -25,7 +25,7 @@ export interface AnatomyComponent {
 }
 
 export interface MealAnatomy {
-  curry: AnatomyComponent;
+  curry: AnatomyComponent | AnatomyComponent[];
   veg: AnatomyComponent;
   raita: AnatomyComponent;
   bread: AnatomyComponent;
@@ -766,6 +766,88 @@ function fastDayToMealPlanDay(date: string, dayName: string, day: FastDayRespons
   return result;
 }
 
+// ── Two-stage generation helpers ──────────────────────────────────────────────
+
+async function askClaudeJson(prompt: string, maxTokens: number): Promise<string> {
+  const res = await fetch(`${BASE}/api/claude`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  if (data?.error) throw new Error(data.error.message ?? data.error);
+  const text = data?.content?.[0]?.text ?? '{}';
+  return text.replace(/```json|```/g, '').trim();
+}
+
+interface DishSelection {
+  breakfast: string;
+  lunch_curry_1: string;
+  lunch_curry_2: string;
+  lunch_veg: string;
+  lunch_raita: string;
+  lunch_bread: string;
+  lunch_rice: string;
+  dinner_curry_1: string;
+  dinner_curry_2: string;
+  dinner_veg: string;
+  dinner_raita: string;
+  dinner_bread: string;
+  dinner_rice: string;
+  snack: string;
+}
+
+async function selectDishesForDay(p: {
+  dayName: string; date: string; communityRules: string; cuisineList: string;
+  isNonVeg: boolean; isSunday: boolean; sundayExtraCurry?: string;
+  avoidanceList: string; historyStr: string; retry?: boolean;
+}): Promise<DishSelection> {
+  const sundayLine = p.isSunday && p.sundayExtraCurry
+    ? `SUNDAY SPECIAL — Lunch curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Lunch curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}, Dinner curry 1: ${p.sundayExtraCurry.split(',')[0]?.trim() || 'chicken dish'}, Dinner curry 2: ${p.sundayExtraCurry.split(',')[1]?.trim() || 'fish dish'}`
+    : '';
+  const prompt = `Select dishes for ${p.dayName} (${p.date}) for a ${p.communityRules} family.
+
+CUISINE: ${p.cuisineList} only.
+DIETARY: ${p.isNonVeg ? 'Non-vegetarian. Must include meat or fish in lunch and dinner.' : 'Strictly vegetarian.'}${sundayLine ? `\n${sundayLine}` : ''}
+AVOID: ${p.avoidanceList}
+DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}
+
+Return JSON:
+{
+  "breakfast": "dish name",
+  "lunch_curry_1": "dish name",
+  "lunch_curry_2": "dish name",
+  "lunch_veg": "dish name",
+  "lunch_raita": "dish name",
+  "lunch_bread": "dish name",
+  "lunch_rice": "dish name",
+  "dinner_curry_1": "dish name",
+  "dinner_curry_2": "dish name",
+  "dinner_veg": "dish name",
+  "dinner_raita": "dish name",
+  "dinner_bread": "dish name",
+  "dinner_rice": "dish name",
+  "snack": "dish name"
+}`;
+  const text = await askClaudeJson(prompt, 400);
+  return JSON.parse(text) as DishSelection;
+}
+
+async function getIngredientsForDish(dishName: string, familySize: number): Promise<string[]> {
+  try {
+    const prompt = `List 6 ingredients for ${dishName} for ${familySize} people.\nReturn JSON array only: ["qty unit ingredient", ...]`;
+    const text = await askClaudeJson(prompt, 200);
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMealPlanFast(
   params: {
     userId: string;
@@ -849,96 +931,138 @@ export async function generateMealPlanFast(
 
   onProgress?.(0, total);
 
+  const NON_VEG_KEYWORDS = ['chicken','mutton','fish','prawn','lamb','beef','pork','egg','crab','lobster','shrimp','meat','keema','mince','gosht','murg','machli','jhinga','tuna','pomfret','rohu','hilsa','surmai'];
+  const isNonVegDish = (dish: string) => NON_VEG_KEYWORDS.some(k => dish.toLowerCase().includes(k));
+
   for (let i = 0; i < params.dates.length; i++) {
     const date = params.dates[i];
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     const isVegDay = params.vegDays?.includes(dayName) ?? false;
-    const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
     const dayCuisine = params.cuisinePerDay?.[i] || cuisine;
     const cuisineList = Array.isArray(dayCuisine) ? dayCuisine.join(', ') : dayCuisine;
+    const isSunday = new Date(date).getDay() === 0;
+    const isEffectivelyNonVeg = isNonVegPref && !isVegDay;
 
-    // Update day label BEFORE the API call (Fix 6)
     onDayStart?.(dayName);
 
     const historyStr = weekHistory.length > 0 ? weekHistory.slice(-50).join(', ') : 'None';
 
-    const mealLines: string[] = [];
-    if (slots.includes('breakfast')) mealLines.push('- Breakfast: 1 light morning dish (pohe, upma, idli, dosa, thepla, paratha, eggs, fruit)');
-    if (slots.includes('lunch')) mealLines.push('- Lunch: { curry: one main curry, veg: one vegetable dish, raita: one raita, bread: chapati/paratha/puri/naan, rice: one rice preparation }');
-    if (slots.includes('dinner')) mealLines.push('- Dinner: { curry: one main curry, veg: one vegetable dish, raita: one raita, bread: chapati/paratha/puri/naan, rice: one rice preparation }');
-    if (slots.includes('snack')) mealLines.push('- Snack: 1 freshly cookable snack (15 mins max, never packaged)');
-
-    const isVegExample = params.foodPrefs?.type !== 'nonveg';
-    const jsonShape: string[] = [];
-    if (slots.includes('breakfast')) jsonShape.push(`"breakfast": { "dishName": "Authentic Indian name", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["500g item", "2 onions", "1 tbsp item", "1 tsp item"] }`);
-    const multiCurry = !!(params.mealTemplateCurry?.includes(','));
-    const curryShape = multiCurry
-      ? `"curry": [{ "dishName": "name", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["qty item x4-8"] }, { "dishName": "name2", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["qty item x4-8"] }]`
-      : `"curry": { "dishName": "name", "isVeg": ${isVegExample}, "cuisine": "...", "ingredients": ["qty item x4-8"] }`;
-    if (slots.includes('lunch')) jsonShape.push(`"lunch": { ${curryShape}, "veg": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
-    if (slots.includes('dinner')) jsonShape.push(`"dinner": { ${curryShape}, "veg": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x4-6"] }, "raita": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "bread": { "dishName": "name", "ingredients": ["qty item x3-4"] }, "rice": { "dishName": "name", "ingredients": ["qty item x3-4"] } }`);
-    if (slots.includes('snack')) jsonShape.push(`"snack": { "dishName": "name", "isVeg": ${isVegExample}, "ingredients": ["qty item x3-4"] }`);
-
-    const isSunday = new Date(date).getDay() === 0;
-    const buildPrompt = (retry = false): string => `${params.foodPrefs?.type === 'nonveg' ? 'IMPORTANT: This is a NON-VEGETARIAN family. You MUST include meat, fish, or eggs in lunch and dinner. Do NOT generate an all-vegetarian plan.\n\n' : ''}Generate a complete meal plan for ${dayName} (${date}).
-
-FAMILY: ${communityRules}, ${familySize} members
-MEAL TEMPLATE: Generate exactly for ${isSunday ? 'Sunday' : 'this day'}:
-- Breakfast: 1 breakfast dish per family preference
-${isSunday && params.sundayExtraCurry ? `- Lunch curry 1: ${params.sundayExtraCurry?.split(',')[0]?.trim() || 'chicken dish'}
-- Lunch curry 2: ${params.sundayExtraCurry?.split(',')[1]?.trim() || 'fish dish'}` : `- Lunch curries: ${params.mealTemplateCurry || 'one main curry'} — generate ALL of these as separate dishes`}
-- Lunch veg: ${params.mealTemplateVeg || 'one vegetable dish'}
-- Lunch raita: ${params.mealTemplateRaita || 'one raita'}
-- Lunch bread: ${params.mealTemplateBread || 'chapati or paratha'}
-- Lunch rice: ${params.mealTemplateRice || 'steamed rice'}
-${isSunday && params.sundayExtraCurry ? `- Dinner curry 1: ${params.sundayExtraCurry?.split(',')[0]?.trim() || 'chicken dish'}
-- Dinner curry 2: ${params.sundayExtraCurry?.split(',')[1]?.trim() || 'fish dish'}` : `- Dinner curries: same as lunch curries`}
-- Dinner veg: ${params.mealTemplateVeg || 'one vegetable dish'}
-- Dinner raita: ${params.mealTemplateRaita || 'one raita'}
-- Dinner bread: ${params.mealTemplateBread || 'chapati or paratha'}
-- Dinner rice: ${params.mealTemplateRice || 'steamed rice'}
-- Snack: 1 freshly cookable snack under 15 minutes
-${params.sundaySweet && isSunday ? `- Sunday sweet: ${params.sundaySweet}` : ''}
-
-ABSOLUTE RULES:
-1. DIETARY: ${params.foodPrefs?.type === 'nonveg' ? 'NON-VEGETARIAN family. You MUST include at least one non-vegetarian dish (meat, fish, eggs, or poultry) in BOTH lunch and dinner. An all-vegetarian plan for a non-vegetarian family is WRONG and will be rejected.' : 'Strictly vegetarian — no meat, fish or eggs.'}
-2. UNIQUENESS: Do NOT use any of these dishes already planned this week: ${historyStr}
-3. CUISINE: ONLY authentic dishes from these cuisines: ${cuisineList}. Every dish must be from one of these cuisines only.
-4. AVOIDANCE: Never suggest: ${avoidanceList}
-5. HEALTH: ${healthInfo}
-${params.cookingPattern ? `6. COOKING PATTERN: ${params.cookingPattern}\n` : ''}${params.jainFamily ? `7. JAIN: Jain family — no onion, no garlic, no root vegetables (potatoes, carrots, radish, beetroot, turnip)\n` : ''}${familyRecipesList.length > 0 ? `8. FAMILY RECIPES: This family has saved these recipes — rotate them into the plan where appropriate (do not repeat every day): ${familyRecipesList.map(r => `${r.recipe_name} (${r.cuisine})`).join(', ')}\n` : ''}${retry ? `\nRETRY INSTRUCTION: Previous response was invalid. You MUST include at least one non-vegetarian dish (containing meat, fish, or eggs) for this non-vegetarian family. An all-vegetarian response is rejected.\n` : ''}
-INGREDIENTS RULE: Every "ingredients" array is MANDATORY and must contain 4-8 entries. Format each entry as "quantity unit ingredient" — e.g. "500g mutton", "2 medium onions", "1 tbsp ginger-garlic paste", "2 tomatoes", "1 tsp cumin seeds". An empty ingredients array is invalid and will be rejected.
-Return JSON only, no markdown, no explanation:
-{ ${jsonShape.join(', ')} }`;
-
     let dayResult: MealPlanDay | null = null;
 
     try {
-      const text = await askClaude(buildPrompt());
-const parsed = normalizeFastDay(JSON.parse(text));
-      const dishNames = extractFastDishNames(parsed);
+      // ── Stage 1: select dish names ────────────────────────────────────────
+      let dishes = await selectDishesForDay({
+        dayName, date, communityRules, cuisineList,
+        isNonVeg: isEffectivelyNonVeg,
+        isSunday, sundayExtraCurry: params.sundayExtraCurry,
+        avoidanceList, historyStr,
+      });
 
-      // Validation: non-veg check
-      const hasNonVeg = FAST_NON_VEG_KW.some(kw =>
-        dishNames.some(n => n.toLowerCase().includes(kw))
-      );
-      if (isNonVegPref && !isVegDay && !hasNonVeg) {
-        // Retry once with stricter prompt
-        try {
-          const retryText = await askClaude(buildPrompt(true));
-          const retryParsed = normalizeFastDay(JSON.parse(retryText));
-          dayResult = fastDayToMealPlanDay(date, dayName, retryParsed, slots);
-          extractFastDishNames(retryParsed).forEach(n => weekHistory.push(n));
-        } catch {
-          dayResult = fastDayToMealPlanDay(date, dayName, parsed, slots);
-          dishNames.forEach(n => weekHistory.push(n));
+      // Validation: non-veg check — retry once with stricter prompt
+      if (isEffectivelyNonVeg) {
+        const hasNonVeg = isNonVegDish(dishes.lunch_curry_1) || isNonVegDish(dishes.lunch_curry_2) ||
+                          isNonVegDish(dishes.dinner_curry_1) || isNonVegDish(dishes.dinner_curry_2);
+        if (!hasNonVeg) {
+          try {
+            dishes = await selectDishesForDay({
+              dayName, date, communityRules, cuisineList,
+              isNonVeg: true, isSunday, sundayExtraCurry: params.sundayExtraCurry,
+              avoidanceList, historyStr, retry: true,
+            });
+          } catch { /* keep original dishes */ }
         }
-      } else {
-        dayResult = fastDayToMealPlanDay(date, dayName, parsed, slots);
-        dishNames.forEach(n => weekHistory.push(n));
       }
+
+      // ── Stage 2: parallel ingredients for all 14 dishes ──────────────────
+      const allDishNames = [
+        dishes.breakfast,
+        dishes.lunch_curry_1, dishes.lunch_curry_2,
+        dishes.lunch_veg, dishes.lunch_raita, dishes.lunch_bread, dishes.lunch_rice,
+        dishes.dinner_curry_1, dishes.dinner_curry_2,
+        dishes.dinner_veg, dishes.dinner_raita, dishes.dinner_bread, dishes.dinner_rice,
+        dishes.snack,
+      ];
+      const allIngredients = await Promise.all(
+        allDishNames.map(dish => getIngredientsForDish(dish, familySize))
+      );
+      const [
+        bfIngs,
+        lc1Ings, lc2Ings, lvIngs, lrIngs, lbIngs, lriIngs,
+        dc1Ings, dc2Ings, dvIngs, drIngs, dbIngs, driIngs,
+        snackIngs,
+      ] = allIngredients;
+
+      // ── Stage 3: assemble anatomy ─────────────────────────────────────────
+      const anatomy: DayAnatomy = {};
+
+      if (slots.includes('breakfast')) {
+        anatomy.breakfast = { dishName: dishes.breakfast, isVeg: !isNonVegDish(dishes.breakfast), cuisine: cuisineList, ingredients: bfIngs };
+      }
+      if (slots.includes('lunch')) {
+        anatomy.lunch = {
+          curry: [
+            { dishName: dishes.lunch_curry_1, isVeg: !isNonVegDish(dishes.lunch_curry_1), cuisine: cuisineList, ingredients: lc1Ings },
+            { dishName: dishes.lunch_curry_2, isVeg: !isNonVegDish(dishes.lunch_curry_2), cuisine: cuisineList, ingredients: lc2Ings },
+          ],
+          veg:   { dishName: dishes.lunch_veg,   isVeg: true, ingredients: lvIngs },
+          raita: { dishName: dishes.lunch_raita, isVeg: true, ingredients: lrIngs },
+          bread: { dishName: dishes.lunch_bread, isVeg: true, ingredients: lbIngs },
+          rice:  { dishName: dishes.lunch_rice,  isVeg: true, ingredients: lriIngs },
+        };
+      }
+      if (slots.includes('dinner')) {
+        anatomy.dinner = {
+          curry: [
+            { dishName: dishes.dinner_curry_1, isVeg: !isNonVegDish(dishes.dinner_curry_1), cuisine: cuisineList, ingredients: dc1Ings },
+            { dishName: dishes.dinner_curry_2, isVeg: !isNonVegDish(dishes.dinner_curry_2), cuisine: cuisineList, ingredients: dc2Ings },
+          ],
+          veg:   { dishName: dishes.dinner_veg,   isVeg: true, ingredients: dvIngs },
+          raita: { dishName: dishes.dinner_raita, isVeg: true, ingredients: drIngs },
+          bread: { dishName: dishes.dinner_bread, isVeg: true, ingredients: dbIngs },
+          rice:  { dishName: dishes.dinner_rice,  isVeg: true, ingredients: driIngs },
+        };
+      }
+      if (slots.includes('snack')) {
+        anatomy.snack = { dishName: dishes.snack, isVeg: !isNonVegDish(dishes.snack), cuisine: cuisineList, ingredients: snackIngs };
+      }
+
+      // Build MealSlots for backwards compatibility
+      const toMealSlot = (
+        curry1: string, curry2: string, veg: string, raita: string, bread: string, rice: string,
+        c1i: string[], c2i: string[], vi: string[], ri: string[], bi: string[], rii: string[]
+      ): MealSlot => ({
+        options: [{
+          name: curry1,
+          description: `Curry: ${curry1} | Curry 2: ${curry2} | Veg: ${veg} | Raita: ${raita} | Bread: ${bread} | Rice: ${rice}`,
+          vegetarian: !isNonVegDish(curry1),
+          tags: [isNonVegDish(curry1) ? 'non-vegetarian' : 'vegetarian'],
+          ingredients: [...c1i, ...c2i, ...vi, ...ri, ...bi, ...rii],
+          steps: [],
+        }],
+      });
+
+      const breakfastSlot: MealSlot = slots.includes('breakfast')
+        ? { options: [{ name: dishes.breakfast, vegetarian: !isNonVegDish(dishes.breakfast), tags: ['breakfast'], ingredients: bfIngs, steps: [] }] }
+        : { options: [] };
+      const lunchSlot: MealSlot = slots.includes('lunch')
+        ? toMealSlot(dishes.lunch_curry_1, dishes.lunch_curry_2, dishes.lunch_veg, dishes.lunch_raita, dishes.lunch_bread, dishes.lunch_rice, lc1Ings, lc2Ings, lvIngs, lrIngs, lbIngs, lriIngs)
+        : { options: [] };
+      const dinnerSlot: MealSlot = slots.includes('dinner')
+        ? toMealSlot(dishes.dinner_curry_1, dishes.dinner_curry_2, dishes.dinner_veg, dishes.dinner_raita, dishes.dinner_bread, dishes.dinner_rice, dc1Ings, dc2Ings, dvIngs, drIngs, dbIngs, driIngs)
+        : { options: [] };
+      const snackSlot: MealSlot | undefined = slots.includes('snack')
+        ? { options: [{ name: dishes.snack, vegetarian: !isNonVegDish(dishes.snack), tags: ['snack'], ingredients: snackIngs, steps: [] }] }
+        : undefined;
+
+      dayResult = { date, day: dayName, breakfast: breakfastSlot, lunch: lunchSlot, dinner: dinnerSlot };
+      if (snackSlot) dayResult.snack = snackSlot;
+      if (anatomy.lunch && anatomy.dinner) dayResult.anatomy = anatomy;
+
+      // Update week history for deduplication
+      allDishNames.forEach(n => { if (n) weekHistory.push(n); });
+
     } catch {
-      // Fallback: use existing per-slot generator for this day
+      // Fallback: empty slots, no anatomy
       const emptySlot: MealSlot = { options: [] };
       const fbBf = slots.includes('breakfast') ? fallbackSlot('breakfast', i) : emptySlot;
       const fbLn = slots.includes('lunch') ? fallbackSlot('lunch', i) : emptySlot;
