@@ -118,6 +118,7 @@ export default function MealWizardScreen() {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [foodPreference, setFoodPreference] = useState<string>('');
   const [cookingPattern, setCookingPattern] = useState<string>('');
+  const [additionalDietaryRules, setAdditionalDietaryRules] = useState<string>('');
   const [breakfastPreferences, setBreakfastPreferences] = useState<string[]>([]);
   const [communityRules, setCommunityRules] = useState<string>('');
   const [familyAvoids, setFamilyAvoids] = useState<string[]>([]);
@@ -363,9 +364,17 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const cr = await AsyncStorage.getItem('community_rules');
       if (cr) setCommunityRules(cr);
 
+      // Additional dietary rules
+      const additionalDietaryRules = await AsyncStorage.getItem('additional_dietary_rules') || '';
+      if (additionalDietaryRules) setAdditionalDietaryRules(additionalDietaryRules);
+
       // Family avoids
       const fa = await AsyncStorage.getItem('family_avoids');
       if (fa) try { setFamilyAvoids(JSON.parse(fa)); } catch {}
+      if (!fa) {
+        const avoidRaw = await AsyncStorage.getItem('avoidance_list');
+        if (avoidRaw) setFamilyAvoids(avoidRaw.split(',').map(s => s.trim()).filter(Boolean));
+      }
 
       // Family recipes
       const fr = await AsyncStorage.getItem('family_recipes');
@@ -426,7 +435,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
-        .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,veg_days')
+        .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,plan_summary_language,veg_days')
         .eq('id', userId).maybeSingle();
       if (profileErr) console.error('[MealWizard] profile query error:', profileErr.message);
 
@@ -544,7 +553,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         userId,
         dates,
         healthFlags: hf,
-        language:  profile?.app_language   ?? 'en',
+        language:  profile?.plan_summary_language ?? profile?.app_language ?? 'en',
         cuisine,
         dishHistory,
         foodPrefs: {
@@ -556,7 +565,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         isMixed: effectiveIsMixed,
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
         nutritionFocus: [nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
-        userContext: freeText || undefined,
+        userContext: [freeText, additionalDietaryRules].filter(Boolean).join('. ') || undefined,
         vegDays:        profile?.veg_days ?? [],
         cuisinePerDay: allCuisinesPerDay,
         breakfastPrefs: bfPrefs.length > 0 ? bfPrefs : undefined,
