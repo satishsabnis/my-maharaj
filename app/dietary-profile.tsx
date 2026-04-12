@@ -413,6 +413,7 @@ export default function DietaryProfileScreen() {
       ['breakfast_preferences', breakfastPrefs],
       ['cooking_pattern', cookingPattern],
       ['avoidance_list', avoidanceList],
+      ['family_avoids', JSON.stringify(avoidanceList.split(',').map(s => s.trim()).filter(Boolean))],
       ['grocery_day', groceryDay],
       ['preferred_supermarkets', preferredStores],
       ['preferred_delivery_apps', preferredApps],
