@@ -1168,24 +1168,37 @@ Return ONLY valid JSON (no markdown) in this exact format:
   const planPDFContent = React.useMemo(() => {
     if (!generatedPlan) return { days: [] };
     return {
-      days: generatedPlan.map((day, idx) => ({
-        dayName: day.day,
-        date: day.date,
-        meals: [
-          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.breakfast?.options?.[selections[idx]?.breakfast ?? 0]?.name || '' },
-          { label: 'Lunch Curry', dish: Array.isArray(day.anatomy?.lunch?.curry) ? day.anatomy!.lunch!.curry.map((c: AnatomyComponent) => c.dishName).filter(Boolean).join(' + ') : day.anatomy?.lunch?.curry?.dishName || '' },
+      days: generatedPlan.map((day, idx) => {
+        const hasAnatomy = !!day.anatomy?.lunch?.curry;
+        const meals = hasAnatomy ? [
+          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.dishes?.breakfast || '' },
+          { label: 'Lunch Curry', dish: Array.isArray(day.anatomy?.lunch?.curry) ? day.anatomy!.lunch!.curry.map((c: any) => c.dishName).filter(Boolean).join(' + ') : day.anatomy?.lunch?.curry?.dishName || '' },
           { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
           { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
           { label: 'Lunch Bread', dish: day.anatomy?.lunch?.bread?.dishName || '' },
           { label: 'Lunch Rice', dish: day.anatomy?.lunch?.rice?.dishName || '' },
-          { label: 'Dinner Curry', dish: Array.isArray(day.anatomy?.dinner?.curry) ? day.anatomy!.dinner!.curry.map((c: AnatomyComponent) => c.dishName).filter(Boolean).join(' + ') : day.anatomy?.dinner?.curry?.dishName || '' },
+          { label: 'Dinner Curry', dish: Array.isArray(day.anatomy?.dinner?.curry) ? day.anatomy!.dinner!.curry.map((c: any) => c.dishName).filter(Boolean).join(' + ') : day.anatomy?.dinner?.curry?.dishName || '' },
           { label: 'Dinner Veg', dish: day.anatomy?.dinner?.veg?.dishName || '' },
           { label: 'Dinner Raita', dish: day.anatomy?.dinner?.raita?.dishName || '' },
           { label: 'Dinner Bread', dish: day.anatomy?.dinner?.bread?.dishName || '' },
           { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
           { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
-        ],
-      })),
+        ] : [
+          { label: 'Breakfast', dish: day.dishes?.breakfast || '' },
+          { label: 'Lunch Curry', dish: [day.dishes?.lunch_curry_1, day.dishes?.lunch_curry_2].filter(Boolean).join(' + ') },
+          { label: 'Lunch Veg', dish: day.dishes?.lunch_veg || '' },
+          { label: 'Lunch Raita', dish: day.dishes?.lunch_raita || '' },
+          { label: 'Lunch Bread', dish: day.dishes?.lunch_bread || '' },
+          { label: 'Lunch Rice', dish: day.dishes?.lunch_rice || '' },
+          { label: 'Dinner Curry', dish: [day.dishes?.dinner_curry_1, day.dishes?.dinner_curry_2].filter(Boolean).join(' + ') },
+          { label: 'Dinner Veg', dish: day.dishes?.dinner_veg || '' },
+          { label: 'Dinner Raita', dish: day.dishes?.dinner_raita || '' },
+          { label: 'Dinner Bread', dish: day.dishes?.dinner_bread || '' },
+          { label: 'Dinner Rice', dish: day.dishes?.dinner_rice || '' },
+          { label: 'Snack', dish: day.dishes?.snack || '' },
+        ];
+        return ({ dayName: day.day, date: day.date, meals });
+      }),
     };
   }, [generatedPlan, selections]);
 
@@ -1268,9 +1281,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('text/html')) {
         const html = await response.text();
-        const blob = new Blob([html], { type: 'text/html' });
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
       } else {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
