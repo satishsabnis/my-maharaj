@@ -54,11 +54,7 @@ export default function LoginScreen() {
     <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backArrow}>Back</Text>
-        </TouchableOpacity>
         <Text style={s.headerTitle}>Welcome Back</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <View style={{backgroundColor:'#FFF8E7',borderRadius:10,padding:10,paddingHorizontal:14,marginHorizontal:12,marginTop:8,marginBottom:16}}>
