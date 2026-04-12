@@ -1311,7 +1311,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       if (generatedPlan) {
         try {
           const confirmedPlan = generatedPlan.map((day, idx) => ({ date: day.date, dayName: day.day, breakfast: day.breakfast?.options[selections[idx]?.breakfast ?? 0], lunch: day.lunch?.options[selections[idx]?.lunch ?? 0], snack: day.snack?.options[selections[idx]?.snack ?? 0], dinner: day.dinner?.options[selections[idx]?.dinner ?? 0] }));
-          await AsyncStorage.setItem('confirmed_meal_plan', JSON.stringify(confirmedPlan));
+          await AsyncStorage.setItem('confirmed_meal_plan', JSON.stringify(generatedPlan));
           await AsyncStorage.setItem('meal_plan_date', new Date().toISOString());
           const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
           const dateRange = `${selectedFrom?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo?.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
