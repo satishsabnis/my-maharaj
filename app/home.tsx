@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const [occasions, setOccasions] = useState<{name:string;day:string;people:string}[]>([]);
   const [mealPrepCount, setMealPrepCount] = useState(0);
   const [todayMeals, setTodayMeals] = useState<{breakfast:string;lunch:string;dinner:string}|null>(null);
+  const [mealFeedback, setMealFeedback] = useState({ breakfast: false, lunch: false, dinner: false });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
@@ -97,11 +98,30 @@ export default function HomeScreen() {
             setPlanDayY(plan.length);
             const todayPlan = plan.find((d: any) => d.date === today);
             if (todayPlan) {
+              const getBreakfast = (d: any): string =>
+                d?.anatomy?.breakfast?.dishName ||
+                d?.dishes?.breakfast ||
+                d?.breakfast?.name ||
+                d?.breakfast?.options?.[0]?.name || '';
+              const getLunchMain = (d: any): string => {
+                const curry = d?.anatomy?.lunch?.curry;
+                if (Array.isArray(curry)) return curry[0]?.dishName || '';
+                if (curry?.dishName) return curry.dishName;
+                return d?.dishes?.lunch_curry_1 || d?.lunch?.name || d?.lunch?.options?.[0]?.name || '';
+              };
+              const getDinnerMain = (d: any): string => {
+                const curry = d?.anatomy?.dinner?.curry;
+                if (Array.isArray(curry)) return curry[0]?.dishName || '';
+                if (curry?.dishName) return curry.dishName;
+                return d?.dishes?.dinner_curry_1 || d?.dinner?.name || d?.dinner?.options?.[0]?.name || '';
+              };
               setTodayMeals({
-                breakfast: todayPlan.breakfast?.name || '',
-                lunch: todayPlan.lunch?.name || '',
-                dinner: todayPlan.dinner?.name || '',
+                breakfast: getBreakfast(todayPlan),
+                lunch: getLunchMain(todayPlan),
+                dinner: getDinnerMain(todayPlan),
               });
+              const h = new Date().getHours();
+              setMealFeedback({ breakfast: h >= 10, lunch: h >= 14, dinner: h >= 21 });
             }
           }
         } catch {}
@@ -152,18 +172,21 @@ export default function HomeScreen() {
   ];
   const tipOfDay = MAHARAJ_TIPS[now.getDay()];
 
-  type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; onCardPress?: () => void; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
+  type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; subtitle?: string; onCardPress?: () => void; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
   const feedCards: FeedCard[] = [];
 
   // Card A — Today's Plan (always shown)
   const todayPlanTitle = todayMeals
     ? [todayMeals.breakfast, todayMeals.lunch, todayMeals.dinner].filter(Boolean).join('  ·  ')
     : hasWeekPlan ? 'No meals planned for today' : 'No plan this week — tap to create one';
+  const todayPlanSubtitle = mealFeedback.lunch ? 'How was lunch today? Tap to rate.' :
+    mealFeedback.breakfast ? 'How was breakfast? Tap to rate.' : '';
   feedCards.push({
     type: 'today-plan', bg: { backgroundColor: colors.frostedNavy, borderLeftWidth: 3, borderLeftColor: colors.navy },
     borderColor: colors.navy, label: "Today's plan", labelColor: colors.navy,
     title: todayPlanTitle,
-    buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: () => router.push('/meal-wizard' as never) }],
+    subtitle: todayPlanSubtitle,
+    buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: () => router.push(hasWeekPlan ? '/(app)/meal-wizard?step=plan-summary' : '/(app)/meal-wizard' as never) }],
   });
 
   // Card B — Daily Tip (always shown, taps into Ask Maharaj)
@@ -294,6 +317,7 @@ export default function HomeScreen() {
                     <Text style={{fontSize:13,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
                     <Text style={{fontSize:16,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
                     {card.sub && <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+                    {card.subtitle && <Text style={{fontSize:12,color:colors.gold,marginTop:3,fontStyle:'italic'}}>{card.subtitle}</Text>}
                   </View>
                   <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
                     {card.buttons.map((btn, bi) => (
@@ -309,6 +333,7 @@ export default function HomeScreen() {
                     <Text style={{fontSize:13,fontWeight:'500',color:card.labelColor,textTransform:'uppercase',letterSpacing:0.5}}>{card.label}</Text>
                     <Text style={{fontSize:16,fontWeight:'500',color:colors.navy,marginTop:2}}>{card.title}</Text>
                     {card.sub && <Text style={{fontSize:13,color:colors.textMuted,marginTop:1}}>{card.sub}</Text>}
+                    {card.subtitle && <Text style={{fontSize:12,color:colors.gold,marginTop:3,fontStyle:'italic'}}>{card.subtitle}</Text>}
                   </View>
                   <View style={{flexDirection:'row',gap:4,flexShrink:0}}>
                     {card.buttons.map((btn, bi) => (
