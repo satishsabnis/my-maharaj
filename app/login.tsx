@@ -108,8 +108,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: Platform.OS === 'web' ? 20 : 12, paddingBottom: 16,
     borderBottomWidth: 1, borderBottomColor: border,
   },
-  backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backArrow:   { fontSize: 22, color: navy },
   headerTitle: { fontSize: 18, fontWeight: '700', color: navy },
   scroll:      { paddingBottom: 48 },
   logoRow:     { alignItems: 'center', paddingVertical: 20 },
