@@ -936,6 +936,7 @@ CUISINE: ${p.cuisineList} only.
 DIETARY: ${p.isNonVeg ? 'Non-vegetarian. Must include meat or fish in lunch and dinner.' : 'Strictly vegetarian.'}${sundayLine ? `\n${sundayLine}` : ''}
 AVOID: ${p.avoidanceList}
 DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}${authenticRef ? `\n\nAUTHENTIC DISH REFERENCE — choose dish names from this list:\n${authenticRef}` : ''}${p.userContext ? `\n\nUSER CONTEXT THIS WEEK: ${p.userContext}. Factor this into dish selection — if guests are mentioned, plan more elaborate dishes on those days. If fasting is mentioned, plan fasting dishes on those days. If light meals are mentioned, keep portions small.` : ''}
+${p.communityRules ? `\nCOMMUNITY: ${p.communityRules}. You know the dietary traditions, food taboos, fasting rules, and festival foods of this community. Apply them strictly — for example, GSB Brahmins avoid beef and have specific fasting rules; Muslims require Halal only; Jains avoid root vegetables, onion and garlic; Parsis have specific meat preferences. Infer and apply the correct rules for ${p.communityRules} without being asked.` : ''}
 
 Return JSON:
 {
