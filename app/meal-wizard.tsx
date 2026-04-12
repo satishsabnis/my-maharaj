@@ -520,19 +520,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         } catch { /* non-fatal — generation continues without Sunday special */ }
       }
 
-      const _dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
-      const _today = new Date();
-      const _currentDay = _today.getDay();
-      const dates = selectedDays
-        .map(d => {
-          const target = _dayMap[d];
-          let diff = target - _currentDay;
-          if (diff <= 0) diff += 7;
-          const date = new Date(_today);
-          date.setDate(_today.getDate() + diff);
-          return toYMD(date);
-        })
-        .sort();
+      const dates = [...selectedDays].sort();
       setGeneratingProgress({ current: 0, total: dates.length });
 
       const allCuisinesPerDay = (() => {
@@ -1229,8 +1217,18 @@ Return ONLY valid JSON (no markdown) in this exact format:
   // ── Step Renders ──────────────────────────────────────────────────────────
 
   function renderWizard() {
-    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    const toggleDay = (d: string) => setSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+    const today = new Date();
+    const dayChips = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const shortDay = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+      const dateNum = d.getDate();
+      const dateStr = toYMD(d);
+      return { label: shortDay, date: String(dateNum), dateStr };
+    });
+    if (selectedDays.length === 0) {
+      setSelectedDays([dayChips[0].dateStr]);
+    }
 
     const profileCuisinesDisplay = selectedCuisines.length > 0
       ? selectedCuisines.length <= 3
@@ -1262,16 +1260,31 @@ Return ONLY valid JSON (no markdown) in this exact format:
       <View>
         {/* Element 1: Day selection */}
         <Text style={{fontSize:16,fontWeight:'700',color:colors.navy,marginBottom:10}}>Which days shall Maharaj plan?</Text>
-        <View style={{flexDirection:'row',gap:6,marginBottom:6}}>
-          {dayNames.map(d => {
-            const active = selectedDays.includes(d);
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:8}}>
+          {dayChips.map(({ label, date, dateStr }) => {
+            const selected = selectedDays.includes(dateStr);
             return (
-              <TouchableOpacity key={d} style={{flex:1,height:42,borderRadius:10,backgroundColor:active ? colors.emerald : 'rgba(255,255,255,0.9)',borderWidth:1.5,borderColor:active ? colors.emerald : '#D1D5DB',alignItems:'center',justifyContent:'center'}} onPress={() => toggleDay(d)}>
-                <Text style={{fontSize:11,fontWeight:'700',color:active ? colors.white : colors.navy}}>{d}</Text>
+              <TouchableOpacity
+                key={dateStr}
+                onPress={() => setSelectedDays(prev =>
+                  prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr]
+                )}
+                style={{
+                  width: 48,
+                  height: 56,
+                  borderRadius: 10,
+                  borderWidth: 1.5,
+                  borderColor: '#2E5480',
+                  backgroundColor: selected ? '#2E5480' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Text style={{fontSize:11,fontWeight:'600',color: selected ? '#FFFFFF' : '#2E5480'}}>{label}</Text>
+                <Text style={{fontSize:15,fontWeight:'700',color: selected ? '#FFFFFF' : '#2E5480',marginTop:2}}>{date}</Text>
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
         <Text style={{fontSize:10,color:colors.textMuted,marginBottom:16}}>{selectedDays.length > 0 ? `${selectedDays.length} day${selectedDays.length > 1 ? 's' : ''} selected` : 'Tap days to select'}</Text>
 
         {/* Element 2: Free text */}
