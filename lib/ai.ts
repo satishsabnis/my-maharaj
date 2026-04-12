@@ -955,7 +955,7 @@ Return JSON:
   "dinner_rice": "dish name",
   "snack": "dish name"
 }`;
-  const text = await askClaudeJson(prompt, 400);
+  const text = await askClaudeJson(prompt, 800);
   let raw: Partial<DishSelection>;
   try {
     raw = JSON.parse(text) as Partial<DishSelection>;
@@ -1003,6 +1003,20 @@ async function getIngredientsForDish(dishName: string, familySize: number): Prom
     }
   }
   return [];
+}
+
+async function throttledAll<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+  async function runNext(): Promise<void> {
+    if (index >= tasks.length) return;
+    const current = index++;
+    results[current] = await tasks[current]();
+    await runNext();
+  }
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, runNext);
+  await Promise.all(workers);
+  return results;
 }
 
 export async function generateMealPlanFast(
@@ -1167,8 +1181,9 @@ export async function generateMealPlanFast(
         dishes.dinner_veg, dishes.dinner_raita, dishes.dinner_bread, dishes.dinner_rice,
         dishes.snack,
       ];
-      const allIngredients = await Promise.all(
-        allDishNames.map(dish => getIngredientsForDish(dish, familySize))
+      const allIngredients = await throttledAll(
+        allDishNames.map(dish => () => getIngredientsForDish(dish, familySize)),
+        5
       );
       const [
         bfIngs = [],
