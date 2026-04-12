@@ -974,6 +974,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const dateRange = `${selectedFrom.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
       const { data, error } = await supabase.from('meal_plans').insert({
         user_id: user.id,
+        week_start: toYMD(selectedFrom),
+        week_end: toYMD(selectedTo),
         period_start: toYMD(selectedFrom),
         period_end: toYMD(selectedTo),
         date_range: dateRange,
