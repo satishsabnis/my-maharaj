@@ -927,7 +927,17 @@ async function selectDishesForDay(p: {
     : '';
   const authenticRef = p.cuisineList
     .split(',')
-    .map(c => AUTHENTIC_DISHES[c.trim()])
+    .map(c => {
+      const block = AUTHENTIC_DISHES[c.trim()];
+      if (!block) return '';
+      const lines = block.split('\n').filter(Boolean);
+      let result = '';
+      for (const line of lines) {
+        if ((result + '\n' + line).length > 300) break;
+        result += '\n' + line;
+      }
+      return result.trim();
+    })
     .filter(Boolean)
     .join('\n\n');
   const prompt = `Select dishes for ${p.dayName} (${p.date}) for a ${p.communityRules} family.
@@ -955,7 +965,7 @@ Return JSON:
   "dinner_rice": "dish name",
   "snack": "dish name"
 }`;
-  const text = await askClaudeJson(prompt, 800);
+  const text = await askClaudeJson(prompt, 1200);
   let raw: Partial<DishSelection>;
   try {
     raw = JSON.parse(text) as Partial<DishSelection>;
