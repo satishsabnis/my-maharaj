@@ -1219,15 +1219,15 @@ Return ONLY valid JSON (no markdown) in this exact format:
   // ── Sarvam translation helper ─────────────────────────────────────────────
 
   const SARVAM_LANG_MAP: Record<string, string> = {
-    'Hindi': 'hi-IN',
-    'Marathi': 'mr-IN',
-    'Gujarati': 'gu-IN',
-    'Tamil': 'ta-IN',
-    'Telugu': 'te-IN',
-    'Kannada': 'kn-IN',
-    'Malayalam': 'ml-IN',
-    'Bengali': 'bn-IN',
-    'Punjabi': 'pa-IN',
+    'Hindi': 'hi-IN', 'hi': 'hi-IN', 'hi-IN': 'hi-IN',
+    'Marathi': 'mr-IN', 'mr': 'mr-IN', 'mr-IN': 'mr-IN',
+    'Gujarati': 'gu-IN', 'gu': 'gu-IN', 'gu-IN': 'gu-IN',
+    'Tamil': 'ta-IN', 'ta': 'ta-IN', 'ta-IN': 'ta-IN',
+    'Telugu': 'te-IN', 'te': 'te-IN', 'te-IN': 'te-IN',
+    'Kannada': 'kn-IN', 'kn': 'kn-IN', 'kn-IN': 'kn-IN',
+    'Malayalam': 'ml-IN', 'ml': 'ml-IN', 'ml-IN': 'ml-IN',
+    'Bengali': 'bn-IN', 'bn': 'bn-IN', 'bn-IN': 'bn-IN',
+    'Punjabi': 'pa-IN', 'pa': 'pa-IN', 'pa-IN': 'pa-IN',
   };
 
   async function translateViaSarvam(text: string, targetLanguage: string): Promise<string> {
@@ -1265,15 +1265,21 @@ Return ONLY valid JSON (no markdown) in this exact format:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, familyName, dateRange, content, language: pdfLang }),
       });
+      const contentType = response.headers.get('content-type') || '';
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename.replace('DDMMYYYY', `${dd}${mm}${yyyy}`);
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (contentType.includes('text/html')) {
+        // Non-Latin language: open in new tab so browser renders Unicode with system fonts
+        window.open(url, '_blank');
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.replace('DDMMYYYY', `${dd}${mm}${yyyy}`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch {
       Alert.alert('Download failed', 'Please try again.');
     }
