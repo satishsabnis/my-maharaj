@@ -920,32 +920,18 @@ async function selectDishesForDay(p: {
   avoidanceList: string; historyStr: string; retry?: boolean; userContext?: string;
 }): Promise<DishSelection> {
   const sundayDishes = p.sundayExtraCurry
-    ? p.sundayExtraCurry.split(',').map(d => d.trim()).filter(Boolean)
+    ? p.sundayExtraCurry.split(',').map(d => d.trim().replace(/^\d+\s+/, '')).filter(Boolean)
     : [];
   const sundayLine = p.isSunday && sundayDishes.length > 0
     ? `SUNDAY SPECIAL — these exact dishes MUST appear: lunch_curry_1="${sundayDishes[0] || ''}", lunch_curry_2="${sundayDishes[1] || ''}", dinner_curry_1="${sundayDishes[2] || sundayDishes[0] || ''}", dinner_curry_2="${sundayDishes[1] || ''}". Do not substitute or rename these dishes.`
     : '';
-  const authenticRef = p.cuisineList
-    .split(',')
-    .map(c => {
-      const block = AUTHENTIC_DISHES[c.trim()];
-      if (!block) return '';
-      const lines = block.split('\n').filter(Boolean);
-      let result = '';
-      for (const line of lines) {
-        if ((result + '\n' + line).length > 300) break;
-        result += '\n' + line;
-      }
-      return result.trim();
-    })
-    .filter(Boolean)
-    .join('\n\n');
   const prompt = `Select dishes for ${p.dayName} (${p.date}) for a ${p.communityRules} family.
 
 CUISINE: ${p.cuisineList} only.
 DIETARY: ${p.isNonVeg ? 'Non-vegetarian. Must include meat or fish in lunch and dinner.' : 'Strictly vegetarian.'}${sundayLine ? `\n${sundayLine}` : ''}
 AVOID: ${p.avoidanceList}
-DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}${authenticRef ? `\n\nAUTHENTIC DISH REFERENCE — choose dish names from this list:\n${authenticRef}` : ''}${p.userContext ? `\n\nUSER CONTEXT THIS WEEK: ${p.userContext}. Factor this into dish selection — if guests are mentioned, plan more elaborate dishes on those days. If fasting is mentioned, plan fasting dishes on those days. If light meals are mentioned, keep portions small.` : ''}
+DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}
+DISH NAMES: Use authentic regional Indian dish names only. Never use generic names like "Chicken Curry" or "Fish Curry". Use specific names like "Kolhapuri Chicken", "Malvani Fish Curry", "Bangda Uddamethi".${p.userContext ? `\n\nUSER CONTEXT THIS WEEK: ${p.userContext}. Factor this into dish selection — if guests are mentioned, plan more elaborate dishes on those days. If fasting is mentioned, plan fasting dishes on those days. If light meals are mentioned, keep portions small.` : ''}
 ${p.communityRules ? `\nCOMMUNITY: ${p.communityRules}. You know the dietary traditions, food taboos, fasting rules, and festival foods of this community. Apply them strictly — for example, GSB Brahmins avoid beef and have specific fasting rules; Muslims require Halal only; Jains avoid root vegetables, onion and garlic; Parsis have specific meat preferences. Infer and apply the correct rules for ${p.communityRules} without being asked.` : ''}
 
 Return JSON:
@@ -965,7 +951,7 @@ Return JSON:
   "dinner_rice": "dish name",
   "snack": "dish name"
 }`;
-  const text = await askClaudeJson(prompt, 1200);
+  const text = await askClaudeJson(prompt, 600);
   let raw: Partial<DishSelection>;
   try {
     raw = JSON.parse(text) as Partial<DishSelection>;
