@@ -917,7 +917,7 @@ interface DishSelection {
 async function selectDishesForDay(p: {
   dayName: string; date: string; communityRules: string; cuisineList: string;
   isNonVeg: boolean; isSunday: boolean; sundayExtraCurry?: string;
-  avoidanceList: string; historyStr: string; retry?: boolean;
+  avoidanceList: string; historyStr: string; retry?: boolean; userContext?: string;
 }): Promise<DishSelection> {
   const sundayDishes = p.sundayExtraCurry
     ? p.sundayExtraCurry.split(',').map(d => d.trim()).filter(Boolean)
@@ -935,7 +935,7 @@ async function selectDishesForDay(p: {
 CUISINE: ${p.cuisineList} only.
 DIETARY: ${p.isNonVeg ? 'Non-vegetarian. Must include meat or fish in lunch and dinner.' : 'Strictly vegetarian.'}${sundayLine ? `\n${sundayLine}` : ''}
 AVOID: ${p.avoidanceList}
-DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}${authenticRef ? `\n\nAUTHENTIC DISH REFERENCE — choose dish names from this list:\n${authenticRef}` : ''}
+DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}${authenticRef ? `\n\nAUTHENTIC DISH REFERENCE — choose dish names from this list:\n${authenticRef}` : ''}${p.userContext ? `\n\nUSER CONTEXT THIS WEEK: ${p.userContext}. Factor this into dish selection — if guests are mentioned, plan more elaborate dishes on those days. If fasting is mentioned, plan fasting dishes on those days. If light meals are mentioned, keep portions small.` : ''}
 
 Return JSON:
 {
@@ -1039,6 +1039,7 @@ export async function generateMealPlanFast(
     mealTemplateRice?: string;
     sundayExtraCurry?: string;
     sundaySweet?: string;
+    userContext?: string;
   },
   onProgress?: (current: number, total: number) => void,
   onDayStart?: (dayName: string) => void,
@@ -1125,7 +1126,7 @@ export async function generateMealPlanFast(
         dayName, date, communityRules, cuisineList,
         isNonVeg: isEffectivelyNonVeg,
         isSunday, sundayExtraCurry: params.sundayExtraCurry,
-        avoidanceList, historyStr,
+        avoidanceList, historyStr, userContext: params.userContext,
       });
 
       // Validation: non-veg check — retry once with stricter prompt
@@ -1137,7 +1138,7 @@ export async function generateMealPlanFast(
             dishes = await selectDishesForDay({
               dayName, date, communityRules, cuisineList,
               isNonVeg: true, isSunday, sundayExtraCurry: params.sundayExtraCurry,
-              avoidanceList, historyStr, retry: true,
+              avoidanceList, historyStr, retry: true, userContext: params.userContext,
             });
           } catch { /* keep original dishes */ }
         }
