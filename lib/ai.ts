@@ -922,19 +922,16 @@ async function selectDishesForDay(p: {
   const sundayDishes = p.sundayExtraCurry
     ? p.sundayExtraCurry.split(',').map(d => d.trim().replace(/^\d+\s+/, '')).filter(Boolean)
     : [];
-  const sundayLine = p.isSunday && sundayDishes.length > 0
-    ? `SUNDAY SPECIAL — these exact dishes MUST appear: lunch_curry_1="${sundayDishes[0] || ''}", lunch_curry_2="${sundayDishes[1] || ''}", dinner_curry_1="${sundayDishes[2] || sundayDishes[0] || ''}", dinner_curry_2="${sundayDishes[1] || ''}". Do not substitute or rename these dishes.`
-    : '';
-  const prompt = `Select dishes for ${p.dayName} (${p.date}) for a ${p.communityRules} family.
+  const prompt = `Generate a meal plan for ${p.dayName} (${p.date}).
 
-CUISINE: ${p.cuisineList} only.
-DIETARY: ${p.isNonVeg ? 'Non-vegetarian. Must include meat or fish in lunch and dinner.' : 'Strictly vegetarian.'}${sundayLine ? `\n${sundayLine}` : ''}
+FAMILY: ${p.communityRules}, ${p.cuisineList} cuisine
+DIETARY: ${p.isNonVeg ? `Non-vegetarian. Must include meat or fish.` : `Strictly vegetarian.`}
+${p.isSunday && sundayDishes.length > 0 ? `SUNDAY SPECIAL — use exactly these dishes: lunch_curry_1="${sundayDishes[0]}", lunch_curry_2="${sundayDishes[1] || ''}", dinner_curry_1="${sundayDishes[2] || sundayDishes[0]}", dinner_curry_2="${sundayDishes[1] || ''}"` : ''}
 AVOID: ${p.avoidanceList}
-DO NOT REPEAT: ${p.historyStr}${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}
-DISH NAMES: Use authentic regional Indian dish names only. Never use generic names like "Chicken Curry" or "Fish Curry". Use specific names like "Kolhapuri Chicken", "Malvani Fish Curry", "Bangda Uddamethi".${p.userContext ? `\n\nUSER CONTEXT THIS WEEK: ${p.userContext}. Factor this into dish selection — if guests are mentioned, plan more elaborate dishes on those days. If fasting is mentioned, plan fasting dishes on those days. If light meals are mentioned, keep portions small.` : ''}
-${p.communityRules ? `\nCOMMUNITY: ${p.communityRules}. You know the dietary traditions, food taboos, fasting rules, and festival foods of this community. Apply them strictly — for example, GSB Brahmins avoid beef and have specific fasting rules; Muslims require Halal only; Jains avoid root vegetables, onion and garlic; Parsis have specific meat preferences. Infer and apply the correct rules for ${p.communityRules} without being asked.` : ''}
+DO NOT REPEAT: ${p.historyStr}
+DISH NAMES: Use authentic regional Indian names only. Never use generic names like "Chicken Curry" or "Fish Curry".${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}
 
-Return JSON:
+Return JSON only, no markdown:
 {
   "breakfast": "dish name",
   "lunch_curry_1": "dish name",
@@ -951,7 +948,7 @@ Return JSON:
   "dinner_rice": "dish name",
   "snack": "dish name"
 }`;
-  const text = await askClaudeJson(prompt, 600);
+  const text = await askClaudeJson(prompt, 500);
   let raw: Partial<DishSelection>;
   try {
     raw = JSON.parse(text) as Partial<DishSelection>;
