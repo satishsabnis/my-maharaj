@@ -60,7 +60,8 @@
       "Bash(find C:/Users/satis/documents/my-maharaj -name *+api*)",
       "Bash(cat ~/.claude/skills/gstack/*/SKILL.md)",
       "Bash(~/.claude/skills/gstack/bin/gstack-config get:*)",
-      "Bash(vercel logs:*)"
+      "Bash(vercel logs:*)",
+      "Bash(grep -rn \"private\\\\|UIKit\\\\|CoreData\\\\|objc\\\\|NSPrivate\\\\|_private\" /c/Users/satis/documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js)"
     ]
   }
 }
