@@ -821,13 +821,19 @@ Return ONLY valid JSON (no markdown) in this exact format:
         const anatComps: AnatomyComponent[] = [];
         if (slotsToUse.includes('breakfast') && a.breakfast) anatComps.push(a.breakfast);
         if (slotsToUse.includes('lunch') && a.lunch) {
-          anatComps.push(a.lunch.curry, a.lunch.veg, a.lunch.raita, a.lunch.bread, a.lunch.rice);
+          const lunchCurry = a.lunch.curry;
+          const lunchCurries = Array.isArray(lunchCurry) ? lunchCurry : [lunchCurry];
+          lunchCurries.filter(Boolean).forEach(c => (c.ingredients ?? []).forEach(addIng));
+          anatComps.push(a.lunch.veg, a.lunch.raita, a.lunch.bread, a.lunch.rice);
         }
         if (slotsToUse.includes('dinner') && a.dinner) {
-          anatComps.push(a.dinner.curry, a.dinner.veg, a.dinner.raita, a.dinner.bread, a.dinner.rice);
+          const dinnerCurry = a.dinner.curry;
+          const dinnerCurries = Array.isArray(dinnerCurry) ? dinnerCurry : [dinnerCurry];
+          dinnerCurries.filter(Boolean).forEach(c => (c.ingredients ?? []).forEach(addIng));
+          anatComps.push(a.dinner.veg, a.dinner.raita, a.dinner.bread, a.dinner.rice);
         }
         if (slotsToUse.includes('snack') && a.snack) anatComps.push(a.snack);
-        anatComps.forEach(comp => comp.ingredients.forEach(addIng));
+        anatComps.filter(Boolean).forEach(comp => (comp.ingredients ?? []).forEach(addIng));
         return;
       }
       // ── Legacy slot path: ingredients on MealOption ───────────────────────
@@ -974,8 +980,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const dateRange = `${selectedFrom.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
       const { data, error } = await supabase.from('meal_plans').insert({
         user_id: user.id,
-        week_start: toYMD(selectedFrom),
-        week_end: toYMD(selectedTo),
         period_start: toYMD(selectedFrom),
         period_end: toYMD(selectedTo),
         date_range: dateRange,
