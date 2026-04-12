@@ -1,7 +1,19 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+// dietary-profile-v2.tsx
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  Alert, ImageBackground, Modal, Platform, ScrollView, StyleSheet,
-  Switch, Text, TextInput, TouchableOpacity, View, ActivityIndicator
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  KeyboardAvoidingView,
+  SafeAreaView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -12,9 +24,128 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { getCuisineGroups } from '../lib/cuisineGroups';
 import { colors, cards, buttons } from '../constants/theme';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ============================================================================
+// TYPES
+// ============================================================================
 
-const COMMUNITIES = [
+type SubscriptionTier = 'Free' | 'Premium' | 'Pro';
+type FoodPreference = 'Vegetarian' | 'Non-vegetarian' | 'Eggetarian' | 'Mixed';
+type CookingPattern = 'Cook at night — dinner carries to next day lunch' | 'Cook fresh at every meal' | 'Cook once for all three meals';
+type CookingSkill = 'Quick and easy' | 'Moderate' | 'Elaborate';
+type BudgetPref = 'Everyday' | 'Moderate' | 'Occasional indulgence';
+type Language = 'English' | 'Hindi' | 'Marathi' | 'Gujarati' | 'Tamil' | 'Telugu' | 'Malayalam' | 'Kannada' | 'Bengali' | 'Punjabi' | 'Urdu';
+
+interface FamilyMember {
+  id: string;
+  name: string;
+  age: number;
+  healthNotes: string | null;
+}
+
+interface MemberFormData {
+  name: string;
+  age: string;
+  nationality: string;
+  foodPreference: FoodPreference;
+  healthConditions: string[];
+  notes: string;
+}
+
+interface RecurringOccasion {
+  id: string;
+  name: string;
+  day: string;
+  people: string;
+}
+
+interface ProfileState {
+  // Account
+  subscriptionTier: SubscriptionTier;
+  subscriptionExpiry: string;
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  
+  // Community
+  community: string;
+  communityOther: string;
+  additionalRules: string;
+  isJainFamily: boolean;
+  jainAllowNonJain: boolean;
+  
+  // Family
+  members: FamilyMember[];
+  
+  // Meal template
+  mealCurry: string;
+  mealVeg: string;
+  mealRaita: string;
+  mealBread: string;
+  mealRice: string;
+  sundayCurry: string;
+  sundaySweet: string;
+  
+  // Breakfast
+  breakfastPrefs: string;
+  
+  // Cooking
+  cookingPattern: CookingPattern | '';
+  
+  // Veg days
+  vegDays: string[];
+  
+  // Cuisine
+  selectedCuisines: string[];
+  
+  // Avoids
+  avoidanceList: string;
+  
+  // Grocery
+  groceryDay: string;
+  preferredStores: string;
+  preferredApps: string;
+  
+  // Occasions
+  occasions: RecurringOccasion[];
+  
+  // Insurance
+  hasInsurance: boolean;
+  insuranceExpiry: string;
+  
+  // Notifications
+  notifFestivals: boolean;
+  notifLabReports: boolean;
+  notifInsurance: boolean;
+  
+  // App settings
+  cookingSkill: CookingSkill | '';
+  budgetPref: BudgetPref | '';
+  
+  // Language
+  appLanguage: Language;
+  planSummaryLanguage: Language;
+  shoppingLanguage: Language;
+}
+
+type ProfileAction =
+  | { type: 'SET_FIELD'; field: keyof ProfileState; value: unknown }
+  | { type: 'SET_MEMBERS'; members: FamilyMember[] }
+  | { type: 'ADD_MEMBER'; member: FamilyMember }
+  | { type: 'UPDATE_MEMBER'; id: string; updates: Partial<FamilyMember> }
+  | { type: 'REMOVE_MEMBER'; id: string }
+  | { type: 'SET_OCCASIONS'; occasions: RecurringOccasion[] }
+  | { type: 'ADD_OCCASION'; occasion: RecurringOccasion }
+  | { type: 'UPDATE_OCCASION'; id: string; updates: Partial<RecurringOccasion> }
+  | { type: 'REMOVE_OCCASION'; id: string }
+  | { type: 'TOGGLE_VEG_DAY'; day: string }
+  | { type: 'TOGGLE_CUISINE'; cuisine: string }
+  | { type: 'RESET' };
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const COMMUNITIES: readonly string[] = [
   'Hindu — no restrictions',
   'GSB (Gaud Saraswat Brahmin)',
   'CKP (Chandraseniya Kayastha Prabhu)',
@@ -26,25 +157,27 @@ const COMMUNITIES = [
   'Bengali Hindu',
   'Christian',
   'Other',
-];
+] as const;
 
-const COOKING_PATTERNS = [
+const COOKING_PATTERNS: readonly CookingPattern[] = [
   'Cook at night — dinner carries to next day lunch',
   'Cook fresh at every meal',
   'Cook once for all three meals',
-];
+] as const;
 
-const LANG_OPTIONS = [
+const LANG_OPTIONS: readonly Language[] = [
   'English', 'Hindi', 'Marathi', 'Gujarati',
   'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali', 'Punjabi', 'Urdu',
-];
+] as const;
 
-const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const ALL_DAYS: readonly string[] = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+] as const;
 
-const HEALTH_PILLS = [
+const HEALTH_PILLS: readonly string[] = [
   'Diabetic', 'BP', 'PCOS', 'Cholesterol', 'Thyroid',
   'Heart', 'Kidney', 'Anaemia', 'Lactose', 'Gluten',
-];
+] as const;
 
 const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
   Diabetic: { bg: '#FEF2F2', fg: '#DC2626' },
@@ -59,7 +192,7 @@ const HEALTH_COLORS: Record<string, { bg: string; fg: string }> = {
   Gluten: { bg: '#FFFBEB', fg: '#92400E' },
 };
 
-const NATIONALITIES = [
+const NATIONALITIES: readonly string[] = [
   'Afghan', 'Australian', 'Bangladeshi', 'British', 'Canadian', 'Chinese',
   'Egyptian', 'Filipino', 'French', 'German', 'Indian', 'Indonesian',
   'Iranian', 'Italian', 'Japanese', 'Korean', 'Kuwaiti', 'Lebanese',
@@ -69,61 +202,212 @@ const NATIONALITIES = [
   'Vietnamese', 'Yemeni',
 ].sort();
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ============================================================================
+// REDUCER
+// ============================================================================
 
-interface Member {
-  id: string;
-  name: string;
-  age: number;
-  health_notes: string | null;
+const initialState: ProfileState = {
+  subscriptionTier: 'Free',
+  subscriptionExpiry: '—',
+  fullName: '',
+  phoneNumber: '',
+  email: '',
+  community: '',
+  communityOther: '',
+  additionalRules: '',
+  isJainFamily: false,
+  jainAllowNonJain: true,
+  members: [],
+  mealCurry: '',
+  mealVeg: '',
+  mealRaita: '',
+  mealBread: '',
+  mealRice: '',
+  sundayCurry: '',
+  sundaySweet: '',
+  breakfastPrefs: '',
+  cookingPattern: '',
+  vegDays: [],
+  selectedCuisines: [],
+  avoidanceList: '',
+  groceryDay: '',
+  preferredStores: '',
+  preferredApps: '',
+  occasions: [],
+  hasInsurance: false,
+  insuranceExpiry: '',
+  notifFestivals: true,
+  notifLabReports: true,
+  notifInsurance: true,
+  cookingSkill: '',
+  budgetPref: '',
+  appLanguage: 'English',
+  planSummaryLanguage: 'English',
+  shoppingLanguage: 'English',
+};
+
+function profileReducer(state: ProfileState, action: ProfileAction): ProfileState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    
+    case 'SET_MEMBERS':
+      return { ...state, members: action.members };
+    
+    case 'ADD_MEMBER':
+      return { ...state, members: [...state.members, action.member] };
+    
+    case 'UPDATE_MEMBER':
+      return {
+        ...state,
+        members: state.members.map(m => 
+          m.id === action.id ? { ...m, ...action.updates } : m
+        ),
+      };
+    
+    case 'REMOVE_MEMBER':
+      return {
+        ...state,
+        members: state.members.filter(m => m.id !== action.id),
+      };
+    
+    case 'SET_OCCASIONS':
+      return { ...state, occasions: action.occasions };
+    
+    case 'ADD_OCCASION':
+      return { ...state, occasions: [...state.occasions, action.occasion] };
+    
+    case 'UPDATE_OCCASION':
+      return {
+        ...state,
+        occasions: state.occasions.map(o =>
+          o.id === action.id ? { ...o, ...action.updates } : o
+        ),
+      };
+    
+    case 'REMOVE_OCCASION':
+      return {
+        ...state,
+        occasions: state.occasions.filter(o => o.id !== action.id),
+      };
+    
+    case 'TOGGLE_VEG_DAY':
+      return {
+        ...state,
+        vegDays: state.vegDays.includes(action.day)
+          ? state.vegDays.filter(d => d !== action.day)
+          : [...state.vegDays, action.day],
+      };
+    
+    case 'TOGGLE_CUISINE':
+      return {
+        ...state,
+        selectedCuisines: state.selectedCuisines.includes(action.cuisine)
+          ? state.selectedCuisines.filter(c => c !== action.cuisine)
+          : [...state.selectedCuisines, action.cuisine],
+      };
+    
+    case 'RESET':
+      return initialState;
+    
+    default:
+      return state;
+  }
 }
 
-interface MemberForm {
-  name: string;
-  age: string;
-  nationality: string;
-  foodPreference: string;
-  healthConditions: string[];
-  notes: string;
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function formatDate(date: Date | string | null): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
-interface RecurringOccasion {
-  id: string;
-  name: string;
-  day: string;
-  people: string;
+function healthConditionsToNotes(conditions: string[], notes: string): string {
+  const parts = [...conditions];
+  if (notes.trim()) parts.push(notes.trim());
+  return parts.join(', ');
 }
 
-function emptyForm(): MemberForm {
-  return { name: '', age: '', nationality: '', foodPreference: 'Mixed', healthConditions: [], notes: '' };
+function notesToHealthConditions(notes: string | null): { conditions: string[]; otherNotes: string } {
+  if (!notes) return { conditions: [], otherNotes: '' };
+  
+  const conditions: string[] = [];
+  let remaining = notes;
+  
+  for (const pill of HEALTH_PILLS) {
+    const regex = new RegExp(pill, 'i');
+    if (regex.test(notes)) {
+      conditions.push(pill);
+      remaining = remaining.replace(regex, '').replace(/,\s*/, '').trim();
+    }
+  }
+  
+  return { conditions, otherNotes: remaining };
 }
 
-function formToNotes(form: MemberForm): string {
-  return [...form.healthConditions, form.notes.trim()].filter(Boolean).join(', ');
+// ============================================================================
+// DROPDOWN COMPONENT
+// ============================================================================
+
+interface DropdownProps<T extends string> {
+  label?: string;
+  value: T | '';
+  options: readonly T[];
+  onSelect: (value: T) => void;
+  placeholder?: string;
 }
 
-// ─── Dropdown ─────────────────────────────────────────────────────────────────
-
-function Dropdown({ label, value, options, onSelect, placeholder }: {
-  label?: string; value: string; options: string[];
-  onSelect: (v: string) => void; placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
+function Dropdown<T extends string>({
+  label,
+  value,
+  options,
+  onSelect,
+  placeholder,
+}: DropdownProps<T>) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const handleSelect = useCallback((option: T) => {
+    onSelect(option);
+    setIsOpen(false);
+  }, [onSelect]);
+  
   return (
-    <View style={{ marginBottom: 10, zIndex: open ? 100 : 1 }}>
-      {label && <Text style={s.fieldLabel}>{label}</Text>}
-      <TouchableOpacity style={s.dropdown} onPress={() => setOpen(!open)} activeOpacity={0.8}>
-        <Text style={{ flex: 1, fontSize: 13, color: value ? colors.navy : colors.textHint }}>
+    <View style={styles.dropdownContainer}>
+      {label && <Text style={styles.fieldLabel}>{label}</Text>}
+      <TouchableOpacity
+        style={styles.dropdown}
+        onPress={() => setIsOpen(prev => !prev)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.dropdownText, !value && styles.dropdownPlaceholder]}>
           {value || placeholder || 'Select...'}
         </Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted }}>{open ? '▲' : '▼'}</Text>
+        <Text style={styles.dropdownArrow}>{isOpen ? '▲' : '▼'}</Text>
       </TouchableOpacity>
-      {open && (
-        <View style={s.dropdownList}>
-          {options.map(o => (
-            <TouchableOpacity key={o} style={s.dropdownItem} onPress={() => { onSelect(o); setOpen(false); }}>
-              <Text style={{ fontSize: 13, color: value === o ? colors.emerald : colors.navy, fontWeight: value === o ? '700' : '400' }}>
-                {o}
+      
+      {isOpen && (
+        <View style={styles.dropdownList}>
+          {options.map(option => (
+            <TouchableOpacity
+              key={option}
+              style={styles.dropdownItem}
+              onPress={() => handleSelect(option)}
+            >
+              <Text
+                style={[
+                  styles.dropdownItemText,
+                  value === option && styles.dropdownItemTextSelected,
+                ]}
+              >
+                {option}
               </Text>
             </TouchableOpacity>
           ))}
@@ -133,33 +417,56 @@ function Dropdown({ label, value, options, onSelect, placeholder }: {
   );
 }
 
-// ─── MultiDropdown — select multiple days ─────────────────────────────────────
+// ============================================================================
+// MULTI DROPDOWN COMPONENT
+// ============================================================================
 
-function MultiDropdown({ label, values, options, onToggle, placeholder }: {
-  label?: string; values: string[]; options: string[];
-  onToggle: (v: string) => void; placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const display = values.length > 0 ? values.join(', ') : placeholder || 'Select days...';
+interface MultiDropdownProps {
+  label?: string;
+  values: string[];
+  options: readonly string[];
+  onToggle: (value: string) => void;
+  placeholder?: string;
+}
+
+function MultiDropdown({ label, values, options, onToggle, placeholder }: MultiDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const displayText = values.length > 0 ? values.join(', ') : (placeholder || 'Select...');
+  
   return (
-    <View style={{ marginBottom: 10, zIndex: open ? 100 : 1 }}>
-      {label && <Text style={s.fieldLabel}>{label}</Text>}
-      <TouchableOpacity style={s.dropdown} onPress={() => setOpen(!open)} activeOpacity={0.8}>
-        <Text style={{ flex: 1, fontSize: 13, color: values.length > 0 ? colors.navy : colors.textHint }}>
-          {display}
+    <View style={styles.dropdownContainer}>
+      {label && <Text style={styles.fieldLabel}>{label}</Text>}
+      <TouchableOpacity
+        style={styles.dropdown}
+        onPress={() => setIsOpen(prev => !prev)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.dropdownText, values.length === 0 && styles.dropdownPlaceholder]}>
+          {displayText}
         </Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted }}>{open ? '▲' : '▼'}</Text>
+        <Text style={styles.dropdownArrow}>{isOpen ? '▲' : '▼'}</Text>
       </TouchableOpacity>
-      {open && (
-        <View style={s.dropdownList}>
-          {options.map(o => {
-            const selected = values.includes(o);
+      
+      {isOpen && (
+        <View style={styles.dropdownList}>
+          {options.map(option => {
+            const isSelected = values.includes(option);
             return (
-              <TouchableOpacity key={o} style={[s.dropdownItem, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]} onPress={() => onToggle(o)}>
-                <Text style={{ fontSize: 13, color: selected ? colors.emerald : colors.navy, fontWeight: selected ? '700' : '400' }}>
-                  {o}
+              <TouchableOpacity
+                key={option}
+                style={styles.dropdownItem}
+                onPress={() => onToggle(option)}
+              >
+                <Text
+                  style={[
+                    styles.dropdownItemText,
+                    isSelected && styles.dropdownItemTextSelected,
+                  ]}
+                >
+                  {option}
                 </Text>
-                {selected && <Text style={{ fontSize: 12, color: colors.emerald }}>✓</Text>}
+                {isSelected && <Text style={styles.dropdownCheckmark}>✓</Text>}
               </TouchableOpacity>
             );
           })}
@@ -169,1009 +476,2067 @@ function MultiDropdown({ label, values, options, onToggle, placeholder }: {
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// ============================================================================
+// MEMBER MODAL COMPONENT
+// ============================================================================
 
-export default function DietaryProfileScreen() {
-  // ── Account ──────────────────────────────────────────────────────────────
-  const [subTier, setSubTier] = useState('Free');
-  const [subExpiry, setSubExpiry] = useState('—');
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [userEmail, setUserEmail] = useState('');
+interface MemberModalProps {
+  visible: boolean;
+  editId: string | null;
+  form: MemberFormData;
+  onFormChange: (updates: Partial<MemberFormData>) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+  error: string;
+}
 
-  // ── Community ────────────────────────────────────────────────────────────
-  const [community, setCommunity] = useState('');
-  const [communityOther, setCommunityOther] = useState('');
-  const [additionalRules, setAdditionalRules] = useState('');
-  const [isJainFamily, setIsJainFamily] = useState(false);
-  const [jainAllowNonJain, setJainAllowNonJain] = useState(true);
-
-  // ── Family members ───────────────────────────────────────────────────────
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<MemberForm>(emptyForm());
-  const [natSuggestions, setNatSuggestions] = useState<string[]>([]);
-  const [formError, setFormError] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // ── Meal template ────────────────────────────────────────────────────────
-  const [mealCurry, setMealCurry] = useState('');
-  const [mealVeg, setMealVeg] = useState('');
-  const [mealRaita, setMealRaita] = useState('');
-  const [mealBread, setMealBread] = useState('');
-  const [mealRice, setMealRice] = useState('');
-  const [sundayCurry, setSundayCurry] = useState('');
-  const [sundaySweet, setSundaySweet] = useState('');
-
-  // ── Breakfast ────────────────────────────────────────────────────────────
-  const [breakfastPrefs, setBreakfastPrefs] = useState('');
-
-  // ── Cooking pattern ──────────────────────────────────────────────────────
-  const [cookingPattern, setCookingPattern] = useState('');
-
-  // ── Veg days ─────────────────────────────────────────────────────────────
-  const [vegDays, setVegDays] = useState<string[]>([]);
-
-  // ── Cuisine preferences ──────────────────────────────────────────────────
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-
-  // ── Avoids ───────────────────────────────────────────────────────────────
-  const [avoidanceList, setAvoidanceList] = useState('');
-
-  // ── Grocery ──────────────────────────────────────────────────────────────
-  const [groceryDay, setGroceryDay] = useState('');
-  const [preferredStores, setPreferredStores] = useState('');
-  const [preferredApps, setPreferredApps] = useState('');
-
-  // ── Occasions ────────────────────────────────────────────────────────────
-  const [occasions, setOccasions] = useState<RecurringOccasion[]>([]);
-  const [occasionModal, setOccasionModal] = useState(false);
-  const [editOccasionId, setEditOccasionId] = useState<string | null>(null);
-  const [occName, setOccName] = useState('');
-  const [occDay, setOccDay] = useState('');
-  const [occPeople, setOccPeople] = useState('');
-
-  // ── Insurance ────────────────────────────────────────────────────────────
-  const [hasInsurance, setHasInsurance] = useState(false);
-  const [insuranceExpiry, setInsuranceExpiry] = useState('');
-
-  // ── Notifications ────────────────────────────────────────────────────────
-  const [notifFestivals, setNotifFestivals] = useState(true);
-  const [notifLabReports, setNotifLabReports] = useState(true);
-  const [notifInsurance, setNotifInsurance] = useState(true);
-
-  // ── App settings ─────────────────────────────────────────────────────────
-  const [cookingSkill, setCookingSkill] = useState('');
-  const [budgetPref, setBudgetPref] = useState('');
-
-  // ── Language ─────────────────────────────────────────────────────────────
-  const [appLanguage, setAppLanguage] = useState('English');
-  const [planSummaryLanguage, setPlanSummaryLanguage] = useState('English');
-  const [shoppingLanguage, setShoppingLanguage] = useState('English');
-
-  // ── UI state ─────────────────────────────────────────────────────────────
-  const [hasChanges, setHasChanges] = useState(false);
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [savedMsg, setSavedMsg] = useState(false);
-  const [isFirstSetup, setIsFirstSetup] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  const CUISINE_GROUPS = getCuisineGroups(isJainFamily);
-
-  // ── Mark dirty ────────────────────────────────────────────────────────────
-  const markDirty = () => setHasChanges(true);
-
-  // ── Load ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    async function loadAll() {
-      try {
-        const user = await getSessionUser();
-        if (!user) return;
-        setUserId(user.id);
-        setUserEmail(user.email ?? '');
-
-        // Load profile from Supabase
-        const { data: prof, error: profErr } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profErr) console.error('[ProfileLoad] Supabase error:', profErr.message);
-
-        if (prof) {
-          // Account
-          if (prof.subscription_tier) setSubTier(prof.subscription_tier);
-          if (prof.subscription_expires_at) {
-            setSubExpiry(new Date(prof.subscription_expires_at).toLocaleDateString('en-GB', {
-              day: 'numeric', month: 'short', year: 'numeric'
-            }));
-          }
-          if (prof.full_name) setFullName(prof.full_name);
-          if (prof.phone_number) setPhoneNumber(prof.phone_number);
-
-          // Community
-          if (prof.community) setCommunity(prof.community);
-          if (prof.community_other) setCommunityOther(prof.community_other);
-          if (prof.additional_dietary_rules) setAdditionalRules(prof.additional_dietary_rules);
-          if (prof.jain_family != null) setIsJainFamily(Boolean(prof.jain_family));
-          if (prof.jain_allow_non_jain != null) setJainAllowNonJain(Boolean(prof.jain_allow_non_jain));
-
-          // Meal template
-          if (prof.meal_template_curry) setMealCurry(prof.meal_template_curry);
-          if (prof.meal_template_veg) setMealVeg(prof.meal_template_veg);
-          if (prof.meal_template_raita) setMealRaita(prof.meal_template_raita);
-          if (prof.meal_template_bread) setMealBread(prof.meal_template_bread);
-          if (prof.meal_template_rice) setMealRice(prof.meal_template_rice);
-          if (prof.sunday_extra_curry) setSundayCurry(prof.sunday_extra_curry);
-          if (prof.sunday_sweet) setSundaySweet(prof.sunday_sweet);
-
-          // Breakfast
-          if (prof.breakfast_preferences) setBreakfastPrefs(prof.breakfast_preferences);
-
-          // Cooking pattern
-          if (prof.cooking_pattern) setCookingPattern(prof.cooking_pattern);
-
-          // Veg days — stored as array in Supabase
-          if (Array.isArray(prof.veg_days) && prof.veg_days.length > 0) {
-            setVegDays(prof.veg_days);
-          }
-
-          // Avoids
-          if (prof.avoidance_list) setAvoidanceList(prof.avoidance_list);
-
-          // Grocery
-          if (prof.grocery_day) setGroceryDay(prof.grocery_day);
-          if (prof.preferred_supermarkets) setPreferredStores(prof.preferred_supermarkets);
-          if (prof.preferred_delivery_apps) setPreferredApps(prof.preferred_delivery_apps);
-
-          // Occasions
-          if (prof.recurring_occasions) {
-            try {
-              const occ = typeof prof.recurring_occasions === 'string'
-                ? JSON.parse(prof.recurring_occasions)
-                : prof.recurring_occasions;
-              if (Array.isArray(occ)) setOccasions(occ);
-            } catch {}
-          }
-
-          // Insurance
-          if (prof.household_insurance === 'true') setHasInsurance(true);
-          if (prof.insurance_expiry) setInsuranceExpiry(prof.insurance_expiry);
-
-          // Notifications
-          if (prof.notif_festivals != null) setNotifFestivals(Boolean(prof.notif_festivals));
-          if (prof.notif_lab_reports != null) setNotifLabReports(Boolean(prof.notif_lab_reports));
-          if (prof.notif_insurance_reminders != null) setNotifInsurance(Boolean(prof.notif_insurance_reminders));
-
-          // App settings
-          if (prof.cooking_skill) setCookingSkill(prof.cooking_skill);
-          if (prof.budget_pref) setBudgetPref(prof.budget_pref);
-
-          // Language
-          if (prof.app_language) setAppLanguage(prof.app_language);
-          if (prof.plan_summary_language) setPlanSummaryLanguage(prof.plan_summary_language);
-          if (prof.shopping_list_language) setShoppingLanguage(prof.shopping_list_language);
-
-          // Write back to AsyncStorage as local cache
-          const asyncUpdates: [string, string][] = [
-            ['community', prof.community ?? ''],
-            ['community_other', prof.community_other ?? ''],
-            ['additional_dietary_rules', prof.additional_dietary_rules ?? ''],
-            ['jain_family', String(prof.jain_family ?? false)],
-            ['jain_allow_non_jain', String(prof.jain_allow_non_jain ?? true)],
-            ['meal_template_curry', prof.meal_template_curry ?? ''],
-            ['meal_template_veg', prof.meal_template_veg ?? ''],
-            ['meal_template_raita', prof.meal_template_raita ?? ''],
-            ['meal_template_bread', prof.meal_template_bread ?? ''],
-            ['meal_template_rice', prof.meal_template_rice ?? ''],
-            ['sunday_extra_curry', prof.sunday_extra_curry ?? ''],
-            ['sunday_sweet', prof.sunday_sweet ?? ''],
-            ['breakfast_preferences', prof.breakfast_preferences ?? ''],
-            ['cooking_pattern', prof.cooking_pattern ?? ''],
-            ['veg_days', JSON.stringify(prof.veg_days ?? [])],
-            ['avoidance_list', prof.avoidance_list ?? ''],
-            ['family_avoids', JSON.stringify(
-              (prof.avoidance_list ?? '').split(',').map((s: string) => s.trim()).filter(Boolean)
-            )],
-            ['grocery_day', prof.grocery_day ?? ''],
-            ['preferred_supermarkets', prof.preferred_supermarkets ?? ''],
-            ['preferred_delivery_apps', prof.preferred_delivery_apps ?? ''],
-            ['cooking_skill', prof.cooking_skill ?? ''],
-            ['budget_pref', prof.budget_pref ?? ''],
-            ['app_language', prof.app_language ?? 'English'],
-            ['plan_summary_language', prof.plan_summary_language ?? 'English'],
-            ['shopping_list_language', prof.shopping_list_language ?? 'English'],
-          ];
-          await AsyncStorage.multiSet(asyncUpdates);
-        } else {
-          // No profile row yet — first setup
-          setIsFirstSetup(true);
-        }
-
-        // Load cuisine preferences
-        const { data: cuisineData } = await supabase
-          .from('cuisine_preferences')
-          .select('cuisine_name')
-          .eq('user_id', user.id)
-          .eq('is_excluded', false);
-        setSelectedCuisines((cuisineData ?? []).map((c: any) => c.cuisine_name));
-
-        // Load family members
-        await loadMembers(user.id);
-
-      } catch (err) {
-        console.error('[ProfileLoad] Fatal error:', err);
-      }
-    }
-    void loadAll();
-  }, []);
-
-  // ── Load members ──────────────────────────────────────────────────────────
-  const loadMembers = useCallback(async (uid?: string) => {
-    setLoading(true);
-    try {
-      const user = uid ? { id: uid } : await getSessionUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from('family_members')
-        .select('id, name, age, health_notes')
-        .eq('user_id', user.id);
-      setMembers((data ?? []) as Member[]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ── Member CRUD ───────────────────────────────────────────────────────────
-  function openAdd() { setEditId(null); setForm(emptyForm()); setFormError(''); setModalOpen(true); }
-  function openEdit(m: Member) {
-    const notes = m.health_notes ?? '';
-    const conds = HEALTH_PILLS.filter(p => notes.toLowerCase().includes(p.toLowerCase()));
-    const others = conds.reduce((s, c) => s.replace(new RegExp(`,?\\s*${c}`, 'gi'), ''), notes).trim();
-    setEditId(m.id);
-    setForm({ name: m.name, age: String(m.age || ''), nationality: '', foodPreference: 'Mixed', healthConditions: conds, notes: others });
-    setFormError('');
-    setModalOpen(true);
-  }
-
-  async function saveMember() {
-    if (!form.name.trim()) { setFormError('Name is required'); return; }
-    setSaving(true); setFormError('');
-    try {
-      const user = await getSessionUser();
-      if (!user) throw new Error('Not authenticated');
-      const payload = {
-        user_id: user.id,
-        name: form.name.trim(),
-        age: parseInt(form.age, 10) || 0,
-        health_notes: formToNotes(form) || null,
-      };
-      if (editId) {
-        const { error } = await supabase.from('family_members').update(payload).eq('id', editId);
-        if (error) throw new Error(error.message);
-      } else {
-        const { error } = await supabase.from('family_members').insert(payload);
-        if (error) throw new Error(error.message);
-      }
-      setModalOpen(false);
-      await loadMembers();
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Save failed.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteMember(id: string) {
-    await supabase.from('family_members').delete().eq('id', id);
-    await loadMembers();
-  }
-
-  function toggleHealth(cond: string) {
-    setForm(prev => ({
-      ...prev,
-      healthConditions: prev.healthConditions.includes(cond)
-        ? prev.healthConditions.filter(c => c !== cond)
-        : [...prev.healthConditions, cond],
-    }));
-  }
-
-  // ── Occasion CRUD ─────────────────────────────────────────────────────────
-  function openAddOccasion() { setEditOccasionId(null); setOccName(''); setOccDay(''); setOccPeople(''); setOccasionModal(true); }
-  function openEditOccasion(o: RecurringOccasion) { setEditOccasionId(o.id); setOccName(o.name); setOccDay(o.day); setOccPeople(o.people); setOccasionModal(true); }
-
-  function saveOccasion() {
-    if (!occName.trim()) return;
-    if (editOccasionId) {
-      setOccasions(prev => prev.map(o => o.id === editOccasionId ? { ...o, name: occName, day: occDay, people: occPeople } : o));
+function MemberModal({
+  visible,
+  editId,
+  form,
+  onFormChange,
+  onSave,
+  onClose,
+  saving,
+  error,
+}: MemberModalProps) {
+  const [nationalitySuggestions, setNationalitySuggestions] = useState<string[]>([]);
+  
+  const handleNationalityChange = useCallback((text: string) => {
+    onFormChange({ nationality: text });
+    if (text.length > 0) {
+      const suggestions = NATIONALITIES.filter(n =>
+        n.toLowerCase().startsWith(text.toLowerCase())
+      ).slice(0, 5);
+      setNationalitySuggestions(suggestions);
     } else {
-      setOccasions(prev => [...prev, { id: Date.now().toString(), name: occName, day: occDay, people: occPeople }]);
+      setNationalitySuggestions([]);
     }
-    setOccasionModal(false);
-    markDirty();
-  }
-
-  function deleteOccasion(id: string) {
-    setOccasions(prev => prev.filter(o => o.id !== id));
-    markDirty();
-  }
-
-  function toggleVegDay(day: string) {
-    setVegDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-    markDirty();
-  }
-
-  function toggleCuisine(c: string) {
-    setSelectedCuisines(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
-    markDirty();
-  }
-
-  // ── Save all ──────────────────────────────────────────────────────────────
-  async function saveProfile() {
-    if (!hasChanges) return;
-    setProfileSaving(true);
-
-    try {
-      const { data: authData } = await supabase.auth.getSession();
-      const session = authData?.session;
-      if (!session) {
-        Alert.alert('Save failed', 'No active session — please log out and log in again.');
-        setProfileSaving(false);
-        return;
-      }
-      const uid = session.user.id;
-
-      // Build clean upsert payload — every field explicitly included
-      const payload = {
-        id: uid,
-        full_name: fullName.trim(),
-        mobile_number: phoneNumber.trim(),
-        phone_number: phoneNumber.trim(),
-        community: community,
-        community_other: communityOther,
-        additional_dietary_rules: additionalRules,
-        jain_family: isJainFamily,
-        jain_allow_non_jain: jainAllowNonJain,
-        meal_template_curry: mealCurry,
-        meal_template_veg: mealVeg,
-        meal_template_raita: mealRaita,
-        meal_template_bread: mealBread,
-        meal_template_rice: mealRice,
-        sunday_extra_curry: sundayCurry,
-        sunday_sweet: sundaySweet,
-        breakfast_preferences: breakfastPrefs,
-        cooking_pattern: cookingPattern,
-        veg_days: vegDays,                    // ← now included
-        avoidance_list: avoidanceList,
-        grocery_day: groceryDay,
-        preferred_supermarkets: preferredStores,
-        preferred_delivery_apps: preferredApps,
-        recurring_occasions: occasions,
-        cooking_skill: cookingSkill,
-        budget_pref: budgetPref,
-        app_language: appLanguage,
-        plan_summary_language: planSummaryLanguage,
-        shopping_list_language: shoppingLanguage,
-        household_insurance: hasInsurance ? 'true' : 'false',
-        insurance_expiry: insuranceExpiry,
-        notif_festivals: notifFestivals,
-        notif_lab_reports: notifLabReports,
-        notif_insurance_reminders: notifInsurance,
-        updated_at: new Date().toISOString(),
-      };
-
-      console.log('[ProfileSave] Upserting payload:', JSON.stringify({
-        community: payload.community,
-        veg_days: payload.veg_days,
-        avoidance_list: payload.avoidance_list,
-        cooking_pattern: payload.cooking_pattern,
-        sunday_extra_curry: payload.sunday_extra_curry,
-        breakfast_preferences: payload.breakfast_preferences,
-      }));
-
-      const { error: upsertErr } = await supabase
-        .from('profiles')
-        .upsert(payload, { onConflict: 'id' });
-
-      if (upsertErr) {
-        console.error('[ProfileSave] Upsert error full:', JSON.stringify(upsertErr));
-        Alert.alert('Save failed', upsertErr.message || 'Could not save profile. Please try again.');
-        setProfileSaving(false);
-        return;
-      }
-
-      // Save cuisine preferences — delete all then insert
-      await supabase.from('cuisine_preferences').delete().eq('user_id', uid);
-      if (selectedCuisines.length > 0) {
-        const { error: cuisineErr } = await supabase.from('cuisine_preferences').insert(
-          selectedCuisines.map(c => ({ user_id: uid, cuisine_name: c, is_excluded: false }))
-        );
-        if (cuisineErr) console.error('[ProfileSave] Cuisine error:', cuisineErr.message);
-      }
-
-      // Write everything to AsyncStorage as local cache
-      const avoidArray = avoidanceList.split(',').map(s => s.trim()).filter(Boolean);
-      await AsyncStorage.multiSet([
-        ['community', community],
-        ['community_other', communityOther],
-        ['additional_dietary_rules', additionalRules],
-        ['jain_family', String(isJainFamily)],
-        ['jain_allow_non_jain', String(jainAllowNonJain)],
-        ['meal_template_curry', mealCurry],
-        ['meal_template_veg', mealVeg],
-        ['meal_template_raita', mealRaita],
-        ['meal_template_bread', mealBread],
-        ['meal_template_rice', mealRice],
-        ['sunday_extra_curry', sundayCurry],
-        ['sunday_sweet', sundaySweet],
-        ['breakfast_preferences', breakfastPrefs],
-        ['cooking_pattern', cookingPattern],
-        ['veg_days', JSON.stringify(vegDays)],
-        ['avoidance_list', avoidanceList],
-        ['family_avoids', JSON.stringify(avoidArray)],
-        ['grocery_day', groceryDay],
-        ['preferred_supermarkets', preferredStores],
-        ['preferred_delivery_apps', preferredApps],
-        ['recurring_occasions', JSON.stringify(occasions)],
-        ['cooking_skill', cookingSkill],
-        ['budget_pref', budgetPref],
-        ['app_language', appLanguage],
-        ['plan_summary_language', planSummaryLanguage],
-        ['shopping_list_language', shoppingLanguage],
-        ['phone_number', phoneNumber],
-        ['maharaj_day', groceryDay],
-        ['profile_setup_complete', 'true'],
-      ]);
-
-      setHasChanges(false);
-      setSavedMsg(true);
-      setTimeout(() => setSavedMsg(false), 2500);
-
-      if (isFirstSetup) {
-        setIsFirstSetup(false);
-        router.replace('/home');
-      }
-
-    } catch (err) {
-      console.error('[ProfileSave] Unexpected error:', err);
-      Alert.alert('Save failed', 'An unexpected error occurred. Please try again.');
-    } finally {
-      setProfileSaving(false);
-    }
-  }
-
-  // ─── Render ───────────────────────────────────────────────────────────────
-
+  }, [onFormChange]);
+  
+  const selectNationality = useCallback((nationality: string) => {
+    onFormChange({ nationality });
+    setNationalitySuggestions([]);
+  }, [onFormChange]);
+  
+  const toggleHealthCondition = useCallback((condition: string) => {
+    const newConditions = form.healthConditions.includes(condition)
+      ? form.healthConditions.filter(c => c !== condition)
+      : [...form.healthConditions, condition];
+    onFormChange({ healthConditions: newConditions });
+  }, [form.healthConditions, onFormChange]);
+  
+  const setFoodPreference = useCallback((pref: FoodPreference) => {
+    onFormChange({ foodPreference: pref });
+  }, [onFormChange]);
+  
   return (
-    <ScreenWrapper title="Family Profile Settings">
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-        {/* Welcome banner */}
-        {isFirstSetup && (
-          <View style={[cards.frostedGreen, { padding: 14, marginBottom: 14 }]}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.navy, marginBottom: 4 }}>Welcome to My Maharaj Beta</Text>
-            <Text style={{ fontSize: 10, color: colors.navy, lineHeight: 16 }}>Set up your family profile so Maharaj can personalise your meal plans.</Text>
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {editId ? 'Edit Member' : 'Add Member'}
+            </Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>✕</Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        {/* ══════════ 1. MY ACCOUNT ══════════ */}
-        <Text style={s.sectionHead}>My Account</Text>
-
-        <View style={[cards.frostedCyan, { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }]}>
-          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.navy }}>{subTier}</Text>
-          <Text style={{ fontSize: 10, color: colors.textMuted }}>Valid until {subExpiry}</Text>
-        </View>
-
-        <Text style={s.fieldLabel}>Full Name</Text>
-        <TextInput style={s.input} value={fullName} onChangeText={v => { setFullName(v); markDirty(); }} placeholder="Your full name" placeholderTextColor={colors.textHint} />
-
-        <Text style={s.fieldLabel}>Phone</Text>
-        <TextInput style={s.input} value={phoneNumber} onChangeText={v => { setPhoneNumber(v); markDirty(); }} placeholder="+971 XX XXX XXXX" placeholderTextColor={colors.textHint} keyboardType="phone-pad" />
-
-        <Text style={s.fieldLabel}>Email</Text>
-        <TextInput style={[s.input, { color: colors.textMuted, backgroundColor: '#F4F6F8' }]} value={userEmail} editable={false} />
-
-        <TouchableOpacity
-          style={[buttons.secondary, { alignItems: 'center', marginBottom: 14 }]}
-          onPress={async () => {
-            try {
-              await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo: 'https://my-maharaj.vercel.app' });
-              Alert.alert('Password reset email sent.');
-            } catch {
-              Alert.alert('Error', 'Could not send reset email.');
-            }
-          }}>
-          <Text style={[buttons.secondaryText, { fontSize: 12 }]}>Change password</Text>
-        </TouchableOpacity>
-
-        {/* ══════════ 2. COMMUNITY AND DIETARY IDENTITY ══════════ */}
-        <Text style={s.sectionHead}>Community and Dietary Identity</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>Maharaj applies appropriate dietary rules based on your community</Text>
-
-        <Dropdown
-          value={community}
-          options={COMMUNITIES}
-          onSelect={v => {
-            setCommunity(v);
-            markDirty();
-            const isJain = v.startsWith('Jain');
-            setIsJainFamily(isJain);
-            void AsyncStorage.setItem('jain_family', String(isJain));
-          }}
-          placeholder="Select community..."
-        />
-
-        {community === 'Other' && (
-          <>
-            <Text style={s.fieldLabel}>Describe your community dietary rules</Text>
-            <TextInput
-              style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]}
-              value={communityOther}
-              onChangeText={v => { setCommunityOther(v); markDirty(); }}
-              placeholder="Describe rules..."
-              placeholderTextColor={colors.textHint}
-              multiline
+          
+          <ScrollView
+            contentContainerStyle={styles.modalScroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Input
+              label="Name *"
+              value={form.name}
+              onChangeText={text => onFormChange({ name: text })}
+              placeholder="Full name"
             />
-          </>
-        )}
-
-        <Text style={s.fieldLabel}>Any additional dietary rules?</Text>
-        <TextInput
-          style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]}
-          value={additionalRules}
-          onChangeText={v => { setAdditionalRules(v); markDirty(); }}
-          placeholder="e.g. No onion on Tuesdays, Ekadashi fasting, no beef ever..."
-          placeholderTextColor={colors.textHint}
-          multiline
-        />
-
-        {isJainFamily && (
-          <View style={[cards.base, { marginBottom: 12 }]}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.navy, marginBottom: 8 }}>Would Maharaj suggest non-Jain recipes also?</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: 'center', ...(jainAllowNonJain ? { backgroundColor: colors.emerald } : { borderWidth: 1, borderColor: colors.navy }) }}
-                onPress={() => { setJainAllowNonJain(true); markDirty(); }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: jainAllowNonJain ? colors.white : colors.navy }}>Yes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: 'center', ...(!jainAllowNonJain ? { backgroundColor: colors.emerald } : { borderWidth: 1, borderColor: colors.navy }) }}
-                onPress={() => { setJainAllowNonJain(false); markDirty(); }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: !jainAllowNonJain ? colors.white : colors.navy }}>No</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* ══════════ 3. FAMILY MEMBERS ══════════ */}
-        <Text style={s.sectionHead}>Family Members</Text>
-
-        {loading ? (
-          <ActivityIndicator color={colors.emerald} style={{ marginVertical: 20 }} />
-        ) : members.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-            <Text style={{ fontSize: 13, color: colors.textMuted }}>No family members yet</Text>
-          </View>
-        ) : members.map(m => {
-          const pills = HEALTH_PILLS.filter(p => (m.health_notes ?? '').toLowerCase().includes(p.toLowerCase()));
-          return (
-            <View key={m.id} style={[cards.base, { marginBottom: 10 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.navy }}>{m.name}</Text>
-                  {m.age > 0 && <Text style={{ fontSize: 10, color: colors.textMuted }}>{m.age} yrs</Text>}
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity style={[buttons.back, { paddingVertical: 5, paddingHorizontal: 10 }]} onPress={() => openEdit(m)}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.navy }}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => Alert.alert('Remove member', `Remove ${m.name}?`, [{ text: 'Cancel' }, { text: 'Remove', style: 'destructive', onPress: () => void deleteMember(m.id) }])}>
-                    <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '600' }}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              {pills.length > 0 && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                  {pills.map(p => (
-                    <View key={p} style={{ borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: HEALTH_COLORS[p]?.bg ?? '#F3F4F6' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: HEALTH_COLORS[p]?.fg ?? '#374151' }}>{p}</Text>
-                    </View>
+            
+            <Input
+              label="Age"
+              value={form.age}
+              onChangeText={text => onFormChange({ age: text })}
+              placeholder="Age"
+              keyboardType="numeric"
+            />
+            
+            {/* Nationality with autocomplete */}
+            <View style={styles.nationalityContainer}>
+              <Input
+                label="Nationality"
+                value={form.nationality}
+                onChangeText={handleNationalityChange}
+                placeholder="e.g. Indian, Pakistani..."
+              />
+              {nationalitySuggestions.length > 0 && (
+                <View style={styles.nationalitySuggestions}>
+                  {nationalitySuggestions.map(n => (
+                    <TouchableOpacity
+                      key={n}
+                      style={styles.nationalitySuggestion}
+                      onPress={() => selectNationality(n)}
+                    >
+                      <Text style={styles.nationalitySuggestionText}>{n}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               )}
             </View>
-          );
-        })}
+            
+            <Text style={styles.modalSectionLabel}>FOOD PREFERENCE</Text>
+            <View style={styles.chipGroup}>
+              {(['Vegetarian', 'Non-vegetarian', 'Eggetarian', 'Mixed'] as const).map(fp => (
+                <TouchableOpacity
+                  key={fp}
+                  style={[
+                    styles.chip,
+                    form.foodPreference === fp && styles.chipActive,
+                  ]}
+                  onPress={() => setFoodPreference(fp)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      form.foodPreference === fp && styles.chipTextActive,
+                    ]}
+                  >
+                    {fp}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <Text style={styles.modalSectionLabel}>HEALTH CONDITIONS</Text>
+            <View style={styles.healthChipGroup}>
+              {HEALTH_PILLS.map(condition => (
+                <TouchableOpacity
+                  key={condition}
+                  style={[
+                    styles.healthChip,
+                    form.healthConditions.includes(condition) && styles.healthChipActive,
+                  ]}
+                  onPress={() => toggleHealthCondition(condition)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      form.healthConditions.includes(condition) && styles.chipTextActive,
+                    ]}
+                  >
+                    {condition}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <Input
+              label="Medical Notes (optional)"
+              value={form.notes}
+              onChangeText={text => onFormChange({ notes: text })}
+              placeholder="e.g. Low salt, no fried food..."
+              multiline
+              numberOfLines={3}
+            />
+            
+            {error ? <Text style={styles.formError}>{error}</Text> : null}
+            
+            <View style={styles.modalButtons}>
+              <Button title="Save Member" onPress={onSave} loading={saving} />
+              <Button title="Cancel" onPress={onClose} variant="outline" />
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
-        <TouchableOpacity style={s.dashedBtn} onPress={openAdd}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.emerald }}>+ Add family member</Text>
+// ============================================================================
+// OCCASION MODAL COMPONENT
+// ============================================================================
+
+interface OccasionModalProps {
+  visible: boolean;
+  editId: string | null;
+  name: string;
+  day: string;
+  people: string;
+  onNameChange: (name: string) => void;
+  onDayChange: (day: string) => void;
+  onPeopleChange: (people: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+}
+
+function OccasionModal({
+  visible,
+  editId,
+  name,
+  day,
+  people,
+  onNameChange,
+  onDayChange,
+  onPeopleChange,
+  onSave,
+  onClose,
+}: OccasionModalProps) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {editId ? 'Edit Occasion' : 'Add Occasion'}
+            </Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.occasionModalContent}>
+            <Input
+              label="Occasion name"
+              value={name}
+              onChangeText={onNameChange}
+              placeholder="e.g. Sunday family lunch"
+            />
+            <Input
+              label="Day"
+              value={day}
+              onChangeText={onDayChange}
+              placeholder="e.g. Sunday"
+            />
+            <Input
+              label="Who attends?"
+              value={people}
+              onChangeText={onPeopleChange}
+              placeholder="e.g. Extended family, 8 people"
+            />
+            
+            <View style={styles.modalButtons}>
+              <Button title="Save Occasion" onPress={onSave} />
+              <Button title="Cancel" onPress={onClose} variant="outline" />
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ============================================================================
+// MAIN SCREEN COMPONENT
+// ============================================================================
+
+export default function DietaryProfileScreen() {
+  const [state, dispatch] = useReducer(profileReducer, initialState);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [savedMessage, setSavedMessage] = useState(false);
+  const [isFirstSetup, setIsFirstSetup] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  // Member modal state
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
+  const [memberEditId, setMemberEditId] = useState<string | null>(null);
+  const [memberForm, setMemberForm] = useState<MemberFormData>({
+    name: '',
+    age: '',
+    nationality: '',
+    foodPreference: 'Mixed',
+    healthConditions: [],
+    notes: '',
+  });
+  const [memberFormError, setMemberFormError] = useState('');
+  const [memberSaving, setMemberSaving] = useState(false);
+  
+  // Occasion modal state
+  const [occasionModalOpen, setOccasionModalOpen] = useState(false);
+  const [occasionEditId, setOccasionEditId] = useState<string | null>(null);
+  const [occasionName, setOccasionName] = useState('');
+  const [occasionDay, setOccasionDay] = useState('');
+  const [occasionPeople, setOccasionPeople] = useState('');
+  
+  // UI state
+  const [expandedCuisineGroups, setExpandedCuisineGroups] = useState<Record<string, boolean>>({});
+  
+  const cuisineGroups = useMemo(() => getCuisineGroups(state.isJainFamily), [state.isJainFamily]);
+  
+  // Mark changes
+  const markDirty = useCallback(() => {
+    setHasChanges(true);
+  }, []);
+  
+  // Handle field changes
+  const setField = useCallback(<K extends keyof ProfileState>(field: K, value: ProfileState[K]) => {
+    dispatch({ type: 'SET_FIELD', field, value });
+    markDirty();
+  }, [markDirty]);
+  
+  // ==========================================================================
+  // LOAD DATA
+  // ==========================================================================
+  
+  const loadMembers = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from('family_members')
+      .select('id, name, age, health_notes')
+      .eq('user_id', uid);
+    
+    if (error) {
+      console.error('[DietaryProfile] loadMembers error:', error.message);
+      return;
+    }
+    
+    const members: FamilyMember[] = (data ?? []).map(row => ({
+      id: row.id,
+      name: row.name,
+      age: row.age,
+      healthNotes: row.health_notes,
+    }));
+    
+    dispatch({ type: 'SET_MEMBERS', members });
+  }, []);
+  
+  const loadProfile = useCallback(async () => {
+    const user = await getSessionUser();
+    if (!user) return;
+    
+    setUserId(user.id);
+    setField('email', user.email ?? '');
+    
+    // Load profile from Supabase
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+    
+    if (profileError) {
+      console.error('[DietaryProfile] profile load error:', profileError.message);
+    }
+    
+    if (profile) {
+      // Account
+      if (profile.subscription_tier) setField('subscriptionTier', profile.subscription_tier);
+      if (profile.subscription_expires_at) setField('subscriptionExpiry', formatDate(profile.subscription_expires_at));
+      if (profile.full_name) setField('fullName', profile.full_name);
+      if (profile.phone_number) setField('phoneNumber', profile.phone_number);
+      
+      // Community
+      if (profile.community) setField('community', profile.community);
+      if (profile.community_other) setField('communityOther', profile.community_other);
+      if (profile.additional_dietary_rules) setField('additionalRules', profile.additional_dietary_rules);
+      if (profile.jain_family !== null) setField('isJainFamily', Boolean(profile.jain_family));
+      if (profile.jain_allow_non_jain !== null) setField('jainAllowNonJain', Boolean(profile.jain_allow_non_jain));
+      
+      // Meal template
+      if (profile.meal_template_curry) setField('mealCurry', profile.meal_template_curry);
+      if (profile.meal_template_veg) setField('mealVeg', profile.meal_template_veg);
+      if (profile.meal_template_raita) setField('mealRaita', profile.meal_template_raita);
+      if (profile.meal_template_bread) setField('mealBread', profile.meal_template_bread);
+      if (profile.meal_template_rice) setField('mealRice', profile.meal_template_rice);
+      if (profile.sunday_extra_curry) setField('sundayCurry', profile.sunday_extra_curry);
+      if (profile.sunday_sweet) setField('sundaySweet', profile.sunday_sweet);
+      
+      // Breakfast
+      if (profile.breakfast_preferences) setField('breakfastPrefs', profile.breakfast_preferences);
+      
+      // Cooking pattern
+      if (profile.cooking_pattern) setField('cookingPattern', profile.cooking_pattern);
+      
+      // Veg days
+      if (Array.isArray(profile.veg_days)) setField('vegDays', profile.veg_days);
+      
+      // Avoids
+      if (profile.avoidance_list) setField('avoidanceList', profile.avoidance_list);
+      
+      // Grocery
+      if (profile.grocery_day) setField('groceryDay', profile.grocery_day);
+      if (profile.preferred_supermarkets) setField('preferredStores', profile.preferred_supermarkets);
+      if (profile.preferred_delivery_apps) setField('preferredApps', profile.preferred_delivery_apps);
+      
+      // Occasions
+      if (profile.recurring_occasions) {
+        try {
+          const occasions = typeof profile.recurring_occasions === 'string'
+            ? JSON.parse(profile.recurring_occasions)
+            : profile.recurring_occasions;
+          if (Array.isArray(occasions)) dispatch({ type: 'SET_OCCASIONS', occasions });
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+      
+      // Insurance
+      if (profile.household_insurance === 'true') setField('hasInsurance', true);
+      if (profile.insurance_expiry) setField('insuranceExpiry', profile.insurance_expiry);
+      
+      // Notifications
+      if (profile.notif_festivals !== null) setField('notifFestivals', Boolean(profile.notif_festivals));
+      if (profile.notif_lab_reports !== null) setField('notifLabReports', Boolean(profile.notif_lab_reports));
+      if (profile.notif_insurance_reminders !== null) setField('notifInsurance', Boolean(profile.notif_insurance_reminders));
+      
+      // App settings
+      if (profile.cooking_skill) setField('cookingSkill', profile.cooking_skill);
+      if (profile.budget_pref) setField('budgetPref', profile.budget_pref);
+      
+      // Language
+      if (profile.app_language) setField('appLanguage', profile.app_language);
+      if (profile.plan_summary_language) setField('planSummaryLanguage', profile.plan_summary_language);
+      if (profile.shopping_list_language) setField('shoppingLanguage', profile.shopping_list_language);
+      
+      // Cache to AsyncStorage
+      const cacheEntries: [string, string][] = [
+        ['community', profile.community ?? ''],
+        ['community_other', profile.community_other ?? ''],
+        ['additional_dietary_rules', profile.additional_dietary_rules ?? ''],
+        ['jain_family', String(profile.jain_family ?? false)],
+        ['jain_allow_non_jain', String(profile.jain_allow_non_jain ?? true)],
+        ['meal_template_curry', profile.meal_template_curry ?? ''],
+        ['meal_template_veg', profile.meal_template_veg ?? ''],
+        ['meal_template_raita', profile.meal_template_raita ?? ''],
+        ['meal_template_bread', profile.meal_template_bread ?? ''],
+        ['meal_template_rice', profile.meal_template_rice ?? ''],
+        ['sunday_extra_curry', profile.sunday_extra_curry ?? ''],
+        ['sunday_sweet', profile.sunday_sweet ?? ''],
+        ['breakfast_preferences', profile.breakfast_preferences ?? ''],
+        ['cooking_pattern', profile.cooking_pattern ?? ''],
+        ['veg_days', JSON.stringify(profile.veg_days ?? [])],
+        ['avoidance_list', profile.avoidance_list ?? ''],
+        ['grocery_day', profile.grocery_day ?? ''],
+        ['preferred_supermarkets', profile.preferred_supermarkets ?? ''],
+        ['preferred_delivery_apps', profile.preferred_delivery_apps ?? ''],
+        ['cooking_skill', profile.cooking_skill ?? ''],
+        ['budget_pref', profile.budget_pref ?? ''],
+        ['app_language', profile.app_language ?? 'English'],
+        ['plan_summary_language', profile.plan_summary_language ?? 'English'],
+        ['shopping_list_language', profile.shopping_list_language ?? 'English'],
+      ];
+      await AsyncStorage.multiSet(cacheEntries);
+    } else {
+      setIsFirstSetup(true);
+    }
+    
+    // Load cuisine preferences
+    const { data: cuisineData } = await supabase
+      .from('cuisine_preferences')
+      .select('cuisine_name')
+      .eq('user_id', user.id)
+      .eq('is_excluded', false);
+    
+    const cuisines = (cuisineData ?? []).map(c => c.cuisine_name);
+    setField('selectedCuisines', cuisines);
+    
+    // Load family members
+    await loadMembers(user.id);
+    
+    setLoading(false);
+  }, [setField, loadMembers]);
+  
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+  
+  // ==========================================================================
+  // MEMBER CRUD
+  // ==========================================================================
+  
+  const openAddMember = useCallback(() => {
+    setMemberEditId(null);
+    setMemberForm({
+      name: '',
+      age: '',
+      nationality: '',
+      foodPreference: 'Mixed',
+      healthConditions: [],
+      notes: '',
+    });
+    setMemberFormError('');
+    setMemberModalOpen(true);
+  }, []);
+  
+  const openEditMember = useCallback((member: FamilyMember) => {
+    const { conditions, otherNotes } = notesToHealthConditions(member.healthNotes);
+    
+    setMemberEditId(member.id);
+    setMemberForm({
+      name: member.name,
+      age: String(member.age || ''),
+      nationality: '',
+      foodPreference: 'Mixed',
+      healthConditions: conditions,
+      notes: otherNotes,
+    });
+    setMemberFormError('');
+    setMemberModalOpen(true);
+  }, []);
+  
+  const saveMember = useCallback(async () => {
+    if (!memberForm.name.trim()) {
+      setMemberFormError('Name is required');
+      return;
+    }
+    
+    if (!userId) {
+      setMemberFormError('Not authenticated');
+      return;
+    }
+    
+    setMemberSaving(true);
+    setMemberFormError('');
+    
+    try {
+      const healthNotes = healthConditionsToNotes(memberForm.healthConditions, memberForm.notes);
+      const payload = {
+        user_id: userId,
+        name: memberForm.name.trim(),
+        age: parseInt(memberForm.age, 10) || 0,
+        health_notes: healthNotes || null,
+      };
+      
+      if (memberEditId) {
+        const { error } = await supabase
+          .from('family_members')
+          .update(payload)
+          .eq('id', memberEditId);
+        
+        if (error) throw new Error(error.message);
+        
+        dispatch({
+          type: 'UPDATE_MEMBER',
+          id: memberEditId,
+          updates: {
+            name: memberForm.name.trim(),
+            age: parseInt(memberForm.age, 10) || 0,
+            healthNotes: healthNotes || null,
+          },
+        });
+      } else {
+        const { data, error } = await supabase
+          .from('family_members')
+          .insert(payload)
+          .select()
+          .single();
+        
+        if (error) throw new Error(error.message);
+        
+        dispatch({
+          type: 'ADD_MEMBER',
+          member: {
+            id: data.id,
+            name: data.name,
+            age: data.age,
+            healthNotes: data.health_notes,
+          },
+        });
+      }
+      
+      setMemberModalOpen(false);
+      markDirty();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Save failed';
+      setMemberFormError(message);
+    } finally {
+      setMemberSaving(false);
+    }
+  }, [memberForm, memberEditId, userId, markDirty]);
+  
+  const deleteMember = useCallback((id: string, name: string) => {
+    Alert.alert('Remove member', `Remove ${name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.from('family_members').delete().eq('id', id);
+          dispatch({ type: 'REMOVE_MEMBER', id });
+          markDirty();
+        },
+      },
+    ]);
+  }, [markDirty]);
+  
+  // ==========================================================================
+  // OCCASION CRUD
+  // ==========================================================================
+  
+  const openAddOccasion = useCallback(() => {
+    setOccasionEditId(null);
+    setOccasionName('');
+    setOccasionDay('');
+    setOccasionPeople('');
+    setOccasionModalOpen(true);
+  }, []);
+  
+  const openEditOccasion = useCallback((occasion: RecurringOccasion) => {
+    setOccasionEditId(occasion.id);
+    setOccasionName(occasion.name);
+    setOccasionDay(occasion.day);
+    setOccasionPeople(occasion.people);
+    setOccasionModalOpen(true);
+  }, []);
+  
+  const saveOccasion = useCallback(() => {
+    if (!occasionName.trim()) return;
+    
+    if (occasionEditId) {
+      dispatch({
+        type: 'UPDATE_OCCASION',
+        id: occasionEditId,
+        updates: {
+          name: occasionName,
+          day: occasionDay,
+          people: occasionPeople,
+        },
+      });
+    } else {
+      dispatch({
+        type: 'ADD_OCCASION',
+        occasion: {
+          id: Date.now().toString(),
+          name: occasionName,
+          day: occasionDay,
+          people: occasionPeople,
+        },
+      });
+    }
+    
+    setOccasionModalOpen(false);
+    markDirty();
+  }, [occasionName, occasionDay, occasionPeople, occasionEditId, markDirty]);
+  
+  const deleteOccasion = useCallback((id: string) => {
+    dispatch({ type: 'REMOVE_OCCASION', id });
+    markDirty();
+  }, [markDirty]);
+  
+  // ==========================================================================
+  // SAVE PROFILE
+  // ==========================================================================
+  
+  const saveProfile = useCallback(async () => {
+    if (!hasChanges) return;
+    if (!userId) {
+      Alert.alert('Save failed', 'No active session');
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+      const payload = {
+        id: userId,
+        full_name: state.fullName.trim(),
+        phone_number: state.phoneNumber.trim(),
+        community: state.community,
+        community_other: state.communityOther,
+        additional_dietary_rules: state.additionalRules,
+        jain_family: state.isJainFamily,
+        jain_allow_non_jain: state.jainAllowNonJain,
+        meal_template_curry: state.mealCurry,
+        meal_template_veg: state.mealVeg,
+        meal_template_raita: state.mealRaita,
+        meal_template_bread: state.mealBread,
+        meal_template_rice: state.mealRice,
+        sunday_extra_curry: state.sundayCurry,
+        sunday_sweet: state.sundaySweet,
+        breakfast_preferences: state.breakfastPrefs,
+        cooking_pattern: state.cookingPattern,
+        veg_days: state.vegDays,
+        avoidance_list: state.avoidanceList,
+        grocery_day: state.groceryDay,
+        preferred_supermarkets: state.preferredStores,
+        preferred_delivery_apps: state.preferredApps,
+        recurring_occasions: state.occasions,
+        cooking_skill: state.cookingSkill,
+        budget_pref: state.budgetPref,
+        app_language: state.appLanguage,
+        plan_summary_language: state.planSummaryLanguage,
+        shopping_list_language: state.shoppingLanguage,
+        household_insurance: state.hasInsurance ? 'true' : 'false',
+        insurance_expiry: state.insuranceExpiry,
+        notif_festivals: state.notifFestivals,
+        notif_lab_reports: state.notifLabReports,
+        notif_insurance_reminders: state.notifInsurance,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(payload, { onConflict: 'id' });
+      
+      if (upsertError) throw new Error(upsertError.message);
+      
+      // Save cuisine preferences
+      await supabase.from('cuisine_preferences').delete().eq('user_id', userId);
+      
+      if (state.selectedCuisines.length > 0) {
+        const { error: cuisineError } = await supabase
+          .from('cuisine_preferences')
+          .insert(state.selectedCuisines.map(c => ({
+            user_id: userId,
+            cuisine_name: c,
+            is_excluded: false,
+          })));
+        
+        if (cuisineError) {
+          console.error('[DietaryProfile] cuisine save error:', cuisineError.message);
+        }
+      }
+      
+      // Cache to AsyncStorage
+      const avoidArray = state.avoidanceList.split(',').map(s => s.trim()).filter(Boolean);
+      await AsyncStorage.multiSet([
+        ['community', state.community],
+        ['community_other', state.communityOther],
+        ['additional_dietary_rules', state.additionalRules],
+        ['jain_family', String(state.isJainFamily)],
+        ['jain_allow_non_jain', String(state.jainAllowNonJain)],
+        ['meal_template_curry', state.mealCurry],
+        ['meal_template_veg', state.mealVeg],
+        ['meal_template_raita', state.mealRaita],
+        ['meal_template_bread', state.mealBread],
+        ['meal_template_rice', state.mealRice],
+        ['sunday_extra_curry', state.sundayCurry],
+        ['sunday_sweet', state.sundaySweet],
+        ['breakfast_preferences', state.breakfastPrefs],
+        ['cooking_pattern', state.cookingPattern],
+        ['veg_days', JSON.stringify(state.vegDays)],
+        ['avoidance_list', state.avoidanceList],
+        ['family_avoids', JSON.stringify(avoidArray)],
+        ['grocery_day', state.groceryDay],
+        ['preferred_supermarkets', state.preferredStores],
+        ['preferred_delivery_apps', state.preferredApps],
+        ['recurring_occasions', JSON.stringify(state.occasions)],
+        ['cooking_skill', state.cookingSkill],
+        ['budget_pref', state.budgetPref],
+        ['app_language', state.appLanguage],
+        ['plan_summary_language', state.planSummaryLanguage],
+        ['shopping_list_language', state.shoppingLanguage],
+        ['phone_number', state.phoneNumber],
+        ['profile_setup_complete', 'true'],
+      ]);
+      
+      setHasChanges(false);
+      setSavedMessage(true);
+      setTimeout(() => setSavedMessage(false), 2500);
+      
+      if (isFirstSetup) {
+        setIsFirstSetup(false);
+        router.replace('/home');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Save failed';
+      Alert.alert('Save failed', message);
+    } finally {
+      setSaving(false);
+    }
+  }, [state, hasChanges, userId, isFirstSetup]);
+  
+  // ==========================================================================
+  // RENDER HELPERS
+  // ==========================================================================
+  
+  const renderFamilyMember = useCallback((member: FamilyMember) => {
+    const { conditions } = notesToHealthConditions(member.healthNotes);
+    
+    return (
+      <View key={member.id} style={styles.memberCard}>
+        <View style={styles.memberHeader}>
+          <View style={styles.memberInfo}>
+            <Text style={styles.memberName}>{member.name}</Text>
+            {member.age > 0 && (
+              <Text style={styles.memberAge}>{member.age} yrs</Text>
+            )}
+          </View>
+          <View style={styles.memberActions}>
+            <TouchableOpacity
+              style={styles.memberEditButton}
+              onPress={() => openEditMember(member)}
+            >
+              <Text style={styles.memberEditText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => deleteMember(member.id, member.name)}>
+              <Text style={styles.memberDeleteText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {conditions.length > 0 && (
+          <View style={styles.healthPills}>
+            {conditions.map(condition => {
+              const colors = HEALTH_COLORS[condition] ?? { bg: '#F3F4F6', fg: '#374151' };
+              return (
+                <View
+                  key={condition}
+                  style={[styles.healthPill, { backgroundColor: colors.bg }]}
+                >
+                  <Text style={[styles.healthPillText, { color: colors.fg }]}>
+                    {condition}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    );
+  }, [openEditMember, deleteMember]);
+  
+  const renderOccasion = useCallback((occasion: RecurringOccasion) => {
+    return (
+      <View key={occasion.id} style={styles.occasionCard}>
+        <View style={styles.occasionInfo}>
+          <Text style={styles.occasionName}>{occasion.name}</Text>
+          <Text style={styles.occasionDetail}>
+            {occasion.day} — {occasion.people}
+          </Text>
+          <Text style={styles.occasionRecurring}>Recurring every week</Text>
+        </View>
+        <View style={styles.occasionActions}>
+          <TouchableOpacity onPress={() => openEditOccasion(occasion)}>
+            <Text style={styles.occasionEditText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteOccasion(occasion.id)}>
+            <Text style={styles.occasionDeleteText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }, [openEditOccasion, deleteOccasion]);
+  
+  const renderCuisineGroup = useCallback((group: { label: string; cuisines: string[] }) => {
+    const isExpanded = expandedCuisineGroups[group.label] ?? false;
+    const selectedInGroup = group.cuisines.filter(c => state.selectedCuisines.includes(c));
+    
+    return (
+      <View key={group.label} style={styles.cuisineGroup}>
+        <TouchableOpacity
+          style={styles.cuisineGroupHeader}
+          onPress={() => setExpandedCuisineGroups(prev => ({
+            ...prev,
+            [group.label]: !prev[group.label],
+          }))}
+        >
+          <Text style={styles.cuisineGroupLabel}>{group.label}</Text>
+          <View style={styles.cuisineGroupBadge}>
+            {selectedInGroup.length > 0 && (
+              <Text style={styles.cuisineGroupSelected}>
+                {selectedInGroup.join(', ')}
+              </Text>
+            )}
+            <Text style={styles.cuisineGroupArrow}>
+              {isExpanded ? '▲' : '▼'}
+            </Text>
+          </View>
         </TouchableOpacity>
-
-        {/* ══════════ 4. MEAL TEMPLATE ══════════ */}
-        <Text style={s.sectionHead}>Meal Template</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>What does a standard lunch or dinner look like for your family?</Text>
-
-        {[
-          { label: 'Curry', value: mealCurry, set: setMealCurry, placeholder: 'e.g. 1 non-veg curry' },
-          { label: 'Veg side', value: mealVeg, set: setMealVeg, placeholder: 'e.g. 1 veg bhaji' },
-          { label: 'Raita / accompaniment', value: mealRaita, set: setMealRaita, placeholder: 'e.g. Kachumber or Raita' },
-          { label: 'Bread', value: mealBread, set: setMealBread, placeholder: 'e.g. Chapati or Poee' },
-          { label: 'Rice', value: mealRice, set: setMealRice, placeholder: 'e.g. Ukde Sheeth' },
-        ].map(({ label, value, set, placeholder }) => (
-          <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <Text style={{ fontSize: 11, color: colors.navy, width: 100 }}>{label}</Text>
-            <TextInput
-              style={[s.input, { flex: 1, marginBottom: 0 }]}
-              value={value}
-              onChangeText={v => { set(v); markDirty(); }}
-              placeholder={placeholder}
-              placeholderTextColor={colors.textHint}
+        
+        {isExpanded && (
+          <View style={styles.cuisineGroupList}>
+            {group.cuisines.map(cuisine => {
+              const isSelected = state.selectedCuisines.includes(cuisine);
+              return (
+                <TouchableOpacity
+                  key={cuisine}
+                  style={[
+                    styles.cuisineChip,
+                    isSelected && styles.cuisineChipSelected,
+                  ]}
+                  onPress={() => dispatch({ type: 'TOGGLE_CUISINE', cuisine })}
+                >
+                  <Text
+                    style={[
+                      styles.cuisineChipText,
+                      isSelected && styles.cuisineChipTextSelected,
+                    ]}
+                  >
+                    {cuisine}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    );
+  }, [state.selectedCuisines, expandedCuisineGroups]);
+  
+  // ==========================================================================
+  // LOADING STATE
+  // ==========================================================================
+  
+  if (loading) {
+    return (
+      <ScreenWrapper title="Family Profile Settings">
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.emerald} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+  
+  // ==========================================================================
+  // MAIN RENDER
+  // ==========================================================================
+  
+  return (
+    <ScreenWrapper title="Family Profile Settings">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Welcome Banner */}
+          {isFirstSetup && (
+            <View style={styles.welcomeBanner}>
+              <Text style={styles.welcomeTitle}>Welcome to My Maharaj Beta</Text>
+              <Text style={styles.welcomeText}>
+                Set up your family profile so Maharaj can personalise your meal plans.
+              </Text>
+            </View>
+          )}
+          
+          {/* ===== 1. MY ACCOUNT ===== */}
+          <Text style={styles.sectionHead}>My Account</Text>
+          
+          <View style={styles.subscriptionCard}>
+            <Text style={styles.subscriptionTier}>{state.subscriptionTier}</Text>
+            <Text style={styles.subscriptionExpiry}>
+              Valid until {state.subscriptionExpiry}
+            </Text>
+          </View>
+          
+          <Text style={styles.fieldLabel}>Full Name</Text>
+          <TextInput
+            style={styles.input}
+            value={state.fullName}
+            onChangeText={text => setField('fullName', text)}
+            placeholder="Your full name"
+            placeholderTextColor={colors.textHint}
+          />
+          
+          <Text style={styles.fieldLabel}>Phone</Text>
+          <TextInput
+            style={styles.input}
+            value={state.phoneNumber}
+            onChangeText={text => setField('phoneNumber', text)}
+            placeholder="+971 XX XXX XXXX"
+            placeholderTextColor={colors.textHint}
+            keyboardType="phone-pad"
+          />
+          
+          <Text style={styles.fieldLabel}>Email</Text>
+          <TextInput
+            style={[styles.input, styles.emailInput]}
+            value={state.email}
+            editable={false}
+          />
+          
+          <TouchableOpacity
+            style={styles.passwordButton}
+            onPress={async () => {
+              try {
+                await supabase.auth.resetPasswordForEmail(state.email, {
+                  redirectTo: 'https://my-maharaj.vercel.app',
+                });
+                Alert.alert('Password reset email sent.');
+              } catch {
+                Alert.alert('Error', 'Could not send reset email.');
+              }
+            }}
+          >
+            <Text style={styles.passwordButtonText}>Change password</Text>
+          </TouchableOpacity>
+          
+          {/* ===== 2. COMMUNITY AND DIETARY IDENTITY ===== */}
+          <Text style={styles.sectionHead}>Community and Dietary Identity</Text>
+          <Text style={styles.sectionSubtext}>
+            Maharaj applies appropriate dietary rules based on your community
+          </Text>
+          
+          <Dropdown
+            value={state.community}
+            options={COMMUNITIES}
+            onSelect={value => {
+              setField('community', value);
+              const isJain = value.startsWith('Jain');
+              if (isJain !== state.isJainFamily) {
+                setField('isJainFamily', isJain);
+              }
+            }}
+            placeholder="Select community..."
+          />
+          
+          {state.community === 'Other' && (
+            <>
+              <Text style={styles.fieldLabel}>Describe your community dietary rules</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={state.communityOther}
+                onChangeText={text => setField('communityOther', text)}
+                placeholder="Describe rules..."
+                placeholderTextColor={colors.textHint}
+                multiline
+              />
+            </>
+          )}
+          
+          <Text style={styles.fieldLabel}>Any additional dietary rules?</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={state.additionalRules}
+            onChangeText={text => setField('additionalRules', text)}
+            placeholder="e.g. No onion on Tuesdays, Ekadashi fasting, no beef ever..."
+            placeholderTextColor={colors.textHint}
+            multiline
+          />
+          
+          {state.isJainFamily && (
+            <View style={styles.jainCard}>
+              <Text style={styles.jainTitle}>
+                Would Maharaj suggest non-Jain recipes also?
+              </Text>
+              <View style={styles.jainOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.jainOption,
+                    state.jainAllowNonJain && styles.jainOptionActive,
+                  ]}
+                  onPress={() => setField('jainAllowNonJain', true)}
+                >
+                  <Text
+                    style={[
+                      styles.jainOptionText,
+                      state.jainAllowNonJain && styles.jainOptionTextActive,
+                    ]}
+                  >
+                    Yes
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.jainOption,
+                    !state.jainAllowNonJain && styles.jainOptionActive,
+                  ]}
+                  onPress={() => setField('jainAllowNonJain', false)}
+                >
+                  <Text
+                    style={[
+                      styles.jainOptionText,
+                      !state.jainAllowNonJain && styles.jainOptionTextActive,
+                    ]}
+                  >
+                    No
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
+          {/* ===== 3. FAMILY MEMBERS ===== */}
+          <Text style={styles.sectionHead}>Family Members</Text>
+          
+          {state.members.length === 0 ? (
+            <View style={styles.emptyMembers}>
+              <Text style={styles.emptyMembersText}>No family members yet</Text>
+            </View>
+          ) : (
+            state.members.map(renderFamilyMember)
+          )}
+          
+          <TouchableOpacity style={styles.addButton} onPress={openAddMember}>
+            <Text style={styles.addButtonText}>+ Add family member</Text>
+          </TouchableOpacity>
+          
+          {/* ===== 4. MEAL TEMPLATE ===== */}
+          <Text style={styles.sectionHead}>Meal Template</Text>
+          <Text style={styles.sectionSubtext}>
+            What does a standard lunch or dinner look like for your family?
+          </Text>
+          
+          <MealTemplateRow
+            label="Curry"
+            value={state.mealCurry}
+            onChange={text => setField('mealCurry', text)}
+            placeholder="e.g. 1 non-veg curry"
+          />
+          <MealTemplateRow
+            label="Veg side"
+            value={state.mealVeg}
+            onChange={text => setField('mealVeg', text)}
+            placeholder="e.g. 1 veg bhaji"
+          />
+          <MealTemplateRow
+            label="Raita / accompaniment"
+            value={state.mealRaita}
+            onChange={text => setField('mealRaita', text)}
+            placeholder="e.g. Kachumber or Raita"
+          />
+          <MealTemplateRow
+            label="Bread"
+            value={state.mealBread}
+            onChange={text => setField('mealBread', text)}
+            placeholder="e.g. Chapati or Poee"
+          />
+          <MealTemplateRow
+            label="Rice"
+            value={state.mealRice}
+            onChange={text => setField('mealRice', text)}
+            placeholder="e.g. Ukde Sheeth"
+          />
+          
+          <Text style={styles.fieldLabel}>Sunday special dishes</Text>
+          <TextInput
+            style={styles.input}
+            value={state.sundayCurry}
+            onChangeText={text => setField('sundayCurry', text)}
+            placeholder="e.g. Chicken Xacuti, Prawns Masala, Paplet Fry"
+            placeholderTextColor={colors.textHint}
+          />
+          
+          <Text style={styles.fieldLabel}>Sunday sweet dish</Text>
+          <TextInput
+            style={styles.input}
+            value={state.sundaySweet}
+            onChangeText={text => setField('sundaySweet', text)}
+            placeholder="e.g. Sheera, Puran Poli"
+            placeholderTextColor={colors.textHint}
+          />
+          
+          {/* ===== 5. BREAKFAST PREFERENCES ===== */}
+          <Text style={styles.sectionHead}>Breakfast Preferences</Text>
+          <Text style={styles.sectionSubtext}>
+            Tell Maharaj what your family enjoys for breakfast
+          </Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={state.breakfastPrefs}
+            onChangeText={text => setField('breakfastPrefs', text)}
+            placeholder="e.g. Dosa, Amboli, Thepla, Koki, Idli. Sundays we like something elaborate. Avoid oats and cereal."
+            placeholderTextColor={colors.textHint}
+            multiline
+          />
+          
+          {/* ===== 6. COOKING PATTERN ===== */}
+          <Text style={styles.sectionHead}>Cooking Pattern</Text>
+          <Dropdown
+            value={state.cookingPattern}
+            options={COOKING_PATTERNS}
+            onSelect={value => setField('cookingPattern', value)}
+            placeholder="Select cooking pattern..."
+          />
+          
+          {/* ===== 7. VEG DAYS ===== */}
+          <Text style={styles.sectionHead}>Vegetarian Days</Text>
+          <Text style={styles.sectionSubtext}>
+            Maharaj will plan only vegetarian meals on these days
+          </Text>
+          <MultiDropdown
+            values={state.vegDays}
+            options={ALL_DAYS}
+            onToggle={day => dispatch({ type: 'TOGGLE_VEG_DAY', day })}
+            placeholder="No veg days selected"
+          />
+          
+          {/* ===== 8. CUISINE PREFERENCES ===== */}
+          <Text style={styles.sectionHead}>Cuisine Preferences</Text>
+          <Text style={styles.sectionSubtext}>
+            {state.selectedCuisines.length} cuisine
+            {state.selectedCuisines.length !== 1 ? 's' : ''} selected
+          </Text>
+          
+          {cuisineGroups.map(renderCuisineGroup)}
+          
+          {/* ===== 9. FAMILY AVOIDS ===== */}
+          <Text style={styles.sectionHead}>Family Avoids</Text>
+          <Text style={styles.sectionSubtext}>
+            Dishes or ingredients Maharaj will never suggest
+          </Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={state.avoidanceList}
+            onChangeText={text => setField('avoidanceList', text)}
+            placeholder="e.g. Bitter gourd, ragi, millets, drumstick, mushrooms, soya"
+            placeholderTextColor={colors.textHint}
+            multiline
+          />
+          
+          {/* ===== 10. GROCERY AND SHOPPING ===== */}
+          <Text style={styles.sectionHead}>Grocery and Shopping</Text>
+          <Text style={styles.fieldLabel}>My Maharaj Day</Text>
+          <TextInput
+            style={styles.input}
+            value={state.groceryDay}
+            onChangeText={text => setField('groceryDay', text)}
+            placeholder="e.g. Saturday"
+            placeholderTextColor={colors.textHint}
+          />
+          <Text style={styles.fieldLabel}>Preferred supermarkets</Text>
+          <TextInput
+            style={styles.input}
+            value={state.preferredStores}
+            onChangeText={text => setField('preferredStores', text)}
+            placeholder="e.g. Carrefour, Lulu Hypermarket"
+            placeholderTextColor={colors.textHint}
+          />
+          <Text style={styles.fieldLabel}>Preferred delivery apps</Text>
+          <TextInput
+            style={styles.input}
+            value={state.preferredApps}
+            onChangeText={text => setField('preferredApps', text)}
+            placeholder="e.g. Noon Daily, Amazon Fresh"
+            placeholderTextColor={colors.textHint}
+          />
+          
+          {/* ===== 11. RECURRING OCCASIONS ===== */}
+          <Text style={styles.sectionHead}>Recurring Occasions</Text>
+          
+          {state.occasions.map(renderOccasion)}
+          
+          <TouchableOpacity style={styles.addButton} onPress={openAddOccasion}>
+            <Text style={styles.addButtonText}>+ Add recurring occasion</Text>
+          </TouchableOpacity>
+          
+          {/* ===== 12. INSURANCE ===== */}
+          <Text style={styles.sectionHead}>Insurance</Text>
+          
+          <View style={styles.insuranceCard}>
+            <View style={styles.insuranceRow}>
+              <Text style={styles.insuranceLabel}>Family has health insurance</Text>
+              <Switch
+                value={state.hasInsurance}
+                onValueChange={value => setField('hasInsurance', value)}
+                trackColor={{ false: '#D1D5DB', true: colors.emerald }}
+                thumbColor={colors.white}
+              />
+            </View>
+            {state.hasInsurance && (
+              <View style={styles.insuranceExpiryContainer}>
+                <Text style={styles.fieldLabel}>Policy expiry date</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="DD/MM/YYYY"
+                  placeholderTextColor={colors.textHint}
+                  value={state.insuranceExpiry}
+                  onChangeText={text => setField('insuranceExpiry', text)}
+                />
+              </View>
+            )}
+          </View>
+          
+          {/* ===== 13. NOTIFICATIONS ===== */}
+          <Text style={styles.sectionHead}>Notifications</Text>
+          
+          <View style={styles.notificationsCard}>
+            <NotificationRow
+              label="Festival reminders"
+              subtitle="48 hours before upcoming festivals"
+              value={state.notifFestivals}
+              onToggle={value => setField('notifFestivals', value)}
+            />
+            <NotificationRow
+              label="Lab report reminders"
+              subtitle="1 week before 3-month report expiry"
+              value={state.notifLabReports}
+              onToggle={value => setField('notifLabReports', value)}
+            />
+            <NotificationRow
+              label="Insurance reminders"
+              subtitle="1 week before policy expiry"
+              value={state.notifInsurance}
+              onToggle={value => setField('notifInsurance', value)}
             />
           </View>
-        ))}
-
-        <Text style={s.fieldLabel}>Sunday special dishes</Text>
-        <TextInput
-          style={s.input}
-          value={sundayCurry}
-          onChangeText={v => { setSundayCurry(v); markDirty(); }}
-          placeholder="e.g. Chicken Xacuti, Prawns Masala, Paplet Fry"
-          placeholderTextColor={colors.textHint}
-        />
-
-        <Text style={s.fieldLabel}>Sunday sweet dish</Text>
-        <TextInput
-          style={s.input}
-          value={sundaySweet}
-          onChangeText={v => { setSundaySweet(v); markDirty(); }}
-          placeholder="e.g. Sheera, Puran Poli"
-          placeholderTextColor={colors.textHint}
-        />
-
-        {/* ══════════ 5. BREAKFAST PREFERENCES ══════════ */}
-        <Text style={s.sectionHead}>Breakfast Preferences</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>Tell Maharaj what your family enjoys for breakfast</Text>
-        <TextInput
-          style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]}
-          value={breakfastPrefs}
-          onChangeText={v => { setBreakfastPrefs(v); markDirty(); }}
-          placeholder="e.g. Dosa, Amboli, Thepla, Koki, Idli. Sundays we like something elaborate. Avoid oats and cereal."
-          placeholderTextColor={colors.textHint}
-          multiline
-        />
-
-        {/* ══════════ 6. COOKING PATTERN ══════════ */}
-        <Text style={s.sectionHead}>Cooking Pattern</Text>
-        <Dropdown
-          value={cookingPattern}
-          options={COOKING_PATTERNS}
-          onSelect={v => { setCookingPattern(v); markDirty(); }}
-          placeholder="Select cooking pattern..."
-        />
-
-        {/* ══════════ 7. VEG DAYS ══════════ */}
-        <Text style={s.sectionHead}>Vegetarian Days</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>Maharaj will plan only vegetarian meals on these days</Text>
-        <MultiDropdown
-          values={vegDays}
-          options={ALL_DAYS}
-          onToggle={toggleVegDay}
-          placeholder="No veg days selected"
-        />
-
-        {/* ══════════ 8. CUISINE PREFERENCES ══════════ */}
-        <Text style={s.sectionHead}>Cuisine Preferences</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>{selectedCuisines.length} cuisine{selectedCuisines.length !== 1 ? 's' : ''} selected</Text>
-
-        {CUISINE_GROUPS.map(group => {
-          const isOpen = expandedGroups[group.label] ?? false;
-          const selectedInGroup = group.cuisines.filter(c => selectedCuisines.includes(c));
-          return (
-            <View key={group.label} style={{ marginBottom: 6 }}>
-              <TouchableOpacity
-                style={[cards.base, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }]}
-                onPress={() => setExpandedGroups(prev => ({ ...prev, [group.label]: !isOpen }))}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.navy }}>{group.label}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  {selectedInGroup.length > 0 && <Text style={{ fontSize: 9, color: colors.emerald }}>{selectedInGroup.join(', ')}</Text>}
-                  <Text style={{ fontSize: 10, color: colors.textMuted }}>{isOpen ? '▲' : '▼'}</Text>
-                </View>
-              </TouchableOpacity>
-              {isOpen && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 8, paddingVertical: 8 }}>
-                  {group.cuisines.map(c => {
-                    const active = selectedCuisines.includes(c);
-                    return (
-                      <TouchableOpacity
-                        key={c}
-                        style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 20, ...(active ? { backgroundColor: colors.emerald } : { borderWidth: 1, borderColor: colors.navy }) }}
-                        onPress={() => toggleCuisine(c)}>
-                        <Text style={{ fontSize: 11, fontWeight: '500', color: active ? colors.white : colors.navy }}>{c}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          );
-        })}
-
-        {/* ══════════ 9. FAMILY AVOIDS ══════════ */}
-        <Text style={s.sectionHead}>Family Avoids</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>Dishes or ingredients Maharaj will never suggest</Text>
-        <TextInput
-          style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]}
-          value={avoidanceList}
-          onChangeText={v => { setAvoidanceList(v); markDirty(); }}
-          placeholder="e.g. Bitter gourd, ragi, millets, drumstick, mushrooms, soya"
-          placeholderTextColor={colors.textHint}
-          multiline
-        />
-
-        {/* ══════════ 10. GROCERY AND SHOPPING ══════════ */}
-        <Text style={s.sectionHead}>Grocery and Shopping</Text>
-        <Text style={s.fieldLabel}>My Maharaj Day</Text>
-        <TextInput style={s.input} value={groceryDay} onChangeText={v => { setGroceryDay(v); markDirty(); }} placeholder="e.g. Saturday" placeholderTextColor={colors.textHint} />
-        <Text style={s.fieldLabel}>Preferred supermarkets</Text>
-        <TextInput style={s.input} value={preferredStores} onChangeText={v => { setPreferredStores(v); markDirty(); }} placeholder="e.g. Carrefour, Lulu Hypermarket" placeholderTextColor={colors.textHint} />
-        <Text style={s.fieldLabel}>Preferred delivery apps</Text>
-        <TextInput style={s.input} value={preferredApps} onChangeText={v => { setPreferredApps(v); markDirty(); }} placeholder="e.g. Noon Daily, Amazon Fresh" placeholderTextColor={colors.textHint} />
-
-        {/* ══════════ 11. RECURRING OCCASIONS ══════════ */}
-        <Text style={s.sectionHead}>Recurring Occasions</Text>
-        {occasions.map(o => (
-          <View key={o.id} style={[cards.base, { flexDirection: 'row', alignItems: 'center', marginBottom: 8 }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.navy }}>{o.name}</Text>
-              <Text style={{ fontSize: 10, color: colors.textMuted }}>{o.day} — {o.people}</Text>
-              <Text style={{ fontSize: 9, color: colors.emerald }}>Recurring every week</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => openEditOccasion(o)}>
-                <Text style={{ fontSize: 10, color: colors.navy, fontWeight: '600' }}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteOccasion(o.id)}>
-                <Text style={{ fontSize: 10, color: '#DC2626' }}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-        <TouchableOpacity style={s.dashedBtn} onPress={openAddOccasion}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.emerald }}>+ Add recurring occasion</Text>
-        </TouchableOpacity>
-
-        {/* ══════════ 12. INSURANCE ══════════ */}
-        <Text style={s.sectionHead}>Insurance</Text>
-        <View style={[cards.base, { marginBottom: 10 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 11, color: colors.navy }}>Family has health insurance</Text>
-            <Switch value={hasInsurance} onValueChange={v => { setHasInsurance(v); markDirty(); }} trackColor={{ false: '#D1D5DB', true: colors.emerald }} thumbColor={colors.white} />
-          </View>
-          {hasInsurance && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={s.fieldLabel}>Policy expiry date</Text>
-              <TextInput style={s.input} placeholder="DD/MM/YYYY" placeholderTextColor={colors.textHint} value={insuranceExpiry} onChangeText={v => { setInsuranceExpiry(v); markDirty(); }} />
-            </View>
-          )}
-        </View>
-
-        {/* ══════════ 13. NOTIFICATIONS ══════════ */}
-        <Text style={s.sectionHead}>Notifications</Text>
-        <View style={[cards.base, { marginBottom: 10 }]}>
-          {[
-            { label: 'Festival reminders', sub: '48 hours before upcoming festivals', val: notifFestivals, set: setNotifFestivals },
-            { label: 'Lab report reminders', sub: '1 week before 3-month report expiry', val: notifLabReports, set: setNotifLabReports },
-            { label: 'Insurance reminders', sub: '1 week before policy expiry', val: notifInsurance, set: setNotifInsurance },
-          ].map(({ label, sub, val, set }) => (
-            <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, marginBottom: 4 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, color: colors.navy }}>{label}</Text>
-                <Text style={{ fontSize: 8, color: colors.textMuted }}>{sub}</Text>
-              </View>
-              <Switch value={val} onValueChange={v => { set(v); markDirty(); }} trackColor={{ false: '#D1D5DB', true: colors.emerald }} thumbColor={colors.white} />
-            </View>
-          ))}
-        </View>
-
-        {/* ══════════ 14. APP SETTINGS ══════════ */}
-        <Text style={s.sectionHead}>App Settings</Text>
-        <Dropdown label="Cooking style" value={cookingSkill} options={['Quick and easy', 'Moderate', 'Elaborate']} onSelect={v => { setCookingSkill(v); markDirty(); }} placeholder="Select..." />
-        <Dropdown label="Weekly budget" value={budgetPref} options={['Everyday', 'Moderate', 'Occasional indulgence']} onSelect={v => { setBudgetPref(v); markDirty(); }} placeholder="Select..." />
-
-        {/* ══════════ 15. LANGUAGE SETTINGS ══════════ */}
-        <Text style={s.sectionHead}>Language Settings</Text>
-        <Text style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8 }}>Three separate language settings — for different people in your household</Text>
-        <Dropdown label="App language (what you see)" value={appLanguage} options={LANG_OPTIONS} onSelect={v => { setAppLanguage(v); markDirty(); }} />
-        <Dropdown label="Plan summary language (for your cook)" value={planSummaryLanguage} options={LANG_OPTIONS} onSelect={v => { setPlanSummaryLanguage(v); markDirty(); }} />
-        <Dropdown label="Shopping list language (for your househelp)" value={shoppingLanguage} options={LANG_OPTIONS} onSelect={v => { setShoppingLanguage(v); markDirty(); }} />
-
-        {/* ══════════ SAVE BUTTON ══════════ */}
-        <TouchableOpacity
-          style={{
-            backgroundColor: hasChanges ? colors.emerald : '#9CA3AF',
-            borderRadius: 20,
-            paddingVertical: 14,
-            alignItems: 'center',
-            marginTop: 16,
-            marginBottom: 4,
-            opacity: profileSaving ? 0.7 : 1,
-          }}
-          onPress={() => void saveProfile()}
-          disabled={!hasChanges || profileSaving}
-          activeOpacity={0.85}
-        >
-          {profileSaving ? (
-            <ActivityIndicator color={colors.white} size="small" />
-          ) : (
-            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.white }}>
-              {hasChanges ? 'Save Profile' : 'No changes'}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {savedMsg && (
-          <Text style={{ fontSize: 13, color: colors.teal, textAlign: 'center', marginBottom: 20 }}>
-            Profile saved
+          
+          {/* ===== 14. APP SETTINGS ===== */}
+          <Text style={styles.sectionHead}>App Settings</Text>
+          
+          <Dropdown
+            label="Cooking style"
+            value={state.cookingSkill}
+            options={['Quick and easy', 'Moderate', 'Elaborate'] as const}
+            onSelect={value => setField('cookingSkill', value)}
+            placeholder="Select..."
+          />
+          
+          <Dropdown
+            label="Weekly budget"
+            value={state.budgetPref}
+            options={['Everyday', 'Moderate', 'Occasional indulgence'] as const}
+            onSelect={value => setField('budgetPref', value)}
+            placeholder="Select..."
+          />
+          
+          {/* ===== 15. LANGUAGE SETTINGS ===== */}
+          <Text style={styles.sectionHead}>Language Settings</Text>
+          <Text style={styles.sectionSubtext}>
+            Three separate language settings — for different people in your household
           </Text>
-        )}
-        {!savedMsg && <View style={{ height: 24 }} />}
-
-      </ScrollView>
-
-      {/* ── Add/Edit Member Modal ─────────────────────────────────────────── */}
-      <Modal visible={modalOpen} animationType="slide" transparent>
-        <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{editId ? 'Edit Member' : 'Add Member'}</Text>
-              <TouchableOpacity onPress={() => setModalOpen(false)} style={s.modalClose}>
-                <Text style={s.modalCloseTxt}>X</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={s.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Input label="Name *" value={form.name} onChangeText={v => setForm(p => ({ ...p, name: v }))} placeholder="Full name" />
-              <Input label="Age" value={form.age} onChangeText={v => setForm(p => ({ ...p, age: v }))} placeholder="Age" keyboardType="numeric" />
-
-              {/* Nationality with autocomplete */}
-              <View style={{ zIndex: 10 }}>
-                <Input
-                  label="Nationality"
-                  value={form.nationality}
-                  onChangeText={v => {
-                    setForm(p => ({ ...p, nationality: v }));
-                    setNatSuggestions(v.length > 0 ? NATIONALITIES.filter(n => n.toLowerCase().startsWith(v.toLowerCase())).slice(0, 5) : []);
-                  }}
-                  placeholder="e.g. Indian, Pakistani..."
-                />
-                {natSuggestions.length > 0 && (
-                  <View style={{ backgroundColor: 'white', borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10 }}>
-                    {natSuggestions.map(n => (
-                      <TouchableOpacity key={n} style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }} onPress={() => { setForm(p => ({ ...p, nationality: n })); setNatSuggestions([]); }}>
-                        <Text style={{ fontSize: 14, color: colors.navy }}>{n}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-
-              <Text style={s.modalSectionLabel}>FOOD PREFERENCE</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                {['Vegetarian', 'Non-vegetarian', 'Eggetarian', 'Mixed'].map(fp => (
-                  <TouchableOpacity
-                    key={fp}
-                    style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, ...(form.foodPreference === fp ? { backgroundColor: colors.emerald } : { borderWidth: 1, borderColor: colors.navy }) }}
-                    onPress={() => setForm(p => ({ ...p, foodPreference: fp }))}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: form.foodPreference === fp ? colors.white : colors.navy }}>{fp}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={s.modalSectionLabel}>HEALTH CONDITIONS</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                {HEALTH_PILLS.map(cond => (
-                  <TouchableOpacity
-                    key={cond}
-                    onPress={() => toggleHealth(cond)}
-                    style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, ...(form.healthConditions.includes(cond) ? { backgroundColor: colors.emerald } : { borderWidth: 1, borderColor: colors.navy }) }}>
-                    <Text style={{ fontSize: 11, fontWeight: '500', color: form.healthConditions.includes(cond) ? colors.white : colors.navy }}>{cond}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Input
-                label="Medical Notes (optional)"
-                value={form.notes}
-                onChangeText={v => setForm(p => ({ ...p, notes: v }))}
-                placeholder="e.g. Low salt, no fried food..."
-                multiline
-                numberOfLines={3}
-              />
-
-              {formError ? <Text style={s.formError}>{formError}</Text> : null}
-
-              <View style={{ marginTop: 16, gap: 10 }}>
-                <Button title="Save Member" onPress={() => void saveMember()} loading={saving} />
-                <Button title="Cancel" onPress={() => setModalOpen(false)} variant="outline" />
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Occasion Modal ────────────────────────────────────────────────── */}
-      <Modal visible={occasionModal} animationType="slide" transparent>
-        <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{editOccasionId ? 'Edit Occasion' : 'Add Occasion'}</Text>
-              <TouchableOpacity onPress={() => setOccasionModal(false)} style={s.modalClose}>
-                <Text style={s.modalCloseTxt}>X</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ padding: 20 }}>
-              <Input label="Occasion name" value={occName} onChangeText={setOccName} placeholder="e.g. Sunday family lunch" />
-              <Input label="Day" value={occDay} onChangeText={setOccDay} placeholder="e.g. Sunday" />
-              <Input label="Who attends?" value={occPeople} onChangeText={setOccPeople} placeholder="e.g. Extended family, 8 people" />
-              <View style={{ marginTop: 16, gap: 10 }}>
-                <Button title="Save Occasion" onPress={saveOccasion} />
-                <Button title="Cancel" onPress={() => setOccasionModal(false)} variant="outline" />
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
+          
+          <Dropdown
+            label="App language (what you see)"
+            value={state.appLanguage}
+            options={LANG_OPTIONS}
+            onSelect={value => setField('appLanguage', value)}
+          />
+          
+          <Dropdown
+            label="Plan summary language (for your cook)"
+            value={state.planSummaryLanguage}
+            options={LANG_OPTIONS}
+            onSelect={value => setField('planSummaryLanguage', value)}
+          />
+          
+          <Dropdown
+            label="Shopping list language (for your househelp)"
+            value={state.shoppingLanguage}
+            options={LANG_OPTIONS}
+            onSelect={value => setField('shoppingLanguage', value)}
+          />
+          
+          {/* ===== SAVE BUTTON ===== */}
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              (!hasChanges || saving) && styles.saveButtonDisabled,
+            ]}
+            onPress={saveProfile}
+            disabled={!hasChanges || saving}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <Text style={styles.saveButtonText}>
+                {hasChanges ? 'Save Profile' : 'No changes'}
+              </Text>
+            )}
+          </TouchableOpacity>
+          
+          {savedMessage && (
+            <Text style={styles.savedMessage}>Profile saved</Text>
+          )}
+          
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+      
+      {/* Member Modal */}
+      <MemberModal
+        visible={memberModalOpen}
+        editId={memberEditId}
+        form={memberForm}
+        onFormChange={updates => setMemberForm(prev => ({ ...prev, ...updates }))}
+        onSave={saveMember}
+        onClose={() => setMemberModalOpen(false)}
+        saving={memberSaving}
+        error={memberFormError}
+      />
+      
+      {/* Occasion Modal */}
+      <OccasionModal
+        visible={occasionModalOpen}
+        editId={occasionEditId}
+        name={occasionName}
+        day={occasionDay}
+        people={occasionPeople}
+        onNameChange={setOccasionName}
+        onDayChange={setOccasionDay}
+        onPeopleChange={setOccasionPeople}
+        onSave={saveOccasion}
+        onClose={() => setOccasionModalOpen(false)}
+      />
     </ScreenWrapper>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ============================================================================
+// SUBCOMPONENTS
+// ============================================================================
 
-const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
+interface MealTemplateRowProps {
+  label: string;
+  value: string;
+  onChange: (text: string) => void;
+  placeholder: string;
+}
+
+function MealTemplateRow({ label, value, onChange, placeholder }: MealTemplateRowProps) {
+  return (
+    <View style={styles.mealTemplateRow}>
+      <Text style={styles.mealTemplateLabel}>{label}</Text>
+      <TextInput
+        style={[styles.input, styles.mealTemplateInput]}
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textHint}
+      />
+    </View>
+  );
+}
+
+interface NotificationRowProps {
+  label: string;
+  subtitle: string;
+  value: boolean;
+  onToggle: (value: boolean) => void;
+}
+
+function NotificationRow({ label, subtitle, value, onToggle }: NotificationRowProps) {
+  return (
+    <View style={styles.notificationRow}>
+      <View style={styles.notificationInfo}>
+        <Text style={styles.notificationLabel}>{label}</Text>
+        <Text style={styles.notificationSubtitle}>{subtitle}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ false: '#D1D5DB', true: colors.emerald }}
+        thumbColor={colors.white}
+      />
+    </View>
+  );
+}
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
+const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  
+  // Typography
   sectionHead: {
-    fontSize: 16, fontWeight: '700', color: colors.navy,
-    marginTop: 24, marginBottom: 10,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(30,158,94,0.2)', paddingBottom: 6,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.navy,
+    marginTop: 24,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(30,158,94,0.2)',
+    paddingBottom: 6,
+  },
+  sectionSubtext: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginBottom: 8,
   },
   fieldLabel: {
-    fontSize: 12, fontWeight: '600', color: colors.textSecondary,
-    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 4,
+    marginTop: 6,
   },
+  
+  // Inputs
   input: {
-    borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: colors.navy,
-    backgroundColor: 'rgba(255,255,255,0.9)', marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(26,58,92,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: colors.navy,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    marginBottom: 8,
+  },
+  textArea: {
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  emailInput: {
+    color: colors.textMuted,
+    backgroundColor: '#F4F6F8',
+  },
+  
+  // Dropdown
+  dropdownContainer: {
+    marginBottom: 10,
+    zIndex: 1,
   },
   dropdown: {
-    borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 10,
-    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(26,58,92,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  dropdownText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.navy,
+  },
+  dropdownPlaceholder: {
+    color: colors.textHint,
+  },
+  dropdownArrow: {
+    fontSize: 10,
+    color: colors.textMuted,
   },
   dropdownList: {
-    borderWidth: 1, borderColor: 'rgba(26,58,92,0.15)', borderRadius: 10,
-    backgroundColor: 'white', marginTop: 2, marginBottom: 6, overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(26,58,92,0.15)',
+    borderRadius: 10,
+    backgroundColor: 'white',
+    marginTop: 2,
+    marginBottom: 6,
+    overflow: 'hidden',
     maxHeight: 220,
   },
   dropdownItem: {
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(26,58,92,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(26,58,92,0.08)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  dashedBtn: {
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.emerald,
-    borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginBottom: 14,
+  dropdownItemText: {
+    fontSize: 13,
+    color: colors.navy,
+    fontWeight: '400',
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', alignItems: 'center' },
-  modalSheet: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', width: '100%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(26,58,92,0.1)' },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.navy },
-  modalClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  modalCloseTxt: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
-  modalScroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
-  modalSectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
-  formError: { fontSize: 13, color: '#DC2626', textAlign: 'center', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginTop: 8 },
+  dropdownItemTextSelected: {
+    color: colors.emerald,
+    fontWeight: '700',
+  },
+  dropdownCheckmark: {
+    fontSize: 12,
+    color: colors.emerald,
+  },
+  
+  // Welcome banner
+  welcomeBanner: {
+    ...cards.frostedGreen,
+    padding: 14,
+    marginBottom: 14,
+  },
+  welcomeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.navy,
+    marginBottom: 4,
+  },
+  welcomeText: {
+    fontSize: 10,
+    color: colors.navy,
+    lineHeight: 16,
+  },
+  
+  // Subscription
+  subscriptionCard: {
+    ...cards.frostedCyan,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    padding: 10,
+  },
+  subscriptionTier: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  subscriptionExpiry: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  
+  // Password
+  passwordButton: {
+    ...buttons.secondary,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  passwordButtonText: {
+    ...buttons.secondaryText,
+    fontSize: 12,
+  },
+  
+  // Jain card
+  jainCard: {
+    ...cards.base,
+    marginBottom: 12,
+    padding: 12,
+  },
+  jainTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.navy,
+    marginBottom: 8,
+  },
+  jainOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  jainOption: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.navy,
+  },
+  jainOptionActive: {
+    backgroundColor: colors.emerald,
+    borderWidth: 0,
+  },
+  jainOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  jainOptionTextActive: {
+    color: colors.white,
+  },
+  
+  // Family members
+  memberCard: {
+    ...cards.base,
+    marginBottom: 10,
+    padding: 12,
+  },
+  memberHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  memberAge: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  memberActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  memberEditButton: {
+    ...buttons.back,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  memberEditText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  memberDeleteText: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  healthPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  healthPill: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  healthPillText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  emptyMembers: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyMembersText: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  
+  // Add button
+  addButton: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.emerald,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  addButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.emerald,
+  },
+  
+  // Meal template
+  mealTemplateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  mealTemplateLabel: {
+    fontSize: 11,
+    color: colors.navy,
+    width: 100,
+  },
+  mealTemplateInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  
+  // Cuisine
+  cuisineGroup: {
+    marginBottom: 6,
+  },
+  cuisineGroupHeader: {
+    ...cards.base,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 0,
+    padding: 12,
+  },
+  cuisineGroupLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  cuisineGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cuisineGroupSelected: {
+    fontSize: 9,
+    color: colors.emerald,
+  },
+  cuisineGroupArrow: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  cuisineGroupList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  cuisineChip: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.navy,
+  },
+  cuisineChipSelected: {
+    backgroundColor: colors.emerald,
+    borderWidth: 0,
+  },
+  cuisineChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.navy,
+  },
+  cuisineChipTextSelected: {
+    color: colors.white,
+  },
+  
+  // Occasions
+  occasionCard: {
+    ...cards.base,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    padding: 12,
+  },
+  occasionInfo: {
+    flex: 1,
+  },
+  occasionName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  occasionDetail: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  occasionRecurring: {
+    fontSize: 9,
+    color: colors.emerald,
+  },
+  occasionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  occasionEditText: {
+    fontSize: 10,
+    color: colors.navy,
+    fontWeight: '600',
+  },
+  occasionDeleteText: {
+    fontSize: 10,
+    color: '#DC2626',
+  },
+  
+  // Insurance
+  insuranceCard: {
+    ...cards.base,
+    marginBottom: 10,
+    padding: 12,
+  },
+  insuranceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  insuranceLabel: {
+    fontSize: 11,
+    color: colors.navy,
+  },
+  insuranceExpiryContainer: {
+    marginTop: 8,
+  },
+  
+  // Notifications
+  notificationsCard: {
+    ...cards.base,
+    marginBottom: 10,
+    padding: 12,
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  notificationInfo: {
+    flex: 1,
+  },
+  notificationLabel: {
+    fontSize: 11,
+    color: colors.navy,
+  },
+  notificationSubtitle: {
+    fontSize: 8,
+    color: colors.textMuted,
+  },
+  
+  // Save button
+  saveButton: {
+    backgroundColor: colors.emerald,
+    borderRadius: 20,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.7,
+  },
+  saveButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  savedMessage: {
+    fontSize: 13,
+    color: colors.teal,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  modalSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    width: '100%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(26,58,92,0.1)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  modalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  modalScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+  modalSectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    marginTop: 16,
+    textTransform: 'uppercase',
+  },
+  modalButtons: {
+    marginTop: 16,
+    gap: 10,
+  },
+  occasionModalContent: {
+    padding: 20,
+  },
+  
+  // Chips
+  chipGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.navy,
+  },
+  chipActive: {
+    backgroundColor: colors.emerald,
+    borderWidth: 0,
+  },
+  chipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  chipTextActive: {
+    color: colors.white,
+  },
+  healthChipGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  healthChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.navy,
+  },
+  healthChipActive: {
+    backgroundColor: colors.emerald,
+    borderWidth: 0,
+  },
+  
+  // Form error
+  formError: {
+    fontSize: 13,
+    color: '#DC2626',
+    textAlign: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+  },
+  
+  // Nationality autocomplete
+  nationalityContainer: {
+    zIndex: 10,
+    marginBottom: 8,
+  },
+  nationalitySuggestions: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  nationalitySuggestion: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  nationalitySuggestionText: {
+    fontSize: 14,
+    color: colors.navy,
+  },
+  
+  // Spacers
+  bottomSpacer: {
+    height: 24,
+  },
 });
