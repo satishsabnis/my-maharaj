@@ -1216,6 +1216,36 @@ Return ONLY valid JSON (no markdown) in this exact format:
     else router.back();
   }
 
+  // ── Sarvam translation helper ─────────────────────────────────────────────
+
+  const SARVAM_LANG_MAP: Record<string, string> = {
+    'Hindi': 'hi-IN',
+    'Marathi': 'mr-IN',
+    'Gujarati': 'gu-IN',
+    'Tamil': 'ta-IN',
+    'Telugu': 'te-IN',
+    'Kannada': 'kn-IN',
+    'Malayalam': 'ml-IN',
+    'Bengali': 'bn-IN',
+    'Punjabi': 'pa-IN',
+  };
+
+  async function translateViaSarvam(text: string, targetLanguage: string): Promise<string> {
+    const langCode = SARVAM_LANG_MAP[targetLanguage];
+    if (!langCode) return text;
+    try {
+      const res = await fetch('https://my-maharaj.vercel.app/api/sarvam-translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLanguage: langCode }),
+      });
+      const data = await res.json();
+      return data.translatedText || text;
+    } catch {
+      return text;
+    }
+  }
+
   // ── PDF download helper (web-only) ────────────────────────────────────────
 
   async function downloadPDF(type: string, content: object, filename: string) {
@@ -2093,7 +2123,27 @@ Return ONLY valid JSON (no markdown) in this exact format:
         {/* Download Plan Summary */}
         <TouchableOpacity
           style={{backgroundColor:colors.navy,borderRadius:12,paddingVertical:14,paddingHorizontal:20,alignItems:'center',marginBottom:16}}
-          onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}
+          onPress={async () => {
+            const planLang = await AsyncStorage.getItem('plan_summary_language') || 'English';
+            let content = planPDFContent;
+            if (planLang !== 'English' && SARVAM_LANG_MAP[planLang]) {
+              try {
+                const translatedDays = await Promise.all(
+                  planPDFContent.days.map(async day => ({
+                    ...day,
+                    meals: await Promise.all(
+                      day.meals.map(async meal => ({
+                        ...meal,
+                        dish: meal.dish ? await translateViaSarvam(meal.dish, planLang) : meal.dish,
+                      }))
+                    ),
+                  }))
+                );
+                content = { ...planPDFContent, days: translatedDays };
+              } catch { /* use original if translation fails */ }
+            }
+            void downloadPDF('Meal Plan', content, 'maharaj-meal-plan-DDMMYYYY.pdf');
+          }}
           activeOpacity={0.85}>
           <Text style={{fontSize:14,fontWeight:'700',color:colors.white}}>Download Plan Summary</Text>
           <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:3}}>Full week · tabular · printable</Text>
