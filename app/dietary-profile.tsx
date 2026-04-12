@@ -524,6 +524,8 @@ export default function DietaryProfileScreen() {
         return;
       }
       const uid = session.user.id;
+      console.log('[ProfileSave] Step 3 — uid obtained:', uid);
+      console.log('[ProfileSave] Session obtained, uid:', uid);
 
       // Build clean upsert payload — every field explicitly included
       const payload = {
@@ -564,6 +566,8 @@ export default function DietaryProfileScreen() {
         updated_at: new Date().toISOString(),
       };
 
+      console.log('[ProfileSave] Step 1 — payload built');
+      console.log('[ProfileSave] Payload built successfully, about to log it...');
       console.log('[ProfileSave] Upserting payload:', JSON.stringify({
         community: payload.community,
         veg_days: payload.veg_days,
@@ -572,13 +576,25 @@ export default function DietaryProfileScreen() {
         sunday_extra_curry: payload.sunday_extra_curry,
         breakfast_preferences: payload.breakfast_preferences,
       }));
+      console.log('[ProfileSave] Step 2 — getting session');
+      console.log('[ProfileSave] Payload logged, getting session...');
 
-      const { error: upsertErr } = await supabase
-        .from('profiles')
-        .upsert(payload, { onConflict: 'id' });
+      console.log('[ProfileSave] About to upsert...');
+      let upsertErr = null;
+      let upsertData = null;
+      try {
+        const result = await supabase
+          .from('profiles')
+          .upsert(payload, { onConflict: 'id' });
+        upsertErr = result.error;
+        upsertData = result.data;
+        console.log('[ProfileSave] Upsert completed:', { error: upsertErr, data: upsertData });
+      } catch (upsertException) {
+        console.error('[ProfileSave] Upsert threw exception:', upsertException);
+      }
 
       if (upsertErr) {
-        console.error('[ProfileSave] Upsert error:', upsertErr.message);
+        console.error('[ProfileSave] Upsert error full:', JSON.stringify(upsertErr));
         Alert.alert('Save failed', upsertErr.message || 'Could not save profile. Please try again.');
         setProfileSaving(false);
         return;
