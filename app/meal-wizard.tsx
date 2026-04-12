@@ -355,10 +355,20 @@ Return ONLY valid JSON (no markdown) in this exact format:
         }
       });
       setFastingInfo(fastEntries);
+      const hasFasting = fastEntries.length > 0;
+      if (hasFasting) setVegType('fasting');
 
       // Breakfast prefs
       const bp = await AsyncStorage.getItem('breakfast_preferences');
-      if (bp) try { setBreakfastPreferences(JSON.parse(bp)); } catch {}
+      if (bp) {
+        try {
+          const parsed = JSON.parse(bp);
+          if (Array.isArray(parsed)) setBfPrefs(parsed);
+          else if (typeof bp === 'string' && bp.trim()) setBfPrefs(bp.split(',').map(s => s.trim()).filter(Boolean));
+        } catch {
+          if (bp.trim()) setBfPrefs(bp.split(',').map(s => s.trim()).filter(Boolean));
+        }
+      }
 
       // Community rules
       const cr = await AsyncStorage.getItem('community_rules');
@@ -370,8 +380,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       // Family avoids
       const fa = await AsyncStorage.getItem('family_avoids');
-      if (fa) try { setFamilyAvoids(JSON.parse(fa)); } catch {}
-      if (!fa) {
+      if (fa) {
+        try { setFamilyAvoids(JSON.parse(fa)); } catch {}
+      } else {
         const avoidRaw = await AsyncStorage.getItem('avoidance_list');
         if (avoidRaw) setFamilyAvoids(avoidRaw.split(',').map(s => s.trim()).filter(Boolean));
       }
@@ -458,6 +469,19 @@ Return ONLY valid JSON (no markdown) in this exact format:
         if (notes.includes('lactose'))  hf.lactoseIntolerant = true;
         if (notes.includes('gluten'))   hf.glutenIntolerant = true;
       });
+
+      const nutritionFromHealth: string[] = [];
+      if (hf.diabetic) nutritionFromHealth.push('Low GI foods, avoid refined sugar and white rice');
+      if (hf.bp) nutritionFromHealth.push('Low sodium, avoid pickles and papads');
+      if (hf.cholesterol) nutritionFromHealth.push('Low saturated fat, avoid fried food');
+      if (hf.obesity) nutritionFromHealth.push('Low calorie density, smaller portions');
+      if (hf.anaemia) nutritionFromHealth.push('Iron-rich foods — leafy greens, lentils, meat');
+      if (hf.pcos) nutritionFromHealth.push('No maida, high fibre, low sugar');
+      if (hf.thyroid) nutritionFromHealth.push('Selenium-rich foods');
+      if (hf.kidneyDisease) nutritionFromHealth.push('Low potassium and phosphorus');
+      if (hf.heartDisease) nutritionFromHealth.push('Low saturated fat, omega-3 rich');
+      if (hf.lactoseIntolerant) nutritionFromHealth.push('No dairy');
+      if (hf.glutenIntolerant) nutritionFromHealth.push('No gluten');
 
       const { data: cuisineData, error: cuisineErr } = await supabase
         .from('cuisine_preferences').select('cuisine_name')
@@ -564,7 +588,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         allowedProteins: nonVegOpts.length > 0 ? nonVegOpts : undefined,
         isMixed: effectiveIsMixed,
         unwellMembers:  unwellNames.length > 0 ? unwellNames : undefined,
-        nutritionFocus: [nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
+        nutritionFocus: [...nutritionFromHealth, nutritionGoals.length > 0 ? nutritionGoals.join(', ') : '', `Vary dishes (seed:${Date.now()})`].filter(Boolean).join('. '),
         userContext: [freeText, additionalDietaryRules].filter(Boolean).join('. ') || undefined,
         vegDays:        profile?.veg_days ?? [],
         cuisinePerDay: allCuisinesPerDay,
