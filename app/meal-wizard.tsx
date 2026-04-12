@@ -1616,7 +1616,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
     );
 
     const { width: FULL_WIDTH } = Dimensions.get('window');
-    const CARD_HEIGHT = Dimensions.get('window').height * 0.62;
+    const CARD_HEIGHT = Dimensions.get('window').height * 0.72;
 
     // Build downloadable plan content for PDF
     const planPDFContent = {
@@ -1689,205 +1689,214 @@ Return ONLY valid JSON (no markdown) in this exact format:
             const lunchCurryDishName = Array.isArray(lunchCurry) ? lunchCurry[0]?.dishName : lunchCurry?.dishName;
             const hasAnatomy = !!(lunchCurryDishName || day.anatomy?.breakfast?.dishName);
             const hasLegacy = !!(day.breakfast?.options?.[0]?.name || day.lunch?.options?.[0]?.name || day.dinner?.options?.[0]?.name);
+            const isLastDay = dayIdx === generatedPlan.length - 1;
+            const isConfirmed = confirmedDays.includes(day.date);
 
             return (
               <View key={day.date} style={{width: FULL_WIDTH, paddingHorizontal:16, flex:1}}>
-                <ScrollView showsVerticalScrollIndicator={false} style={{flex:1}} contentContainerStyle={{paddingBottom:24}}>
-                  {/* Date header */}
-                  <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:4,marginTop:8}}>
-                    {day.day}, {dt.getDate()} {MONTHS_L[dt.getMonth()]}
-                  </Text>
-                  {/* Badges */}
-                  {(isSunday || festivalMatch) && (
-                    <View style={{flexDirection:'row',gap:6,marginBottom:10}}>
-                      {isSunday && <View style={{backgroundColor:colors.gold,borderRadius:8,paddingHorizontal:6,paddingVertical:2}}><Text style={{fontSize:9,fontWeight:'700',color:'#1A1A1A'}}>Sunday</Text></View>}
-                      {festivalMatch && <View style={{backgroundColor:'#FEF3C7',borderRadius:8,paddingHorizontal:6,paddingVertical:2}}><Text style={{fontSize:9,fontWeight:'700',color:'#92400E'}}>{festivalMatch.name}</Text></View>}
+                <ScrollView showsVerticalScrollIndicator={false} style={{flex:1}} contentContainerStyle={{paddingBottom:8}}>
+
+                  {/* Date header with community identity */}
+                  <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:14,marginTop:8}}>
+                    <View style={{flex:1}}>
+                      <Text style={{fontSize:20,fontWeight:'500',color:'#1b3a5c'}}>{day.day}, {dt.getDate()} {MONTHS_L[dt.getMonth()]}</Text>
+                      <Text style={{fontSize:11,color:'#1a6b5c',marginTop:2,fontWeight:'500',letterSpacing:0.5}}>{communityRules ? communityRules.toUpperCase() : 'YOUR FAMILY'}</Text>
                     </View>
-                  )}
+                    {isSunday && <View style={{backgroundColor:'#c9a227',borderRadius:6,paddingHorizontal:8,paddingVertical:3}}><Text style={{fontSize:10,fontWeight:'500',color:'#1a1a1a'}}>Sunday</Text></View>}
+                    {festivalMatch && <View style={{backgroundColor:'#FEF3C7',borderRadius:6,paddingHorizontal:8,paddingVertical:3}}><Text style={{fontSize:10,fontWeight:'500',color:'#92400E'}}>{festivalMatch.name}</Text></View>}
+                  </View>
 
-              {/* Meal slots */}
-              {!hasAnatomy && !hasLegacy ? (
-                <View style={{padding:16,alignItems:'center'}}>
-                  <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Maharaj is still planning this day. Please regenerate.</Text>
-                </View>
-              ) : slotsToShow.map(({ key, label }) => {
-                const slotLabel = <Text style={{fontSize:10,fontWeight:'700',color:colors.textMuted,letterSpacing:0.5,textTransform:'uppercase',marginBottom:4}}>{label}</Text>;
-                const rowStyle = {flexDirection:'row' as const,alignItems:'center' as const,paddingVertical:6,paddingHorizontal:8,backgroundColor:'rgba(255,255,255,0.6)',borderRadius:8,marginBottom:2};
+                  {/* Meal slots */}
+                  {!hasAnatomy && !hasLegacy ? (
+                    <View style={{padding:16,alignItems:'center'}}>
+                      <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Maharaj is still planning this day. Please regenerate.</Text>
+                    </View>
+                  ) : slotsToShow.map(({ key, label }) => {
 
-                // ── Anatomy path ────────────────────────────────────────────
-                if (hasAnatomy) {
-                  const nightCarry = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
-                  const prevDayName = nightCarry ? generatedPlan[dayIdx - 1].day : '';
-                  const prevDinnerAnat = nightCarry ? generatedPlan[dayIdx - 1].anatomy?.dinner : undefined;
+                    // ── Anatomy path ────────────────────────────────────────────
+                    if (hasAnatomy) {
+                      const nightCarry = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
+                      const prevDayName = nightCarry ? generatedPlan[dayIdx - 1].day : '';
+                      const prevDinnerAnat = nightCarry ? generatedPlan[dayIdx - 1].anatomy?.dinner : undefined;
 
-                  if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
-                    const ms = day.anatomy[key] as MealAnatomy;
-                    const curryArr: AnatomyComponent[] = ms.curry
-                      ? (Array.isArray(ms.curry) ? ms.curry : [ms.curry]).filter(c => !!c && !!c.dishName)
-                      : [];
-                    const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => {
-                      const dn = (c.dishName || '').toLowerCase();
-                      const typeLabel = dn.includes('fry') || dn.includes('fried') ? 'Fry'
-                        : dn.includes('tawa') ? 'Tawa'
-                        : dn.includes('roast') ? 'Roast'
-                        : dn.includes('grill') ? 'Grilled'
-                        : dn.includes('sukhem') || dn.includes('sukha') ? 'Dry'
-                        : dn.includes('tikka') ? 'Tikka'
-                        : curryArr.length > 1 ? `Curry ${ci + 1}` : 'Curry';
-                      return { compLabel: typeLabel, comp: c };
-                    });
-                    const ROWS: { compLabel: string; comp: AnatomyComponent }[] = [
-                      ...curryRows,
-                      { compLabel: 'Veg',   comp: ms.veg   },
-                      { compLabel: 'Raita', comp: ms.raita },
-                      { compLabel: 'Bread', comp: ms.bread },
-                      { compLabel: 'Rice',  comp: ms.rice  },
-                    ];
-                    return (
-                      <View key={key} style={{marginBottom:8}}>
-                        {slotLabel}
-                        {ROWS.map(({ compLabel, comp }) => {
-                          const isCarry = compLabel === 'Curry' && nightCarry && !!prevDinnerAnat;
-                          const prevCurry = prevDinnerAnat?.curry;
-                          const prevCurryDish = Array.isArray(prevCurry) ? prevCurry[0]?.dishName : prevCurry?.dishName;
-                          const dishName = isCarry ? (prevCurryDish ?? comp.dishName) : comp.dishName;
-                          return (
-                            <View key={compLabel} style={rowStyle}>
-                              <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
-                                <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>
-                                <Text style={{fontSize:13,fontWeight:'600',color:isCarry ? colors.emerald : colors.navy,fontStyle:isCarry ? 'italic' : 'normal'}}>{dishName}</Text>
-                                {isCarry && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
+                      if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
+                        const ms = day.anatomy[key] as MealAnatomy;
+                        const curryArr: AnatomyComponent[] = ms.curry
+                          ? (Array.isArray(ms.curry) ? ms.curry : [ms.curry]).filter(c => !!c && !!c.dishName)
+                          : [];
+                        const curryRows: { compLabel: string; comp: AnatomyComponent }[] = curryArr.map((c, ci) => {
+                          const dn = (c.dishName || '').toLowerCase();
+                          const typeLabel = dn.includes('fry') || dn.includes('fried') ? 'Fry'
+                            : dn.includes('tawa') ? 'Tawa'
+                            : dn.includes('roast') ? 'Roast'
+                            : dn.includes('grill') ? 'Grilled'
+                            : dn.includes('sukhem') || dn.includes('sukha') ? 'Dry'
+                            : dn.includes('tikka') ? 'Tikka'
+                            : curryArr.length > 1 ? `Curry ${ci + 1}` : 'Curry';
+                          return { compLabel: typeLabel, comp: c };
+                        });
+                        return (
+                          <View key={key} style={{backgroundColor:'rgba(255,255,255,0.85)',borderRadius:12,borderWidth:1,borderColor:'rgba(26,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
+                            <View style={{backgroundColor:'rgba(26,58,92,0.06)',padding:7,paddingHorizontal:14,borderBottomWidth:0.5,borderBottomColor:'rgba(26,58,92,0.1)'}}>
+                              <Text style={{fontSize:10,fontWeight:'600',color:'#1b3a5c',letterSpacing:1.5}}>{label.toUpperCase()}</Text>
+                            </View>
+                            <View style={{padding:10,paddingHorizontal:14}}>
+                              {curryRows.map(({compLabel, comp}) => {
+                                const isCarry = compLabel === 'Curry' && nightCarry && !!prevDinnerAnat;
+                                const prevCurry = prevDinnerAnat?.curry;
+                                const prevCurryDish = Array.isArray(prevCurry) ? prevCurry[0]?.dishName : prevCurry?.dishName;
+                                const dishName = isCarry ? (prevCurryDish ?? comp.dishName) : comp.dishName;
+                                return (
+                                  <View key={compLabel} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:8,borderBottomWidth:0.5,borderBottomColor:'rgba(0,0,0,0.05)'}}>
+                                    <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
+                                      <Text style={{fontSize:10,color:'#c9a227',fontWeight:'500',letterSpacing:0.8}}>{compLabel.toUpperCase()}</Text>
+                                      <Text style={{fontSize:14,fontWeight:'500',color:isCarry ? colors.emerald : '#1b3a5c',marginTop:2,fontStyle:isCarry ? 'italic' : 'normal'}}>{dishName}</Text>
+                                      {isCarry && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
+                                      {!isCarry && (comp.ingredients?.length ?? 0) > 0 && <Text style={{fontSize:10,color:'#999',marginTop:2}}>{comp.ingredients!.slice(0,3).join(' · ')}</Text>}
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => { setAlternativeSlot({dayIdx,slot:key,component:compLabel,dishName,anatomyAlts:comp.alternatives}); setAltModalVisible(true); }} style={{paddingLeft:12}} disabled={isCarry}>
+                                      <Text style={{fontSize:16,color:'#ccc',opacity:isCarry ? 0 : 1}}>{'\u270E'}</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                );
+                              })}
+                              <View style={{flexDirection:'row',flexWrap:'wrap',marginTop:4}}>
+                                {[{label:'VEG',comp:ms.veg},{label:'RAITA',comp:ms.raita},{label:'BREAD',comp:ms.bread},{label:'RICE',comp:ms.rice}].map(({label:cl,comp},i) => (
+                                  <View key={cl} style={{width:'50%',paddingVertical:7,paddingRight:i%2===0?12:0,borderRightWidth:i%2===0?0.5:0,borderRightColor:'rgba(0,0,0,0.05)',borderBottomWidth:i<2?0.5:0,borderBottomColor:'rgba(0,0,0,0.05)'}}>
+                                    <Text style={{fontSize:9,color:'#aaa',letterSpacing:0.8}}>{cl}</Text>
+                                    <Text style={{fontSize:13,color:'#1b3a5c',marginTop:2}}>{comp?.dishName || ''}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      }
+
+                      if ((key === 'breakfast' || key === 'snack') && day.anatomy[key]) {
+                        const comp = day.anatomy[key] as AnatomyComponent;
+                        return (
+                          <View key={key} style={{backgroundColor:'rgba(255,255,255,0.85)',borderRadius:12,borderWidth:1,borderColor:'rgba(26,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
+                            <View style={{backgroundColor:'rgba(26,107,92,0.08)',padding:7,paddingHorizontal:14,borderBottomWidth:0.5,borderBottomColor:'rgba(26,107,92,0.1)'}}>
+                              <Text style={{fontSize:10,fontWeight:'600',color:'#1a6b5c',letterSpacing:1.5}}>{label.toUpperCase()}</Text>
+                            </View>
+                            <View style={{padding:12,paddingHorizontal:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+                              <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName: comp.dishName })} activeOpacity={0.7}>
+                                <Text style={{fontSize:15,fontWeight:'500',color:'#1b3a5c'}}>{comp.dishName}</Text>
+                                {(comp.ingredients?.length ?? 0) > 0 && <Text style={{fontSize:11,color:'#888',marginTop:3}}>{comp.ingredients!.slice(0,3).join(' · ')}</Text>}
                               </TouchableOpacity>
-                              <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarry}
-                                onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName, anatomyAlts: comp.alternatives }); setAltModalVisible(true); }}>
-                                <Text style={{fontSize:14,color:colors.navy,opacity:isCarry ? 0 : 1}}>{'\u270E'}</Text>
+                              <TouchableOpacity onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label, dishName: comp.dishName, anatomyAlts: comp.alternatives }); setAltModalVisible(true); }} style={{paddingLeft:12}}>
+                                <Text style={{fontSize:16,color:'#ccc'}}>{'\u270E'}</Text>
                               </TouchableOpacity>
                             </View>
-                          );
-                        })}
-                      </View>
-                    );
-                  }
+                          </View>
+                        );
+                      }
+                    }
 
-                  if ((key === 'breakfast' || key === 'snack') && day.anatomy[key]) {
-                    const comp = day.anatomy[key] as AnatomyComponent;
+                    // ── Legacy path (slow generator / old plans) ────────────────
+                    const opt = getOpt(dayIdx, key);
+                    if (!opt) return null;
+
+                    const isCarryForward = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
+                    const prevDinnerOpt = isCarryForward ? getOpt(dayIdx - 1, 'dinner') : null;
+                    const prevDayName = isCarryForward && generatedPlan[dayIdx - 1] ? generatedPlan[dayIdx - 1].day : '';
+
+                    const displayOpt = isCarryForward && prevDinnerOpt ? prevDinnerOpt : opt;
+                    const isThali = displayOpt.name.toLowerCase().includes('thali');
+                    const hasAnatomyDesc = displayOpt.description?.includes(' | ') && displayOpt.description?.includes(':');
+                    const shouldShowComponents = (isThali || hasAnatomyDesc) && displayOpt.description?.includes(' | ');
+                    const components = shouldShowComponents
+                      ? displayOpt.description!.split(' | ').map(c => c.trim())
+                      : [displayOpt.name];
+
                     return (
-                      <View key={key} style={{marginBottom:8}}>
-                        {slotLabel}
-                        <View style={rowStyle}>
-                          <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName: comp.dishName })} activeOpacity={0.7}>
-                            <Text style={{fontSize:13,fontWeight:'600',color:colors.navy}}>{comp.dishName}</Text>
-                            {key === 'snack' && <Text style={{fontSize:10,color:colors.textMuted}}>Fresh · 15 min</Text>}
-                          </TouchableOpacity>
-                          <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}}
-                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: label, dishName: comp.dishName, anatomyAlts: comp.alternatives }); setAltModalVisible(true); }}>
-                            <Text style={{fontSize:14,color:colors.navy}}>{'\u270E'}</Text>
-                          </TouchableOpacity>
+                      <View key={key} style={{backgroundColor:'rgba(255,255,255,0.85)',borderRadius:12,borderWidth:1,borderColor:'rgba(26,58,92,0.1)',marginBottom:10,overflow:'hidden'}}>
+                        <View style={{backgroundColor:'rgba(26,58,92,0.06)',padding:7,paddingHorizontal:14,borderBottomWidth:0.5,borderBottomColor:'rgba(26,58,92,0.1)'}}>
+                          <Text style={{fontSize:10,fontWeight:'600',color:'#1b3a5c',letterSpacing:1.5}}>{label.toUpperCase()}</Text>
+                        </View>
+                        <View style={{padding:10,paddingHorizontal:14}}>
+                          {components.map((comp, ci) => {
+                            const parts = comp.split(':');
+                            const compLabel = parts.length > 1 ? parts[0].trim() : label;
+                            const dishName = parts.length > 1 ? parts.slice(1).join(':').trim() : comp;
+                            return (
+                              <View key={ci} style={{flexDirection:'row',alignItems:'center',paddingVertical:6,borderBottomWidth:0.5,borderBottomColor:'rgba(0,0,0,0.05)'}}>
+                                <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
+                                  {(isThali || hasAnatomyDesc) && parts.length > 1 && <Text style={{fontSize:9,color:'#aaa',fontWeight:'500',letterSpacing:0.8}}>{compLabel.toUpperCase()}</Text>}
+                                  <Text style={{fontSize:13,fontWeight:'500',color:isCarryForward ? colors.emerald : '#1b3a5c',fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
+                                  {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
+                                </TouchableOpacity>
+                                <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarryForward}
+                                  onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName }); setAltModalVisible(true); }}>
+                                  <Text style={{fontSize:14,color:'#ccc',opacity:isCarryForward ? 0 : 1}}>{'\u270E'}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            );
+                          })}
                         </View>
                       </View>
                     );
-                  }
-                }
+                  })}
 
-                // ── Legacy path (slow generator / old plans) ────────────────
-                const opt = getOpt(dayIdx, key);
-                if (!opt) return null;
-
-                const isCarryForward = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
-                const prevDinnerOpt = isCarryForward ? getOpt(dayIdx - 1, 'dinner') : null;
-                const prevDayName = isCarryForward && generatedPlan[dayIdx - 1] ? generatedPlan[dayIdx - 1].day : '';
-
-                const displayOpt = isCarryForward && prevDinnerOpt ? prevDinnerOpt : opt;
-                const isThali = displayOpt.name.toLowerCase().includes('thali');
-                const hasAnatomyDesc = displayOpt.description?.includes(' | ') && displayOpt.description?.includes(':');
-                const shouldShowComponents = (isThali || hasAnatomyDesc) && displayOpt.description?.includes(' | ');
-                const components = shouldShowComponents
-                  ? displayOpt.description!.split(' | ').map(c => c.trim())
-                  : [displayOpt.name];
-
-                return (
-                  <View key={key} style={{marginBottom:8}}>
-                    {slotLabel}
-                    {components.map((comp, ci) => {
-                      const parts = comp.split(':');
-                      const compLabel = parts.length > 1 ? parts[0].trim() : label;
-                      const dishName = parts.length > 1 ? parts.slice(1).join(':').trim() : comp;
-                      return (
-                        <View key={ci} style={rowStyle}>
-                          <TouchableOpacity style={{flex:1}} onPress={() => setRecipeModal({ visible: true, dishName })} activeOpacity={0.7}>
-                            {(isThali || hasAnatomyDesc) && parts.length > 1 && <Text style={{fontSize:9,color:colors.textMuted,fontWeight:'600'}}>{compLabel}</Text>}
-                            <Text style={{fontSize:13,fontWeight:'600',color:isCarryForward ? colors.emerald : colors.navy,fontStyle:isCarryForward ? 'italic' : 'normal'}}>{dishName}</Text>
-                            {isCarryForward && <Text style={{fontSize:10,color:colors.emerald}}>from {prevDayName} dinner</Text>}
-                          </TouchableOpacity>
-                          <TouchableOpacity style={{paddingLeft:8,paddingVertical:4}} disabled={isCarryForward}
-                            onPress={() => { setAlternativeSlot({ dayIdx, slot: key, component: compLabel, dishName }); setAltModalVisible(true); }}>
-                            <Text style={{fontSize:14,color:colors.navy,opacity:isCarryForward ? 0 : 1}}>{'\u270E'}</Text>
-                          </TouchableOpacity>
-                        </View>
-                      );
-                    })}
-                  </View>
-                );
-              })}
-
-              {/* Fasting gold strip */}
-              {(() => {
-                const dayName = day.day;
-                const fastingMatches = fastingInfo.filter(f => f.dayMatch(dayName));
-                if (fastingMatches.length === 0) return null;
-                return (
-                  <View style={{backgroundColor:'rgba(201,162,39,0.1)',borderTopWidth:1,borderTopColor:'rgba(201,162,39,0.25)',paddingVertical:6,paddingHorizontal:9,marginTop:4,borderRadius:0}}>
-                    {fastingMatches.map((f, fi) => (
-                      <View key={fi}>
-                        <Text style={{fontSize:11,fontWeight:'700',color:colors.gold}}>{f.memberName} — {f.fastingType}</Text>
-                        <Text style={{fontSize:9,color:'#8B6914'}}>Separate fasting meal · ingredients added to shopping list</Text>
+                  {/* Fasting gold strip */}
+                  {(() => {
+                    const dayName = day.day;
+                    const fastingMatches = fastingInfo.filter(f => f.dayMatch(dayName));
+                    if (fastingMatches.length === 0) return null;
+                    return (
+                      <View style={{backgroundColor:'rgba(201,162,39,0.1)',borderTopWidth:1,borderTopColor:'rgba(201,162,39,0.25)',paddingVertical:6,paddingHorizontal:9,marginTop:4,borderRadius:0}}>
+                        {fastingMatches.map((f, fi) => (
+                          <View key={fi}>
+                            <Text style={{fontSize:11,fontWeight:'700',color:colors.gold}}>{f.memberName} — {f.fastingType}</Text>
+                            <Text style={{fontSize:9,color:'#8B6914'}}>Separate fasting meal · ingredients added to shopping list</Text>
+                          </View>
+                        ))}
                       </View>
-                    ))}
-                  </View>
-                );
-              })()}
+                    );
+                  })()}
 
-              {/* Per-day confirm */}
-              {confirmedDays.includes(day.date) ? (
-                <View style={{alignItems:'center',paddingVertical:12}}>
-                  <Text style={{fontSize:13,fontWeight:'700',color:colors.teal}}>✓ {day.day} confirmed</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={{backgroundColor:colors.emerald,borderRadius:12,paddingVertical:12,alignItems:'center',marginTop:12,marginBottom:4}}
-                  onPress={() => setConfirmedDays(prev => [...prev, day.date])}>
-                  <Text style={{fontSize:14,fontWeight:'700',color:colors.white}}>Confirm {day.day}</Text>
-                </TouchableOpacity>
-              )}
                 </ScrollView>
+
+                {/* Unified bottom button row */}
+                {!isConfirmed ? (
+                  <View style={{flexDirection:'row',gap:8,marginTop:12,marginBottom:4}}>
+                    <TouchableOpacity
+                      style={{flex:1,borderWidth:1.5,borderColor:'#2E5480',borderRadius:10,paddingVertical:11,alignItems:'center'}}
+                      onPress={() => setStep('wizard')}>
+                      <Text style={{fontSize:13,fontWeight:'500',color:'#2E5480'}}>Back</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{flex:1,borderWidth:1.5,borderColor:'#2E5480',borderRadius:10,paddingVertical:11,alignItems:'center'}}
+                      onPress={() => { setGeneratedPlan(null); setStep('wizard'); }}>
+                      <Text style={{fontSize:13,fontWeight:'500',color:'#2E5480'}}>Regenerate</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{flex:2,backgroundColor:'#1a6b5c',borderRadius:10,paddingVertical:11,alignItems:'center'}}
+                      onPress={() => {
+                        setConfirmedDays(prev => [...prev, day.date]);
+                        if (!isLastDay) {
+                          const nextIdx = dayIdx + 1;
+                          setActiveDay(nextIdx);
+                          planScrollRef.current?.scrollTo({ x: nextIdx * FULL_WIDTH, animated: true });
+                        } else {
+                          handleConfirmPlan();
+                        }
+                      }}>
+                      <Text style={{fontSize:13,fontWeight:'700',color:'#fff'}}>
+                        {isLastDay ? 'Confirm your weekly plan' : `Confirm ${day.day}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{alignItems:'center',paddingVertical:12}}>
+                    <Text style={{fontSize:13,fontWeight:'500',color:'#1a6b5c'}}>{'\u2713'} {day.day} confirmed</Text>
+                  </View>
+                )}
               </View>
             );
           })}
         </ScrollView>
-
-        {/* Bottom action row */}
-        {confirmedDays.length === generatedPlan.length ? (
-          <View style={{paddingHorizontal:16,paddingTop:8,paddingBottom:8,flexDirection:'row',gap:8}}>
-            <TouchableOpacity
-              style={{flex:1,borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
-              onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
-              <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{flex:2,backgroundColor:colors.emerald,borderRadius:20,paddingVertical:10,alignItems:'center'}}
-              onPress={handleConfirmPlan}>
-              <Text style={{fontSize:15,fontWeight:'700',color:colors.white}}>Next</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={{paddingHorizontal:16,paddingTop:8,paddingBottom:8}}>
-            <TouchableOpacity
-              style={{borderWidth:1.5,borderColor:colors.navy,borderRadius:20,paddingVertical:10,alignItems:'center'}}
-              onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}>
-              <Text style={{fontSize:13,fontWeight:'500',color:colors.navy}}>Download Plan</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Celebration modal */}
         <Modal visible={showCelebration} transparent animationType="fade">
