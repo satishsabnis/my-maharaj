@@ -1165,6 +1165,30 @@ Return ONLY valid JSON (no markdown) in this exact format:
     );
   };
 
+  const planPDFContent = React.useMemo(() => {
+    if (!generatedPlan) return { days: [] };
+    return {
+      days: generatedPlan.map((day, idx) => ({
+        dayName: day.day,
+        date: day.date,
+        meals: [
+          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.breakfast?.options?.[selections[idx]?.breakfast ?? 0]?.name || '' },
+          { label: 'Lunch Curry', dish: day.anatomy?.lunch?.curry?.dishName || '' },
+          { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
+          { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
+          { label: 'Lunch Bread', dish: day.anatomy?.lunch?.bread?.dishName || '' },
+          { label: 'Lunch Rice', dish: day.anatomy?.lunch?.rice?.dishName || '' },
+          { label: 'Dinner Curry', dish: day.anatomy?.dinner?.curry?.dishName || '' },
+          { label: 'Dinner Veg', dish: day.anatomy?.dinner?.veg?.dishName || '' },
+          { label: 'Dinner Raita', dish: day.anatomy?.dinner?.raita?.dishName || '' },
+          { label: 'Dinner Bread', dish: day.anatomy?.dinner?.bread?.dishName || '' },
+          { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
+          { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
+        ],
+      })),
+    };
+  }, [generatedPlan, selections]);
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
   function goBack() {
@@ -1618,28 +1642,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
     const { width: FULL_WIDTH } = Dimensions.get('window');
     const CARD_HEIGHT = Dimensions.get('window').height * 0.72;
 
-    // Build downloadable plan content for PDF
-    const planPDFContent = {
-      days: generatedPlan.map((day, idx) => ({
-        dayName: day.day,
-        date: day.date,
-        meals: [
-          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.breakfast?.options?.[selections[idx]?.breakfast ?? 0]?.name || '' },
-          { label: 'Lunch Curry', dish: day.anatomy?.lunch?.curry?.dishName || '' },
-          { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
-          { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
-          { label: 'Lunch Bread', dish: day.anatomy?.lunch?.bread?.dishName || '' },
-          { label: 'Lunch Rice', dish: day.anatomy?.lunch?.rice?.dishName || '' },
-          { label: 'Dinner Curry', dish: day.anatomy?.dinner?.curry?.dishName || '' },
-          { label: 'Dinner Veg', dish: day.anatomy?.dinner?.veg?.dishName || '' },
-          { label: 'Dinner Raita', dish: day.anatomy?.dinner?.raita?.dishName || '' },
-          { label: 'Dinner Bread', dish: day.anatomy?.dinner?.bread?.dishName || '' },
-          { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
-          { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
-        ],
-      })),
-    };
-
     return (
       <View style={{marginHorizontal:-20}}>
         {/* Hint */}
@@ -2086,35 +2088,53 @@ Return ONLY valid JSON (no markdown) in this exact format:
     const numDays = generatedPlan?.length ?? 0;
     return (
       <View>
-        <Text style={{fontSize:14,color:colors.textSecondary,textAlign:'center',marginBottom:24}}>Your {numDays}-day plan is confirmed</Text>
+        <Text style={{fontSize:14,color:colors.textSecondary,textAlign:'center',marginBottom:20}}>Your {numDays}-day plan is confirmed</Text>
 
-        {/* Card 1: Cook at Home */}
-        <TouchableOpacity style={[cards.frostedGreen, {padding:20,marginBottom:14}]} onPress={() => { setFeedbacks(buildFeedbackEntries()); setStep('grocery'); }} activeOpacity={0.85}>
-          <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:4}}>Cook at Home</Text>
-          <Text style={{fontSize:13,color:colors.textSecondary,lineHeight:19}}>Get your consolidated shopping list, check what you already have in your fridge, and order groceries online.</Text>
+        {/* Download Plan Summary */}
+        <TouchableOpacity
+          style={{backgroundColor:colors.navy,borderRadius:12,paddingVertical:14,paddingHorizontal:20,alignItems:'center',marginBottom:16}}
+          onPress={() => void downloadPDF('Meal Plan', planPDFContent, 'maharaj-meal-plan-DDMMYYYY.pdf')}
+          activeOpacity={0.85}>
+          <Text style={{fontSize:14,fontWeight:'700',color:colors.white}}>Download Plan Summary</Text>
+          <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:3}}>Full week · tabular · printable</Text>
         </TouchableOpacity>
 
-        {/* Card 2: Order Online */}
-        <TouchableOpacity style={[cards.frostedNavy, {padding:20,marginBottom:14}]} onPress={() => setStep('online-shopping')} activeOpacity={0.85}>
-          <Text style={{fontSize:18,fontWeight:'700',color:colors.navy,marginBottom:4}}>Order Online</Text>
-          <Text style={{fontSize:13,color:colors.textSecondary,lineHeight:19}}>Order ingredients from your favourite delivery service. Integrations coming soon.</Text>
-        </TouchableOpacity>
+        {/* Cook at Home */}
+        <View style={[cards.frostedGreen,{padding:16,marginBottom:14}]}>
+          <Text style={{fontSize:18,fontWeight:'500',color:colors.navy,marginBottom:4}}>Cook at Home</Text>
+          <Text style={{fontSize:13,color:colors.textSecondary,marginBottom:14,lineHeight:19}}>Your shopping list is ready. Check what you have and order the rest.</Text>
 
-        {/* Card 3: Share My Maharaj */}
-        <View style={[cards.frostedGreen, {padding:20,marginBottom:14,borderLeftWidth:3,borderLeftColor:colors.gold}]}>
-          <Text style={{fontSize:7,fontWeight:'700',color:colors.gold,letterSpacing:0.6,textTransform:'uppercase',marginBottom:4}}>Share My Maharaj</Text>
-          <Text style={{fontSize:10,fontWeight:'700',color:colors.navy,marginBottom:12,lineHeight:15}}>Know an Indian family in the GCC who struggles with meal planning?</Text>
           <TouchableOpacity
-            style={{alignSelf:'flex-start',backgroundColor:colors.emerald,borderRadius:20,paddingVertical:4,paddingHorizontal:8}}
-            activeOpacity={0.8}
-            onPress={() => {
-              Share.share({ message: "I have been using My Maharaj to plan my family's meals. It knows Indian food, our community, our fasting days, and even sends the recipe in Hindi to our cook. Try it free: https://my-maharaj.vercel.app" });
-              track('referral_shared', { source: 'what_next' });
-            }}
-          >
-            <Text style={{fontSize:9,fontWeight:'700',color:'#FFFFFF'}}>Share</Text>
+            style={{backgroundColor:'rgba(255,255,255,0.85)',borderRadius:10,padding:14,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}
+            onPress={() => { setFeedbacks(buildFeedbackEntries()); setStep('grocery'); }}
+            activeOpacity={0.85}>
+            <View>
+              <Text style={{fontSize:15,fontWeight:'500',color:colors.navy}}>Shopping List</Text>
+              <Text style={{fontSize:11,color:colors.textMuted,marginTop:2}}>Fridge items marked · download PDF</Text>
+            </View>
+            <Text style={{fontSize:18,color:colors.navy}}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{backgroundColor:'rgba(255,255,255,0.85)',borderRadius:10,padding:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}
+            onPress={() => setStep('online-shopping')}
+            activeOpacity={0.85}>
+            <View>
+              <Text style={{fontSize:15,fontWeight:'500',color:colors.navy}}>Order Online</Text>
+              <Text style={{fontSize:11,color:colors.textMuted,marginTop:2}}>Carrefour · Noon · Amazon · Talabat</Text>
+            </View>
+            <Text style={{fontSize:18,color:colors.navy}}>›</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Order Out */}
+        <TouchableOpacity
+          style={[cards.frostedNavy,{padding:20,marginBottom:14}]}
+          onPress={() => setStep('online-shopping')}
+          activeOpacity={0.85}>
+          <Text style={{fontSize:18,fontWeight:'500',color:colors.navy,marginBottom:4}}>Order Out</Text>
+          <Text style={{fontSize:13,color:colors.textSecondary,lineHeight:19}}>Order directly from your favourite delivery app. Same list, delivered to your door.</Text>
+        </TouchableOpacity>
       </View>
     );
   }
