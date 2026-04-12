@@ -446,7 +446,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
-        .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,plan_summary_language,veg_days')
+        .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,plan_summary_language,veg_days,community,avoidance_list,cooking_pattern,sunday_extra_curry,sunday_sweet,breakfast_preferences,additional_dietary_rules,meal_template_curry,meal_template_veg,meal_template_raita,meal_template_bread,meal_template_rice')
         .eq('id', userId).maybeSingle();
       if (profileErr) console.error('[MealWizard] profile query error:', profileErr.message);
 
@@ -573,6 +573,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       const communityFromProfile = await AsyncStorage.getItem('community') || '';
 
+      console.log('[VEG DAYS]', profile?.veg_days);
       const plan = await generateMealPlanFast({
         userId,
         dates,
