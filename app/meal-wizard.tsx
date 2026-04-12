@@ -1266,12 +1266,14 @@ Return ONLY valid JSON (no markdown) in this exact format:
         body: JSON.stringify({ type, familyName, dateRange, content, language: pdfLang }),
       });
       const contentType = response.headers.get('content-type') || '';
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
       if (contentType.includes('text/html')) {
-        // Non-Latin language: open in new tab so browser renders Unicode with system fonts
+        const html = await response.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
       } else {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename.replace('DDMMYYYY', `${dd}${mm}${yyyy}`);

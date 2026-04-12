@@ -930,6 +930,7 @@ ${p.isSunday && sundayDishes.length > 0 ? `SUNDAY SPECIAL — use exactly these 
 AVOID: ${p.avoidanceList}
 DO NOT REPEAT: ${p.historyStr}
 DISH NAMES: Use authentic regional Indian names only. Never use generic names like "Chicken Curry" or "Fish Curry".${p.retry ? '\nMANDATORY: lunch_curry_1 must be a chicken or fish dish.' : ''}
+VARIATION: ${Math.random().toString(36).substr(2, 9)}
 
 Return JSON only, no markdown:
 {
