@@ -5,6 +5,7 @@ module.exports = async function handler(req, res) {
 
   const { title, content, language } = req.body;
   const days = content?.days ?? [];
+  console.log('[PDF] Day meals:', JSON.stringify(days[0]?.meals?.slice(0,5)));
 
   const html = `<!DOCTYPE html>
 <html lang="en">
