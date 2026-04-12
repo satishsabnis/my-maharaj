@@ -14,14 +14,21 @@ module.exports = async function handler(req, res) {
 <title>My Maharaj Meal Plan</title>
 <style>
   @media print { .no-print { display: none; } body { margin: 0; } }
+  @media (max-width: 768px) { body { padding: 8px; } table { font-size: 10px; } th, td { padding: 4px 3px; } }
   body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #fff; color: #1b3a5c; }
   .header { background: #1b3a5c; color: white; padding: 16px 20px; margin-bottom: 20px; border-radius: 8px; }
   .header h1 { margin: 0; font-size: 20px; font-weight: 600; }
   .header p { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,0.7); }
   .print-btn { background: #1a6b5c; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
   th { background: #1b3a5c; color: white; padding: 10px 12px; text-align: left; font-weight: 500; }
-  td { padding: 8px 12px; border-bottom: 0.5px solid #e0e0e0; vertical-align: top; }
+  th:nth-child(1) { width: 10%; }
+  th:nth-child(2) { width: 16%; }
+  th:nth-child(3) { width: 18%; }
+  th:nth-child(4) { width: 18%; }
+  th:nth-child(5) { width: 26%; }
+  th:nth-child(6) { width: 12%; }
+  td { padding: 8px 6px; border-bottom: 0.5px solid #e0e0e0; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
   tr:nth-child(even) td { background: #f8f9fa; }
   .day-header td { background: #c9a227; color: #1a1a1a; font-weight: 600; font-size: 13px; }
   .meal-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
@@ -38,12 +45,12 @@ module.exports = async function handler(req, res) {
 <table>
   <thead>
     <tr>
-      <th style="width:12%">Day</th>
-      <th style="width:16%">Breakfast</th>
-      <th style="width:18%">Lunch</th>
-      <th style="width:18%">Dinner</th>
-      <th style="width:18%">Supporting</th>
-      <th style="width:18%">Evening</th>
+      <th>Day</th>
+      <th>Breakfast</th>
+      <th>Lunch</th>
+      <th>Dinner</th>
+      <th>Supporting</th>
+      <th>Evening</th>
     </tr>
   </thead>
   <tbody>
