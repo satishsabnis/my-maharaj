@@ -995,6 +995,7 @@ async function getIngredientsForDish(dishName: string, familySize: number): Prom
     } catch {
       if (attempt === 2) console.warn(`[INGREDIENTS] Failed for "${dishName}" after 2 attempts`);
     }
+    if (attempt === 1) await new Promise(resolve => setTimeout(resolve, 1000));
   }
   return [];
 }
@@ -1104,6 +1105,7 @@ export async function generateMealPlanFast(
   };
 
   for (let i = 0; i < params.dates.length; i++) {
+    if (i > 0) await new Promise(resolve => setTimeout(resolve, i * 500));
     const date = params.dates[i];
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     let isVegDay = params.vegDays?.includes(dayName) ?? false;
