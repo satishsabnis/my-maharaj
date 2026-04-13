@@ -51,10 +51,9 @@ export default async function handler(req, res) {
   // NOTE: profiles table uses 'id' as the primary key, not 'user_id'
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('id, family_name, city, language')
+    .select('id, family_name, language')
     .in('id', userIds);
 
-  console.log('[PROFILES QUERY]', JSON.stringify(profiles), profilesErr?.message, 'userIds:', JSON.stringify(userIds));
   if (profilesErr) {
     // Log but do not hard-fail — families should still show even without profile names
     console.error('[cook-families] profiles query error:', profilesErr.message);
@@ -143,7 +142,7 @@ export default async function handler(req, res) {
       id:          link.id,
       familyUserId: link.family_user_id,
       familyName,
-      location:    profile.city || '',
+      location:    '',
       visitTime:   link.visit_time || '',
       visitTimes:  link.visit_times || {},
       days:        link.days || [],
@@ -165,7 +164,7 @@ export default async function handler(req, res) {
     const detail = {
       id:          link.id,
       familyName:  profile.full_name || 'Your Family',
-      location:    profile.city || '',
+      location:    '',
       language:    profile.language || 'hi-IN',
       memberCount: 0,
       meals: meals || {
