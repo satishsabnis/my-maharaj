@@ -1196,23 +1196,29 @@ export default function DietaryProfileScreen() {
   }, [cookForm, cookEditId, userId, loadCooks]);
 
   const removeCook = useCallback((cookId: string) => {
-    Alert.alert('Remove Cook', 'Remove this cook from your family?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => {
-        try {
-          const response = await fetch('/api/cook-save', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: cookId, family_user_id: userId }),
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Remove failed');
-          if (userId) await loadCooks(userId);
-        } catch (e: any) {
-          Alert.alert('Remove failed', e.message);
-        }
-      }},
-    ]);
+    const doRemove = async () => {
+      try {
+        const response = await fetch('/api/cook-save', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: cookId, family_user_id: userId }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Remove failed');
+        if (userId) await loadCooks(userId);
+      } catch (e: any) {
+        Alert.alert('Remove failed', e.message);
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm('Remove this cook from your family?')) void doRemove();
+    } else {
+      Alert.alert('Remove Cook', 'Remove this cook from your family?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: doRemove },
+      ]);
+    }
   }, [userId, loadCooks]);
 
   // ==========================================================================
