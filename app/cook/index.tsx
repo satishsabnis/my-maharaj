@@ -1,6 +1,6 @@
 /**
- * Cook Login Screen — /cook
- * Phone + PIN login for kitchen cooks.
+ * Cook Login / Register Screen — /cook
+ * Phone + PIN auth for kitchen cooks.
  * Session stored in window.localStorage (web-only PWA).
  */
 import React, { useState } from 'react';
@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -38,27 +39,43 @@ const COUNTRY_CODES = [
   { code: '+1',   label: 'USA',          flag: '🇺🇸' },
 ];
 
+function storeSession(cook: { phone: string; name: string; language?: string }, fullPhone: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.localStorage.setItem('cook_phone', cook.phone || fullPhone);
+    window.localStorage.setItem('cook_name',  cook.name  || '');
+    window.localStorage.setItem('cook_lang',  cook.language || 'hi-IN');
+  }
+}
+
 export default function CookLoginScreen() {
+  const [mode,         setMode]         = useState<'login' | 'register'>('login');
   const [countryCode,  setCountryCode]  = useState('+971');
   const [localNumber,  setLocalNumber]  = useState('');
+  const [name,         setName]         = useState('');
   const [pin,          setPin]          = useState('');
+  const [confirmPin,   setConfirmPin]   = useState('');
   const [ccPickerOpen, setCcPickerOpen] = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
 
-  const fullPhone  = `${countryCode}${localNumber.replace(/^0/, '').replace(/\D/g, '')}`;
+  const fullPhone   = `${countryCode}${localNumber.replace(/^0/, '').replace(/\D/g, '')}`;
   const currentFlag = COUNTRY_CODES.find(c => c.code === countryCode)?.flag || '🇦🇪';
 
+  function switchMode(next: 'login' | 'register') {
+    setMode(next);
+    setLocalNumber('');
+    setName('');
+    setPin('');
+    setConfirmPin('');
+    setError('');
+  }
+
   async function handleLogin() {
-    const trimmedPhone = localNumber.replace(/\D/g, '');
-    if (!trimmedPhone || trimmedPhone.length < 7) {
-      setError('Please enter a valid local phone number.');
-      return;
+    if (!localNumber.replace(/\D/g, '') || localNumber.replace(/\D/g, '').length < 7) {
+      setError('Please enter a valid local phone number.'); return;
     }
-    const trimmedPin = pin.trim();
-    if (!trimmedPin || trimmedPin.length < 4) {
-      setError('Please enter your 4-digit PIN.');
-      return;
+    if (!pin || pin.length < 4) {
+      setError('Please enter your 4-digit PIN.'); return;
     }
     setError('');
     setLoading(true);
@@ -66,18 +83,46 @@ export default function CookLoginScreen() {
       const res = await fetch('/api/cook-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify_pin', phone: fullPhone, pin: trimmedPin }),
+        body: JSON.stringify({ action: 'verify_pin', phone: fullPhone, pin }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.localStorage.setItem('cook_phone', data.cook?.phone || fullPhone);
-        window.localStorage.setItem('cook_name',  data.cook?.name  || '');
-        window.localStorage.setItem('cook_lang',  data.cook?.language || 'hi-IN');
-      }
+      storeSession(data.cook, fullPhone);
       router.replace('/cook/home' as never);
     } catch (e: any) {
       setError(e.message || 'Login failed. Please check your phone and PIN.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegister() {
+    if (!name.trim()) {
+      setError('Please enter your name.'); return;
+    }
+    if (!localNumber.replace(/\D/g, '') || localNumber.replace(/\D/g, '').length < 7) {
+      setError('Please enter a valid local phone number.'); return;
+    }
+    if (!pin || pin.length < 4) {
+      setError('PIN must be 4 digits.'); return;
+    }
+    if (pin !== confirmPin) {
+      setError('PINs do not match.'); return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/cook-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register', phone: fullPhone, name: name.trim(), pin, confirmPin }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Registration failed');
+      storeSession(data.cook, fullPhone);
+      router.replace('/cook/home' as never);
+    } catch (e: any) {
+      setError(e.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -95,7 +140,11 @@ export default function CookLoginScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={s.container}>
+          <ScrollView
+            contentContainerStyle={s.container}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={s.logoWrap}>
               <Logo size="large" />
             </View>
@@ -104,9 +153,25 @@ export default function CookLoginScreen() {
             <Text style={s.subtitle}>आपके परिवारों का आज का मेनू</Text>
 
             <View style={s.card}>
-              <Text style={s.label}>Mobile Number</Text>
+              <Text style={s.cardTitle}>{mode === 'login' ? 'Login' : 'Register'}</Text>
 
-              {/* Two-part phone input */}
+              {/* Name — register only */}
+              {mode === 'register' && (
+                <>
+                  <Text style={s.label}>Your Name</Text>
+                  <TextInput
+                    style={s.input}
+                    placeholder="e.g. Sunita Devi"
+                    placeholderTextColor={MUTED}
+                    value={name}
+                    onChangeText={t => { setName(t); setError(''); }}
+                    returnKeyType="next"
+                  />
+                </>
+              )}
+
+              {/* Phone */}
+              <Text style={s.label}>Mobile Number</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 <TouchableOpacity
                   style={s.ccBtn}
@@ -127,7 +192,8 @@ export default function CookLoginScreen() {
                 />
               </View>
 
-              <Text style={s.label}>PIN</Text>
+              {/* PIN */}
+              <Text style={s.label}>{mode === 'register' ? 'Create PIN' : 'PIN'}</Text>
               <TextInput
                 style={s.input}
                 placeholder="4-digit PIN"
@@ -137,21 +203,50 @@ export default function CookLoginScreen() {
                 value={pin}
                 onChangeText={t => { setPin(t.replace(/\D/g, '')); setError(''); }}
                 maxLength={4}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
+                returnKeyType={mode === 'register' ? 'next' : 'done'}
+                onSubmitEditing={mode === 'login' ? handleLogin : undefined}
               />
+
+              {/* Confirm PIN — register only */}
+              {mode === 'register' && (
+                <>
+                  <Text style={s.label}>Confirm PIN</Text>
+                  <TextInput
+                    style={s.input}
+                    placeholder="Re-enter PIN"
+                    placeholderTextColor={MUTED}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                    value={confirmPin}
+                    onChangeText={t => { setConfirmPin(t.replace(/\D/g, '')); setError(''); }}
+                    maxLength={4}
+                    returnKeyType="done"
+                    onSubmitEditing={handleRegister}
+                  />
+                </>
+              )}
 
               {error ? <Text style={s.error}>{error}</Text> : null}
 
-              <TouchableOpacity style={s.btnGold} onPress={handleLogin} disabled={loading}>
+              <TouchableOpacity
+                style={s.btnGold}
+                onPress={mode === 'login' ? handleLogin : handleRegister}
+                disabled={loading}
+              >
                 {loading
                   ? <ActivityIndicator color={NAVY} />
-                  : <Text style={s.btnGoldTxt}>Login / लॉगिन</Text>}
+                  : <Text style={s.btnGoldTxt}>{mode === 'login' ? 'Login / लॉगिन' : 'Register / रजिस्टर'}</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={s.switchBtn} onPress={() => switchMode(mode === 'login' ? 'register' : 'login')}>
+                <Text style={s.switchTxt}>
+                  {mode === 'login' ? 'First time? Register here' : 'Already registered? Login'}
+                </Text>
               </TouchableOpacity>
             </View>
 
             <Text style={s.footer}>Powered by SarvamAI · Blue Flute Consulting LLC-FZ</Text>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 
@@ -185,10 +280,10 @@ export default function CookLoginScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  logoWrap:  { marginBottom: 16 },
-  title:     { fontSize: 26, fontWeight: '700', color: NAVY, letterSpacing: 0.5, textAlign: 'center' },
-  subtitle:  { fontSize: 15, color: NAVY, opacity: 0.75, marginTop: 6, marginBottom: 28, textAlign: 'center' },
+  container:  { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
+  logoWrap:   { marginBottom: 16 },
+  title:      { fontSize: 26, fontWeight: '700', color: NAVY, letterSpacing: 0.5, textAlign: 'center' },
+  subtitle:   { fontSize: 15, color: NAVY, opacity: 0.75, marginTop: 6, marginBottom: 28, textAlign: 'center' },
   card: {
     width: '100%', maxWidth: 400,
     backgroundColor: 'rgba(255,255,255,0.92)',
@@ -196,24 +291,27 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  label:   { fontSize: 13, color: MUTED, marginBottom: 8, fontWeight: '500' },
+  cardTitle:  { fontSize: 18, fontWeight: '700', color: NAVY, marginBottom: 20, textAlign: 'center' },
+  label:      { fontSize: 13, color: MUTED, marginBottom: 8, fontWeight: '500' },
   ccBtn: {
     borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.2)', borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 12,
     backgroundColor: '#FAFAFA',
     flexDirection: 'row', alignItems: 'center', gap: 4,
   },
-  ccTxt:  { fontSize: 13, color: NAVY, fontWeight: '600' },
+  ccTxt:     { fontSize: 13, color: NAVY, fontWeight: '600' },
   input: {
     borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.2)', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: NAVY,
     marginBottom: 16, backgroundColor: '#FAFAFA',
   },
-  error:      { fontSize: 13, color: '#DC2626', marginBottom: 12 },
+  error:     { fontSize: 13, color: '#DC2626', marginBottom: 12 },
   btnGold: {
     backgroundColor: GOLD, borderRadius: 10, paddingVertical: 14,
     alignItems: 'center', marginTop: 4,
   },
   btnGoldTxt: { fontSize: 15, fontWeight: '700', color: NAVY },
-  footer:     { position: 'absolute', bottom: 24, fontSize: 11, color: 'rgba(27,58,92,0.45)', textAlign: 'center' },
+  switchBtn:  { alignItems: 'center', marginTop: 16 },
+  switchTxt:  { fontSize: 13, color: MUTED, textDecorationLine: 'underline' },
+  footer:     { marginTop: 32, fontSize: 11, color: 'rgba(27,58,92,0.45)', textAlign: 'center' },
 });
