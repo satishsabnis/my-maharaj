@@ -6,8 +6,10 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   ImageBackground,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -24,17 +26,34 @@ const GOLD  = '#C9A227';
 const WHITE = '#FFFFFF';
 const MUTED = 'rgba(27,58,92,0.5)';
 
+const COUNTRY_CODES = [
+  { code: '+971', label: 'UAE',          flag: '🇦🇪' },
+  { code: '+966', label: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '+965', label: 'Kuwait',       flag: '🇰🇼' },
+  { code: '+973', label: 'Bahrain',      flag: '🇧🇭' },
+  { code: '+968', label: 'Oman',         flag: '🇴🇲' },
+  { code: '+974', label: 'Qatar',        flag: '🇶🇦' },
+  { code: '+91',  label: 'India',        flag: '🇮🇳' },
+  { code: '+44',  label: 'UK',           flag: '🇬🇧' },
+  { code: '+1',   label: 'USA',          flag: '🇺🇸' },
+];
+
 export default function CookLoginScreen() {
-  const [phone,   setPhone]   = useState('');
-  const [otp,     setOtp]     = useState('');
-  const [stage,   setStage]   = useState<'phone' | 'otp'>('phone');
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [countryCode,   setCountryCode]   = useState('+971');
+  const [localNumber,   setLocalNumber]   = useState('');
+  const [ccPickerOpen,  setCcPickerOpen]  = useState(false);
+  const [otp,           setOtp]           = useState('');
+  const [stage,         setStage]         = useState<'phone' | 'otp'>('phone');
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
+
+  const fullPhone = `${countryCode}${localNumber.replace(/^0/, '').replace(/\D/g, '')}`;
+  const currentFlag = COUNTRY_CODES.find(c => c.code === countryCode)?.flag || '🇦🇪';
 
   async function handleSendOtp() {
-    const trimmed = phone.trim().replace(/\s/g, '');
-    if (!trimmed || trimmed.length < 10) {
-      setError('Please enter a valid 10-digit phone number.');
+    const trimmed = localNumber.replace(/\D/g, '');
+    if (!trimmed || trimmed.length < 7) {
+      setError('Please enter a valid local phone number.');
       return;
     }
     setError('');
@@ -43,7 +62,7 @@ export default function CookLoginScreen() {
       const res = await fetch('/api/cook-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send_otp', phone: trimmed }),
+        body: JSON.stringify({ action: 'send_otp', phone: fullPhone }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
@@ -67,13 +86,12 @@ export default function CookLoginScreen() {
       const res = await fetch('/api/cook-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify_otp', phone: phone.trim(), token: trimmed }),
+        body: JSON.stringify({ action: 'verify_otp', phone: fullPhone, token: trimmed }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Invalid OTP');
-      // Persist cook session
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.localStorage.setItem('cook_phone', data.cook?.phone || phone.trim());
+        window.localStorage.setItem('cook_phone', data.cook?.phone || fullPhone);
         window.localStorage.setItem('cook_name',  data.cook?.name  || '');
         window.localStorage.setItem('cook_lang',  data.cook?.language || 'hi-IN');
       }
@@ -98,31 +116,40 @@ export default function CookLoginScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={s.container}>
-            {/* Logo */}
             <View style={s.logoWrap}>
               <Logo size="large" />
             </View>
 
-            {/* Titles */}
             <Text style={s.title}>Maharaj Cook</Text>
             <Text style={s.subtitle}>आपके परिवारों का आज का मेनू</Text>
 
-            {/* Card */}
             <View style={s.card}>
               {stage === 'phone' ? (
                 <>
                   <Text style={s.label}>Mobile Number</Text>
-                  <TextInput
-                    style={s.input}
-                    placeholder="10-digit phone"
-                    placeholderTextColor={MUTED}
-                    keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={t => { setPhone(t); setError(''); }}
-                    maxLength={10}
-                    returnKeyType="done"
-                    onSubmitEditing={handleSendOtp}
-                  />
+
+                  {/* Two-part phone input */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                    <TouchableOpacity
+                      style={s.ccBtn}
+                      onPress={() => setCcPickerOpen(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{ fontSize: 18 }}>{currentFlag}</Text>
+                      <Text style={s.ccTxt}>{countryCode}</Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      style={[s.input, { flex: 1, marginBottom: 0 }]}
+                      placeholder="9XXXXXXXX"
+                      placeholderTextColor={MUTED}
+                      keyboardType="numeric"
+                      value={localNumber}
+                      onChangeText={t => { setLocalNumber(t.replace(/\D/g, '')); setError(''); }}
+                      returnKeyType="done"
+                      onSubmitEditing={handleSendOtp}
+                    />
+                  </View>
+
                   {error ? <Text style={s.error}>{error}</Text> : null}
                   <TouchableOpacity style={s.btnGold} onPress={handleSendOtp} disabled={loading}>
                     {loading
@@ -132,7 +159,7 @@ export default function CookLoginScreen() {
                 </>
               ) : (
                 <>
-                  <Text style={s.label}>OTP — +91 {phone}</Text>
+                  <Text style={s.label}>OTP — {fullPhone}</Text>
                   <TextInput
                     style={s.input}
                     placeholder="Enter OTP"
@@ -158,11 +185,36 @@ export default function CookLoginScreen() {
               )}
             </View>
 
-            {/* Footer */}
             <Text style={s.footer}>Powered by SarvamAI · Blue Flute Consulting LLC-FZ</Text>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Country code picker modal */}
+      <Modal visible={ccPickerOpen} transparent animationType="fade" onRequestClose={() => setCcPickerOpen(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' }}
+          onPress={() => setCcPickerOpen(false)}
+          activeOpacity={1}
+        >
+          <View style={{ backgroundColor: WHITE, borderRadius: 14, padding: 8, width: 270 }}>
+            <FlatList
+              data={COUNTRY_CODES}
+              keyExtractor={item => item.code}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => { setCountryCode(item.code); setCcPickerOpen(false); }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 16, borderRadius: 8 }}
+                >
+                  <Text style={{ fontSize: 20 }}>{item.flag}</Text>
+                  <Text style={{ fontSize: 14, color: NAVY, fontWeight: '700', width: 40 }}>{item.code}</Text>
+                  <Text style={{ fontSize: 13, color: '#5A7A8A' }}>{item.label}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -179,7 +231,14 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  label:      { fontSize: 13, color: MUTED, marginBottom: 8, fontWeight: '500' },
+  label:   { fontSize: 13, color: MUTED, marginBottom: 8, fontWeight: '500' },
+  ccBtn: {
+    borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.2)', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 12,
+    backgroundColor: '#FAFAFA',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+  },
+  ccTxt:  { fontSize: 13, color: NAVY, fontWeight: '600' },
   input: {
     borderWidth: 1.5, borderColor: 'rgba(27,58,92,0.2)', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: NAVY,

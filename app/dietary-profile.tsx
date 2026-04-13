@@ -759,7 +759,7 @@ export default function DietaryProfileScreen() {
   const [cooks, setCooks] = useState<{ id: string; cook_phone: string; cook_name: string; visit_time: string; visit_times: Record<string, string>; days: string[] }[]>([]);
   const [cookModalOpen, setCookModalOpen] = useState(false);
   const [cookEditId, setCookEditId] = useState<string | null>(null);
-  const [cookForm, setCookForm] = useState<{ phone: string; name: string; visitTimes: Record<string, string>; days: string[] }>({ phone: '', name: '', visitTimes: {}, days: [] });
+  const [cookForm, setCookForm] = useState<{ phone: string; name: string; visitTimes: Record<string, string>; days: string[]; countryCode: string; localNumber: string }>({ phone: '', name: '', visitTimes: {}, days: [], countryCode: '+971', localNumber: '' });
   const [cookSaving, setCookSaving] = useState(false);
   const [cookFormError, setCookFormError] = useState('');
 
@@ -1151,24 +1151,25 @@ export default function DietaryProfileScreen() {
 
   const openAddCook = () => {
     setCookEditId(null);
-    setCookForm({ phone: '', name: '', visitTimes: {}, days: [] });
+    setCookForm({ phone: '', name: '', visitTimes: {}, days: [], countryCode: '+971', localNumber: '' });
     setCookFormError('');
     setCookModalOpen(true);
   };
 
   const openEditCook = (cook: typeof cooks[0]) => {
     setCookEditId(cook.id);
-    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, visitTimes: cook.visit_times || {}, days: cook.days });
+    const cc = ['+971','+966','+965','+973','+968','+974','+91','+44','+1'].find(c => cook.cook_phone.startsWith(c)) || '+971';
+    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, visitTimes: cook.visit_times || {}, days: cook.days, countryCode: cc, localNumber: cook.cook_phone.slice(cc.length) });
     setCookFormError('');
     setCookModalOpen(true);
   };
 
   const saveCook = useCallback(async () => {
-    if (!cookForm.phone.trim()) { setCookFormError('Phone number is required'); return; }
+    if (!cookForm.localNumber.trim()) { setCookFormError('Phone number is required'); return; }
     if (!userId) { setCookFormError('No active session'); return; }
     setCookSaving(true);
     setCookFormError('');
-    const normalizedPhone = cookForm.phone.trim().startsWith('+') ? cookForm.phone.trim() : `+971${cookForm.phone.trim().replace(/\D/g, '')}`;
+    const normalizedPhone = `${cookForm.countryCode}${cookForm.localNumber.replace(/^0/, '').replace(/\D/g, '')}`;
     try {
       const response = await fetch('/api/cook-save', {
         method: 'POST',
@@ -2063,10 +2064,22 @@ function NotificationRow({ label, subtitle, value, onToggle }: NotificationRowPr
 
 const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
+const COUNTRY_CODES = [
+  { code: '+971', label: 'UAE',          flag: '🇦🇪' },
+  { code: '+966', label: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '+965', label: 'Kuwait',       flag: '🇰🇼' },
+  { code: '+973', label: 'Bahrain',      flag: '🇧🇭' },
+  { code: '+968', label: 'Oman',         flag: '🇴🇲' },
+  { code: '+974', label: 'Qatar',        flag: '🇶🇦' },
+  { code: '+91',  label: 'India',        flag: '🇮🇳' },
+  { code: '+44',  label: 'UK',           flag: '🇬🇧' },
+  { code: '+1',   label: 'USA',          flag: '🇺🇸' },
+];
+
 interface CookModalProps {
   visible: boolean;
   editId: string | null;
-  form: { phone: string; name: string; visitTimes: Record<string, string>; days: string[] };
+  form: { phone: string; name: string; visitTimes: Record<string, string>; days: string[]; countryCode: string; localNumber: string };
   onFormChange: (updates: Partial<CookModalProps['form']>) => void;
   onSave: () => void;
   onClose: () => void;
@@ -2075,17 +2088,18 @@ interface CookModalProps {
 }
 
 function CookModal({ visible, editId, form, onFormChange, onSave, onClose, saving, error }: CookModalProps) {
+  const [ccPickerOpen, setCcPickerOpen] = React.useState(false);
+
   function toggleDay(day: string) {
     const isSelected = form.days.includes(day);
     const nextDays = isSelected ? form.days.filter(d => d !== day) : [...form.days, day];
-    // Remove time entry when day is deselected
     const nextTimes = { ...form.visitTimes };
     if (isSelected) delete nextTimes[day];
     onFormChange({ days: nextDays, visitTimes: nextTimes });
   }
-  function setDayTime(day: string, time: string) {
-    onFormChange({ visitTimes: { ...form.visitTimes, [day]: time } });
-  }
+
+  const currentFlag = COUNTRY_CODES.find(c => c.code === form.countryCode)?.flag || '🇦🇪';
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -2095,16 +2109,56 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
             <TouchableOpacity onPress={onClose}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+
+            {/* Phone: country code + local number */}
             <Text style={styles.fieldLabel}>Cook Phone Number *</Text>
-            <TextInput
-              style={[styles.input, editId ? { backgroundColor: '#F3F4F6' } : {}]}
-              value={form.phone}
-              onChangeText={t => onFormChange({ phone: t })}
-              placeholder="+971XXXXXXXXX"
-              placeholderTextColor={colors.textHint}
-              keyboardType="phone-pad"
-              editable={!editId}
-            />
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              <TouchableOpacity
+                onPress={() => { if (!editId) setCcPickerOpen(true); }}
+                style={{
+                  borderWidth: 1.5, borderColor: editId ? '#E5E7EB' : 'rgba(27,58,92,0.2)',
+                  borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12,
+                  backgroundColor: editId ? '#F3F4F6' : '#FAFAFA',
+                  flexDirection: 'row', alignItems: 'center', gap: 4,
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>{currentFlag}</Text>
+                <Text style={{ fontSize: 13, color: colors.navy, fontWeight: '600' }}>{form.countryCode}</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }, editId ? { backgroundColor: '#F3F4F6' } : {}]}
+                value={form.localNumber}
+                onChangeText={t => onFormChange({ localNumber: t.replace(/\D/g, '') })}
+                placeholder="9XXXXXXXX"
+                placeholderTextColor={colors.textHint}
+                keyboardType="numeric"
+                editable={!editId}
+              />
+            </View>
+
+            {/* Country code picker modal */}
+            <Modal visible={ccPickerOpen} transparent animationType="fade" onRequestClose={() => setCcPickerOpen(false)}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' }}
+                onPress={() => setCcPickerOpen(false)}
+                activeOpacity={1}
+              >
+                <View style={{ backgroundColor: colors.white, borderRadius: 14, padding: 8, width: 270 }}>
+                  {COUNTRY_CODES.map(c => (
+                    <TouchableOpacity
+                      key={c.code}
+                      onPress={() => { onFormChange({ countryCode: c.code }); setCcPickerOpen(false); }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 16, borderRadius: 8 }}
+                    >
+                      <Text style={{ fontSize: 20 }}>{c.flag}</Text>
+                      <Text style={{ fontSize: 14, color: colors.navy, fontWeight: '700', width: 40 }}>{c.code}</Text>
+                      <Text style={{ fontSize: 13, color: colors.textSec }}>{c.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
             <Text style={styles.fieldLabel}>Cook Name</Text>
             <TextInput
               style={styles.input}
@@ -2113,6 +2167,7 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
               placeholder="e.g. Sunita"
               placeholderTextColor={colors.textHint}
             />
+
             <Text style={styles.fieldLabel}>Days of Visit (leave empty = every day)</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
               {WEEK_DAYS.map(day => {
@@ -2134,6 +2189,7 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
                 );
               })}
             </View>
+
             {form.days.length > 0 && (
               <View style={{ marginBottom: 16 }}>
                 <Text style={[styles.fieldLabel, { marginBottom: 8 }]}>Visit Time per Day</Text>
@@ -2142,16 +2198,24 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
                     <Text style={{ width: 90, fontSize: 13, color: colors.navy }}>{day}</Text>
                     <TextInput
                       value={form.visitTimes?.[day] || ''}
-                      onChangeText={t => setDayTime(day, t)}
-                      placeholder="HH:MM"
+                      onChangeText={(t) => {
+                        const digits = t.replace(/\D/g, '').slice(0, 4);
+                        const formatted = digits.length >= 3
+                          ? `${digits.slice(0, 2)}:${digits.slice(2)}`
+                          : digits;
+                        onFormChange({ visitTimes: { ...form.visitTimes, [day]: formatted } });
+                      }}
+                      placeholder="19:00"
                       placeholderTextColor={colors.textHint}
-                      keyboardType="numbers-and-punctuation"
+                      keyboardType="numeric"
+                      maxLength={5}
                       style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, padding: 6, width: 70, fontSize: 13, color: colors.navy }}
                     />
                   </View>
                 ))}
               </View>
             )}
+
             {error ? <Text style={{ color: '#DC2626', fontSize: 13, marginBottom: 12 }}>{error}</Text> : null}
             <Button title={editId ? 'Update Cook' : 'Save Cook'} onPress={onSave} loading={saving} />
             <TouchableOpacity style={{ alignItems: 'center', padding: 12, marginBottom: 8 }} onPress={onClose}>
