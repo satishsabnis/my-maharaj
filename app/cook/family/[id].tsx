@@ -162,7 +162,7 @@ export default function FamilyDetailScreen() {
     <View style={{ flex: 1 }}>
       <ImageBackground
         source={require('../../../assets/background.png')}
-        style={StyleSheet.absoluteFill}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
         resizeMode="cover"
       />
       <SafeAreaView style={{ flex: 1 }}>
