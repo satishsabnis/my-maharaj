@@ -104,14 +104,14 @@ export default function MenuHistoryScreen() {
         try {
           const { data, error } = await supabase
             .from('meal_plans')
-            .select('id, period_start, period_end, date_range, plan_json, created_at')
+            .select('id, period_start, period_end, date_range, plan_json, generated_at')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
+            .order('generated_at', { ascending: false })
             .limit(20);
           if (!error && data && data.length > 0) {
             const mapped: MenuPlan[] = data.map((row: any) => ({
               id: row.id,
-              createdAt: row.created_at,
+              createdAt: row.generated_at,
               dateRange: row.date_range || `${row.period_start} — ${row.period_end}`,
               days: row.plan_json?.days ?? [],
             }));
