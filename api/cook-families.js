@@ -27,9 +27,11 @@ export default async function handler(req, res) {
   // Fetch cook_families rows for this cook
   const { data: links, error: linksErr } = await supabase
     .from('cook_families')
-    .select('id, family_user_id, visit_time, days')
+    .select('id, family_user_id, visit_time, visit_times, days')
     .eq('cook_phone', normalizedPhone)
     .order('visit_time', { ascending: true });
+
+  console.log('[cook-families] phone received:', phone, '| normalizedPhone:', normalizedPhone, '| rows found:', links?.length ?? 0, '| linksErr:', linksErr?.message ?? null);
 
   if (linksErr) {
     console.error('[cook-families] cook_families query error:', linksErr.message);
@@ -37,7 +39,6 @@ export default async function handler(req, res) {
     return;
   }
   if (!links || links.length === 0) {
-    // Return single family detail if familyId provided with no families (empty state)
     if (familyId) {
       res.status(404).json({ error: 'Family not found' });
     } else {
@@ -49,25 +50,29 @@ export default async function handler(req, res) {
   const userIds = links.map(l => l.family_user_id);
 
   // Fetch profiles for all linked families
+  // NOTE: profiles table uses 'id' as the primary key, not 'user_id'
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('user_id, first_name, last_name, city, language, family_size')
-    .in('user_id', userIds);
+    .select('id, first_name, last_name, city, language, family_size')
+    .in('id', userIds);
 
   if (profilesErr) {
+    // Log but do not hard-fail — families should still show even without profile names
     console.error('[cook-families] profiles query error:', profilesErr.message);
-    res.status(500).json({ error: profilesErr.message });
-    return;
   }
 
   // Fetch today's confirmed meal plans for all linked families
   const today = new Date().toISOString().split('T')[0];
-  const { data: plans } = await supabase
+  const { data: plans, error: plansErr } = await supabase
     .from('meal_plans')
     .select('user_id, plan_json, period_start, period_end')
     .in('user_id', userIds)
     .lte('period_start', today)
     .gte('period_end', today);
+
+  if (plansErr) {
+    console.error('[cook-families] meal_plans query error:', plansErr.message);
+  }
 
   // Build a map: user_id → today's meals
   function extractTodayMeals(plan) {
@@ -121,9 +126,10 @@ export default async function handler(req, res) {
     planMap[plan.user_id] = extractTodayMeals(plan);
   }
 
+  // profileMap keyed by profiles.id (not user_id — that column does not exist)
   const profileMap = {};
   for (const p of (profiles ?? [])) {
-    profileMap[p.user_id] = p;
+    profileMap[p.id] = p;
   }
 
   const families = [];
@@ -140,6 +146,7 @@ export default async function handler(req, res) {
       familyName:  [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Family',
       location:    profile.city || '',
       visitTime:   link.visit_time || '',
+      visitTimes:  link.visit_times || {},
       days:        link.days || [],
       memberCount: profile.family_size || 0,
       language:    profile.language || 'hi-IN',
