@@ -1170,25 +1170,21 @@ export default function DietaryProfileScreen() {
     setCookFormError('');
     const normalizedPhone = cookForm.phone.trim().startsWith('+') ? cookForm.phone.trim() : `+971${cookForm.phone.trim().replace(/\D/g, '')}`;
     try {
-      // Upsert cook record
-      const { error: upsertError } = await supabase.from('cooks').upsert(
-        { phone: normalizedPhone, name: cookForm.name.trim() || normalizedPhone },
-        { onConflict: 'phone' }
-      );
-      if (upsertError) throw new Error(upsertError.message);
-      const firstVisitTime = Object.values(cookForm.visitTimes || {})[0] || '19:00';
-      if (cookEditId) {
-        await supabase.from('cook_families').update({ visit_time: firstVisitTime, visit_times: cookForm.visitTimes || {}, days: cookForm.days }).eq('id', cookEditId);
-      } else {
-        const { error: insertError } = await supabase.from('cook_families').insert({
-          cook_phone: normalizedPhone,
+      const response = await fetch('https://my-maharaj.vercel.app/api/cook-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          name: cookForm.name.trim() || normalizedPhone,
           family_user_id: userId,
-          visit_time: firstVisitTime,
+          visit_time: Object.values(cookForm.visitTimes || {})[0] || '19:00',
           visit_times: cookForm.visitTimes || {},
           days: cookForm.days,
-        });
-        if (insertError) throw new Error(insertError.message);
-      }
+          edit_id: cookEditId || null,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Save failed');
       await loadCooks(userId);
       setCookModalOpen(false);
     } catch (e: any) {
