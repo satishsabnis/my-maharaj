@@ -834,7 +834,7 @@ export default function DietaryProfileScreen() {
       // Account
       if (profile.subscription_tier) setField('subscriptionTier', profile.subscription_tier);
       if (profile.subscription_expires_at) setField('subscriptionExpiry', formatDate(profile.subscription_expires_at));
-      if (profile.full_name) setField('fullName', profile.full_name);
+      if (profile.family_name) setField('fullName', profile.family_name);
       if (profile.phone_number) setField('phoneNumber', profile.phone_number);
       
       // Community
@@ -1237,7 +1237,7 @@ export default function DietaryProfileScreen() {
     try {
       const payload = {
         id: userId,
-        full_name: state.fullName.trim(),
+        family_name: state.fullName.trim(),
         phone_number: state.phoneNumber.trim(),
         community: state.community,
         community_other: state.communityOther,
