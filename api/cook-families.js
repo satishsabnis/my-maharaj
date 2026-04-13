@@ -1,0 +1,166 @@
+import { createClient } from '@supabase/supabase-js';
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+  const { phone, familyId } = req.query;
+  if (!phone) {
+    res.status(400).json({ error: 'Missing required query param: phone' });
+    return;
+  }
+
+  const normalizedPhone = phone.startsWith('+') ? phone : `+91${phone.replace(/\D/g, '')}`;
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+  );
+
+  // Fetch cook_families rows for this cook
+  const { data: links, error: linksErr } = await supabase
+    .from('cook_families')
+    .select('id, family_user_id, visit_time')
+    .eq('cook_phone', normalizedPhone)
+    .order('visit_time', { ascending: true });
+
+  if (linksErr) {
+    console.error('[cook-families] cook_families query error:', linksErr.message);
+    res.status(500).json({ error: linksErr.message });
+    return;
+  }
+  if (!links || links.length === 0) {
+    // Return single family detail if familyId provided with no families (empty state)
+    if (familyId) {
+      res.status(404).json({ error: 'Family not found' });
+    } else {
+      res.status(200).json({ families: [] });
+    }
+    return;
+  }
+
+  const userIds = links.map(l => l.family_user_id);
+
+  // Fetch profiles for all linked families
+  const { data: profiles, error: profilesErr } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, last_name, city, language, family_size')
+    .in('user_id', userIds);
+
+  if (profilesErr) {
+    console.error('[cook-families] profiles query error:', profilesErr.message);
+    res.status(500).json({ error: profilesErr.message });
+    return;
+  }
+
+  // Fetch today's confirmed meal plans for all linked families
+  const today = new Date().toISOString().split('T')[0];
+  const { data: plans } = await supabase
+    .from('meal_plans')
+    .select('user_id, plan_json, period_start, period_end')
+    .in('user_id', userIds)
+    .lte('period_start', today)
+    .gte('period_end', today);
+
+  // Build a map: user_id → today's meals
+  function extractTodayMeals(plan) {
+    const days = plan?.plan_json?.days ?? [];
+    const todayDay = days.find(d => d.date === today) || days[0];
+    if (!todayDay) return null;
+
+    function getBreakfast(d) {
+      return d?.anatomy?.breakfast?.dishName || d?.dishes?.breakfast || d?.breakfast?.name || d?.breakfast?.options?.[0]?.name || '';
+    }
+    function getLunchMain(d) {
+      const curry = d?.anatomy?.lunch?.curry;
+      if (Array.isArray(curry)) return curry[0]?.dishName || '';
+      if (curry?.dishName) return curry.dishName;
+      return d?.dishes?.lunch_curry_1 || d?.lunch?.name || d?.lunch?.options?.[0]?.name || '';
+    }
+    function getLunchSupporting(d) {
+      const items = [];
+      if (d?.anatomy?.lunch?.veg?.dishName)   items.push(d.anatomy.lunch.veg.dishName);
+      if (d?.anatomy?.lunch?.bread?.dishName)  items.push(d.anatomy.lunch.bread.dishName);
+      if (d?.anatomy?.lunch?.rice?.dishName)   items.push(d.anatomy.lunch.rice.dishName);
+      if (d?.anatomy?.lunch?.raita?.dishName)  items.push(d.anatomy.lunch.raita.dishName);
+      if (items.length === 0 && d?.dishes?.lunch_veg_1) items.push(d.dishes.lunch_veg_1);
+      return items.filter(Boolean);
+    }
+    function getDinnerMain(d) {
+      const curry = d?.anatomy?.dinner?.curry;
+      if (Array.isArray(curry)) return curry[0]?.dishName || '';
+      if (curry?.dishName) return curry.dishName;
+      return d?.dishes?.dinner_curry_1 || d?.dinner?.name || d?.dinner?.options?.[0]?.name || '';
+    }
+    function getDinnerSupporting(d) {
+      const items = [];
+      if (d?.anatomy?.dinner?.veg?.dishName)   items.push(d.anatomy.dinner.veg.dishName);
+      if (d?.anatomy?.dinner?.bread?.dishName)  items.push(d.anatomy.dinner.bread.dishName);
+      if (d?.anatomy?.dinner?.rice?.dishName)   items.push(d.anatomy.dinner.rice.dishName);
+      if (d?.anatomy?.dinner?.raita?.dishName)  items.push(d.anatomy.dinner.raita.dishName);
+      if (items.length === 0 && d?.dishes?.dinner_veg_1) items.push(d.dishes.dinner_veg_1);
+      return items.filter(Boolean);
+    }
+
+    return {
+      breakfast: { label: 'Breakfast', mainDish: getBreakfast(todayDay),   supporting: [] },
+      lunch:     { label: 'Lunch',     mainDish: getLunchMain(todayDay),    supporting: getLunchSupporting(todayDay) },
+      dinner:    { label: 'Dinner',    mainDish: getDinnerMain(todayDay),   supporting: getDinnerSupporting(todayDay) },
+    };
+  }
+
+  const planMap = {};
+  for (const plan of (plans ?? [])) {
+    planMap[plan.user_id] = extractTodayMeals(plan);
+  }
+
+  const profileMap = {};
+  for (const p of (profiles ?? [])) {
+    profileMap[p.user_id] = p;
+  }
+
+  const families = links.map(link => {
+    const profile = profileMap[link.family_user_id] || {};
+    const meals   = planMap[link.family_user_id];
+    return {
+      id:          link.id,
+      familyUserId: link.family_user_id,
+      familyName:  [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Family',
+      location:    profile.city || '',
+      visitTime:   link.visit_time || '',
+      memberCount: profile.family_size || 0,
+      language:    profile.language || 'hi-IN',
+      confirmed:   !!meals,
+      meals:       meals
+        ? { breakfast: meals.breakfast.mainDish, lunch: meals.lunch.mainDish, dinner: meals.dinner.mainDish }
+        : { breakfast: '', lunch: '', dinner: '' },
+    };
+  });
+
+  // If a specific familyId is requested, return detail format
+  if (familyId) {
+    const link = links.find(l => l.id === familyId);
+    if (!link) { res.status(404).json({ error: 'Family not found' }); return; }
+    const profile = profileMap[link.family_user_id] || {};
+    const meals   = planMap[link.family_user_id];
+    const detail = {
+      id:          link.id,
+      familyName:  [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Family',
+      location:    profile.city || '',
+      language:    profile.language || 'hi-IN',
+      memberCount: profile.family_size || 0,
+      meals: meals || {
+        breakfast: { label: 'Breakfast', mainDish: 'Not confirmed', supporting: [] },
+        lunch:     { label: 'Lunch',     mainDish: 'Not confirmed', supporting: [] },
+        dinner:    { label: 'Dinner',    mainDish: 'Not confirmed', supporting: [] },
+      },
+    };
+    res.status(200).json({ family: detail });
+    return;
+  }
+
+  res.status(200).json({ families });
+}

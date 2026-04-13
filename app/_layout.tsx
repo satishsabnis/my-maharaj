@@ -188,7 +188,7 @@ export default function Layout() {
     if (loading) return;
     const currentRoute = segments[0] as string | undefined;
     const isSplash = currentRoute === undefined || currentRoute === 'index';
-    const onAuthScreen = isSplash || currentRoute === 'login' || currentRoute === 'signup' || currentRoute === 'upgrade-splash';
+    const onAuthScreen = isSplash || currentRoute === 'login' || currentRoute === 'signup' || currentRoute === 'upgrade-splash' || currentRoute === 'cook';
     const onLangScreen = currentRoute === 'language-select' || currentRoute === 'disclaimer';
 
     // Let splash screen handle its own navigation
@@ -240,6 +240,7 @@ export default function Layout() {
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="family-recipes" />
+      <Stack.Screen name="cook" options={{ headerShown: false }} />
     </Stack>
     </LanguageProvider>
   );
