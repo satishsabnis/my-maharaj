@@ -86,10 +86,12 @@ export default function CookHomeScreen() {
   const load = useCallback(async () => {
     setError('');
     try {
+      console.log('[CookHome] fetching families for cook_phone:', cookPhone);
       const res = await fetch(`/api/cook-families?phone=${encodeURIComponent(cookPhone)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load families');
       const cards: FamilyCard[] = data.families || [];
+      console.log('[CookHome] families returned:', JSON.stringify(cards.map(c => ({ id: c.id, familyName: c.familyName, confirmed: c.confirmed }))));
       // Translate meals for each confirmed family
       const translated = await Promise.all(
         cards.map(async (f) => {
@@ -123,8 +125,8 @@ export default function CookHomeScreen() {
     return (
       <TouchableOpacity
         style={[s.card, { borderTopColor: borderClr, opacity }]}
-        onPress={() => item.confirmed && router.push(`/cook/family/${item.id}` as never)}
-        activeOpacity={item.confirmed ? 0.8 : 1}
+        onPress={() => router.push(`/cook/family/${item.id}` as never)}
+        activeOpacity={0.8}
       >
         {/* Visit time badge */}
         <View style={[s.timeBadge, { backgroundColor: isFirst ? GOLD : TEAL }]}>
@@ -205,7 +207,7 @@ export default function CookHomeScreen() {
             columnWrapperStyle={{ gap: 12 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={NAVY} />}
             ListEmptyComponent={
-              <Text style={{ textAlign: 'center', color: MUTED, marginTop: 48 }}>No families assigned yet.</Text>
+              <Text style={{ textAlign: 'center', color: MUTED, marginTop: 48 }}>No families scheduled for today.</Text>
             }
           />
         )}
