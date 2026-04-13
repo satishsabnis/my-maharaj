@@ -992,10 +992,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const user = await getSessionUser();
       if (!user || !selectedFrom || !selectedTo) return;
       const dateRange = `${selectedFrom.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+      const dates = confirmedPlan.map((d: any) => d.date).filter(Boolean).sort();
+      const periodStart = dates[0] ?? toYMD(selectedFrom);
+      const periodEnd   = dates[dates.length - 1] ?? toYMD(selectedTo);
       const { data, error } = await supabase.from('meal_plans').insert({
         user_id: user.id,
-        period_start: toYMD(selectedFrom),
-        period_end: toYMD(selectedTo),
+        period_start: periodStart,
+        period_end: periodEnd,
         date_range: dateRange,
         cuisine: 'Various',
         food_pref: foodPref ?? 'veg',
