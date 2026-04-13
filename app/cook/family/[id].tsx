@@ -113,19 +113,20 @@ export default function FamilyDetailScreen() {
       if (!res.ok || !data.audio) throw new Error(data.error || 'No audio returned');
 
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const audioSrc = `data:audio/wav;base64,${data.audio}`;
         if (audioRef.current) {
-          audioRef.current.onended = () => setPlaying(false);
-          audioRef.current.onerror = () => { setTtsError('Playback failed'); setPlaying(false); };
-          audioRef.current.src = audioSrc;
-          audioRef.current.play();
-        } else {
-          const audio = new Audio(audioSrc);
-          audioRef.current = audio;
-          audio.onended = () => setPlaying(false);
-          audio.onerror = () => { setTtsError('Playback failed'); setPlaying(false); };
-          audio.play();
+          audioRef.current.pause();
+          audioRef.current.src = '';
         }
+        const audioSrc = `data:audio/wav;base64,${data.audio}`;
+        const audio = new Audio(audioSrc);
+        audioRef.current = audio;
+        audio.onended = () => setPlaying(false);
+        audio.onerror = () => { setTtsError('Playback failed'); setPlaying(false); };
+        audio.play().catch((e: any) => {
+          console.error('Audio play error:', e);
+          setTtsError('Playback failed: ' + (e.message || 'unknown'));
+          setPlaying(false);
+        });
       } else {
         setPlaying(false);
       }
