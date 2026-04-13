@@ -1,6 +1,6 @@
 /**
  * Cook Login Screen — /cook
- * Phone + OTP login for kitchen cooks.
+ * Phone + PIN login for kitchen cooks.
  * Session stored in window.localStorage (web-only PWA).
  */
 import React, { useState } from 'react';
@@ -39,45 +39,25 @@ const COUNTRY_CODES = [
 ];
 
 export default function CookLoginScreen() {
-  const [countryCode,   setCountryCode]   = useState('+971');
-  const [localNumber,   setLocalNumber]   = useState('');
-  const [ccPickerOpen,  setCcPickerOpen]  = useState(false);
-  const [otp,           setOtp]           = useState('');
-  const [stage,         setStage]         = useState<'phone' | 'otp'>('phone');
-  const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState('');
+  const [countryCode,  setCountryCode]  = useState('+971');
+  const [localNumber,  setLocalNumber]  = useState('');
+  const [pin,          setPin]          = useState('');
+  const [ccPickerOpen, setCcPickerOpen] = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState('');
 
-  const fullPhone = `${countryCode}${localNumber.replace(/^0/, '').replace(/\D/g, '')}`;
+  const fullPhone  = `${countryCode}${localNumber.replace(/^0/, '').replace(/\D/g, '')}`;
   const currentFlag = COUNTRY_CODES.find(c => c.code === countryCode)?.flag || '🇦🇪';
 
-  async function handleSendOtp() {
-    const trimmed = localNumber.replace(/\D/g, '');
-    if (!trimmed || trimmed.length < 7) {
+  async function handleLogin() {
+    const trimmedPhone = localNumber.replace(/\D/g, '');
+    if (!trimmedPhone || trimmedPhone.length < 7) {
       setError('Please enter a valid local phone number.');
       return;
     }
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/cook-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send_otp', phone: fullPhone }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-      setStage('otp');
-    } catch (e: any) {
-      setError(e.message || 'Could not send OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    const trimmed = otp.trim();
-    if (!trimmed || trimmed.length < 4) {
-      setError('Please enter the OTP you received.');
+    const trimmedPin = pin.trim();
+    if (!trimmedPin || trimmedPin.length < 4) {
+      setError('Please enter your 4-digit PIN.');
       return;
     }
     setError('');
@@ -86,10 +66,10 @@ export default function CookLoginScreen() {
       const res = await fetch('/api/cook-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify_otp', phone: fullPhone, token: trimmed }),
+        body: JSON.stringify({ action: 'verify_pin', phone: fullPhone, pin: trimmedPin }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Invalid OTP');
+      if (!res.ok) throw new Error(data.error || 'Login failed');
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.localStorage.setItem('cook_phone', data.cook?.phone || fullPhone);
         window.localStorage.setItem('cook_name',  data.cook?.name  || '');
@@ -97,7 +77,7 @@ export default function CookLoginScreen() {
       }
       router.replace('/cook/home' as never);
     } catch (e: any) {
-      setError(e.message || 'OTP verification failed. Please try again.');
+      setError(e.message || 'Login failed. Please check your phone and PIN.');
     } finally {
       setLoading(false);
     }
@@ -124,65 +104,50 @@ export default function CookLoginScreen() {
             <Text style={s.subtitle}>आपके परिवारों का आज का मेनू</Text>
 
             <View style={s.card}>
-              {stage === 'phone' ? (
-                <>
-                  <Text style={s.label}>Mobile Number</Text>
+              <Text style={s.label}>Mobile Number</Text>
 
-                  {/* Two-part phone input */}
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                    <TouchableOpacity
-                      style={s.ccBtn}
-                      onPress={() => setCcPickerOpen(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={{ fontSize: 18 }}>{currentFlag}</Text>
-                      <Text style={s.ccTxt}>{countryCode}</Text>
-                    </TouchableOpacity>
-                    <TextInput
-                      style={[s.input, { flex: 1, marginBottom: 0 }]}
-                      placeholder="9XXXXXXXX"
-                      placeholderTextColor={MUTED}
-                      keyboardType="numeric"
-                      value={localNumber}
-                      onChangeText={t => { setLocalNumber(t.replace(/\D/g, '')); setError(''); }}
-                      returnKeyType="done"
-                      onSubmitEditing={handleSendOtp}
-                    />
-                  </View>
+              {/* Two-part phone input */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <TouchableOpacity
+                  style={s.ccBtn}
+                  onPress={() => setCcPickerOpen(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 18 }}>{currentFlag}</Text>
+                  <Text style={s.ccTxt}>{countryCode}</Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={[s.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="9XXXXXXXX"
+                  placeholderTextColor={MUTED}
+                  keyboardType="numeric"
+                  value={localNumber}
+                  onChangeText={t => { setLocalNumber(t.replace(/\D/g, '')); setError(''); }}
+                  returnKeyType="next"
+                />
+              </View>
 
-                  {error ? <Text style={s.error}>{error}</Text> : null}
-                  <TouchableOpacity style={s.btnGold} onPress={handleSendOtp} disabled={loading}>
-                    {loading
-                      ? <ActivityIndicator color={NAVY} />
-                      : <Text style={s.btnGoldTxt}>OTP भेजें / Send OTP</Text>}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={s.label}>OTP — {fullPhone}</Text>
-                  <TextInput
-                    style={s.input}
-                    placeholder="Enter OTP"
-                    placeholderTextColor={MUTED}
-                    keyboardType="number-pad"
-                    value={otp}
-                    onChangeText={t => { setOtp(t); setError(''); }}
-                    maxLength={6}
-                    returnKeyType="done"
-                    onSubmitEditing={handleVerifyOtp}
-                    autoFocus
-                  />
-                  {error ? <Text style={s.error}>{error}</Text> : null}
-                  <TouchableOpacity style={s.btnNavy} onPress={handleVerifyOtp} disabled={loading}>
-                    {loading
-                      ? <ActivityIndicator color={WHITE} />
-                      : <Text style={s.btnNavyTxt}>Login / लॉगिन</Text>}
-                  </TouchableOpacity>
-                  <TouchableOpacity style={s.linkBtn} onPress={() => { setStage('phone'); setOtp(''); setError(''); }}>
-                    <Text style={s.linkTxt}>← Change number</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <Text style={s.label}>PIN</Text>
+              <TextInput
+                style={s.input}
+                placeholder="4-digit PIN"
+                placeholderTextColor={MUTED}
+                keyboardType="number-pad"
+                secureTextEntry
+                value={pin}
+                onChangeText={t => { setPin(t.replace(/\D/g, '')); setError(''); }}
+                maxLength={4}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+
+              {error ? <Text style={s.error}>{error}</Text> : null}
+
+              <TouchableOpacity style={s.btnGold} onPress={handleLogin} disabled={loading}>
+                {loading
+                  ? <ActivityIndicator color={NAVY} />
+                  : <Text style={s.btnGoldTxt}>Login / लॉगिन</Text>}
+              </TouchableOpacity>
             </View>
 
             <Text style={s.footer}>Powered by SarvamAI · Blue Flute Consulting LLC-FZ</Text>
@@ -250,12 +215,5 @@ const s = StyleSheet.create({
     alignItems: 'center', marginTop: 4,
   },
   btnGoldTxt: { fontSize: 15, fontWeight: '700', color: NAVY },
-  btnNavy: {
-    backgroundColor: NAVY, borderRadius: 10, paddingVertical: 14,
-    alignItems: 'center', marginTop: 4,
-  },
-  btnNavyTxt: { fontSize: 15, fontWeight: '700', color: WHITE },
-  linkBtn:    { alignItems: 'center', marginTop: 14 },
-  linkTxt:    { fontSize: 13, color: MUTED },
   footer:     { position: 'absolute', bottom: 24, fontSize: 11, color: 'rgba(27,58,92,0.45)', textAlign: 'center' },
 });

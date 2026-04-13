@@ -756,10 +756,10 @@ export default function DietaryProfileScreen() {
   const [memberSaving, setMemberSaving] = useState(false);
   
   // Cook state
-  const [cooks, setCooks] = useState<{ id: string; cook_phone: string; cook_name: string; visit_time: string; visit_times: Record<string, string>; days: string[] }[]>([]);
+  const [cooks, setCooks] = useState<{ id: string; cook_phone: string; cook_name: string; cook_pin: string; visit_time: string; visit_times: Record<string, string>; days: string[] }[]>([]);
   const [cookModalOpen, setCookModalOpen] = useState(false);
   const [cookEditId, setCookEditId] = useState<string | null>(null);
-  const [cookForm, setCookForm] = useState<{ phone: string; name: string; visitTimes: Record<string, string>; days: string[]; countryCode: string; localNumber: string }>({ phone: '', name: '', visitTimes: {}, days: [], countryCode: '+971', localNumber: '' });
+  const [cookForm, setCookForm] = useState<{ phone: string; name: string; pin: string; visitTimes: Record<string, string>; days: string[]; countryCode: string; localNumber: string }>({ phone: '', name: '', pin: '0000', visitTimes: {}, days: [], countryCode: '+971', localNumber: '' });
   const [cookSaving, setCookSaving] = useState(false);
   const [cookFormError, setCookFormError] = useState('');
 
@@ -1136,13 +1136,15 @@ export default function DietaryProfileScreen() {
       .eq('family_user_id', uid);
     if (!links || links.length === 0) { setCooks([]); return; }
     const phones = links.map((l: any) => l.cook_phone);
-    const { data: cookRows } = await supabase.from('cooks').select('phone, name').in('phone', phones);
+    const { data: cookRows } = await supabase.from('cooks').select('phone, name, pin').in('phone', phones);
     const nameMap: Record<string, string> = {};
-    for (const c of (cookRows || [])) nameMap[c.phone] = c.name;
+    const pinMap: Record<string, string> = {};
+    for (const c of (cookRows || [])) { nameMap[c.phone] = c.name; pinMap[c.phone] = c.pin || '0000'; }
     setCooks(links.map((l: any) => ({
       id: l.id,
       cook_phone: l.cook_phone,
       cook_name: nameMap[l.cook_phone] || '',
+      cook_pin: pinMap[l.cook_phone] || '0000',
       visit_time: l.visit_time || '',
       visit_times: l.visit_times || {},
       days: l.days || [],
@@ -1151,7 +1153,7 @@ export default function DietaryProfileScreen() {
 
   const openAddCook = () => {
     setCookEditId(null);
-    setCookForm({ phone: '', name: '', visitTimes: {}, days: [], countryCode: '+971', localNumber: '' });
+    setCookForm({ phone: '', name: '', pin: '0000', visitTimes: {}, days: [], countryCode: '+971', localNumber: '' });
     setCookFormError('');
     setCookModalOpen(true);
   };
@@ -1159,7 +1161,7 @@ export default function DietaryProfileScreen() {
   const openEditCook = (cook: typeof cooks[0]) => {
     setCookEditId(cook.id);
     const cc = ['+971','+966','+965','+973','+968','+974','+91','+44','+1'].find(c => cook.cook_phone.startsWith(c)) || '+971';
-    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, visitTimes: cook.visit_times || {}, days: cook.days, countryCode: cc, localNumber: cook.cook_phone.slice(cc.length) });
+    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, pin: cook.cook_pin || '0000', visitTimes: cook.visit_times || {}, days: cook.days, countryCode: cc, localNumber: cook.cook_phone.slice(cc.length) });
     setCookFormError('');
     setCookModalOpen(true);
   };
@@ -1177,6 +1179,7 @@ export default function DietaryProfileScreen() {
         body: JSON.stringify({
           phone: normalizedPhone,
           name: cookForm.name.trim() || normalizedPhone,
+          pin: cookForm.pin || '0000',
           family_user_id: userId,
           visit_time: Object.values(cookForm.visitTimes || {})[0] || '19:00',
           visit_times: cookForm.visitTimes || {},
@@ -2085,7 +2088,7 @@ const COUNTRY_CODES = [
 interface CookModalProps {
   visible: boolean;
   editId: string | null;
-  form: { phone: string; name: string; visitTimes: Record<string, string>; days: string[]; countryCode: string; localNumber: string };
+  form: { phone: string; name: string; pin: string; visitTimes: Record<string, string>; days: string[]; countryCode: string; localNumber: string };
   onFormChange: (updates: Partial<CookModalProps['form']>) => void;
   onSave: () => void;
   onClose: () => void;
@@ -2173,6 +2176,21 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
               placeholder="e.g. Sunita"
               placeholderTextColor={colors.textHint}
             />
+
+            <Text style={styles.fieldLabel}>Cook PIN *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.pin}
+              onChangeText={t => onFormChange({ pin: t.replace(/\D/g, '').slice(0, 4) })}
+              placeholder="4-digit PIN (e.g. 1234)"
+              placeholderTextColor={colors.textHint}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={4}
+            />
+            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: -10, marginBottom: 16 }}>
+              Your cook will use this PIN to log in
+            </Text>
 
             <Text style={styles.fieldLabel}>Days of Visit (leave empty = every day)</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
