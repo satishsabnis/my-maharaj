@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   // NOTE: profiles table uses 'id' as the primary key, not 'user_id'
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('id, full_name, city, language, family_size')
+    .select('id, family_name, city, language')
     .in('id', userIds);
 
   if (profilesErr) {
@@ -137,7 +137,7 @@ export default async function handler(req, res) {
 
     const profile = profileMap[link.family_user_id] || {};
     const meals   = planMap[link.family_user_id];
-    const familyName = profile.full_name || 'Your Family';
+    const familyName = profile.family_name || 'Your Family';
     families.push({
       id:          link.id,
       familyUserId: link.family_user_id,
@@ -146,7 +146,7 @@ export default async function handler(req, res) {
       visitTime:   link.visit_time || '',
       visitTimes:  link.visit_times || {},
       days:        link.days || [],
-      memberCount: profile.family_size || 0,
+      memberCount: 0,
       language:    profile.language || 'hi-IN',
       confirmed:   !!meals,
       meals:       meals
@@ -166,7 +166,7 @@ export default async function handler(req, res) {
       familyName:  profile.full_name || 'Your Family',
       location:    profile.city || '',
       language:    profile.language || 'hi-IN',
-      memberCount: profile.family_size || 0,
+      memberCount: 0,
       meals: meals || {
         breakfast: { label: 'Breakfast', mainDish: 'Not confirmed', supporting: [] },
         lunch:     { label: 'Lunch',     mainDish: 'Not confirmed', supporting: [] },
