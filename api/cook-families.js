@@ -68,8 +68,6 @@ export default async function handler(req, res) {
         .from('meal_plans')
         .select('user_id, plan_json, period_start, period_end')
         .eq('user_id', familyUserId)
-        .lte('period_start', today)
-        .gte('period_end', today)
         .order('generated_at', { ascending: false })
         .limit(1);
       if (error) console.error('[cook-families] meal_plans query error:', familyUserId, error.message);

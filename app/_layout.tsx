@@ -35,7 +35,7 @@ async function migrateAsyncStorageToSupabase() {
             cuisine: 'Various',
             food_pref: 'veg',
             plan_json: { days: p.days || [] },
-            created_at: p.createdAt || new Date().toISOString(),
+            generated_at: p.createdAt || new Date().toISOString(),
           }));
           await supabase.from('meal_plans').insert(rows);
         }
