@@ -27,13 +27,17 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         inputs: [text],
         target_language_code: language || 'hi-IN',
-        speaker: 'meera',
+        speaker: 'shubh',
         model: 'bulbul:v2',
         enable_preprocessing: true,
+        pitch: 0,
+        pace: 1.0,
+        loudness: 1.5,
       }),
     });
 
     const data = await response.json();
+    console.log('[SARVAM-TTS] status:', response.status, 'error:', data.error || 'none');
     if (!response.ok) {
       console.error('[sarvam-tts] API error:', response.status, JSON.stringify(data));
       res.status(response.status).json({ error: data?.message ?? `Sarvam TTS error (${response.status})` });
