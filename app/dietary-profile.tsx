@@ -1525,12 +1525,12 @@ export default function DietaryProfileScreen() {
             </Text>
           </View>
           
-          <Text style={styles.fieldLabel}>Full Name</Text>
+          <Text style={styles.fieldLabel}>Family Name</Text>
           <TextInput
             style={styles.input}
             value={state.fullName}
             onChangeText={text => setField('fullName', text)}
-            placeholder="Your full name"
+            placeholder="e.g. Sabnis Family"
             placeholderTextColor={colors.textHint}
           />
           
