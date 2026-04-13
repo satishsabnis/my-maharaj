@@ -13,7 +13,6 @@ export default async function handler(req, res) {
   );
 
   const { phone, name, family_user_id, visit_time, visit_times, days, edit_id } = req.body ?? {};
-  console.log('[COOK-SAVE] body:', JSON.stringify(req.body));
 
   if (!phone || !family_user_id) {
     res.status(400).json({ error: 'Missing required fields: phone, family_user_id' });
@@ -24,7 +23,6 @@ export default async function handler(req, res) {
     const { error: cookError } = await supabase
       .from('cooks')
       .upsert({ phone, name: name || phone }, { onConflict: 'phone' });
-    console.log('[COOK-SAVE] cook upsert result:', cookError);
     if (cookError) throw new Error(cookError.message);
 
     if (edit_id) {
@@ -32,13 +30,14 @@ export default async function handler(req, res) {
         .from('cook_families')
         .update({ visit_time, visit_times, days })
         .eq('id', edit_id);
-      console.log('[COOK-SAVE] family result:', updateError);
       if (updateError) throw new Error(updateError.message);
     } else {
       const { error: insertError } = await supabase
         .from('cook_families')
-        .insert({ cook_phone: phone, family_user_id, visit_time, visit_times, days });
-      console.log('[COOK-SAVE] family result:', insertError);
+        .upsert(
+          { cook_phone: phone, family_user_id, visit_time, visit_times, days },
+          { onConflict: 'cook_phone,family_user_id,visit_time' }
+        );
       if (insertError) throw new Error(insertError.message);
     }
 
