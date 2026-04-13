@@ -756,10 +756,10 @@ export default function DietaryProfileScreen() {
   const [memberSaving, setMemberSaving] = useState(false);
   
   // Cook state
-  const [cooks, setCooks] = useState<{ id: string; cook_phone: string; cook_name: string; visit_time: string; days: string[] }[]>([]);
+  const [cooks, setCooks] = useState<{ id: string; cook_phone: string; cook_name: string; visit_time: string; visit_times: Record<string, string>; days: string[] }[]>([]);
   const [cookModalOpen, setCookModalOpen] = useState(false);
   const [cookEditId, setCookEditId] = useState<string | null>(null);
-  const [cookForm, setCookForm] = useState({ phone: '', name: '', visitTime: '', days: [] as string[] });
+  const [cookForm, setCookForm] = useState<{ phone: string; name: string; visitTimes: Record<string, string>; days: string[] }>({ phone: '', name: '', visitTimes: {}, days: [] });
   const [cookSaving, setCookSaving] = useState(false);
   const [cookFormError, setCookFormError] = useState('');
 
@@ -1132,7 +1132,7 @@ export default function DietaryProfileScreen() {
   const loadCooks = useCallback(async (uid: string) => {
     const { data: links } = await supabase
       .from('cook_families')
-      .select('id, cook_phone, visit_time, days')
+      .select('id, cook_phone, visit_time, visit_times, days')
       .eq('family_user_id', uid);
     if (!links || links.length === 0) { setCooks([]); return; }
     const phones = links.map((l: any) => l.cook_phone);
@@ -1144,20 +1144,21 @@ export default function DietaryProfileScreen() {
       cook_phone: l.cook_phone,
       cook_name: nameMap[l.cook_phone] || '',
       visit_time: l.visit_time || '',
+      visit_times: l.visit_times || {},
       days: l.days || [],
     })));
   }, []);
 
   const openAddCook = () => {
     setCookEditId(null);
-    setCookForm({ phone: '', name: '', visitTime: '', days: [] });
+    setCookForm({ phone: '', name: '', visitTimes: {}, days: [] });
     setCookFormError('');
     setCookModalOpen(true);
   };
 
   const openEditCook = (cook: typeof cooks[0]) => {
     setCookEditId(cook.id);
-    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, visitTime: cook.visit_time, days: cook.days });
+    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, visitTimes: cook.visit_times || {}, days: cook.days });
     setCookFormError('');
     setCookModalOpen(true);
   };
@@ -1167,14 +1168,26 @@ export default function DietaryProfileScreen() {
     if (!userId) { setCookFormError('No active session'); return; }
     setCookSaving(true);
     setCookFormError('');
-    const normalizedPhone = cookForm.phone.trim().startsWith('+') ? cookForm.phone.trim() : `+91${cookForm.phone.trim().replace(/\D/g, '')}`;
+    const normalizedPhone = cookForm.phone.trim().startsWith('+') ? cookForm.phone.trim() : `+971${cookForm.phone.trim().replace(/\D/g, '')}`;
     try {
       // Upsert cook record
-      await supabase.from('cooks').upsert({ phone: normalizedPhone, name: cookForm.name.trim() || normalizedPhone }, { onConflict: 'phone' });
+      const { error: upsertError } = await supabase.from('cooks').upsert(
+        { phone: normalizedPhone, name: cookForm.name.trim() || normalizedPhone },
+        { onConflict: 'phone' }
+      );
+      if (upsertError) throw new Error(upsertError.message);
+      const firstVisitTime = Object.values(cookForm.visitTimes || {})[0] || '19:00';
       if (cookEditId) {
-        await supabase.from('cook_families').update({ visit_time: cookForm.visitTime, days: cookForm.days }).eq('id', cookEditId);
+        await supabase.from('cook_families').update({ visit_time: firstVisitTime, visit_times: cookForm.visitTimes || {}, days: cookForm.days }).eq('id', cookEditId);
       } else {
-        await supabase.from('cook_families').insert({ cook_phone: normalizedPhone, family_user_id: userId, visit_time: cookForm.visitTime, days: cookForm.days });
+        const { error: insertError } = await supabase.from('cook_families').insert({
+          cook_phone: normalizedPhone,
+          family_user_id: userId,
+          visit_time: firstVisitTime,
+          visit_times: cookForm.visitTimes || {},
+          days: cookForm.days,
+        });
+        if (insertError) throw new Error(insertError.message);
       }
       await loadCooks(userId);
       setCookModalOpen(false);
@@ -1901,7 +1914,11 @@ export default function DietaryProfileScreen() {
                 <View key={cook.id} style={styles.memberRow}>
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName}>{cook.cook_name || 'Cook'}</Text>
-                    <Text style={styles.memberAge}>{masked} · {cook.visit_time || 'No time set'} · {cook.days.length ? cook.days.map(d => d.slice(0, 3)).join(', ') : 'Every day'}</Text>
+                    <Text style={styles.memberAge}>
+                      {masked} · {cook.days.length
+                        ? cook.days.map(d => `${d.slice(0,3)} ${cook.visit_times?.[d] || cook.visit_time || ''}`).join(', ')
+                        : `Every day${cook.visit_time ? ' · ' + cook.visit_time : ''}`}
+                    </Text>
                   </View>
                   <View style={styles.memberActions}>
                     <TouchableOpacity style={styles.memberEditButton} onPress={() => openEditCook(cook)}>
@@ -2046,7 +2063,7 @@ const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 interface CookModalProps {
   visible: boolean;
   editId: string | null;
-  form: { phone: string; name: string; visitTime: string; days: string[] };
+  form: { phone: string; name: string; visitTimes: Record<string, string>; days: string[] };
   onFormChange: (updates: Partial<CookModalProps['form']>) => void;
   onSave: () => void;
   onClose: () => void;
@@ -2056,8 +2073,15 @@ interface CookModalProps {
 
 function CookModal({ visible, editId, form, onFormChange, onSave, onClose, saving, error }: CookModalProps) {
   function toggleDay(day: string) {
-    const next = form.days.includes(day) ? form.days.filter(d => d !== day) : [...form.days, day];
-    onFormChange({ days: next });
+    const isSelected = form.days.includes(day);
+    const nextDays = isSelected ? form.days.filter(d => d !== day) : [...form.days, day];
+    // Remove time entry when day is deselected
+    const nextTimes = { ...form.visitTimes };
+    if (isSelected) delete nextTimes[day];
+    onFormChange({ days: nextDays, visitTimes: nextTimes });
+  }
+  function setDayTime(day: string, time: string) {
+    onFormChange({ visitTimes: { ...form.visitTimes, [day]: time } });
   }
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -2073,7 +2097,7 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
               style={[styles.input, editId ? { backgroundColor: '#F3F4F6' } : {}]}
               value={form.phone}
               onChangeText={t => onFormChange({ phone: t })}
-              placeholder="+91XXXXXXXXXX"
+              placeholder="+971XXXXXXXXX"
               placeholderTextColor={colors.textHint}
               keyboardType="phone-pad"
               editable={!editId}
@@ -2086,17 +2110,8 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
               placeholder="e.g. Sunita"
               placeholderTextColor={colors.textHint}
             />
-            <Text style={styles.fieldLabel}>Visit Time (HH:MM)</Text>
-            <TextInput
-              style={styles.input}
-              value={form.visitTime}
-              onChangeText={t => onFormChange({ visitTime: t })}
-              placeholder="e.g. 08:30"
-              placeholderTextColor={colors.textHint}
-              keyboardType="numbers-and-punctuation"
-            />
             <Text style={styles.fieldLabel}>Days of Visit (leave empty = every day)</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
               {WEEK_DAYS.map(day => {
                 const selected = form.days.includes(day);
                 return (
@@ -2116,6 +2131,24 @@ function CookModal({ visible, editId, form, onFormChange, onSave, onClose, savin
                 );
               })}
             </View>
+            {form.days.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={[styles.fieldLabel, { marginBottom: 8 }]}>Visit Time per Day</Text>
+                {form.days.map(day => (
+                  <View key={day} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <Text style={{ width: 90, fontSize: 13, color: colors.navy }}>{day}</Text>
+                    <TextInput
+                      value={form.visitTimes?.[day] || ''}
+                      onChangeText={t => setDayTime(day, t)}
+                      placeholder="HH:MM"
+                      placeholderTextColor={colors.textHint}
+                      keyboardType="numbers-and-punctuation"
+                      style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, padding: 6, width: 70, fontSize: 13, color: colors.navy }}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
             {error ? <Text style={{ color: '#DC2626', fontSize: 13, marginBottom: 12 }}>{error}</Text> : null}
             <Button title={editId ? 'Update Cook' : 'Save Cook'} onPress={onSave} loading={saving} />
             <TouchableOpacity style={{ alignItems: 'center', padding: 12, marginBottom: 8 }} onPress={onClose}>
