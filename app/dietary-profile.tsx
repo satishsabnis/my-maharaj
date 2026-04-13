@@ -1170,7 +1170,7 @@ export default function DietaryProfileScreen() {
     setCookFormError('');
     const normalizedPhone = cookForm.phone.trim().startsWith('+') ? cookForm.phone.trim() : `+971${cookForm.phone.trim().replace(/\D/g, '')}`;
     try {
-      const response = await fetch('https://my-maharaj.vercel.app/api/cook-save', {
+      const response = await fetch('/api/cook-save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
