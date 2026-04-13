@@ -186,7 +186,14 @@ export default function HomeScreen() {
     borderColor: colors.navy, label: "Today's plan", labelColor: colors.navy,
     title: todayPlanTitle,
     subtitle: todayPlanSubtitle,
-    buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: () => router.push(hasWeekPlan ? '/(app)/meal-wizard?step=plan-summary' : '/(app)/meal-wizard' as never) }],
+    buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: async () => {
+      if (hasWeekPlan) {
+        await AsyncStorage.setItem('meal_wizard_initial_step', 'plan-summary');
+        router.push('/(app)/meal-wizard' as never);
+      } else {
+        router.push('/(app)/meal-wizard' as never);
+      }
+    }}],
   });
 
   // Card B — Daily Tip (always shown, taps into Ask Maharaj)

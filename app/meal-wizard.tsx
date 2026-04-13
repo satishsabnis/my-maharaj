@@ -394,6 +394,20 @@ Return ONLY valid JSON (no markdown) in this exact format:
       // Determine first-time user
       const isFirst = saved.length === 0 || !savedFoodPref;
       setIsFirstTimeUser(isFirst);
+
+      // AsyncStorage step handoff (e.g. home "View Plan" button)
+      const initialStep = await AsyncStorage.getItem('meal_wizard_initial_step');
+      if (initialStep) {
+        await AsyncStorage.removeItem('meal_wizard_initial_step');
+        if (initialStep === 'plan-summary') {
+          const saved2 = await AsyncStorage.getItem('confirmed_meal_plan');
+          if (saved2) {
+            setGeneratedPlan(JSON.parse(saved2));
+            setStep('plan-summary');
+            return;
+          }
+        }
+      }
     }
     void loadWiz();
     loadOrDetectLocation().then(setUserLocation);
