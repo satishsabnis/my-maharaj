@@ -20,10 +20,14 @@ export default async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
+  // Today's day name for schedule filtering
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayName = DAYS[new Date().getDay()];
+
   // Fetch cook_families rows for this cook
   const { data: links, error: linksErr } = await supabase
     .from('cook_families')
-    .select('id, family_user_id, visit_time')
+    .select('id, family_user_id, visit_time, days')
     .eq('cook_phone', normalizedPhone)
     .order('visit_time', { ascending: true });
 
@@ -122,23 +126,29 @@ export default async function handler(req, res) {
     profileMap[p.user_id] = p;
   }
 
-  const families = links.map(link => {
+  const families = [];
+  for (const link of links) {
+    // Day-of-week filter: empty/null days = visit every day (backwards compatible)
+    const isScheduledToday = !link.days || link.days.length === 0 || link.days.includes(todayName);
+    if (!isScheduledToday) continue;
+
     const profile = profileMap[link.family_user_id] || {};
     const meals   = planMap[link.family_user_id];
-    return {
+    families.push({
       id:          link.id,
       familyUserId: link.family_user_id,
       familyName:  [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Family',
       location:    profile.city || '',
       visitTime:   link.visit_time || '',
+      days:        link.days || [],
       memberCount: profile.family_size || 0,
       language:    profile.language || 'hi-IN',
       confirmed:   !!meals,
       meals:       meals
         ? { breakfast: meals.breakfast.mainDish, lunch: meals.lunch.mainDish, dinner: meals.dinner.mainDish }
         : { breakfast: '', lunch: '', dinner: '' },
-    };
-  });
+    });
+  }
 
   // If a specific familyId is requested, return detail format
   if (familyId) {

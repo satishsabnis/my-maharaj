@@ -755,6 +755,14 @@ export default function DietaryProfileScreen() {
   const [memberFormError, setMemberFormError] = useState('');
   const [memberSaving, setMemberSaving] = useState(false);
   
+  // Cook state
+  const [cooks, setCooks] = useState<{ id: string; cook_phone: string; cook_name: string; visit_time: string; days: string[] }[]>([]);
+  const [cookModalOpen, setCookModalOpen] = useState(false);
+  const [cookEditId, setCookEditId] = useState<string | null>(null);
+  const [cookForm, setCookForm] = useState({ phone: '', name: '', visitTime: '', days: [] as string[] });
+  const [cookSaving, setCookSaving] = useState(false);
+  const [cookFormError, setCookFormError] = useState('');
+
   // Occasion modal state
   const [occasionModalOpen, setOccasionModalOpen] = useState(false);
   const [occasionEditId, setOccasionEditId] = useState<string | null>(null);
@@ -809,6 +817,7 @@ export default function DietaryProfileScreen() {
     
     setUserId(user.id);
     setField('email', user.email ?? '');
+    void loadCooks(user.id);
     
     // Load profile from Supabase
     const { data: profile, error: profileError } = await supabase
@@ -1117,9 +1126,79 @@ export default function DietaryProfileScreen() {
   }, [markDirty]);
   
   // ==========================================================================
+  // COOK MANAGEMENT
+  // ==========================================================================
+
+  const loadCooks = useCallback(async (uid: string) => {
+    const { data: links } = await supabase
+      .from('cook_families')
+      .select('id, cook_phone, visit_time, days')
+      .eq('family_user_id', uid);
+    if (!links || links.length === 0) { setCooks([]); return; }
+    const phones = links.map((l: any) => l.cook_phone);
+    const { data: cookRows } = await supabase.from('cooks').select('phone, name').in('phone', phones);
+    const nameMap: Record<string, string> = {};
+    for (const c of (cookRows || [])) nameMap[c.phone] = c.name;
+    setCooks(links.map((l: any) => ({
+      id: l.id,
+      cook_phone: l.cook_phone,
+      cook_name: nameMap[l.cook_phone] || '',
+      visit_time: l.visit_time || '',
+      days: l.days || [],
+    })));
+  }, []);
+
+  const openAddCook = () => {
+    setCookEditId(null);
+    setCookForm({ phone: '', name: '', visitTime: '', days: [] });
+    setCookFormError('');
+    setCookModalOpen(true);
+  };
+
+  const openEditCook = (cook: typeof cooks[0]) => {
+    setCookEditId(cook.id);
+    setCookForm({ phone: cook.cook_phone, name: cook.cook_name, visitTime: cook.visit_time, days: cook.days });
+    setCookFormError('');
+    setCookModalOpen(true);
+  };
+
+  const saveCook = useCallback(async () => {
+    if (!cookForm.phone.trim()) { setCookFormError('Phone number is required'); return; }
+    if (!userId) { setCookFormError('No active session'); return; }
+    setCookSaving(true);
+    setCookFormError('');
+    const normalizedPhone = cookForm.phone.trim().startsWith('+') ? cookForm.phone.trim() : `+91${cookForm.phone.trim().replace(/\D/g, '')}`;
+    try {
+      // Upsert cook record
+      await supabase.from('cooks').upsert({ phone: normalizedPhone, name: cookForm.name.trim() || normalizedPhone }, { onConflict: 'phone' });
+      if (cookEditId) {
+        await supabase.from('cook_families').update({ visit_time: cookForm.visitTime, days: cookForm.days }).eq('id', cookEditId);
+      } else {
+        await supabase.from('cook_families').insert({ cook_phone: normalizedPhone, family_user_id: userId, visit_time: cookForm.visitTime, days: cookForm.days });
+      }
+      await loadCooks(userId);
+      setCookModalOpen(false);
+    } catch (e: any) {
+      setCookFormError(e.message || 'Save failed');
+    } finally {
+      setCookSaving(false);
+    }
+  }, [cookForm, cookEditId, userId, loadCooks]);
+
+  const removeCook = useCallback((id: string) => {
+    Alert.alert('Remove Cook', 'Remove this cook from your family?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: async () => {
+        await supabase.from('cook_families').delete().eq('id', id);
+        if (userId) await loadCooks(userId);
+      }},
+    ]);
+  }, [userId, loadCooks]);
+
+  // ==========================================================================
   // SAVE PROFILE
   // ==========================================================================
-  
+
   const saveProfile = useCallback(async () => {
     if (!hasChanges) return;
     if (!userId) {
@@ -1805,6 +1884,42 @@ export default function DietaryProfileScreen() {
             onSelect={value => setField('shoppingLanguage', value)}
           />
           
+          {/* ===== 16. MY COOK ===== */}
+          <Text style={styles.sectionHead}>My Cook</Text>
+          <Text style={styles.sectionSubtext}>Cooks linked to your family. They see your meal plan in their language.</Text>
+
+          {cooks.length === 0 ? (
+            <View style={styles.emptyMembers}>
+              <Text style={styles.emptyMembersText}>No cooks added yet</Text>
+            </View>
+          ) : (
+            cooks.map(cook => {
+              const masked = cook.cook_phone.length > 6
+                ? cook.cook_phone.slice(0, 4) + ' XXX XXX X' + cook.cook_phone.slice(-2)
+                : cook.cook_phone;
+              return (
+                <View key={cook.id} style={styles.memberRow}>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{cook.cook_name || 'Cook'}</Text>
+                    <Text style={styles.memberAge}>{masked} · {cook.visit_time || 'No time set'} · {cook.days.length ? cook.days.map(d => d.slice(0, 3)).join(', ') : 'Every day'}</Text>
+                  </View>
+                  <View style={styles.memberActions}>
+                    <TouchableOpacity style={styles.memberEditButton} onPress={() => openEditCook(cook)}>
+                      <Text style={styles.memberEditText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => removeCook(cook.id)}>
+                      <Text style={styles.memberDeleteText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          <TouchableOpacity style={[styles.addButton, { borderColor: colors.teal }]} onPress={openAddCook}>
+            <Text style={[styles.addButtonText, { color: colors.teal }]}>+ Add Cook</Text>
+          </TouchableOpacity>
+
           {/* ===== SAVE BUTTON ===== */}
           <TouchableOpacity
             style={[
@@ -1857,6 +1972,17 @@ export default function DietaryProfileScreen() {
         onSave={saveOccasion}
         onClose={() => setOccasionModalOpen(false)}
       />
+
+      <CookModal
+        visible={cookModalOpen}
+        editId={cookEditId}
+        form={cookForm}
+        onFormChange={updates => setCookForm(prev => ({ ...prev, ...updates }))}
+        onSave={saveCook}
+        onClose={() => setCookModalOpen(false)}
+        saving={cookSaving}
+        error={cookFormError}
+      />
     </ScreenWrapper>
   );
 }
@@ -1908,6 +2034,97 @@ function NotificationRow({ label, subtitle, value, onToggle }: NotificationRowPr
         thumbColor={colors.white}
       />
     </View>
+  );
+}
+
+// ============================================================================
+// COOK MODAL
+// ============================================================================
+
+const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+interface CookModalProps {
+  visible: boolean;
+  editId: string | null;
+  form: { phone: string; name: string; visitTime: string; days: string[] };
+  onFormChange: (updates: Partial<CookModalProps['form']>) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+  error: string;
+}
+
+function CookModal({ visible, editId, form, onFormChange, onSave, onClose, saving, error }: CookModalProps) {
+  function toggleDay(day: string) {
+    const next = form.days.includes(day) ? form.days.filter(d => d !== day) : [...form.days, day];
+    onFormChange({ days: next });
+  }
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{editId ? 'Edit Cook' : 'Add Cook'}</Text>
+            <TouchableOpacity onPress={onClose}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+            <Text style={styles.fieldLabel}>Cook Phone Number *</Text>
+            <TextInput
+              style={[styles.input, editId ? { backgroundColor: '#F3F4F6' } : {}]}
+              value={form.phone}
+              onChangeText={t => onFormChange({ phone: t })}
+              placeholder="+91XXXXXXXXXX"
+              placeholderTextColor={colors.textHint}
+              keyboardType="phone-pad"
+              editable={!editId}
+            />
+            <Text style={styles.fieldLabel}>Cook Name</Text>
+            <TextInput
+              style={styles.input}
+              value={form.name}
+              onChangeText={t => onFormChange({ name: t })}
+              placeholder="e.g. Sunita"
+              placeholderTextColor={colors.textHint}
+            />
+            <Text style={styles.fieldLabel}>Visit Time (HH:MM)</Text>
+            <TextInput
+              style={styles.input}
+              value={form.visitTime}
+              onChangeText={t => onFormChange({ visitTime: t })}
+              placeholder="e.g. 08:30"
+              placeholderTextColor={colors.textHint}
+              keyboardType="numbers-and-punctuation"
+            />
+            <Text style={styles.fieldLabel}>Days of Visit (leave empty = every day)</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {WEEK_DAYS.map(day => {
+                const selected = form.days.includes(day);
+                return (
+                  <TouchableOpacity
+                    key={day}
+                    onPress={() => toggleDay(day)}
+                    style={{
+                      borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+                      backgroundColor: selected ? colors.teal : 'transparent',
+                      borderWidth: 1.5, borderColor: colors.teal,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: selected ? colors.white : colors.teal }}>
+                      {day.slice(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {error ? <Text style={{ color: '#DC2626', fontSize: 13, marginBottom: 12 }}>{error}</Text> : null}
+            <Button title={editId ? 'Update Cook' : 'Save Cook'} onPress={onSave} loading={saving} />
+            <TouchableOpacity style={{ alignItems: 'center', padding: 12, marginBottom: 8 }} onPress={onClose}>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
