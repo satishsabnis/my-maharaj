@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true });
   }
 
-  const { phone, name, pin, family_user_id, visit_time, visit_times, days, edit_id } = req.body ?? {};
+  const { phone, name, family_user_id, visit_time, visit_times, days, edit_id } = req.body ?? {};
 
   if (!phone || !family_user_id) {
     res.status(400).json({ error: 'Missing required fields: phone, family_user_id' });
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   try {
     const { error: cookError } = await supabase
       .from('cooks')
-      .upsert({ phone, name: name || phone, pin: pin || '0000' }, { onConflict: 'phone' });
+      .upsert({ phone, name: name || phone }, { onConflict: 'phone' });
     if (cookError) throw new Error(cookError.message);
 
     if (edit_id) {

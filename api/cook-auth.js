@@ -12,8 +12,25 @@ module.exports = async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
-  const { phone, pin, action } = req.body ?? {};
+  const { phone, pin, confirmPin, name, action } = req.body ?? {};
   if (!phone) return res.status(400).json({ error: 'Phone required' });
+
+  if (action === 'register') {
+    if (!pin || pin.length !== 4) return res.status(400).json({ error: 'PIN must be 4 digits' });
+    if (pin !== confirmPin) return res.status(400).json({ error: 'PINs do not match' });
+
+    const { error: upsertErr } = await supabase
+      .from('cooks')
+      .upsert({ phone, name: name || phone, pin }, { onConflict: 'phone' });
+    if (upsertErr) return res.status(500).json({ error: upsertErr.message });
+
+    const { data: cook } = await supabase
+      .from('cooks')
+      .select('phone, name, language')
+      .eq('phone', phone)
+      .single();
+    return res.status(200).json({ success: true, cook });
+  }
 
   if (action === 'verify_pin') {
     if (!pin) return res.status(400).json({ error: 'PIN required' });
