@@ -1194,12 +1194,22 @@ export default function DietaryProfileScreen() {
     }
   }, [cookForm, cookEditId, userId, loadCooks]);
 
-  const removeCook = useCallback((id: string) => {
+  const removeCook = useCallback((cookId: string) => {
     Alert.alert('Remove Cook', 'Remove this cook from your family?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: async () => {
-        await supabase.from('cook_families').delete().eq('id', id);
-        if (userId) await loadCooks(userId);
+        try {
+          const response = await fetch('/api/cook-save', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: cookId, family_user_id: userId }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Remove failed');
+          if (userId) await loadCooks(userId);
+        } catch (e: any) {
+          Alert.alert('Remove failed', e.message);
+        }
       }},
     ]);
   }, [userId, loadCooks]);
@@ -1903,15 +1913,12 @@ export default function DietaryProfileScreen() {
             </View>
           ) : (
             cooks.map(cook => {
-              const masked = cook.cook_phone.length > 6
-                ? cook.cook_phone.slice(0, 4) + ' XXX XXX X' + cook.cook_phone.slice(-2)
-                : cook.cook_phone;
               return (
                 <View key={cook.id} style={styles.memberRow}>
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName}>{cook.cook_name || 'Cook'}</Text>
                     <Text style={styles.memberAge}>
-                      {masked} · {cook.days.length
+                      {cook.cook_phone} · {cook.days.length
                         ? cook.days.map(d => `${d.slice(0,3)} ${cook.visit_times?.[d] || cook.visit_time || ''}`).join(', ')
                         : `Every day${cook.visit_time ? ' · ' + cook.visit_time : ''}`}
                     </Text>
