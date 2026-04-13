@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   // NOTE: profiles table uses 'id' as the primary key, not 'user_id'
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('id, family_name, language')
+    .select('id, family_name')
     .in('id', userIds);
 
   if (profilesErr) {
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
       visitTimes:  link.visit_times || {},
       days:        link.days || [],
       memberCount: 0,
-      language:    profile.language || 'hi-IN',
+      language:    'hi-IN',
       confirmed:   !!meals,
       meals:       meals
         ? { breakfast: meals.breakfast.mainDish, lunch: meals.lunch.mainDish, dinner: meals.dinner.mainDish }
@@ -165,7 +165,7 @@ export default async function handler(req, res) {
       id:          link.id,
       familyName:  profile.full_name || 'Your Family',
       location:    '',
-      language:    profile.language || 'hi-IN',
+      language:    'hi-IN',
       memberCount: 0,
       meals: meals || {
         breakfast: { label: 'Breakfast', mainDish: 'Not confirmed', supporting: [] },
