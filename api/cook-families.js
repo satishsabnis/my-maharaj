@@ -56,6 +56,7 @@ export default async function handler(req, res) {
     .select('id, full_name, city, language, family_size')
     .in('id', userIds);
 
+  console.log('[COOK-FAMILIES] profiles query result:', JSON.stringify(profiles), profilesErr?.message);
   if (profilesErr) {
     // Log but do not hard-fail — families should still show even without profile names
     console.error('[cook-families] profiles query error:', profilesErr.message);
@@ -131,6 +132,7 @@ export default async function handler(req, res) {
   for (const p of (profiles ?? [])) {
     profileMap[p.id] = p;
   }
+  console.log('[COOK-FAMILIES] profileMap:', JSON.stringify(profileMap));
 
   const families = [];
   for (const link of links) {
@@ -140,10 +142,12 @@ export default async function handler(req, res) {
 
     const profile = profileMap[link.family_user_id] || {};
     const meals   = planMap[link.family_user_id];
+    const familyName = profile.full_name || 'Your Family';
+    console.log('[COOK-FAMILIES] familyName:', familyName, 'for userIds:', userIds);
     families.push({
       id:          link.id,
       familyUserId: link.family_user_id,
-      familyName:  profile.full_name || 'Your Family',
+      familyName,
       location:    profile.city || '',
       visitTime:   link.visit_time || '',
       visitTimes:  link.visit_times || {},
