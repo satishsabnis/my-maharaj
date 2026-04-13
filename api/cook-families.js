@@ -54,6 +54,7 @@ export default async function handler(req, res) {
     .select('id, family_name, city, language')
     .in('id', userIds);
 
+  console.log('[PROFILES QUERY]', JSON.stringify(profiles), profilesErr?.message, 'userIds:', JSON.stringify(userIds));
   if (profilesErr) {
     // Log but do not hard-fail — families should still show even without profile names
     console.error('[cook-families] profiles query error:', profilesErr.message);
