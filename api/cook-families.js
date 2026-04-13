@@ -60,17 +60,23 @@ export default async function handler(req, res) {
   }
 
   // Fetch today's confirmed meal plans for all linked families
+  // Query each family separately to get the most recent plan covering today
   const today = new Date().toISOString().split('T')[0];
-  const { data: plans, error: plansErr } = await supabase
-    .from('meal_plans')
-    .select('user_id, plan_json, period_start, period_end')
-    .in('user_id', userIds)
-    .lte('period_start', today)
-    .gte('period_end', today);
-
-  if (plansErr) {
-    console.error('[cook-families] meal_plans query error:', plansErr.message);
-  }
+  const planResults = await Promise.all(
+    userIds.map(async (familyUserId) => {
+      const { data, error } = await supabase
+        .from('meal_plans')
+        .select('user_id, plan_json, period_start, period_end')
+        .eq('user_id', familyUserId)
+        .lte('period_start', today)
+        .gte('period_end', today)
+        .order('generated_at', { ascending: false })
+        .limit(1);
+      if (error) console.error('[cook-families] meal_plans query error:', familyUserId, error.message);
+      return data?.[0] ?? null;
+    })
+  );
+  const plans = planResults.filter(Boolean);
 
   // Build a map: user_id → today's meals
   function extractTodayMeals(plan) {
