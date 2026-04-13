@@ -66,6 +66,7 @@ export default function FamilyDetailScreen() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
   const [playing,  setPlaying]  = useState(false);
+  const [ttsError, setTtsError] = useState('');
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const cookPhone = getLocal('cook_phone');
@@ -94,6 +95,7 @@ export default function FamilyDetailScreen() {
   async function handlePlay() {
     if (!family) return;
     setPlaying(true);
+    setTtsError('');
     try {
       const meals = family.meals;
       const text = [
@@ -113,18 +115,22 @@ export default function FamilyDetailScreen() {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         const audioSrc = `data:audio/wav;base64,${data.audio}`;
         if (audioRef.current) {
+          audioRef.current.onended = () => setPlaying(false);
+          audioRef.current.onerror = () => { setTtsError('Playback failed'); setPlaying(false); };
           audioRef.current.src = audioSrc;
           audioRef.current.play();
         } else {
           const audio = new Audio(audioSrc);
           audioRef.current = audio;
           audio.onended = () => setPlaying(false);
+          audio.onerror = () => { setTtsError('Playback failed'); setPlaying(false); };
           audio.play();
         }
+      } else {
+        setPlaying(false);
       }
     } catch (e: any) {
-      console.error('[FamilyDetail] TTS error:', e.message);
-    } finally {
+      setTtsError(e.message || 'TTS failed');
       setPlaying(false);
     }
   }
@@ -203,6 +209,7 @@ export default function FamilyDetailScreen() {
                 ? <ActivityIndicator color={NAVY} />
                 : <Text style={s.playTxt}>▶ आज का मेनू सुनें</Text>}
             </TouchableOpacity>
+            {ttsError ? <Text style={{ textAlign: 'center', color: '#DC2626', fontSize: 13, marginTop: 10 }}>{ttsError}</Text> : null}
 
             <Text style={s.footer}>Powered by SarvamAI · My Maharaj</Text>
           </ScrollView>
