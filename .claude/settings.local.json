@@ -66,7 +66,8 @@
       "Bash(head:*)",
       "Bash(find C:Userssatisdocumentsmy-maharajappcook C:Userssatisdocumentsmy-maharajapi -name *.tsx -o -name *.js)",
       "Bash(node:*)",
-      "Bash(grep -r \"jsPDF\\\\|html2canvas\" /c/Users/satis/Documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js --include=*.jsx)"
+      "Bash(grep -r \"jsPDF\\\\|html2canvas\" /c/Users/satis/Documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js --include=*.jsx)",
+      "Bash(clip)"
     ]
   }
 }

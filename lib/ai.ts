@@ -205,11 +205,12 @@ function fallbackSlot(mealType: string, idx: number): MealSlot {
 interface PoolDish {
   name: string;
   cuisine: string[];
-  meal_type: string[];
-  dietary: string[];
+  slot: string[];
+  is_veg: boolean;
+  is_jain: boolean;
+  is_fasting: boolean;
+  is_non_veg_type: string | null;
   health_tags: string[];
-  season: string[];
-  ingredients_main: string[];
 }
 
 // Regional cuisine fallback chain — when pool is thin, expand to nearby cuisines
@@ -268,14 +269,13 @@ async function fetchDishPool(
 
     let q = supabase
       .from('dishes')
-      .select('name, cuisine, meal_type, dietary, health_tags, season, ingredients_main')
+      .select('name, cuisine, slot, is_veg, is_jain, is_fasting, is_non_veg_type, health_tags')
       .eq('is_banned', false)
       // Overlap filter: any of the requested cuisines must appear in the dish's cuisine array
       .filter('cuisine', 'ov', `{${uniqueCuisines.join(',')}}`);
-    // Season: NOT filtered here — many seeded rows have season:[] (year-round)
 
-    if (vegOnly && !jain) q = q.not('dietary', 'cs', '{non-vegetarian}');
-    if (jain) q = q.contains('dietary', ['jain']);
+    if (vegOnly && !jain) q = q.eq('is_veg', true);
+    if (jain) q = q.eq('is_jain', true);
 
     const { data, error } = await q.limit(600);
     if (!error && data && data.length > 0) {
@@ -288,21 +288,30 @@ async function fetchDishPool(
   } catch { /* Supabase unavailable — use DISH_DATA */ }
 
   // ── 2. In-memory DISH_DATA fallback ──────────────────────────────────────
+  // Map old DISH_DATA shape (meal_type/dietary arrays) → new PoolDish shape (slot/boolean flags)
+  const mealTypeToSlot = (mt: string[]): string[] =>
+    mt.flatMap(m => {
+      if (m === 'lunch')  return ['lunch_curry'];
+      if (m === 'dinner') return ['dinner_curry'];
+      return [m]; // 'breakfast', 'snack' stay as-is
+    });
+
   const toPoolDish = (d: typeof DISH_DATA[0]): PoolDish => ({
     name: d.name,
     cuisine: d.cuisine,
-    meal_type: d.meal_type,
-    dietary: d.dietary,
+    slot: mealTypeToSlot(d.meal_type),
+    is_veg: !d.dietary.some(x => x.includes('non-vegetarian')),
+    is_jain: d.dietary.includes('jain'),
+    is_fasting: d.dietary.includes('fasting'),
+    is_non_veg_type: null,
     health_tags: d.health_tags ?? [],
-    season: (d as any).season ?? ['all'],
-    ingredients_main: (d as any).ingredients_main ?? [],
   });
 
   const matchesCuisine = (d: typeof DISH_DATA[0]) =>
     d.cuisine.some(dc => cuisineLower.includes(dc.toLowerCase()));
 
   const matchesDietary = (d: typeof DISH_DATA[0]) => {
-    if (jain) return d.dietary.includes('jain');
+    if (jain)    return d.dietary.includes('jain');
     if (vegOnly) return !d.dietary.some(x => x.includes('non-vegetarian'));
     return true;
   };
@@ -365,36 +374,34 @@ function selectDishFromPool(
   let candidates: PoolDish[];
 
   const inMeal = (d: PoolDish) =>
-    d.meal_type.includes('lunch') || d.meal_type.includes('dinner');
-  const isVegDish = (d: PoolDish) =>
-    !d.dietary.some(x => x.includes('non-vegetarian'));
-  const isNonVegDish = (d: PoolDish) =>
-    d.dietary.some(x => x.includes('non-vegetarian'));
+    d.slot.some(s => s.startsWith('lunch') || s.startsWith('dinner'));
+  const isVegDish    = (d: PoolDish) => d.is_veg === true;
+  const isNonVegDish = (d: PoolDish) => d.is_veg === false;
   const notStarch = (d: PoolDish) =>
     !RICE_RE.test(d.name) && !BREAD_RE.test(d.name) && !RAITA_RE.test(d.name);
 
   if (slot === 'breakfast') {
-    candidates = pool.filter(d => d.meal_type.includes('breakfast'));
+    candidates = pool.filter(d => d.slot.includes('breakfast'));
   } else if (slot === 'snack') {
-    candidates = pool.filter(d => d.meal_type.includes('snack'));
+    candidates = pool.filter(d => d.slot.includes('snack'));
   } else if (slot.endsWith('_rice')) {
-    candidates = pool.filter(d => inMeal(d) && RICE_RE.test(d.name) && isVegDish(d));
+    candidates = pool.filter(d => d.slot.includes('rice') || (inMeal(d) && RICE_RE.test(d.name) && isVegDish(d)));
   } else if (slot.endsWith('_bread')) {
-    candidates = pool.filter(d =>
-      (inMeal(d) || d.meal_type.includes('breakfast')) &&
-      BREAD_RE.test(d.name) && isVegDish(d)
-    );
+    candidates = pool.filter(d => d.slot.includes('bread') || ((inMeal(d) || d.slot.includes('breakfast')) && BREAD_RE.test(d.name) && isVegDish(d)));
   } else if (slot.endsWith('_raita')) {
-    candidates = pool.filter(d => RAITA_RE.test(d.name) && isVegDish(d));
+    candidates = pool.filter(d => d.slot.includes('raita') || (RAITA_RE.test(d.name) && isVegDish(d)));
   } else if (slot.endsWith('_curry_1')) {
     // Main curry — non-veg on non-veg days, veg on veg days
     candidates = pool.filter(d =>
-      inMeal(d) && notStarch(d) &&
+      (d.slot.includes('lunch_curry') || d.slot.includes('dinner_curry') || (inMeal(d) && notStarch(d))) &&
       (isNonVeg ? isNonVegDish(d) : isVegDish(d))
     );
   } else {
-    // curry_2 and veg — always vegetarian
-    candidates = pool.filter(d => inMeal(d) && notStarch(d) && isVegDish(d));
+    // curry_2, veg_side — always vegetarian
+    candidates = pool.filter(d =>
+      (d.slot.includes('veg_side') || d.slot.includes('lunch_curry') || d.slot.includes('dinner_curry') || (inMeal(d) && notStarch(d))) &&
+      isVegDish(d)
+    );
   }
 
   // Prefer unseen dishes; fall back to any candidate if all seen
@@ -591,11 +598,8 @@ export async function generateMealPlanFast(
   const isNonVegDish = (dish: string | undefined | null) =>
     !!dish && NON_VEG_KW.some(k => dish.toLowerCase().includes(k));
 
-  // Per-pool dish ingredients lookup
-  const dishIngredients = (dishName: string): string[] => {
-    const found = pool.find(d => d.name === dishName);
-    return found?.ingredients_main ?? [];
-  };
+  // ingredients_main removed from new schema — return empty array (avoidance matching uses dish name keywords)
+  const dishIngredients = (_dishName: string): string[] => [];
 
   const usedNames = new Set<string>(weekHistory.map(n => n.toLowerCase()));
   const dayResults: MealPlanDay[] = [];
