@@ -481,6 +481,7 @@ export async function generateMealPlan(
     selectedSlots?: string[];
     allowedProteins?: string[];
     isMixed?: boolean;
+    sundayExtraCurry?: string;
   },
   onProgress?: (current: number, total: number) => void,
 ): Promise<MealPlanResult> {
@@ -614,6 +615,13 @@ export async function generateMealPlan(
     breakfast.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
 
     const lunch = slots.includes('lunch') ? await generateOneMeal('lunch', date, dayName, dayCuisine, healthInfo, lunchDinnerPref, lang, lnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, lnConstraint, ragDishPrompt) : emptySlot;
+    // RULE: Sunday special — force one dish from sunday_extra_curry into lunch or dinner curry slot
+    if (dayName === 'Sunday' && params.sundayExtraCurry && lunch.options.length > 0) {
+      const sundaySpecials = params.sundayExtraCurry.split(',').map((d: string) => d.trim()).filter(Boolean);
+      if (sundaySpecials.length > 0) {
+        lunch.options[0].name = sundaySpecials[Math.floor(Math.random() * sundaySpecials.length)];
+      }
+    }
     lunch.options.forEach(opt => { if (opt.name) weekHistory.push(opt.name); });
 
     const dinner = slots.includes('dinner') ? await generateOneMeal('dinner', date, dayName, dayCuisine, healthInfo, lunchDinnerPref, lang, dnPrefs, unwellNote, nutritionGoals, i, festivalContext, weekHistory, cityName, storeNames, ldProteins, dnConstraint, ragDishPrompt) : emptySlot;
@@ -1159,6 +1167,18 @@ export async function generateMealPlanFast(
           ? (params.cuisinePerDay![i] as string[])[0]
           : (params.cuisinePerDay?.[i] as string) || params.cuisine;
         dishes.dinner_curry_1 = `${cuisineStr} ${protein} Curry`;
+      }
+
+      // RULE: Sunday special — force one dish from sunday_extra_curry into lunch or dinner curry slot
+      if (isSunday && params.sundayExtraCurry) {
+        const sundaySpecials = params.sundayExtraCurry
+          .split(',')
+          .map((d: string) => d.trim())
+          .filter(Boolean);
+        if (sundaySpecials.length > 0) {
+          const picked = sundaySpecials[Math.floor(Math.random() * sundaySpecials.length)];
+          dishes.lunch_curry_1 = picked;
+        }
       }
 
       // ── Stage 2: parallel ingredients for all 14 dishes ──────────────────
