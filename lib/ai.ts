@@ -702,27 +702,32 @@ export async function generateMealPlanFast(
       // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
       let finalLunchCurry1 = lunchCurry1;
       if (isSunday) {
-        const sundayDishes = dayPool.filter(d =>
+        const sundayPoolDishes = dayPool.filter(d =>
           d.allowed_days && d.allowed_days.includes('Sunday') &&
           d.is_veg === false &&
           (d.slot.includes('lunch_curry') || d.slot.includes('dinner_curry')) &&
           !usedNames.has(d.name)
         );
-        if (sundayDishes.length > 0) {
-          finalLunchCurry1 = sundayDishes[Math.floor(Math.random() * sundayDishes.length)].name;
+        if (sundayPoolDishes.length > 0) {
+          finalLunchCurry1 = sundayPoolDishes[Math.floor(Math.random() * sundayPoolDishes.length)].name;
           usedNames.add(finalLunchCurry1);
         }
-        // Also check sundayExtraCurry as a secondary source
+        // Secondary: sundayExtraCurry — query Supabase directly, bypassing cuisine pool filter
         if (params.sundayExtraCurry) {
           const sundaySpecials = params.sundayExtraCurry
             .split(',')
             .map((d: string) => d.trim())
             .filter(Boolean);
-          const validSpecials = sundaySpecials.filter(s =>
-            dayPool.some(d => d.name.toLowerCase() === s.toLowerCase())
-          );
-          if (validSpecials.length > 0) {
-            finalLunchCurry1 = validSpecials[Math.floor(Math.random() * validSpecials.length)];
+
+          const { data: sundayDishes } = await supabase
+            .from('dishes')
+            .select('name, slot, is_veg, cuisine, allowed_days, is_jain, is_fasting, health_tags')
+            .in('name', sundaySpecials)
+            .eq('is_banned', false);
+
+          if (sundayDishes && sundayDishes.length > 0) {
+            const pick = sundayDishes[Math.floor(Math.random() * sundayDishes.length)];
+            finalLunchCurry1 = pick.name;
             usedNames.add(finalLunchCurry1);
           }
         }
