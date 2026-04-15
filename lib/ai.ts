@@ -398,7 +398,6 @@ Reply ONLY with this JSON (no other text, no markdown):
     return (raw.options ?? []).map((o) => {
       let ingredients = o.ing ?? [];
       if (ingredients.length === 0) {
-        console.warn(`[generateOneMeal] Empty ingredients for "${o.name}" — adding placeholders`);
         ingredients = ['Oil 2 tbsp', 'Salt to taste', 'Onion 2 medium', 'Tomato 2 medium', 'Green chilli 2', 'Ginger-garlic paste 1 tbsp'];
       }
       let steps = o.steps ?? [];
@@ -430,15 +429,12 @@ Reply ONLY with this JSON (no other text, no markdown):
 
     // Post-generation non-veg validation: retry once if non-veg user got all-veg
     if (isNonVegPref && !hasNonVegDish(opts)) {
-      console.warn(`[generateOneMeal] Non-veg user got all-veg ${mealType} on ${day} — retrying`);
       try {
         const retryPrompt = prompt + '\n\nRETRY: Previous response contained ONLY vegetarian dishes. You MUST include at least one non-vegetarian dish containing meat, poultry, seafood or eggs. An all-vegetarian response is INVALID for this non-vegetarian user.';
         const retryText = await askClaude(retryPrompt);
         const retryOpts = parseResponse(retryText);
         if (retryOpts.length > 0 && hasNonVegDish(retryOpts)) {
           opts = retryOpts;
-        } else {
-          console.error(`[generateOneMeal] Non-veg retry ALSO failed for ${mealType} on ${day}`);
         }
       } catch { /* use original opts if retry fails */ }
     }
@@ -648,10 +644,6 @@ export async function generateMealPlan(
     if (seenDishes.has(key)) duplicates.push(name);
     else seenDishes.add(key);
   });
-  if (duplicates.length > 0) {
-    console.error(`[MealPlan] DUPLICATE DISHES DETECTED: ${duplicates.join(', ')}`);
-  }
-
   const allIngredients: string[] = [];
   days.forEach(({ breakfast, lunch, dinner }) => {
     [breakfast, lunch, dinner].forEach((slot) =>
@@ -958,7 +950,6 @@ Return JSON only, no markdown:
   }
   const fallbackDish = (val: any, slot: string): string => {
     if (typeof val === 'string' && val.trim().length > 0) return val.trim();
-    console.warn(`[DISH MISSING] selectDishesForDay: missing field "${slot}" — using fallback`);
     return slot.includes('breakfast') ? 'Poee with Butter'
       : slot.includes('snack') ? 'Banana Chips'
       : slot.includes('veg') ? 'Tendli Bhaji'
@@ -1294,7 +1285,6 @@ export async function generateMealPlanFast(
             const protein = params.allowedProteins?.[0] || 'Chicken';
             opt.name = slot === 'breakfast' ? 'Pohe' : slot === 'snack' ? 'Fruit Chaat' : `${cuisine} ${protein} Curry`;
             swapNote.push(`Maharaj swapped "${original}" because of your avoidance settings`);
-            console.warn(`[AVOIDANCE REPLACED] ${original} → ${opt.name} on ${day.day}, slot ${slot}`);
           }
         });
       });
