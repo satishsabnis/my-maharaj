@@ -275,6 +275,11 @@ export default function HomeScreen() {
           </Animated.Text>
         </View>
 
+        {/* Maintenance banner */}
+        <View style={{backgroundColor:'#2E5480',width:'100%',paddingVertical:12,paddingHorizontal:16}}>
+          <Text style={{color:'#FFFFFF',fontSize:14,textAlign:'center'}}>Maharaj is upgrading his kitchen. Back shortly.</Text>
+        </View>
+
         <ScrollView contentContainerStyle={{paddingBottom:20}} showsVerticalScrollIndicator={false}>
 
           {/* ── HERO ── */}
