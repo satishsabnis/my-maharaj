@@ -259,20 +259,31 @@ async function fetchDishPool(
 
   // ── 1. Try Supabase ──────────────────────────────────────────────────────
   try {
+    // Build fallback cuisine list for broader coverage
+    const allCuisines = [
+      ...cuisines,
+      ...cuisines.flatMap(c => CUISINE_FALLBACK[c] ?? []),
+    ];
+    const uniqueCuisines = [...new Set(allCuisines)];
+
     let q = supabase
       .from('dishes')
       .select('name, cuisine, meal_type, dietary, health_tags, season, ingredients_main')
-      .or(`season.cs.{all},season.cs.{${season}}`);
+      .eq('is_banned', false)
+      // Overlap filter: any of the requested cuisines must appear in the dish's cuisine array
+      .filter('cuisine', 'ov', `{${uniqueCuisines.join(',')}}`);
+    // Season: NOT filtered here — many seeded rows have season:[] (year-round)
 
     if (vegOnly && !jain) q = q.not('dietary', 'cs', '{non-vegetarian}');
     if (jain) q = q.contains('dietary', ['jain']);
 
-    const { data, error } = await q.limit(500);
+    const { data, error } = await q.limit(600);
     if (!error && data && data.length > 0) {
-      const filtered = (data as PoolDish[]).filter(d =>
-        d.cuisine && d.cuisine.some(dc => cuisineLower.includes(dc.toLowerCase()))
-      );
-      if (filtered.length >= 30) return filtered;
+      // Prefer exact cuisine match dishes first
+      const exact   = (data as PoolDish[]).filter(d => d.cuisine.some(dc => cuisineLower.includes(dc.toLowerCase())));
+      const broader = (data as PoolDish[]).filter(d => !exact.includes(d));
+      const filtered = [...exact, ...broader];
+      if (filtered.length >= 10) return filtered;
     }
   } catch { /* Supabase unavailable — use DISH_DATA */ }
 
@@ -318,26 +329,26 @@ async function fetchDishPool(
 
 // ─── Slot selection ───────────────────────────────────────────────────────────
 
-const RICE_RE  = /\b(bhat|bhaat|sheeth|rice|khichdi|pulao|biryani|fried rice|bhaat)\b/i;
-const BREAD_RE = /\b(bhakri|roti|chapati|chapatti|phulka|puri|poori|paratha|naan|kulcha|thepla|luchi|poli|flatbread|rotte)\b/i;
-const RAITA_RE = /\b(raita|koshimbir|pachadi|sol kadhi|riata)\b/i;
+const RICE_RE  = /\b(bhat|bhaat|sheeth|tandool|rice|khichdi|pulao|biryani|fried rice)\b/i;
+const BREAD_RE = /\b(bhakri|roti|chapati|chapatti|phulka|puri|poori|paratha|naan|kulcha|thepla|luchi|poli|flatbread|rotte|vade|bhature|luchi)\b/i;
+const RAITA_RE = /\b(raita|koshimbir|pachadi|sol kadhi|riata|dahi\s+\w+|kakdi)\b/i;
 
 // Per-slot hardcoded fallbacks (used when pool has no matching dish)
 const SLOT_FALLBACKS: Record<string, string> = {
   breakfast:      'Pohe',
-  lunch_curry_1:  'Dal Tadka',
-  lunch_curry_2:  'Jeera Aloo',
-  lunch_veg:      'Bhindi Masala',
-  lunch_raita:    'Boondi Raita',
-  lunch_bread:    'Chapati',
-  lunch_rice:     'Steamed Rice',
-  dinner_curry_1: 'Dal Tadka',
-  dinner_curry_2: 'Paneer Masala',
-  dinner_veg:     'Aloo Matar',
-  dinner_raita:   'Cucumber Raita',
-  dinner_bread:   'Roti',
-  dinner_rice:    'Jeera Rice',
-  snack:          'Fruit Chaat',
+  lunch_curry_1:  'Varan Bhaat',
+  lunch_curry_2:  'Batata Bhaji',
+  lunch_veg:      'Bhendi Upkari',
+  lunch_raita:    'Sol Kadhi',
+  lunch_bread:    'Jowar Bhakri',
+  lunch_rice:     'Ukde Sheeth',
+  dinner_curry_1: 'Kolhapuri Chicken Rassa',
+  dinner_curry_2: 'Pithla',
+  dinner_veg:     'Vaangi Bhaji',
+  dinner_raita:   'Sol Kadhi',
+  dinner_bread:   'Nachni Bhakri',
+  dinner_rice:    'Dadhi Bhaat',
+  snack:          'Chakli',
 };
 
 /**
