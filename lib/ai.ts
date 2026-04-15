@@ -589,7 +589,8 @@ export async function generateMealPlan(
   const cuisinePerDay = params.cuisinePerDay;
   const dayMeta = params.dates.map((date, i) => {
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-    const isVegDay = params.vegDays?.includes(dayName) ?? false;
+    let isVegDay = params.vegDays?.includes(dayName) ?? false;
+    if (dayName === 'Saturday') isVegDay = true; // RULE: Veg Saturday — all meals veg on Saturday regardless of family preference
     const foodPref = isVegDay ? `Vegetarian (${dayName} is a designated veg day)` : baseFoodPref;
     const bfFoodPref = isMixed && !isVegDay ? 'Strictly Vegetarian — Mixed mode: breakfast is always vegetarian' : foodPref;
     const lunchDinnerPref = params.foodPrefs.type === 'nonveg' && !isVegDay
@@ -1100,6 +1101,7 @@ export async function generateMealPlanFast(
     const date = params.dates[i];
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     let isVegDay = params.vegDays?.includes(dayName) ?? false;
+    if (dayName === 'Saturday') isVegDay = true; // RULE: Veg Saturday — all meals veg on Saturday regardless of family preference
     const avoidanceText = (params.familyAvoids ?? []).join(' ').toLowerCase();
     const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     DAY_NAMES.forEach(d => {
