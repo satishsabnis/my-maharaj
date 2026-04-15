@@ -275,7 +275,9 @@ async function fetchDishPool(
       .filter('cuisine', 'ov', `{${uniqueCuisines.join(',')}}`);
 
     if (vegOnly && !jain) q = q.eq('is_veg', true);
-    if (jain) q = q.eq('is_jain', true);
+    if (jain)  q = q.eq('is_jain', true);
+    if (!jain) q = q.eq('is_jain', false);   // exclude Jain-restricted dishes for non-Jain families
+    q = q.eq('is_fasting', false);            // exclude fasting dishes unless explicitly a fasting day
 
     const { data, error } = await q.limit(600);
     if (!error && data && data.length > 0) {
@@ -311,7 +313,9 @@ async function fetchDishPool(
     d.cuisine.some(dc => cuisineLower.includes(dc.toLowerCase()));
 
   const matchesDietary = (d: typeof DISH_DATA[0]) => {
+    if (d.dietary.includes('fasting')) return false;          // always exclude fasting dishes
     if (jain)    return d.dietary.includes('jain');
+    if (!jain && d.dietary.includes('jain')) return false;   // exclude Jain-restricted for non-Jain families
     if (vegOnly) return !d.dietary.some(x => x.includes('non-vegetarian'));
     return true;
   };
