@@ -211,6 +211,7 @@ interface PoolDish {
   is_fasting: boolean;
   is_non_veg_type: string | null;
   health_tags: string[];
+  allowed_days: string[];
 }
 
 // Regional cuisine fallback chain — when pool is thin, expand to nearby cuisines
@@ -269,7 +270,7 @@ async function fetchDishPool(
 
     let q = supabase
       .from('dishes')
-      .select('name, cuisine, slot, is_veg, is_jain, is_fasting, is_non_veg_type, health_tags')
+      .select('name, cuisine, slot, is_veg, is_jain, is_fasting, is_non_veg_type, health_tags, allowed_days')
       .eq('is_banned', false)
       // Overlap filter: any of the requested cuisines must appear in the dish's cuisine array
       .filter('cuisine', 'ov', `{${uniqueCuisines.join(',')}}`);
@@ -307,6 +308,7 @@ async function fetchDishPool(
     is_fasting: d.dietary.includes('fasting'),
     is_non_veg_type: null,
     health_tags: d.health_tags ?? [],
+    allowed_days: (d as any).allowed_days ?? [],
   });
 
   const matchesCuisine = (d: typeof DISH_DATA[0]) =>
@@ -697,22 +699,33 @@ export async function generateMealPlanFast(
         ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus)
         : '';
 
-      // RULE: Sunday special — override lunch_curry_1 with one dish from sundayExtraCurry
+      // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
       let finalLunchCurry1 = lunchCurry1;
-      if (isSunday && params.sundayExtraCurry) {
-        const sundaySpecials = params.sundayExtraCurry
-          .split(',')
-          .map((d: string) => d.trim())
-          .filter(Boolean);
-        // Only use entries that are real dish names in the pool — not template descriptions
-        // (e.g. "2 chicken curries" is a description; "Malvani Kombdi Rassa" is a dish name)
-        const validSpecials = sundaySpecials.filter(s =>
-          dayPool.some(d => d.name.toLowerCase() === s.toLowerCase())
+      if (isSunday) {
+        const sundayDishes = dayPool.filter(d =>
+          d.allowed_days && d.allowed_days.includes('Sunday') &&
+          d.is_veg === false &&
+          (d.slot.includes('lunch_curry') || d.slot.includes('dinner_curry')) &&
+          !usedNames.has(d.name)
         );
-        if (validSpecials.length > 0) {
-          finalLunchCurry1 = validSpecials[Math.floor(Math.random() * validSpecials.length)];
+        if (sundayDishes.length > 0) {
+          finalLunchCurry1 = sundayDishes[Math.floor(Math.random() * sundayDishes.length)].name;
+          usedNames.add(finalLunchCurry1);
         }
-        // else: lunchCurry1 from selectDishFromPool is kept as finalLunchCurry1
+        // Also check sundayExtraCurry as a secondary source
+        if (params.sundayExtraCurry) {
+          const sundaySpecials = params.sundayExtraCurry
+            .split(',')
+            .map((d: string) => d.trim())
+            .filter(Boolean);
+          const validSpecials = sundaySpecials.filter(s =>
+            dayPool.some(d => d.name.toLowerCase() === s.toLowerCase())
+          );
+          if (validSpecials.length > 0) {
+            finalLunchCurry1 = validSpecials[Math.floor(Math.random() * validSpecials.length)];
+            usedNames.add(finalLunchCurry1);
+          }
+        }
       }
 
       // ── Assemble anatomy ──────────────────────────────────────────────────
