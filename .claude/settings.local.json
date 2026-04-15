@@ -61,7 +61,12 @@
       "Bash(cat ~/.claude/skills/gstack/*/SKILL.md)",
       "Bash(~/.claude/skills/gstack/bin/gstack-config get:*)",
       "Bash(vercel logs:*)",
-      "Bash(grep -rn \"private\\\\|UIKit\\\\|CoreData\\\\|objc\\\\|NSPrivate\\\\|_private\" /c/Users/satis/documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js)"
+      "Bash(grep -rn \"private\\\\|UIKit\\\\|CoreData\\\\|objc\\\\|NSPrivate\\\\|_private\" /c/Users/satis/documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js)",
+      "Bash(grep -E \"\\\\.js$|\\\\.ts$|\\\\.tsx$|\\\\.config|next\\\\.|tailwind\\\\.\")",
+      "Bash(head:*)",
+      "Bash(find C:Userssatisdocumentsmy-maharajappcook C:Userssatisdocumentsmy-maharajapi -name *.tsx -o -name *.js)",
+      "Bash(node:*)",
+      "Bash(grep -r \"jsPDF\\\\|html2canvas\" /c/Users/satis/Documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js --include=*.jsx)"
     ]
   }
 }
