@@ -588,23 +588,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const communityFromProfile = await AsyncStorage.getItem('community') || '';
 
       console.log('[VEG DAYS]', profile?.veg_days);
-      console.log('DEBUG FOOD PREF:', {
-        savedFoodPref: await AsyncStorage.getItem('dietary_food_pref'),
-        foodPref,
-        foodPreference,
-        effectiveFoodPref,
-        effectiveIsMixed,
-        isMixed,
-        'params.foodPrefs.type': effectiveFoodPref,
-      });
-      Alert.alert('DEBUG NON-VEG', JSON.stringify({
-        foodPref,
-        foodPreference,
-        effectiveFoodPref,
-        effectiveIsMixed,
-        isMixed,
-        isNonVegPref: effectiveFoodPref === 'nonveg',
-      }, null, 2));
       const plan = await generateMealPlanFast({
         userId,
         dates,
@@ -1381,7 +1364,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       return { label: shortDay, date: String(dateNum), dateStr };
     });
     if (selectedDays.length === 0) {
-      setSelectedDays([dayChips[0].dateStr]);
+      setSelectedDays(dayChips.map(c => c.dateStr));  // default: all 7 days selected
     }
 
     const profileCuisinesDisplay = selectedCuisines.length > 0

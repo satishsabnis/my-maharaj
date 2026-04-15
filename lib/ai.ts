@@ -704,9 +704,15 @@ export async function generateMealPlanFast(
           .split(',')
           .map((d: string) => d.trim())
           .filter(Boolean);
-        if (sundaySpecials.length > 0) {
-          finalLunchCurry1 = sundaySpecials[Math.floor(Math.random() * sundaySpecials.length)];
+        // Only use entries that are real dish names in the pool — not template descriptions
+        // (e.g. "2 chicken curries" is a description; "Malvani Kombdi Rassa" is a dish name)
+        const validSpecials = sundaySpecials.filter(s =>
+          dayPool.some(d => d.name.toLowerCase() === s.toLowerCase())
+        );
+        if (validSpecials.length > 0) {
+          finalLunchCurry1 = validSpecials[Math.floor(Math.random() * validSpecials.length)];
         }
+        // else: lunchCurry1 from selectDishFromPool is kept as finalLunchCurry1
       }
 
       // ── Assemble anatomy ──────────────────────────────────────────────────
@@ -819,6 +825,50 @@ export async function generateMealPlanFast(
 
   if (avoidKeywords.length > 0) {
     const swapNote: string[] = [];
+
+    // Pick a replacement dish from the full pool (cuisine-relaxed), avoiding the violated name
+    const swapReplacement = (violatedName: string, slot: string): string => {
+      const isNonVegViolation = NON_VEG_KW.some(k => violatedName.toLowerCase().includes(k));
+
+      if (slot === 'breakfast') {
+        // Try pool first, fall back to SLOT_FALLBACKS
+        const candidates = pool.filter(d =>
+          d.slot.includes('breakfast') &&
+          d.is_veg === true &&
+          !avoidKeywords.some(kw => d.name.toLowerCase().includes(kw))
+        );
+        if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)].name;
+        return SLOT_FALLBACKS['breakfast'];
+      }
+
+      if (slot === 'snack') {
+        const candidates = pool.filter(d =>
+          d.slot.includes('snack') &&
+          !avoidKeywords.some(kw => d.name.toLowerCase().includes(kw))
+        );
+        if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)].name;
+        return SLOT_FALLBACKS['snack'];
+      }
+
+      // Curry slot — pick from full pool (no cuisine constraint), matching veg/non-veg of original
+      const curryCandidates = pool.filter(d =>
+        (d.slot.includes('lunch_curry') || d.slot.includes('dinner_curry')) &&
+        d.is_veg === !isNonVegViolation &&
+        !avoidKeywords.some(kw => d.name.toLowerCase().includes(kw))
+      );
+      if (curryCandidates.length > 0) return curryCandidates[Math.floor(Math.random() * curryCandidates.length)].name;
+
+      // If still nothing, relax to any veg curry
+      const vegFallbackCandidates = pool.filter(d =>
+        (d.slot.includes('lunch_curry') || d.slot.includes('dinner_curry')) &&
+        d.is_veg === true &&
+        !avoidKeywords.some(kw => d.name.toLowerCase().includes(kw))
+      );
+      if (vegFallbackCandidates.length > 0) return vegFallbackCandidates[Math.floor(Math.random() * vegFallbackCandidates.length)].name;
+
+      return slot.startsWith('lunch') ? SLOT_FALLBACKS['lunch_curry_2'] : SLOT_FALLBACKS['dinner_curry_2'];
+    };
+
     dayResults.forEach(day => {
       const checkViolation = (dishName: string) =>
         avoidKeywords.some(kw => dishName.toLowerCase().includes(kw));
@@ -828,13 +878,7 @@ export async function generateMealPlanFast(
         s?.options?.forEach((opt: any) => {
           if (opt.name && checkViolation(opt.name)) {
             const original = opt.name;
-            const protein  = params.allowedProteins?.[0] || 'Chicken';
-            const cStr     = Array.isArray(params.cuisinePerDay?.[0])
-              ? (params.cuisinePerDay![0] as string[])[0]
-              : (params.cuisinePerDay?.[0] as string) || params.cuisine;
-            opt.name = slot === 'breakfast' ? 'Pohe'
-              : slot === 'snack' ? 'Fruit Chaat'
-              : `${cStr} ${protein} Curry`;
+            opt.name = swapReplacement(original, slot);
             swapNote.push(`Maharaj swapped "${original}" — avoidance settings`);
           }
         });
