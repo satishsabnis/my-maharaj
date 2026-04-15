@@ -588,6 +588,23 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const communityFromProfile = await AsyncStorage.getItem('community') || '';
 
       console.log('[VEG DAYS]', profile?.veg_days);
+      console.log('DEBUG FOOD PREF:', {
+        savedFoodPref: await AsyncStorage.getItem('dietary_food_pref'),
+        foodPref,
+        foodPreference,
+        effectiveFoodPref,
+        effectiveIsMixed,
+        isMixed,
+        'params.foodPrefs.type': effectiveFoodPref,
+      });
+      Alert.alert('DEBUG NON-VEG', JSON.stringify({
+        foodPref,
+        foodPreference,
+        effectiveFoodPref,
+        effectiveIsMixed,
+        isMixed,
+        isNonVegPref: effectiveFoodPref === 'nonveg',
+      }, null, 2));
       const plan = await generateMealPlanFast({
         userId,
         dates,
