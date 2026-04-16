@@ -4,6 +4,10 @@
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  const secret = req.headers['x-maharaj-secret'];
+  if (!secret || secret !== process.env.MAHARAJ_API_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const apiKey = process.env.CLAUDE_KEY;
   if (!apiKey) { res.status(500).json({ error: 'CLAUDE_KEY environment variable is not set on the server. Please configure it in Vercel dashboard.' }); return; }
   try {

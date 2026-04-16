@@ -94,7 +94,7 @@ async function askClaude(prompt: string): Promise<string> {
 
   const res = await fetch(`${BASE}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
@@ -110,7 +110,7 @@ async function askClaude(prompt: string): Promise<string> {
 async function askClaudeStream(prompt: string): Promise<string> {
   const res = await fetch(`${BASE}/api/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
@@ -142,7 +142,7 @@ async function askClaudeStream(prompt: string): Promise<string> {
 async function askClaudeJson(prompt: string, maxTokens: number): Promise<string> {
   const res = await fetch(`${BASE}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
