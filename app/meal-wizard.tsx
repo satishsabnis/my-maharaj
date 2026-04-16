@@ -5,7 +5,7 @@ import { CameraView, Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
-import { generateMealPlan, generateMealPlanFast, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags, AnatomyComponent, MealAnatomy } from '../lib/ai';
+import { generateMealPlanFast, MealOption, MealPlanDay, emptyHealthFlags, HealthFlags, AnatomyComponent, MealAnatomy } from '../lib/ai';
 import { loadOrDetectLocation, UserLocation } from '../lib/location';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
@@ -1188,7 +1188,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       days: generatedPlan.map((day, idx) => {
         const hasAnatomy = !!day.anatomy?.lunch?.curry;
         const meals = hasAnatomy ? [
-          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.dishes?.breakfast || '' },
+          { label: 'Breakfast', dish: day.anatomy?.breakfast?.dishName || day.anatomy?.breakfast || '' },
           { label: 'Lunch Curry', dish: Array.isArray(day.anatomy?.lunch?.curry) ? day.anatomy!.lunch!.curry.map((c: any) => c.dishName).filter(Boolean).join(' + ') : day.anatomy?.lunch?.curry?.dishName || '' },
           { label: 'Lunch Veg', dish: day.anatomy?.lunch?.veg?.dishName || '' },
           { label: 'Lunch Raita', dish: day.anatomy?.lunch?.raita?.dishName || '' },
@@ -1201,18 +1201,18 @@ Return ONLY valid JSON (no markdown) in this exact format:
           { label: 'Dinner Rice', dish: day.anatomy?.dinner?.rice?.dishName || '' },
           { label: 'Snack', dish: day.anatomy?.snack?.dishName || '' },
         ] : [
-          { label: 'Breakfast', dish: day.dishes?.breakfast || '' },
-          { label: 'Lunch Curry', dish: [day.dishes?.lunch_curry_1, day.dishes?.lunch_curry_2].filter(Boolean).join(' + ') },
-          { label: 'Lunch Veg', dish: day.dishes?.lunch_veg || '' },
-          { label: 'Lunch Raita', dish: day.dishes?.lunch_raita || '' },
-          { label: 'Lunch Bread', dish: day.dishes?.lunch_bread || '' },
-          { label: 'Lunch Rice', dish: day.dishes?.lunch_rice || '' },
-          { label: 'Dinner Curry', dish: [day.dishes?.dinner_curry_1, day.dishes?.dinner_curry_2].filter(Boolean).join(' + ') },
-          { label: 'Dinner Veg', dish: day.dishes?.dinner_veg || '' },
-          { label: 'Dinner Raita', dish: day.dishes?.dinner_raita || '' },
-          { label: 'Dinner Bread', dish: day.dishes?.dinner_bread || '' },
-          { label: 'Dinner Rice', dish: day.dishes?.dinner_rice || '' },
-          { label: 'Snack', dish: day.dishes?.snack || '' },
+          { label: 'Breakfast', dish: day.anatomy?.breakfast || '' },
+          { label: 'Lunch Curry', dish: [day.anatomy?.lunch_curry_1, day.anatomy?.lunch_curry_2].filter(Boolean).join(' + ') },
+          { label: 'Lunch Veg', dish: day.anatomy?.lunch_veg || '' },
+          { label: 'Lunch Raita', dish: day.anatomy?.lunch_raita || '' },
+          { label: 'Lunch Bread', dish: day.anatomy?.lunch_bread || '' },
+          { label: 'Lunch Rice', dish: day.anatomy?.lunch_rice || '' },
+          { label: 'Dinner Curry', dish: [day.anatomy?.dinner_curry_1, day.anatomy?.dinner_curry_2].filter(Boolean).join(' + ') },
+          { label: 'Dinner Veg', dish: day.anatomy?.dinner_veg || '' },
+          { label: 'Dinner Raita', dish: day.anatomy?.dinner_raita || '' },
+          { label: 'Dinner Bread', dish: day.anatomy?.dinner_bread || '' },
+          { label: 'Dinner Rice', dish: day.anatomy?.dinner_rice || '' },
+          { label: 'Snack', dish: day.anatomy?.snack || '' },
         ];
         return ({ dayName: day.day, date: day.date, meals });
       }),
@@ -1796,6 +1796,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                       const nightCarry = key === 'lunch' && dayIdx > 0 && cookingPattern === 'Cook at night — dinner carries to next day lunch';
                       const prevDayName = nightCarry ? generatedPlan[dayIdx - 1].day : '';
                       const prevDinnerAnat = nightCarry ? generatedPlan[dayIdx - 1].anatomy?.dinner : undefined;
+                      if (!day.anatomy) return null;
 
                       if ((key === 'lunch' || key === 'dinner') && day.anatomy[key]) {
                         const ms = day.anatomy[key] as MealAnatomy;
@@ -2081,7 +2082,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                       (slotAnat as AnatomyComponent).dishName = alt.dishName;
                     } else if (slotAnat && typeof slotAnat === 'object') {
                       const compKey = component.toLowerCase() as keyof MealAnatomy;
-                      if ((slotAnat as MealAnatomy)[compKey]) (slotAnat as MealAnatomy)[compKey].dishName = alt.dishName;
+                      if ((slotAnat as MealAnatomy)[compKey]) ((slotAnat as MealAnatomy)[compKey] as AnatomyComponent).dishName = alt.dishName;
                     }
                     setGeneratedPlan([...generatedPlan]);
                   }
@@ -2130,7 +2131,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                         (slotAnat as AnatomyComponent).dishName = alt.dishName;
                       } else if (slotAnat && typeof slotAnat === 'object') {
                         const compKey = alternativeSlot.component.toLowerCase() as keyof MealAnatomy;
-                        if ((slotAnat as MealAnatomy)[compKey]) (slotAnat as MealAnatomy)[compKey].dishName = alt.dishName;
+                        if ((slotAnat as MealAnatomy)[compKey]) ((slotAnat as MealAnatomy)[compKey] as AnatomyComponent).dishName = alt.dishName;
                       }
                       setGeneratedPlan([...generatedPlan]);
                     }
