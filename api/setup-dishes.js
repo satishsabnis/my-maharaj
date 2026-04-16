@@ -4,6 +4,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  const secret = req.headers['x-maharaj-secret'];
+  if (!secret || secret !== process.env.MAHARAJ_API_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ljgfvoyloeelnmugysrk.supabase.co';
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
