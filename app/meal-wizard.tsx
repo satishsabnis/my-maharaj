@@ -532,7 +532,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       else if (foodPreference === 'Vegetarian' || foodPreference === 'Veg') { effectiveFoodPref = 'veg'; effectiveIsMixed = false; }
       else if (foodPreference === 'Eggetarian') { effectiveFoodPref = 'nonveg'; effectiveIsMixed = false; }
       else if (foodPreference === 'Mixed') { effectiveFoodPref = 'nonveg'; effectiveIsMixed = true; }
-      if (!effectiveFoodPref) effectiveFoodPref = 'veg';
+      if (!effectiveFoodPref) effectiveFoodPref = 'nonveg';
 
       await AsyncStorage.setItem('dietary_food_pref', effectiveFoodPref);
       await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));

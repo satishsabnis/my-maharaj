@@ -290,6 +290,8 @@ async function fetchDishPool(
     }
   } catch { /* Supabase unavailable — use DISH_DATA */ }
 
+  console.error('[DISH_DATA FALLBACK] Supabase returned insufficient results, falling back to in-memory data. Pool size:', data?.length ?? 0);
+
   // ── 2. In-memory DISH_DATA fallback ──────────────────────────────────────
   // Map old DISH_DATA shape (meal_type/dietary arrays) → new PoolDish shape (slot/boolean flags)
   const mealTypeToSlot = (mt: string[]): string[] =>
