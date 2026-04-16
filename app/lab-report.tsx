@@ -37,7 +37,7 @@ async function callClaude(messages: any[], systemPrompt?: string): Promise<strin
   const base = 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 3000,

@@ -238,7 +238,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
 { "title": "${dishName}", "serves": ${serves}, "ingredients": ["qty ingredient", ...8-12 items], "method": ["Step 1: ...", ...5-8 steps], "maharajNote": "one warm family tip about this dish" }`;
         const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
           body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
         });
         const data = await res.json();
@@ -263,7 +263,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
     const prompt = `Suggest 3 alternative dishes for "${alternativeSlot.dishName}" from ${cuisine} cuisine. Same meal type. Return ONLY valid JSON array with no markdown: [{"dishName":"name","isVeg":true},{"dishName":"name","isVeg":false},{"dishName":"name","isVeg":false}]`;
     fetch('https://my-maharaj.vercel.app/api/claude', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
       body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
     })
       .then(r => r.json())
@@ -1137,7 +1137,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
     setScanLoading(true); setScanMode('trolley-loading');
     try {
       const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, system: 'You are Maharaj, an expert in Indian cuisine and grocery shopping. Analyse this supermarket trolley image and identify all visible food products and ingredients. Return ONLY a JSON array. Each object: { name: string (product or ingredient name), quantity: string (estimated quantity e.g. "1 pack", "2 pieces", "500g"), category: string (one of: Vegetables, Meat, Dairy, Dry Groceries, Frozen, Fruits, Condiments, Beverages) }. No preamble, no explanation, only the JSON array.', messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: result.assets[0].base64 } }, { type: 'text', text: 'Identify all food items in this trolley photo.' }] }] }),
       });
       const data = await res.json();

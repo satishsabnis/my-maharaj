@@ -28,7 +28,7 @@ interface PartyMenuResult {
 async function callClaude(system: string, user: string): Promise<string> {
   const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
