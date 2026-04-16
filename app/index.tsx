@@ -31,8 +31,9 @@ export default function SplashScreen() {
         router.replace('/language-select');
         return;
       }
-      const onboardingDone = await AsyncStorage.getItem('onboarding_complete');
-      if (!onboardingDone) {
+      const onboardingShown = await AsyncStorage.getItem('onboarding_shown');
+      const { data: profileRow } = await supabase.from('profiles').select('id').eq('id', session.user.id).maybeSingle();
+      if (!onboardingShown || !profileRow) {
         router.replace('/onboarding');
         return;
       }
