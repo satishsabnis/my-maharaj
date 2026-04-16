@@ -1572,10 +1572,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
     return (
       <View style={{flex:1,width:'100%'}}>
-        {/* Maintenance banner */}
-        <View style={{backgroundColor:'#2E5480',width:'100%',paddingVertical:12,paddingHorizontal:16}}>
-          <Text style={{color:'#FFFFFF',fontSize:14,textAlign:'center'}}>Maharaj is upgrading his kitchen. Back shortly.</Text>
-        </View>
         {/* Centred generation content */}
         <View style={{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24}}>
           {/* Maharaj logo with pulse */}
