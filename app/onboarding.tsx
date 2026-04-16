@@ -1,237 +1,264 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Animated, Image, ImageBackground, KeyboardAvoidingView, Platform,
-  SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ImageBackground, KeyboardAvoidingView, Platform, SafeAreaView,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../constants/theme';
-import { track } from '../lib/analytics';
+import { supabase, getSessionUser } from '../lib/supabase';
 
-// ─── Claude proxy ─────────────────────────────────────────────────────────────
+const NAVY = '#2E5480';
+const GOLD = '#C9A227';
+const WHITE_SEMI = 'rgba(255,255,255,0.85)';
 
-async function callClaude(userMessage: string): Promise<{ reply: string; extracted: Record<string, string> }> {
-  const systemPrompt = `You are Maharaj, a warm and friendly Indian meal planning assistant.
-The user is a new family setting up their meal preferences.
-Extract these fields from their message (JSON in your reply):
-- family_size: number of people (default "4" if not mentioned)
-- food_preference: "veg" or "nonveg" (default "veg" if unclear)
-- community: community name if mentioned (e.g. "Konkani", "Punjabi", "GSB") or ""
-- avoidance_list: comma-separated foods to avoid, or ""
+const CUISINE_GROUPS = [
+  { label: 'WEST',   options: ['Maharashtrian', 'Goan', 'Gujarati'] },
+  { label: 'NORTH',  options: ['Punjabi', 'Mughlai', 'Rajasthani'] },
+  { label: 'SOUTH',  options: ['Kerala', 'Tamil Nadu', 'Karnataka'] },
+  { label: 'EAST',   options: ['Bengali', 'Assamese'] },
+  { label: 'STREET', options: ['Street Food'] },
+];
 
-Reply warmly in 2-3 sentences confirming what you understood, then output this JSON block on a new line:
-EXTRACTED:{"family_size":"4","food_preference":"veg","community":"","avoidance_list":""}
-
-Never use markdown. Always end your reply with the EXTRACTED: line.`;
-
-  const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
-  });
-  const data = await res.json();
-  const raw: string = data?.content?.[0]?.text ?? '';
-
-  // Parse reply and extracted JSON
-  const extractedMatch = raw.match(/EXTRACTED:\s*(\{.*\})/s);
-  let extracted: Record<string, string> = { family_size: '4', food_preference: 'veg', community: '', avoidance_list: '' };
-  if (extractedMatch) {
-    try { extracted = JSON.parse(extractedMatch[1]); } catch {}
-  }
-  const reply = raw.replace(/EXTRACTED:\s*\{.*\}/s, '').trim();
-  return { reply, extracted };
+// ── Progress Dots ─────────────────────────────────────────────────────────────
+function ProgressDots({ active }: { active: 1 | 2 | 3 }) {
+  return (
+    <View style={s.dotsRow}>
+      {[1, 2, 3].map(i => (
+        <View
+          key={i}
+          style={[s.dot, active === i ? s.dotActive : s.dotInactive]}
+        />
+      ))}
+    </View>
+  );
 }
 
-// ─── Day chips ────────────────────────────────────────────────────────────────
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-function getDateForDay(dayAbbr: string): string {
-  const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
-  const today = new Date();
-  const todayDay = today.getDay();
-  const target = dayMap[dayAbbr];
-  let diff = target - todayDay;
-  if (diff < 0) diff += 7;
-  const d = new Date(today);
-  d.setDate(today.getDate() + diff);
-  return d.toISOString().split('T')[0];
+// ── Circle Tick Button ────────────────────────────────────────────────────────
+function TickButton({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity style={s.tickBtn} onPress={onPress} activeOpacity={0.8}>
+      {/* White tick via unicode — clean, no SVG dependency */}
+      <Text style={s.tickText}>{'\u2713'}</Text>
+    </TouchableOpacity>
+  );
 }
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
-  const scrollRef = useRef<ScrollView>(null);
-  const pulse = useRef(new Animated.Value(1)).current;
+  const [step, setStep]                           = useState<1 | 2 | 3 | 4>(1);
+  const [familyName, setFamilyName]               = useState('My Family');
+  const [selectedCuisines, setSelectedCuisines]   = useState<string[]>([]);
+  const [diet, setDiet]                           = useState<'veg' | 'nonveg' | null>(null);
+  const [saving, setSaving]                       = useState(false);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [userInput, setUserInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [maharajReply, setMaharajReply] = useState('');
-  const [extracted, setExtracted] = useState<Record<string, string>>({});
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-
-  // Pulsing logo
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.06, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
-  function scrollToStep(s: 1 | 2 | 3) {
-    setStep(s);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }
-
-  async function handleSend() {
-    if (!userInput.trim() || loading) return;
-    setLoading(true);
-    try {
-      const { reply, extracted: ext } = await callClaude(userInput.trim());
-      setExtracted(ext);
-      setMaharajReply(reply);
-      // Save extracted preferences to AsyncStorage
-      await AsyncStorage.setItem('family_size', ext.family_size ?? '4');
-      await AsyncStorage.setItem('food_preference', ext.food_preference ?? 'veg');
-      await AsyncStorage.setItem('community', ext.community ?? '');
-      await AsyncStorage.setItem('avoidance_list', ext.avoidance_list ?? '');
-      scrollToStep(3);
-    } catch {
-      setMaharajReply('I understood! Let us plan your first week of meals together.');
-      setExtracted({ family_size: '4', food_preference: 'veg', community: '', avoidance_list: '' });
-      scrollToStep(3);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function toggleDay(day: string) {
-    setSelectedDays(prev =>
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-    );
-  }
-
-  async function handleGeneratePlan() {
-    const orderedDays = DAYS.filter(d => selectedDays.includes(d));
-    const dates = orderedDays.map(getDateForDay);
-
-    await AsyncStorage.setItem('onboarding_complete', 'true');
-    track('onboarding_completed', {
-      family_size: extracted.family_size ?? '4',
-      food_preference: extracted.food_preference ?? 'veg',
+  function toggleCuisine(c: string) {
+    setSelectedCuisines(prev => {
+      if (prev.includes(c)) return prev.filter(x => x !== c);
+      if (prev.length >= 3) return prev;
+      return [...prev, c];
     });
+  }
 
-    // Navigate to meal-wizard, passing pre-selected dates and skipping intro
-    router.replace(`/meal-wizard?onboarding=1&dates=${encodeURIComponent(JSON.stringify(dates))}` as never);
+  async function saveAndNavigate(destination: '/dietary-profile' | '/meal-wizard', planDays?: '3') {
+    setSaving(true);
+    try {
+      const user = await getSessionUser();
+      if (user) {
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          family_name: familyName.trim() || 'My Family',
+          profile_completed: false,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+
+        if (selectedCuisines.length > 0) {
+          await supabase.from('cuisine_preferences').delete().eq('user_id', user.id);
+          await supabase.from('cuisine_preferences').insert(
+            selectedCuisines.map(c => ({ user_id: user.id, cuisine_name: c, is_excluded: false }))
+          );
+        }
+      }
+
+      const stores: [string, string][] = [
+        ['dietary_food_pref', diet ?? 'nonveg'],
+        ['dietary_is_mixed', 'false'],
+        ['onboarding_complete', 'true'],
+        ['onboarding_shown', 'true'],
+        ['family_name', familyName.trim() || 'My Family'],
+      ];
+      if (planDays) stores.push(['onboarding_plan_days', planDays]);
+      await AsyncStorage.multiSet(stores);
+
+      router.replace(destination as never);
+    } catch {
+      await AsyncStorage.multiSet([
+        ['onboarding_complete', 'true'],
+        ['onboarding_shown', 'true'],
+      ]);
+      if (planDays) await AsyncStorage.setItem('onboarding_plan_days', planDays);
+      router.replace(destination as never);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <View style={{ flex: 1 }}>
       <ImageBackground
         source={require('../assets/background.png')}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+        style={s.bg}
         resizeMode="cover"
       />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            ref={scrollRef}
-            contentContainerStyle={s.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
 
-            {/* STEP 1 — Welcome */}
-            <View style={s.step}>
-              <Animated.View style={{ transform: [{ scale: pulse }] }}>
-                <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
-              </Animated.View>
-              <Text style={s.headline}>Namaste. I am your Maharaj.</Text>
-              <Text style={s.sub}>Tell me about your family and I will plan your first week of meals.</Text>
-              <TouchableOpacity style={s.btnEmerald} onPress={() => scrollToStep(2)} activeOpacity={0.85}>
-                <Text style={s.btnEmeraldText}>Let us begin</Text>
+          {/* ── Screen 1: Family Name ──────────────────────────────────── */}
+          {step === 1 && (
+            <ScrollView
+              contentContainerStyle={s.scroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ProgressDots active={1} />
+              <View style={s.tickRow}>
+                <TickButton onPress={() => setStep(2)} />
+              </View>
+              <Text style={s.header}>Welcome to My Maharaj</Text>
+              <Text style={s.sub}>Let's set up your family kitchen</Text>
+              <Text style={s.label}>What shall Maharaj call your family?</Text>
+              <TextInput
+                style={s.input}
+                value={familyName}
+                onChangeText={setFamilyName}
+                placeholder="My Family"
+                placeholderTextColor="#8AAABB"
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={() => setStep(2)}
+              />
+              <TouchableOpacity style={s.btnGold} onPress={() => setStep(2)} activeOpacity={0.85}>
+                <Text style={s.btnGoldText}>Next</Text>
               </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {/* ── Screen 2: Cuisine ──────────────────────────────────────── */}
+          {step === 2 && (
+            <ScrollView
+              contentContainerStyle={s.scroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ProgressDots active={2} />
+              <View style={s.tickRow}>
+                <TickButton onPress={() => setStep(3)} />
+              </View>
+              <Text style={s.header}>Your Family's Cuisine</Text>
+              <Text style={s.sub}>Select up to 3</Text>
+              {CUISINE_GROUPS.map(group => (
+                <View key={group.label} style={{ marginBottom: 16 }}>
+                  <Text style={s.groupLabel}>{group.label}</Text>
+                  <View style={s.chipRow}>
+                    {group.options.map(c => {
+                      const selected = selectedCuisines.includes(c);
+                      return (
+                        <TouchableOpacity
+                          key={c}
+                          style={[s.chip, selected ? s.chipSelected : s.chipUnselected]}
+                          onPress={() => toggleCuisine(c)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[s.chipText, selected && s.chipTextSelected]}>{c}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={[s.btnGold, selectedCuisines.length === 0 && { opacity: 0.4 }]}
+                onPress={() => setStep(3)}
+                disabled={selectedCuisines.length === 0}
+                activeOpacity={0.85}
+              >
+                <Text style={s.btnGoldText}>Next</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {/* ── Screen 3: Diet ─────────────────────────────────────────── */}
+          {step === 3 && (
+            <View style={{ flex: 1 }}>
+              {/* Top section — dots + title + subtitle */}
+              <ScrollView
+                contentContainerStyle={s.scrollFlex}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={s.screen3Top}>
+                  <ProgressDots active={3} />
+                  <Text style={s.header}>Your Family's Diet</Text>
+                  <Text style={s.sub}>Tap one to continue</Text>
+                </View>
+                {/* Vertically centred diet buttons */}
+                <View style={s.screen3Mid}>
+                  <TouchableOpacity
+                    style={s.dietBtnGold}
+                    onPress={() => { setDiet('nonveg'); setStep(4); }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.dietBtnGoldText}>Non-vegetarian</Text>
+                  </TouchableOpacity>
+                  <View style={{ height: 14 }} />
+                  <TouchableOpacity
+                    style={s.dietBtnOutline}
+                    onPress={() => { setDiet('veg'); setStep(4); }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.dietBtnOutlineText}>Vegetarian</Text>
+                  </TouchableOpacity>
+                  <Text style={s.dietHint}>Tapping moves to next step</Text>
+                </View>
+              </ScrollView>
             </View>
+          )}
 
-            {/* STEP 2 — Family Setup */}
-            {step >= 2 && (
-              <View style={s.step}>
-                {/* Maharaj opening */}
-                <View style={s.maharajBubble}>
-                  <Text style={s.maharajText}>
-                    {"What is your family's name? How many people eat together? Any dietary preferences I should know — vegetarian, non-vegetarian, any foods to avoid?"}
+          {/* ── Screen 4: Plan prompt ──────────────────────────────────── */}
+          {step === 4 && (
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                contentContainerStyle={s.scrollFlex}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={s.screen3Top}>
+                  <Text style={s.header}>Almost there</Text>
+                  <Text style={s.sub}>Maharaj can plan better with more details</Text>
+                </View>
+                <View style={s.screen3Mid}>
+                  <Text style={s.profilePromptText}>
+                    Complete your Family Profile for personalised results
                   </Text>
+                  <View style={{ height: 20 }} />
+                  <TouchableOpacity
+                    style={[s.btnGold, saving && { opacity: 0.5 }]}
+                    onPress={() => saveAndNavigate('/dietary-profile')}
+                    disabled={saving}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.btnGoldText}>Complete Family Profile</Text>
+                  </TouchableOpacity>
+                  <View style={{ height: 14 }} />
+                  <TouchableOpacity
+                    style={[s.btnOutline, saving && { opacity: 0.5 }]}
+                    onPress={() => saveAndNavigate('/meal-wizard', '3')}
+                    disabled={saving}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.btnOutlineText}>Generate my 3-day plan</Text>
+                  </TouchableOpacity>
                 </View>
+              </ScrollView>
+            </View>
+          )}
 
-                {maharajReply ? (
-                  <View style={[s.maharajBubble, { marginTop: 8 }]}>
-                    <Text style={s.maharajText}>{maharajReply}</Text>
-                  </View>
-                ) : (
-                  <View style={s.inputRow}>
-                    <TextInput
-                      style={s.input}
-                      value={userInput}
-                      onChangeText={setUserInput}
-                      placeholder="e.g. Sabnis family, 4 of us, mostly veg but eggs OK..."
-                      placeholderTextColor={colors.textMuted}
-                      multiline
-                      returnKeyType="send"
-                      onSubmitEditing={handleSend}
-                    />
-                    <TouchableOpacity
-                      style={[s.sendBtn, (!userInput.trim() || loading) && { opacity: 0.4 }]}
-                      onPress={handleSend}
-                      disabled={!userInput.trim() || loading}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={s.sendBtnText}>{loading ? '...' : '\u27A4'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* STEP 3 — Day selection */}
-            {step >= 3 && (
-              <View style={s.step}>
-                <View style={s.maharajBubble}>
-                  <Text style={s.maharajText}>Which days shall I plan for you this week?</Text>
-                </View>
-
-                <View style={s.dayChips}>
-                  {DAYS.map(day => (
-                    <TouchableOpacity
-                      key={day}
-                      style={[s.chip, selectedDays.includes(day) && s.chipSelected]}
-                      onPress={() => toggleDay(day)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[s.chipText, selectedDays.includes(day) && s.chipTextSelected]}>{day}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TouchableOpacity
-                  style={[s.btnGold, selectedDays.length === 0 && { opacity: 0.4 }]}
-                  onPress={handleGeneratePlan}
-                  disabled={selectedDays.length === 0}
-                  activeOpacity={0.85}
-                >
-                  <Text style={s.btnGoldText}>Generate My First Plan</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -239,24 +266,45 @@ export default function OnboardingScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll:           { paddingHorizontal: 24, paddingBottom: 48 },
-  step:             { alignItems: 'center', paddingVertical: 40 },
-  logo:             { width: 120, height: 120, marginBottom: 24 },
-  headline:         { fontSize: 20, fontWeight: '800', color: colors.navy, textAlign: 'center', marginBottom: 10 },
-  sub:              { fontSize: 14, color: colors.teal, textAlign: 'center', lineHeight: 22, marginBottom: 32, paddingHorizontal: 8 },
-  btnEmerald:       { backgroundColor: colors.emerald, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 40, alignSelf: 'center' },
-  btnEmeraldText:   { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  maharajBubble:    { backgroundColor: '#EBF3FB', borderRadius: 16, padding: 16, alignSelf: 'stretch', marginBottom: 12 },
-  maharajText:      { fontSize: 14, color: colors.navy, lineHeight: 22 },
-  inputRow:         { flexDirection: 'row', alignSelf: 'stretch', alignItems: 'flex-end', gap: 8, marginTop: 8 },
-  input:            { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1.5, borderColor: '#D1DCE8', paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.navy, minHeight: 48, maxHeight: 120 },
-  sendBtn:          { backgroundColor: colors.navy, borderRadius: 12, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  sendBtnText:      { fontSize: 18, color: '#FFFFFF' },
-  dayChips:         { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginVertical: 20 },
-  chip:             { borderWidth: 1.5, borderColor: colors.navy, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8 },
-  chipSelected:     { backgroundColor: colors.navy },
-  chipText:         { fontSize: 13, fontWeight: '600', color: colors.navy },
-  chipTextSelected: { color: '#FFFFFF' },
-  btnGold:          { backgroundColor: colors.gold, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 40, alignSelf: 'center', marginTop: 8 },
-  btnGoldText:      { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  bg:                 { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  scroll:             { flexGrow: 1, paddingHorizontal: 28, paddingTop: 48, paddingBottom: 40 },
+  scrollFlex:         { flexGrow: 1, paddingHorizontal: 28 },
+  // Progress dots
+  dotsRow:            { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 },
+  dot:                { width: 8, height: 8, borderRadius: 4 },
+  dotActive:          { backgroundColor: NAVY },
+  dotInactive:        { backgroundColor: 'rgba(255,255,255,0.55)' },
+  // Circle tick button
+  tickRow:            { alignItems: 'flex-end', marginBottom: 20 },
+  tickBtn:            { width: 44, height: 44, borderRadius: 22, backgroundColor: NAVY, alignItems: 'center', justifyContent: 'center' },
+  tickText:           { fontSize: 20, color: '#FFFFFF', fontWeight: '700', lineHeight: 24 },
+  // Headings
+  header:             { fontSize: 22, fontWeight: '800', color: NAVY, textAlign: 'center', marginBottom: 8 },
+  sub:                { fontSize: 14, color: '#5A7A8A', textAlign: 'center', marginBottom: 28, lineHeight: 22 },
+  label:              { fontSize: 13, fontWeight: '600', color: NAVY, marginBottom: 10, textAlign: 'center' },
+  // Input
+  input:              { backgroundColor: WHITE_SEMI, borderRadius: 12, borderWidth: 1.5, borderColor: NAVY, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: NAVY, marginBottom: 24, textAlign: 'center' },
+  // Buttons
+  btnGold:            { backgroundColor: GOLD, borderRadius: 24, paddingVertical: 15, alignItems: 'center', marginBottom: 4 },
+  btnGoldText:        { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  btnOutline:         { borderWidth: 2, borderColor: NAVY, borderRadius: 24, paddingVertical: 14, alignItems: 'center', backgroundColor: WHITE_SEMI },
+  btnOutlineText:     { fontSize: 16, fontWeight: '700', color: NAVY },
+  // Cuisine chips
+  groupLabel:         { fontSize: 10, fontWeight: '700', color: '#6A8A9A', letterSpacing: 1, marginBottom: 8 },
+  chipRow:            { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip:               { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  chipUnselected:     { borderWidth: 1.5, borderColor: NAVY, backgroundColor: WHITE_SEMI },
+  chipSelected:       { backgroundColor: NAVY },
+  chipText:           { fontSize: 13, fontWeight: '500', color: NAVY },
+  chipTextSelected:   { color: '#FFFFFF' },
+  // Screen 3 layout
+  screen3Top:         { paddingTop: 48, marginBottom: 8 },
+  screen3Mid:         { flex: 1, justifyContent: 'center', paddingVertical: 32 },
+  dietBtnGold:        { backgroundColor: GOLD, borderRadius: 14, paddingVertical: 20, alignItems: 'center' },
+  dietBtnGoldText:    { fontSize: 17, fontWeight: '700', color: '#1A1A1A' },
+  dietBtnOutline:     { borderWidth: 2, borderColor: NAVY, borderRadius: 14, paddingVertical: 20, alignItems: 'center', backgroundColor: WHITE_SEMI },
+  dietBtnOutlineText: { fontSize: 17, fontWeight: '700', color: NAVY },
+  dietHint:           { fontSize: 12, color: '#8AAABB', textAlign: 'center', marginTop: 16 },
+  // Screen 4
+  profilePromptText:  { fontSize: 16, fontWeight: '500', color: NAVY, textAlign: 'center', lineHeight: 24 },
 });

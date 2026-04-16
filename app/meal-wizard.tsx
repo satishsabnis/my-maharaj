@@ -211,6 +211,9 @@ export default function MealWizardScreen() {
   // Fasting members
   const [fastingInfo, setFastingInfo] = useState<{memberName:string;fastingType:string;dayMatch:(dayName:string)=>boolean}[]>([]);
 
+  // Profile completion gate
+  const [profileCompleted, setProfileCompleted] = useState(true);
+
   // Jain
   const [isJainFamily, setIsJainFamily] = useState(false);
   const CUISINE_GROUPS = getCuisineGroups(isJainFamily);
@@ -331,6 +334,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const jf = await AsyncStorage.getItem('jain_family');
       if (jf === 'true') setIsJainFamily(true);
 
+      // Profile completion status
+      const { data: profData } = await supabase.from('profiles').select('profile_completed').eq('id', user.id).maybeSingle();
+      setProfileCompleted((profData as any)?.profile_completed !== false);
+
       // Cooking pattern
       const cp = await AsyncStorage.getItem('cooking_pattern');
       if (cp) setCookingPattern(cp);
@@ -395,6 +402,26 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const isFirst = saved.length === 0 || !savedFoodPref;
       setIsFirstTimeUser(isFirst);
 
+      // Onboarding 3-day plan shortcut
+      const onboardingPlanDays = await AsyncStorage.getItem('onboarding_plan_days');
+      if (onboardingPlanDays === '3') {
+        await AsyncStorage.removeItem('onboarding_plan_days');
+        const today = startOfDay(new Date());
+        const d0 = addDays(today, 1);
+        const d1 = addDays(today, 2);
+        const d2 = addDays(today, 3);
+        setSelectedFrom(d0);
+        setSelectedTo(d2);
+        setSelectedDays([
+          ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d0.getDay()],
+          ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d1.getDay()],
+          ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d2.getDay()],
+        ]);
+        if (!savedFoodPref) setFoodPref('nonveg');
+        setStep('generating');
+        return;
+      }
+
       // AsyncStorage step handoff (e.g. home "View Plan" button)
       const initialStep = await AsyncStorage.getItem('meal_wizard_initial_step');
       if (initialStep) {
@@ -443,6 +470,17 @@ Return ONLY valid JSON (no markdown) in this exact format:
       return;
     }
     setError('');
+    if (!profileCompleted) {
+      Alert.alert(
+        'Complete your Family Profile',
+        'Your meal plan will be much more personalised once you complete your Family Profile. Would you like to complete it now?',
+        [
+          { text: 'Maybe later', style: 'cancel', onPress: () => {} },
+          { text: 'Complete Profile', onPress: () => { router.push('/dietary-profile' as never); } },
+        ]
+      );
+      return;
+    }
     try {
       // Nuclear auth - inline getSession with refresh retry
       const { data: authData } = await supabase.auth.getSession();
@@ -664,7 +702,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
       setStep('wizard');
     }
-  }, [selectedFrom, selectedTo, foodPref, foodPreference, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert, hasGuests, guestCuisine, guestDays, extraCuisines, perDayCuisine, freeText, selectedCuisines, selectedSlots]);
+  }, [selectedFrom, selectedTo, foodPref, foodPreference, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert, hasGuests, guestCuisine, guestDays, extraCuisines, perDayCuisine, freeText, selectedCuisines, selectedSlots, profileCompleted]);
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
@@ -1972,6 +2010,25 @@ Return ONLY valid JSON (no markdown) in this exact format:
             );
           })}
         </ScrollView>
+
+        {/* Profile completion card */}
+        {!profileCompleted && (
+          <View style={{backgroundColor:'#2E5480',borderRadius:16,padding:20,margin:16,marginTop:8,alignItems:'center'}}>
+            <Text style={{fontSize:15,fontWeight:'600',color:'#FFFFFF',textAlign:'center',lineHeight:22,marginBottom:16}}>
+              Complete your Family Profile for personalised results
+            </Text>
+            <TouchableOpacity
+              style={{backgroundColor:'#C9A227',borderRadius:24,paddingVertical:12,paddingHorizontal:32,marginBottom:10}}
+              onPress={() => router.push('/dietary-profile' as never)}
+              activeOpacity={0.85}
+            >
+              <Text style={{fontSize:15,fontWeight:'700',color:'#1A1A1A'}}>Complete Family Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setProfileCompleted(true)} activeOpacity={0.7}>
+              <Text style={{fontSize:13,color:'#AABFD0',textDecorationLine:'underline'}}>Maybe later</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Celebration modal */}
         <Modal visible={showCelebration} transparent animationType="fade">
