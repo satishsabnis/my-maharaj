@@ -69,7 +69,8 @@
       "Bash(grep -r \"jsPDF\\\\|html2canvas\" /c/Users/satis/Documents/my-maharaj --include=*.ts --include=*.tsx --include=*.js --include=*.jsx)",
       "Bash(clip)",
       "Skill(review)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(grep -in \"name:''''[^'''']*chicken[^'''']*''''\" seed-dishes*.ts)"
     ]
   }
 }
