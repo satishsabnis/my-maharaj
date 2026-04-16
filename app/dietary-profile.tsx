@@ -2456,6 +2456,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 12,
   },
+  memberRow: {
+    ...cards.base,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 10,
+    padding: 12,
+  },
   memberHeader: {
     flexDirection: 'row',
     alignItems: 'center',
