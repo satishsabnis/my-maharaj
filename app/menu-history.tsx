@@ -122,7 +122,12 @@ export default function MenuHistoryScreen() {
               id: row.id,
               createdAt: row.generated_at,
               dateRange: row.date_range || (() => {
-                const fmt = (d: string) => new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                const fmt = (d: string | null) => {
+                  if (!d) return '—';
+                  const dt = new Date(d);
+                  if (isNaN(dt.getTime())) return '—';
+                  return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                };
                 return `${fmt(row.period_start)} — ${fmt(row.period_end)}`;
               })(),
               days: row.plan_json?.days ?? [],

@@ -21,6 +21,7 @@ export default function SplashScreen() {
         Animated.timing(opacity, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => resolve())
       );
       // Route
+      await new Promise<void>(r => setTimeout(r, 300));
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace('/login');
