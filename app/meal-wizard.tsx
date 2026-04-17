@@ -951,9 +951,11 @@ Return ONLY valid JSON (no markdown) in this exact format:
         return opt ? { user_id: user.id, dish_name: opt.name, served_date: day.date, meal_type: slot } : null;
       }).filter(Boolean)
     );
+    const planDates = generatedPlan.map(d => d.date).filter(Boolean).sort();
     const menuPayload = {
       user_id: user.id,
-      period_start: toYMD(selectedFrom), period_end: toYMD(selectedTo),
+      period_start: planDates[0] ?? toYMD(selectedFrom),
+      period_end: planDates[planDates.length - 1] ?? toYMD(selectedTo),
       cuisine: 'Various', food_pref: foodPref ?? 'veg',
       menu_json: { days: generatedPlan.map((day, i) => ({
         date: day.date, day: day.day,
@@ -1269,7 +1271,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         'Going back will lose your generated plan. Are you sure?',
         [
           { text: 'Stay', style: 'cancel' },
-          { text: 'Go back', style: 'destructive', onPress: () => setStep('observations') },
+          { text: 'Go back', style: 'destructive', onPress: () => setStep('wizard') },
         ]
       );
       return;

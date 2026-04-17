@@ -121,7 +121,10 @@ export default function MenuHistoryScreen() {
             const mapped: MenuPlan[] = data.map((row: any) => ({
               id: row.id,
               createdAt: row.generated_at,
-              dateRange: row.date_range || `${row.period_start} — ${row.period_end}`,
+              dateRange: row.date_range || (() => {
+                const fmt = (d: string) => new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                return `${fmt(row.period_start)} — ${fmt(row.period_end)}`;
+              })(),
               days: row.plan_json?.days ?? [],
             }));
             setPlans(mapped);
@@ -211,7 +214,8 @@ export default function MenuHistoryScreen() {
           <Text style={s.detailRange}>{selectedPlan.dateRange}</Text>
 
           {(selectedPlan.days ?? []).map((day, idx) => {
-            const label = day.day || day.dayName || `Day ${idx + 1}`;
+            const dateLabel = day.date ? new Date(day.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : '';
+            const label = dateLabel || day.day || day.dayName || `Day ${idx + 1}`;
             const bf = dishName(day.breakfast);
             const ln = dishName(day.lunch);
             const dn = dishName(day.dinner);
