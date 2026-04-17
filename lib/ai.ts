@@ -672,8 +672,114 @@ export async function generateMealPlanFast(
   const isNonVegDish = (dish: string | undefined | null) =>
     !!dish && NON_VEG_KW.some(k => dish.toLowerCase().includes(k));
 
-  // ingredients_main removed from new schema — return empty array (avoidance matching uses dish name keywords)
-  const dishIngredients = (_dishName: string): string[] => [];
+  // Ingredient lookup: keyword-match dish name to return a practical shopping list.
+  // No DB query needed — covers the staple components of every Indian dish category.
+  const dishIngredients = (dishName: string | undefined | null): string[] => {
+    if (!dishName) return [];
+    const d = dishName.toLowerCase();
+
+    // ── Proteins ──────────────────────────────────────────────────────────
+    if (d.includes('chicken')) return ['500g chicken', '2 onions', '2 tomatoes', '1 tbsp ginger-garlic paste', '1 tsp turmeric', '1 tsp red chilli powder', '1 tsp garam masala', '2 tbsp oil', 'salt'];
+    if (d.includes('mutton') || d.includes('gosht') || d.includes('lamb')) return ['500g mutton', '2 onions', '2 tomatoes', '1 tbsp ginger-garlic paste', '1 tsp turmeric', '1 tsp red chilli powder', '1 tsp garam masala', '2 tbsp oil', 'salt'];
+    if (d.includes('fish') || d.includes('pomfret') || d.includes('rohu') || d.includes('surmai') || d.includes('rawas') || d.includes('bangda') || d.includes('hilsa') || d.includes('tuna')) return ['500g fish', '1 onion', '2 tomatoes', '1 tsp turmeric', '1 tsp red chilli powder', '1 tbsp ginger-garlic paste', '2 tbsp oil', 'salt'];
+    if (d.includes('prawn') || d.includes('shrimp') || d.includes('jhinga') || d.includes('kolambi')) return ['500g prawns', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp red chilli powder', '1 tbsp coconut milk', '2 tbsp oil', 'salt'];
+    if (d.includes('egg') || d.includes('anda')) return ['4 eggs', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp red chilli powder', '1 tbsp oil', 'salt'];
+    if (d.includes('keema') || d.includes('mince')) return ['500g minced meat', '2 onions', '2 tomatoes', '1 tbsp ginger-garlic paste', '1 tsp garam masala', '1 tsp turmeric', '2 tbsp oil', 'salt'];
+    if (d.includes('crab') || d.includes('kekda')) return ['500g crab', '1 onion', '2 tomatoes', '1 tbsp coconut paste', '1 tsp turmeric', '1 tsp red chilli powder', '2 tbsp oil', 'salt'];
+
+    // ── Paneer / Dairy ────────────────────────────────────────────────────
+    if (d.includes('paneer')) return ['250g paneer', '1 onion', '2 tomatoes', '1 tbsp cream', '1 tsp turmeric', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+
+    // ── Dal / Lentils ─────────────────────────────────────────────────────
+    if (d.includes('dal') || d.includes('daal') || d.includes('lentil') || d.includes('sambhar') || d.includes('sambar')) return ['1 cup dal', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp mustard seeds', '2 dried red chillies', '1 tbsp ghee', 'salt'];
+    if (d.includes('rajma')) return ['1 cup kidney beans', '2 onions', '2 tomatoes', '1 tbsp ginger-garlic paste', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+    if (d.includes('chana') || d.includes('chole') || d.includes('chickpea')) return ['1 cup chickpeas', '2 onions', '2 tomatoes', '1 tbsp ginger-garlic paste', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+    if (d.includes('moong')) return ['1 cup moong dal', '1 onion', '1 tomato', '1 tsp turmeric', '1 tbsp ghee', 'salt'];
+
+    // ── Vegetable Curries ─────────────────────────────────────────────────
+    if (d.includes('aloo') || d.includes('potato')) return ['3 potatoes', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('palak') || d.includes('spinach')) return ['250g spinach', '1 onion', '1 tomato', '1 tsp turmeric', '1 tbsp cream', '1 tbsp oil', 'salt'];
+    if (d.includes('baingan') || d.includes('brinjal') || d.includes('eggplant') || d.includes('vangi')) return ['2 medium brinjals', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('gobi') || d.includes('cauliflower')) return ['1 medium cauliflower', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('bhindi') || d.includes('okra') || d.includes('ladyfinger')) return ['250g okra', '1 onion', '1 tsp turmeric', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('lauki') || d.includes('bottle gourd') || d.includes('dudhi')) return ['1 bottle gourd', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('karela') || d.includes('bitter gourd')) return ['250g bitter gourd', '1 onion', '1 tsp turmeric', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('beans') || d.includes('green bean')) return ['250g green beans', '1 onion', '1 tsp mustard seeds', '1 tsp turmeric', '1 tbsp oil', 'salt'];
+    if (d.includes('peas') || d.includes('matar')) return ['1 cup peas', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+    if (d.includes('mushroom')) return ['250g mushrooms', '1 onion', '1 tomato', '1 tsp turmeric', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+    if (d.includes('corn') || d.includes('maize') || d.includes('makki')) return ['2 cobs corn', '1 onion', '1 tsp turmeric', '1 tsp cumin', '1 tbsp butter', 'salt'];
+    if (d.includes('drumstick') || d.includes('moringa') || d.includes('shevga')) return ['6 drumsticks', '1 onion', '1 tomato', '1 tsp turmeric', '1 tbsp coconut paste', '1 tbsp oil', 'salt'];
+    if (d.includes('raw banana') || d.includes('kachha kela') || d.includes('kacha kela')) return ['2 raw bananas', '1 onion', '1 tsp turmeric', '1 tsp mustard seeds', '1 tbsp oil', 'salt'];
+
+    // ── Rice dishes ───────────────────────────────────────────────────────
+    if (d.includes('biryani')) return ['1 cup basmati rice', '200g protein (chicken/veg)', '1 onion', '1 tbsp ginger-garlic paste', '1 tsp biryani masala', '2 tbsp oil', '1 tbsp ghee', 'salt'];
+    if (d.includes('pulao') || d.includes('pilaf')) return ['1 cup basmati rice', '1 onion', '1 cup mixed vegetables', '1 tsp cumin', '2 tbsp ghee', 'salt'];
+    if (d.includes('khichdi') || d.includes('khichri')) return ['0.5 cup rice', '0.5 cup moong dal', '1 tsp turmeric', '1 tsp cumin', '1 tbsp ghee', 'salt'];
+    if (d.includes('fried rice')) return ['1 cup cooked rice', '1 egg', '1 cup mixed vegetables', '2 tbsp soy sauce', '1 tbsp oil', 'salt'];
+    if (d.includes('rice') || d.includes('chawal') || d.includes('bhat') || d.includes('anna')) return ['1 cup basmati rice', 'salt'];
+
+    // ── Breads ────────────────────────────────────────────────────────────
+    if (d.includes('paratha') || d.includes('parantha')) return ['1 cup whole wheat flour', '1 tbsp ghee', 'water', 'salt'];
+    if (d.includes('roti') || d.includes('chapati') || d.includes('phulka') || d.includes('poli')) return ['1 cup whole wheat flour', 'water', 'salt'];
+    if (d.includes('naan')) return ['1 cup maida', '1 tsp yeast', '1 tbsp yoghurt', '1 tbsp butter', 'salt'];
+    if (d.includes('puri') || d.includes('poori')) return ['1 cup whole wheat flour', '1 tbsp oil', 'water', 'salt'];
+    if (d.includes('bhatura')) return ['1 cup maida', '1 tsp baking soda', '2 tbsp yoghurt', '1 tbsp oil', 'salt'];
+    if (d.includes('dosa') || d.includes('uttapam')) return ['1 cup dosa batter', '1 tbsp oil', 'salt'];
+    if (d.includes('idli')) return ['1 cup idli batter', 'salt'];
+    if (d.includes('appam')) return ['1 cup appam batter', '1 tbsp coconut milk', 'salt'];
+    if (d.includes('akki roti') || d.includes('rice roti')) return ['1 cup rice flour', 'water', 'salt'];
+    if (d.includes('bhakri')) return ['1 cup jowar flour', 'water', 'salt'];
+
+    // ── Breakfast dishes ──────────────────────────────────────────────────
+    if (d.includes('poha') || d.includes('aval') || d.includes('avalakki')) return ['1 cup flattened rice', '1 onion', '1 tsp mustard seeds', '1 tsp turmeric', '1 tbsp oil', 'salt', 'curry leaves'];
+    if (d.includes('upma') || d.includes('uppma')) return ['1 cup semolina', '1 onion', '1 tsp mustard seeds', '2 tbsp oil', 'salt', 'curry leaves'];
+    if (d.includes('sheera') || d.includes('halwa') || d.includes('kesari')) return ['0.5 cup semolina', '0.5 cup sugar', '2 tbsp ghee', 'saffron', 'cashews'];
+    if (d.includes('pongal') || d.includes('ven pongal')) return ['0.5 cup rice', '0.25 cup moong dal', '1 tbsp ghee', '1 tsp cumin', 'pepper', 'salt'];
+    if (d.includes('puttu')) return ['1 cup rice flour', '0.5 cup grated coconut', 'salt'];
+    if (d.includes('sabudana') || d.includes('sago')) return ['1 cup sabudana', '2 potatoes', '0.5 cup peanuts', '1 tsp cumin', '1 tbsp oil', 'salt'];
+    if (d.includes('pesarattu')) return ['1 cup moong dal', '1 tbsp ginger', '2 green chillies', '1 tbsp oil', 'salt'];
+    if (d.includes('vada') || d.includes('wada') || d.includes('medu')) return ['1 cup urad dal', 'salt', 'curry leaves', '1 tbsp oil'];
+
+    // ── Raita / Sides ─────────────────────────────────────────────────────
+    if (d.includes('raita')) return ['1 cup yoghurt', '0.5 cucumber', '1 tsp cumin powder', 'salt'];
+    if (d.includes('pachadi')) return ['1 cup yoghurt', '1 cup vegetables', '1 tsp mustard seeds', '1 tbsp oil', 'salt'];
+    if (d.includes('papad') || d.includes('papadum')) return ['papad'];
+    if (d.includes('pickle') || d.includes('achar')) return ['200g pickle'];
+    if (d.includes('chutney')) return ['1 cup coriander/coconut', '1 green chilli', '1 tbsp lemon juice', 'salt'];
+
+    // ── Snacks ────────────────────────────────────────────────────────────
+    if (d.includes('samosa')) return ['1 cup maida', '2 potatoes', '0.5 cup peas', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+    if (d.includes('pakora') || d.includes('bhajia') || d.includes('bajji')) return ['1 cup chickpea flour', '1 onion', '1 tsp red chilli powder', '1 tbsp oil', 'salt'];
+    if (d.includes('bhel')) return ['1 cup puffed rice', '0.5 cup sev', '1 onion', '1 tomato', '1 tbsp tamarind chutney', 'salt'];
+    if (d.includes('pav bhaji')) return ['4 pav buns', '2 potatoes', '1 onion', '1 tomato', '1 tsp pav bhaji masala', '2 tbsp butter', 'salt'];
+    if (d.includes('vada pav')) return ['4 pav buns', '2 potatoes', '1 cup chickpea flour', '1 tsp turmeric', '1 tbsp oil', 'salt'];
+    if (d.includes('misal')) return ['1 cup sprouted moth beans', '1 onion', '1 tomato', '1 tsp goda masala', '1 tbsp oil', 'sev', 'pav'];
+    if (d.includes('dabeli')) return ['4 pav buns', '2 potatoes', '1 tbsp dabeli masala', 'pomegranate seeds', 'peanuts'];
+    if (d.includes('dhokla')) return ['1 cup chickpea flour', '1 tsp baking soda', '1 tbsp lemon juice', '1 tsp mustard seeds', '1 tbsp oil', 'salt'];
+    if (d.includes('khandvi')) return ['0.5 cup chickpea flour', '1 cup yoghurt', '1 tsp turmeric', '1 tsp mustard seeds', '1 tbsp oil', 'salt'];
+    if (d.includes('pani puri') || d.includes('golgappa') || d.includes('puchka')) return ['20 puris', '1 cup tamarind water', '1 cup sprouted moong', 'chaat masala', 'salt'];
+    if (d.includes('dahi puri') || d.includes('sev puri')) return ['20 puris', '1 cup yoghurt', 'sev', '1 tbsp tamarind chutney', 'chaat masala'];
+
+    // ── Sweets / Desserts ─────────────────────────────────────────────────
+    if (d.includes('kheer') || d.includes('payasam') || d.includes('payesh')) return ['0.5 cup rice', '1 litre milk', '0.5 cup sugar', 'cardamom', 'cashews', 'raisins'];
+    if (d.includes('gulab jamun')) return ['1 cup milk powder', '3 tbsp maida', '1 tbsp ghee', '1 cup sugar', 'cardamom'];
+    if (d.includes('rasgulla') || d.includes('rasogolla')) return ['1 litre milk', '2 tbsp vinegar', '1 cup sugar', 'cardamom'];
+    if (d.includes('ladoo') || d.includes('laddoo')) return ['1 cup besan/boondi', '0.5 cup sugar', '2 tbsp ghee', 'cardamom'];
+    if (d.includes('barfi') || d.includes('burfi')) return ['1 cup milk powder', '0.5 cup sugar', '2 tbsp ghee', 'cardamom'];
+    if (d.includes('jalebi')) return ['1 cup maida', '1 tbsp yoghurt', '1 cup sugar', 'saffron', '1 tbsp oil'];
+    if (d.includes('modak')) return ['1 cup rice flour', '0.5 cup jaggery', '0.5 cup coconut', 'cardamom'];
+    if (d.includes('peda')) return ['1 cup khoya', '0.5 cup sugar', 'cardamom', 'saffron'];
+    if (d.includes('mysore pak')) return ['1 cup besan', '1 cup sugar', '0.5 cup ghee'];
+
+    // ── Generic fallback by meal context ──────────────────────────────────
+    // If name contains 'curry' or 'sabzi' or 'bhaji' — generic veg curry
+    if (d.includes('curry') || d.includes('sabzi') || d.includes('bhaji') || d.includes('masala')) {
+      return ['1 onion', '2 tomatoes', '1 tbsp ginger-garlic paste', '1 tsp turmeric', '1 tsp garam masala', '1 tbsp oil', 'salt'];
+    }
+
+    // Absolute fallback
+    return ['1 onion', '1 tomato', '1 tbsp oil', 'salt', 'spices'];
+  };
 
   const usedNames = new Set<string>(weekHistory.map(n => n.toLowerCase()));
   const dayResults: MealPlanDay[] = [];
