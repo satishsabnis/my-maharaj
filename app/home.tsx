@@ -10,6 +10,7 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import { colors, cards } from '../constants/theme';
 
 const SCREEN_W = Dimensions.get('window').width;
+const SCREEN_H = Dimensions.get('window').height;
 
 // ─── Time greeting ───────────────────────────────────────────────────────────
 
@@ -278,7 +279,7 @@ export default function HomeScreen() {
         <ScrollView contentContainerStyle={{paddingBottom:20}} showsVerticalScrollIndicator={false}>
 
           {/* ── HERO ── */}
-          <View style={{alignItems:'center',paddingTop:4}}>
+          <View style={{alignItems:'center',paddingTop:4,maxHeight:Math.round(SCREEN_H*0.44),overflow:'hidden'}}>
             <TouchableOpacity onPress={() => router.push('/ask-maharaj' as never)} activeOpacity={0.85}>
               <Animated.Image
                 source={require('../assets/logo.png')}

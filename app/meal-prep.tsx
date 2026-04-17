@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Animated, ImageBackground, SafeAreaView, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
@@ -121,8 +121,6 @@ export default function MealPrepScreen() {
     setLoaded(true);
   }
 
-  useEffect(() => { void loadPrepTasks(); }, []);
-
   useFocusEffect(useCallback(() => { void loadPrepTasks(); }, []));
 
   async function toggleDone(id: string) {
@@ -189,15 +187,15 @@ export default function MealPrepScreen() {
 
           {/* Empty state */}
           {loaded && tasks.length === 0 && (
-            <View style={{ alignItems: 'center', paddingTop: 30 }}>
-              <Text style={{ fontSize: 8.5, color: colors.textSecondary, textAlign: 'center', marginBottom: 14 }}>
-                No prep tasks this week. Generate your meal plan first.
+            <View style={{ alignItems: 'center', paddingTop: 40, paddingHorizontal: 24 }}>
+              <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 18, lineHeight: 22 }}>
+                No active plan yet.{'\n'}Generate a plan from the home screen first.
               </Text>
               <TouchableOpacity
-                style={{ backgroundColor: colors.emerald, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 20 }}
+                style={{ borderWidth: 1.5, borderColor: colors.navy, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 24 }}
                 onPress={() => router.push('/meal-wizard' as never)}
               >
-                <Text style={{ fontSize: 9, fontWeight: '500', color: colors.white }}>Plan My Week</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.navy }}>Plan My Week</Text>
               </TouchableOpacity>
             </View>
           )}
