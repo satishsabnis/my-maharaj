@@ -371,6 +371,8 @@ const SLOT_FALLBACKS: Record<string, string> = {
 /**
  * Pick one dish from the pool for a given slot.
  * Mutates `usedNames` to track what has been chosen for deduplication.
+ * If `preferredNames` is non-empty, applies 80/20 rule: 80% chance of picking
+ * from the preferred (family regular) dishes when a match exists for this slot.
  */
 function selectDishFromPool(
   pool: PoolDish[],
@@ -378,6 +380,7 @@ function selectDishFromPool(
   isNonVeg: boolean,  // true = non-veg curry slot on a non-veg day
   usedNames: Set<string>,
   healthFocus: string[],
+  preferredNames?: Set<string>,
 ): string {
   let candidates: PoolDish[];
 
@@ -417,8 +420,15 @@ function selectDishFromPool(
   let pick: PoolDish | undefined;
 
   if (fresh.length > 0) {
-    // Boost health-tagged dishes if healthFocus is set
-    if (healthFocus.length > 0) {
+    // 80/20 rule: if preferred (family regular) dishes provided, try them first 80% of the time
+    if (preferredNames && preferredNames.size > 0 && Math.random() < 0.8) {
+      const preferred = fresh.filter(d => preferredNames.has(d.name));
+      if (preferred.length > 0) {
+        pick = preferred[Math.floor(Math.random() * preferred.length)];
+      }
+    }
+    // Boost health-tagged dishes if healthFocus is set (and no preferred pick yet)
+    if (!pick && healthFocus.length > 0) {
       const boosted = fresh.filter(d =>
         d.health_tags.some(t => healthFocus.some(f => t.toLowerCase().includes(f.toLowerCase())))
       );
@@ -589,6 +599,20 @@ export async function generateMealPlanFast(
 
   const pool = await fetchDishPool(cuisineList, dietaryTags);
 
+  // ── Step 1b: fetch family regular dishes for 80/20 rule ───────────────────
+  let regularDishNames: Set<string> = new Set();
+  try {
+    const { data: regularRows } = await supabase
+      .from('family_regular_dishes')
+      .select('dish_id, dishes!inner(name)')
+      .eq('profile_id', params.userId);
+    if (regularRows && regularRows.length > 0) {
+      regularRows.forEach((r: any) => {
+        if (r.dishes?.name) regularDishNames.add(r.dishes.name as string);
+      });
+    }
+  } catch { /* ignore — fall back to full pool */ }
+
   // ── Step 2: one Claude call for weekly structure ───────────────────────────
   const dayStructures = await buildMealStructure({
     dates: params.dates,
@@ -658,47 +682,48 @@ export async function generateMealPlanFast(
 
     try {
       // ── Select dishes for all slots from pool ─────────────────────────────
+      const pref = regularDishNames; // 80/20 preferred names (empty set = no preference)
       const breakfast    = slots.includes('breakfast')
-        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref)
         : '';
       const lunchCurry1  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref)
         : '';
       const lunchCurry2  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref)
         : '';
       const lunchVeg     = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref)
         : '';
       const lunchRaita   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref)
         : '';
       const lunchBread   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref)
         : '';
       const lunchRice    = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref)
         : '';
       const dinnerCurry1 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref)
         : '';
       const dinnerCurry2 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref)
         : '';
       const dinnerVeg    = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref)
         : '';
       const dinnerRaita  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref)
         : '';
       const dinnerBread  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref)
         : '';
       const dinnerRice   = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref)
         : '';
       const snack        = slots.includes('snack')
-        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus)
+        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref)
         : '';
 
       // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
