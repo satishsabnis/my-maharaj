@@ -243,12 +243,12 @@ export default function RegularDishesScreen() {
                 return (
                   <TouchableOpacity
                     key={dish.id}
-                    style={s.dishRow}
+                    style={[s.dishRow, activeTab === 'favourites' && isFav && s.dishRowSelected]}
                     onPress={() => activeTab === 'favourites' ? toggleDish(dish.id) : toggleBan(dish.id)}
                     activeOpacity={0.85}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={s.dishName}>{dish.name}</Text>
+                      <Text style={[s.dishName, activeTab === 'favourites' && isFav && s.dishNameSelected]}>{dish.name}</Text>
                       <Text style={s.dishSlot}>{slotLabel(dish.slot)}</Text>
                     </View>
                     <View style={[
@@ -305,7 +305,9 @@ const s = StyleSheet.create({
   emptyCard:          { backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: 12, padding: 24, alignItems: 'center', marginTop: 16 },
   emptyTxt:           { fontSize: 13, color: '#6B7280', textAlign: 'center' },
   dishRow:            { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 10, padding: 12, marginBottom: 6, flexDirection: 'row', alignItems: 'center' },
+  dishRowSelected:    { backgroundColor: '#D4EDE5' },
   dishName:           { fontSize: 13, fontWeight: '600', color: NAVY },
+  dishNameSelected:   { color: '#1A6B5C' },
   dishSlot:           { fontSize: 11, color: '#6B7280', marginTop: 1 },
   checkbox:           { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: 'rgba(46,84,128,0.4)', alignItems: 'center', justifyContent: 'center' },
   checkboxSelected:   { backgroundColor: NAVY, borderColor: NAVY },

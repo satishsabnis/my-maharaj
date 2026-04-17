@@ -185,7 +185,7 @@ Each item: { dishName, isVeg, note }. Return JSON: { occasion, summary, starters
               style={{ width: 80, height: 80, transform: [{ scale: pulseAnim }] }}
               resizeMode="contain"
             />
-            <Text style={{ fontSize: 8, color: colors.textSecondary, marginTop: 10 }}>
+            <Text style={{ fontSize: 17, color: colors.textSecondary, marginTop: 10 }}>
               Maharaj is planning your menu...
             </Text>
           </View>
@@ -230,13 +230,13 @@ Each item: { dishName, isVeg, note }. Return JSON: { occasion, summary, starters
             {/* Style dropdown */}
             <Text style={s.label}>Style</Text>
             <TouchableOpacity style={s.input} onPress={() => setShowStyleDrop(!showStyleDrop)}>
-              <Text style={{ fontSize: 8, color: colors.textPrimary }}>{style}</Text>
+              <Text style={{ fontSize: 15, color: colors.textPrimary }}>{style}</Text>
             </TouchableOpacity>
             {showStyleDrop && (
               <View style={s.dropdown}>
                 {STYLES.map(st => (
                   <TouchableOpacity key={st} style={s.dropItem} onPress={() => { setStyle(st); setShowStyleDrop(false); }}>
-                    <Text style={{ fontSize: 7.5, color: st === style ? colors.emerald : colors.textPrimary, fontWeight: st === style ? '700' : '400' }}>{st}</Text>
+                    <Text style={{ fontSize: 15, color: st === style ? colors.emerald : colors.textPrimary, fontWeight: st === style ? '700' : '400' }}>{st}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

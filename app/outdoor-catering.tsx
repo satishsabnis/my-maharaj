@@ -256,7 +256,7 @@ Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg
               style={{ width: 80, height: 80, transform: [{ scale: pulseAnim }] }}
               resizeMode="contain"
             />
-            <Text style={{ fontSize: 8, color: colors.textSecondary, marginTop: 10 }}>
+            <Text style={{ fontSize: 17, color: colors.textSecondary, marginTop: 10 }}>
               Maharaj is planning your menu...
             </Text>
           </View>
@@ -343,13 +343,13 @@ Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg
 
                 <Text style={s.label}>Dietary</Text>
                 <TouchableOpacity style={s.input} onPress={() => setShowDietDrop(!showDietDrop)}>
-                  <Text style={{ fontSize: 8, color: colors.textPrimary }}>{dietary}</Text>
+                  <Text style={{ fontSize: 15, color: colors.textPrimary }}>{dietary}</Text>
                 </TouchableOpacity>
                 {showDietDrop && (
                   <View style={s.dropdown}>
                     {DIETARY_OPTS.map(opt => (
                       <TouchableOpacity key={opt} style={s.dropItem} onPress={() => { setDietary(opt); setShowDietDrop(false); }}>
-                        <Text style={{ fontSize: 7.5, color: opt === dietary ? colors.emerald : colors.textPrimary, fontWeight: opt === dietary ? '700' : '400' }}>{opt}</Text>
+                        <Text style={{ fontSize: 15, color: opt === dietary ? colors.emerald : colors.textPrimary, fontWeight: opt === dietary ? '700' : '400' }}>{opt}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
