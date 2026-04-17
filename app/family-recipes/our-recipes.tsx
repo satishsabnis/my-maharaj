@@ -7,6 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, getSessionUser } from '../../lib/supabase';
+import { buttons } from '../../constants/theme';
 
 const NAVY  = '#2E5480';
 const GOLD  = '#C9A227';
@@ -200,15 +201,15 @@ export default function OurRecipesScreen() {
         {/* Header */}
         <View style={s.header}>
           <Text style={s.headerTitle}>Our Recipes</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
-            <Text style={s.homeBtnTxt}>Home</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Back */}
-        <View style={s.backRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Text style={s.backBtnTxt}>Back</Text>
+        {/* Nav row */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 }}>
+          <TouchableOpacity onPress={() => router.back()} style={buttons.back}>
+            <Text style={buttons.backText}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/home' as never)} style={buttons.home}>
+            <Text style={buttons.homeText}>Home</Text>
           </TouchableOpacity>
         </View>
 
@@ -394,11 +395,6 @@ export default function OurRecipesScreen() {
 const s = StyleSheet.create({
   header:          { backgroundColor: NAVY, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 28 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 12 },
   headerTitle:     { fontSize: 17, fontWeight: '700', color: WHITE, textAlign: 'center', flex: 1 },
-  homeBtn:         { position: 'absolute', right: 16, top: Platform.OS === 'android' ? 28 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 12, justifyContent: 'center', height: '100%' },
-  homeBtnTxt:      { fontSize: 13, fontWeight: '700', color: WHITE },
-  backRow:         { paddingHorizontal: 16, paddingVertical: 8 },
-  backBtn:         { alignSelf: 'flex-start', borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 16 },
-  backBtnTxt:      { fontSize: 13, fontWeight: '600', color: NAVY },
   scroll:          { padding: 16, paddingBottom: 100 },
   loadingCard:     { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, padding: 24, alignItems: 'center', marginBottom: 16 },
   loadingMsg:      { fontSize: 13, color: NAVY, fontWeight: '600', textAlign: 'center' },

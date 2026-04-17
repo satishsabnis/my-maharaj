@@ -59,6 +59,7 @@ export interface GroceryItem {
 export interface MealPlanResult {
   days: MealPlanDay[];
   grocery_list?: GroceryItem[];
+  fridgeNote?: string;
 }
 
 export interface HealthFlags {
@@ -382,6 +383,7 @@ function selectDishFromPool(
   healthFocus: string[],
   preferredNames?: Set<string>,
   bannedNames?: Set<string>,
+  fridgeKeywords?: Set<string>,
 ): string {
   let candidates: PoolDish[];
 
@@ -435,6 +437,14 @@ function selectDishFromPool(
       );
       if (boosted.length > 0) {
         pick = boosted[Math.floor(Math.random() * boosted.length)];
+      }
+    }
+    if (!pick && fridgeKeywords && fridgeKeywords.size > 0) {
+      const fridgeBoosted = fresh.filter(d =>
+        [...fridgeKeywords].some(kw => d.name.toLowerCase().includes(kw))
+      );
+      if (fridgeBoosted.length > 0) {
+        pick = fridgeBoosted[Math.floor(Math.random() * fridgeBoosted.length)];
       }
     }
     if (!pick) pick = fresh[Math.floor(Math.random() * fresh.length)];
@@ -628,6 +638,23 @@ export async function generateMealPlanFast(
     }
   } catch { /* ignore */ }
 
+  // ── Step 1d: build fridge keyword hints ──────────────────────────────────
+  const fridgeKeywords: Set<string> = new Set();
+  const PROTEIN_KEYWORDS = ['prawn','chicken','mutton','fish','egg','paneer','tofu','dal','potato','aloo','palak',
+    'spinach','cauliflower','gobi','peas','matar','mushroom','carrot','crab','lobster','lamb','beef','pork'];
+  try {
+    const { data: fridgeItems } = await supabase
+      .from('fridge_inventory')
+      .select('item_name')
+      .eq('user_id', params.userId);
+    if (fridgeItems) {
+      fridgeItems.forEach((item: any) => {
+        const name = (item.item_name ?? '').toLowerCase();
+        PROTEIN_KEYWORDS.forEach(kw => { if (name.includes(kw)) fridgeKeywords.add(kw); });
+      });
+    }
+  } catch { /* ignore */ }
+
   // ── Step 2: one Claude call for weekly structure ───────────────────────────
   const dayStructures = await buildMealStructure({
     dates: params.dates,
@@ -699,46 +726,46 @@ export async function generateMealPlanFast(
       // ── Select dishes for all slots from pool ─────────────────────────────
       const pref = regularDishNames; // 80/20 preferred names (empty set = no preference)
       const breakfast    = slots.includes('breakfast')
-        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const lunchCurry1  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const lunchCurry2  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const lunchVeg     = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const lunchRaita   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const lunchBread   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const lunchRice    = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const dinnerCurry1 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const dinnerCurry2 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const dinnerVeg    = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const dinnerRaita  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const dinnerBread  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const dinnerRice   = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
       const snack        = slots.includes('snack')
-        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref, bannedDishNames)
+        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
         : '';
 
       // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
@@ -947,5 +974,9 @@ export async function generateMealPlanFast(
     if (swapNote.length > 0) (dayResults as any).__swapNotes = swapNote;
   }
 
-  return { days: dayResults, grocery_list: [] };
+  const fridgeNote = fridgeKeywords.size > 0
+    ? `Maharaj checked your fridge and prioritised dishes using ${[...fridgeKeywords].join(', ')}.`
+    : undefined;
+
+  return { days: dayResults, grocery_list: [], ...(fridgeNote ? { fridgeNote } : {}) };
 }

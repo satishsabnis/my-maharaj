@@ -182,6 +182,7 @@ export default function MealWizardScreen() {
 
   // Observations
   const [observations, setObservations] = useState<Observation[]>([]);
+  const [fridgeNote,   setFridgeNote]   = useState<string | null>(null);
 
   // Alternatives
   const [alternativeSlot, setAlternativeSlot] = useState<{ dayIdx: number; slot: MealSlotKey; component: string; dishName: string; anatomyAlts?: { dishName: string; isVeg?: boolean; cuisine?: string }[] } | null>(null);
@@ -548,7 +549,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         .from('dish_history').select('dish_name')
         .eq('user_id', userId).gte('served_date', since);
       if (historyErr) console.error('[MealWizard] dish_history query error:', historyErr.message);
-      const dishHistory = (historyData ?? []).map((r: { dish_name: string }) => r.dish_name);
+      const dishHistory = (historyData ?? []).map((r: { dish_name: string }) => r.dish_name).slice(0, 50);
 
       const unwellNames = familyMembers.filter((m) => unwellIds.includes(m.id)).map((m) => m.name);
 
@@ -683,6 +684,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const defaultSel: Record<number, Partial<Record<MealSlotKey, number>>> = {};
       plan.days.forEach((d, i) => { defaultSel[i] = { breakfast: 0, lunch: 0, dinner: 0, ...(d.snack ? { snack: 0 } : {}) }; });
       setGeneratedPlan(plan.days);
+      setFridgeNote(plan.fridgeNote ?? null);
       const allSwapNotes: string[] = [];
       plan.days.forEach(d => {
         const notes = (d as any).__swapNotes;
@@ -1704,6 +1706,14 @@ Return ONLY valid JSON (no markdown) in this exact format:
             )}
           </View>
         ))}
+
+        {/* Fridge note card */}
+        {fridgeNote && (
+          <View style={{backgroundColor:'rgba(26,107,92,0.1)',borderRadius:12,borderWidth:1,borderColor:'rgba(26,107,92,0.25)',padding:12,marginBottom:10,flexDirection:'row',alignItems:'flex-start',gap:8}}>
+            <Text style={{fontSize:16}}>🧊</Text>
+            <Text style={{flex:1,fontSize:13,color:colors.teal,lineHeight:19}}>{fridgeNote}</Text>
+          </View>
+        )}
 
         {/* View My Plan button */}
         <TouchableOpacity
