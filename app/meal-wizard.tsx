@@ -1773,7 +1773,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
                 backgroundColor: activeDay === index ? colors.navy : 'transparent',
                 borderWidth:1.5,borderColor:colors.navy}}>
               <Text style={{fontSize:12,fontWeight:'600',color: activeDay === index ? colors.white : colors.navy}}>
-                {day.day.substring(0,3)} {new Date(day.date).getDate()}
+                {(() => { const d = new Date(day.date); return `${d.toLocaleDateString('en-GB', { weekday: 'short' })} ${d.getDate()} ${d.toLocaleDateString('en-GB', { month: 'short' })}`; })()}
               </Text>
             </TouchableOpacity>
           ))}

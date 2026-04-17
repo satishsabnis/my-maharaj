@@ -9,9 +9,8 @@ import { supabase, getSessionUser } from '../../lib/supabase';
 
 const NAVY  = '#2E5480';
 const GOLD  = '#C9A227';
-const TEAL  = '#1A6B5C';
-const MINT  = '#D4EDE5';
 const WHITE = '#FFFFFF';
+const RED   = '#DC2626';
 
 interface Dish {
   id: string;
@@ -38,15 +37,16 @@ function slotLabel(slots: string[]): string {
 }
 
 export default function RegularDishesScreen() {
-  const [cuisines,    setCuisines]    = useState<string[]>([]);
+  const [cuisines,      setCuisines]      = useState<string[]>([]);
   const [activeCuisine, setActiveCuisine] = useState('');
-  const [dishes,      setDishes]      = useState<Dish[]>([]);
-  const [selected,    setSelected]    = useState<Set<string>>(new Set());
-  const [search,      setSearch]      = useState('');
-  const [loading,     setLoading]     = useState(false);
-  const [profileId,   setProfileId]   = useState<string | null>(null);
+  const [dishes,        setDishes]        = useState<Dish[]>([]);
+  const [selected,      setSelected]      = useState<Set<string>>(new Set());
+  const [banned,        setBanned]        = useState<Set<string>>(new Set());
+  const [activeTab,     setActiveTab]     = useState<'favourites' | 'banned'>('favourites');
+  const [search,        setSearch]        = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [profileId,     setProfileId]     = useState<string | null>(null);
 
-  // Load user, cuisines and existing selections
   useFocusEffect(useCallback(() => {
     (async () => {
       setLoading(true);
@@ -55,7 +55,6 @@ export default function RegularDishesScreen() {
         if (!user) return;
         setProfileId(user.id);
 
-        // Load cuisine preferences
         const { data: profile } = await supabase
           .from('profiles')
           .select('cuisine_preferences, cuisines')
@@ -67,7 +66,6 @@ export default function RegularDishesScreen() {
           profile?.cuisines ||
           [];
 
-        // Also try AsyncStorage fallback
         let cuisineList = Array.isArray(raw) ? raw : [];
         if (cuisineList.length === 0) {
           const stored = await AsyncStorage.getItem('selected_cuisines');
@@ -75,26 +73,28 @@ export default function RegularDishesScreen() {
             try { cuisineList = JSON.parse(stored); } catch {}
           }
         }
-        // Final fallback
         if (cuisineList.length === 0) cuisineList = ['Indian'];
 
         setCuisines(cuisineList);
         setActiveCuisine(cuisineList[0] ?? '');
 
-        // Load existing selections
         const { data: selRows } = await supabase
           .from('family_regular_dishes')
           .select('dish_id')
           .eq('profile_id', user.id);
-        const ids = new Set<string>((selRows ?? []).map((r: any) => r.dish_id as string));
-        setSelected(ids);
+        setSelected(new Set<string>((selRows ?? []).map((r: any) => r.dish_id as string)));
+
+        const { data: bannedRows } = await supabase
+          .from('user_banned_dishes')
+          .select('dish_id')
+          .eq('profile_id', user.id);
+        setBanned(new Set<string>((bannedRows ?? []).map((r: any) => r.dish_id as string)));
       } finally {
         setLoading(false);
       }
     })();
   }, []));
 
-  // Load dishes when active cuisine changes
   useEffect(() => {
     if (!activeCuisine) return;
     (async () => {
@@ -117,21 +117,27 @@ export default function RegularDishesScreen() {
     if (!profileId) return;
     const next = new Set(selected);
     if (next.has(dishId)) {
-      // Deselect
       next.delete(dishId);
       setSelected(next);
-      await supabase
-        .from('family_regular_dishes')
-        .delete()
-        .eq('profile_id', profileId)
-        .eq('dish_id', dishId);
+      await supabase.from('family_regular_dishes').delete().eq('profile_id', profileId).eq('dish_id', dishId);
     } else {
-      // Select
       next.add(dishId);
       setSelected(next);
-      await supabase
-        .from('family_regular_dishes')
-        .insert({ profile_id: profileId, dish_id: dishId });
+      await supabase.from('family_regular_dishes').insert({ profile_id: profileId, dish_id: dishId });
+    }
+  }
+
+  async function toggleBan(dishId: string) {
+    if (!profileId) return;
+    const next = new Set(banned);
+    if (next.has(dishId)) {
+      next.delete(dishId);
+      setBanned(next);
+      await supabase.from('user_banned_dishes').delete().eq('profile_id', profileId).eq('dish_id', dishId);
+    } else {
+      next.add(dishId);
+      setBanned(next);
+      await supabase.from('user_banned_dishes').insert({ profile_id: profileId, dish_id: dishId });
     }
   }
 
@@ -163,10 +169,30 @@ export default function RegularDishesScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Favourites / Banned tabs */}
+        <View style={s.tabRow}>
+          <TouchableOpacity
+            style={[s.mainTab, activeTab === 'favourites' && s.mainTabActive]}
+            onPress={() => setActiveTab('favourites')}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.mainTabTxt, activeTab === 'favourites' && s.mainTabTxtActive]}>Favourites</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.mainTab, activeTab === 'banned' && s.mainTabBanned]}
+            onPress={() => setActiveTab('banned')}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.mainTabTxt, activeTab === 'banned' && s.mainTabTxtBanned]}>Banned</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Subtitle */}
         <View style={s.subtitleBox}>
           <Text style={s.subtitle}>
-            Select dishes your family cooks regularly. Maharaj will use these 80% of the time.
+            {activeTab === 'favourites'
+              ? 'Select dishes your family cooks regularly. Maharaj will use these 80% of the time.'
+              : 'Mark dishes to never appear in your meal plans.'}
           </Text>
         </View>
 
@@ -185,16 +211,16 @@ export default function RegularDishesScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.tabs}
+          contentContainerStyle={s.cuisineTabs}
         >
           {cuisines.map(c => (
             <TouchableOpacity
               key={c}
-              style={[s.tab, activeCuisine === c && s.tabActive]}
+              style={[s.cuisineTab, activeCuisine === c && s.cuisineTabActive]}
               onPress={() => setActiveCuisine(c)}
               activeOpacity={0.8}
             >
-              <Text style={[s.tabTxt, activeCuisine === c && s.tabTxtActive]}>{c}</Text>
+              <Text style={[s.cuisineTabTxt, activeCuisine === c && s.cuisineTabTxtActive]}>{c}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -210,20 +236,26 @@ export default function RegularDishesScreen() {
               </View>
             ) : (
               filteredDishes.map(dish => {
-                const isSelected = selected.has(dish.id);
+                const isFav     = selected.has(dish.id);
+                const isBanned  = banned.has(dish.id);
+                const isChecked = activeTab === 'favourites' ? isFav : isBanned;
                 return (
                   <TouchableOpacity
                     key={dish.id}
                     style={s.dishRow}
-                    onPress={() => toggleDish(dish.id)}
+                    onPress={() => activeTab === 'favourites' ? toggleDish(dish.id) : toggleBan(dish.id)}
                     activeOpacity={0.85}
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={s.dishName}>{dish.name}</Text>
                       <Text style={s.dishSlot}>{slotLabel(dish.slot)}</Text>
                     </View>
-                    <View style={[s.checkbox, isSelected && s.checkboxSelected]}>
-                      {isSelected && <Text style={s.checkmark}>✓</Text>}
+                    <View style={[
+                      s.checkbox,
+                      activeTab === 'favourites' && isFav    && s.checkboxSelected,
+                      activeTab === 'banned'     && isBanned && s.checkboxBanned,
+                    ]}>
+                      {isChecked && <Text style={s.checkmark}>✓</Text>}
                     </View>
                   </TouchableOpacity>
                 );
@@ -235,8 +267,12 @@ export default function RegularDishesScreen() {
 
         {/* Footer pill */}
         <View style={s.footerPill} pointerEvents="none">
-          <View style={s.pill}>
-            <Text style={s.pillTxt}>{selected.size} dishes selected</Text>
+          <View style={[s.pill, activeTab === 'banned' && s.pillBanned]}>
+            <Text style={s.pillTxt}>
+              {activeTab === 'favourites'
+                ? `${selected.size} dishes selected`
+                : `${banned.size} dishes banned`}
+            </Text>
           </View>
         </View>
 
@@ -246,32 +282,41 @@ export default function RegularDishesScreen() {
 }
 
 const s = StyleSheet.create({
-  header:          { backgroundColor: NAVY, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 28 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 12 },
-  headerTitle:     { fontSize: 17, fontWeight: '700', color: WHITE, textAlign: 'center', flex: 1 },
-  homeBtn:         { position: 'absolute', right: 16, top: Platform.OS === 'android' ? 28 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 12, justifyContent: 'center', height: '100%' },
-  homeBtnTxt:      { fontSize: 13, fontWeight: '700', color: WHITE },
-  backRow:         { paddingHorizontal: 16, paddingVertical: 8 },
-  backBtn:         { alignSelf: 'flex-start', borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 16 },
-  backBtnTxt:      { fontSize: 13, fontWeight: '600', color: NAVY },
-  subtitleBox:     { paddingHorizontal: 16, paddingBottom: 8 },
-  subtitle:        { fontSize: 12, color: '#4B5563', lineHeight: 17 },
-  searchBox:       { paddingHorizontal: 16, paddingBottom: 6 },
-  searchInput:     { backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(46,84,128,0.2)', paddingHorizontal: 14, paddingVertical: 9, fontSize: 14, color: NAVY },
-  tabs:            { paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
-  tab:             { borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(46,84,128,0.2)' },
-  tabActive:       { backgroundColor: NAVY },
-  tabTxt:          { fontSize: 12, fontWeight: '600', color: NAVY },
-  tabTxtActive:    { color: WHITE },
-  scroll:          { paddingHorizontal: 16, paddingTop: 4 },
-  emptyCard:       { backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: 12, padding: 24, alignItems: 'center', marginTop: 16 },
-  emptyTxt:        { fontSize: 13, color: '#6B7280', textAlign: 'center' },
-  dishRow:         { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 10, padding: 12, marginBottom: 6, flexDirection: 'row', alignItems: 'center' },
-  dishName:        { fontSize: 13, fontWeight: '600', color: NAVY },
-  dishSlot:        { fontSize: 11, color: '#6B7280', marginTop: 1 },
-  checkbox:        { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: 'rgba(46,84,128,0.4)', alignItems: 'center', justifyContent: 'center' },
-  checkboxSelected:{ backgroundColor: NAVY, borderColor: NAVY },
-  checkmark:       { fontSize: 13, color: WHITE, fontWeight: '700' },
-  footerPill:      { position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center' },
-  pill:            { backgroundColor: GOLD, borderRadius: 24, paddingVertical: 8, paddingHorizontal: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-  pillTxt:         { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
+  header:             { backgroundColor: NAVY, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 28 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 12 },
+  headerTitle:        { fontSize: 17, fontWeight: '700', color: WHITE, textAlign: 'center', flex: 1 },
+  homeBtn:            { position: 'absolute', right: 16, top: Platform.OS === 'android' ? 28 : Platform.OS === 'web' ? 12 : 6, paddingBottom: 12, justifyContent: 'center', height: '100%' },
+  homeBtnTxt:         { fontSize: 13, fontWeight: '700', color: WHITE },
+  backRow:            { paddingHorizontal: 16, paddingVertical: 8 },
+  backBtn:            { alignSelf: 'flex-start', borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 16 },
+  backBtnTxt:         { fontSize: 13, fontWeight: '600', color: NAVY },
+  tabRow:             { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  mainTab:            { flex: 1, borderRadius: 20, paddingVertical: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1.5, borderColor: 'rgba(46,84,128,0.2)' },
+  mainTabActive:      { backgroundColor: NAVY, borderColor: NAVY },
+  mainTabBanned:      { backgroundColor: RED, borderColor: RED },
+  mainTabTxt:         { fontSize: 13, fontWeight: '600', color: NAVY },
+  mainTabTxtActive:   { color: WHITE },
+  mainTabTxtBanned:   { color: WHITE },
+  subtitleBox:        { paddingHorizontal: 16, paddingBottom: 8 },
+  subtitle:           { fontSize: 12, color: '#4B5563', lineHeight: 17 },
+  searchBox:          { paddingHorizontal: 16, paddingBottom: 6 },
+  searchInput:        { backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(46,84,128,0.2)', paddingHorizontal: 14, paddingVertical: 9, fontSize: 14, color: NAVY },
+  cuisineTabs:        { paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
+  cuisineTab:         { borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(46,84,128,0.2)' },
+  cuisineTabActive:   { backgroundColor: NAVY },
+  cuisineTabTxt:      { fontSize: 12, fontWeight: '600', color: NAVY },
+  cuisineTabTxtActive:{ color: WHITE },
+  scroll:             { paddingHorizontal: 16, paddingTop: 4 },
+  emptyCard:          { backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: 12, padding: 24, alignItems: 'center', marginTop: 16 },
+  emptyTxt:           { fontSize: 13, color: '#6B7280', textAlign: 'center' },
+  dishRow:            { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 10, padding: 12, marginBottom: 6, flexDirection: 'row', alignItems: 'center' },
+  dishName:           { fontSize: 13, fontWeight: '600', color: NAVY },
+  dishSlot:           { fontSize: 11, color: '#6B7280', marginTop: 1 },
+  checkbox:           { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: 'rgba(46,84,128,0.4)', alignItems: 'center', justifyContent: 'center' },
+  checkboxSelected:   { backgroundColor: NAVY, borderColor: NAVY },
+  checkboxBanned:     { backgroundColor: RED, borderColor: RED },
+  checkmark:          { fontSize: 13, color: WHITE, fontWeight: '700' },
+  footerPill:         { position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center' },
+  pill:               { backgroundColor: GOLD, borderRadius: 24, paddingVertical: 8, paddingHorizontal: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  pillBanned:         { backgroundColor: RED },
+  pillTxt:            { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
 });

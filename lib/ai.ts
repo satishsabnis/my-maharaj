@@ -381,6 +381,7 @@ function selectDishFromPool(
   usedNames: Set<string>,
   healthFocus: string[],
   preferredNames?: Set<string>,
+  bannedNames?: Set<string>,
 ): string {
   let candidates: PoolDish[];
 
@@ -416,7 +417,7 @@ function selectDishFromPool(
   }
 
   // Prefer unseen dishes; fall back to any candidate if all seen
-  const fresh = candidates.filter(d => !usedNames.has(d.name));
+  const fresh = candidates.filter(d => !usedNames.has(d.name.toLowerCase()) && !bannedNames?.has(d.name.toLowerCase()));
   let pick: PoolDish | undefined;
 
   if (fresh.length > 0) {
@@ -442,7 +443,7 @@ function selectDishFromPool(
   }
 
   if (!pick) return SLOT_FALLBACKS[slot] ?? 'Pohe';
-  usedNames.add(pick.name);
+  usedNames.add(pick.name.toLowerCase());
   return pick.name;
 }
 
@@ -613,6 +614,20 @@ export async function generateMealPlanFast(
     }
   } catch { /* ignore — fall back to full pool */ }
 
+  // ── Step 1c: fetch banned dishes ──────────────────────────────────────────
+  const bannedDishNames: Set<string> = new Set();
+  try {
+    const { data: bannedRows } = await supabase
+      .from('user_banned_dishes')
+      .select('dish_id, dishes!inner(name)')
+      .eq('profile_id', params.userId);
+    if (bannedRows) {
+      bannedRows.forEach((r: any) => {
+        if (r.dishes?.name) bannedDishNames.add(r.dishes.name.toLowerCase());
+      });
+    }
+  } catch { /* ignore */ }
+
   // ── Step 2: one Claude call for weekly structure ───────────────────────────
   const dayStructures = await buildMealStructure({
     dates: params.dates,
@@ -684,46 +699,46 @@ export async function generateMealPlanFast(
       // ── Select dishes for all slots from pool ─────────────────────────────
       const pref = regularDishNames; // 80/20 preferred names (empty set = no preference)
       const breakfast    = slots.includes('breakfast')
-        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const lunchCurry1  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const lunchCurry2  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const lunchVeg     = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const lunchRaita   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const lunchBread   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const lunchRice    = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const dinnerCurry1 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const dinnerCurry2 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const dinnerVeg    = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const dinnerRaita  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const dinnerBread  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const dinnerRice   = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
       const snack        = slots.includes('snack')
-        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref)
+        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref, bannedDishNames)
         : '';
 
       // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
