@@ -284,6 +284,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
   const planScrollRef = useRef<ScrollView>(null);
   const prevStepRef = useRef<WizardStep | null>(null);
   const scrollYRef = useRef<Record<string, number>>({});
+  // Cache for get-meal-plan-context Edge Function response — avoids AsyncStorage on web
+  const mealPlanContextRef = useRef<{ foodPref: string; foodPreference: string; isMixed: boolean; vegDays: string[]; familyName: string; planSummaryLanguage: string } | null>(null);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
     prevStepRef.current = step;
@@ -323,13 +325,41 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const { data: fridgeData } = await supabase.from('fridge_inventory').select('id, item_name, quantity, unit').eq('user_id', user.id);
       setFridgeItems(fridgeData ?? []);
 
-      // Load saved dietary preference
-      const savedFoodPref = await AsyncStorage.getItem('dietary_food_pref');
-      const savedNonVegOpts = await AsyncStorage.getItem('dietary_nonveg_opts');
-      const savedIsMixed = await AsyncStorage.getItem('dietary_is_mixed');
-      if (savedFoodPref) { setFoodPref(savedFoodPref as 'veg' | 'nonveg'); setFoodPreference(savedFoodPref === 'veg' ? 'Vegetarian' : 'Non-vegetarian'); }
-      if (savedNonVegOpts) try { setNonVegOpts(JSON.parse(savedNonVegOpts)); } catch {}
-      if (savedIsMixed === 'true') { setIsMixed(true); setFoodPreference('Mixed'); }
+      // Load dietary preference and family info directly from Supabase profiles
+      // (AsyncStorage does not persist on web — this is the authoritative source)
+      try {
+        const { data: prefProfile } = await supabase
+          .from('profiles')
+          .select('veg_days, family_name, plan_summary_language')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (prefProfile) {
+          const vegDays: string[] = Array.isArray(prefProfile.veg_days) ? prefProfile.veg_days : [];
+          const isAllVeg = vegDays.length === 7;
+          const isMixedPref = vegDays.length > 0 && vegDays.length < 7;
+          const fp: 'veg' | 'nonveg' = isAllVeg ? 'veg' : 'nonveg';
+          setFoodPref(fp);
+          setFoodPreference(isAllVeg ? 'Vegetarian' : isMixedPref ? 'Mixed' : 'Non-vegetarian');
+          if (isMixedPref) setIsMixed(true);
+          // Cache in ref for PDF use
+          mealPlanContextRef.current = {
+            foodPref: fp,
+            foodPreference: isAllVeg ? 'Vegetarian' : isMixedPref ? 'Mixed' : 'Non-vegetarian',
+            isMixed: isMixedPref,
+            vegDays,
+            familyName: prefProfile.family_name || 'Your Family',
+            planSummaryLanguage: prefProfile.plan_summary_language || 'en',
+          };
+        }
+      } catch {
+        // Fallback to AsyncStorage if Supabase query fails
+        const savedFoodPref = await AsyncStorage.getItem('dietary_food_pref');
+        const savedNonVegOpts = await AsyncStorage.getItem('dietary_nonveg_opts');
+        const savedIsMixed = await AsyncStorage.getItem('dietary_is_mixed');
+        if (savedFoodPref) { setFoodPref(savedFoodPref as 'veg' | 'nonveg'); setFoodPreference(savedFoodPref === 'veg' ? 'Vegetarian' : 'Non-vegetarian'); }
+        if (savedNonVegOpts) try { setNonVegOpts(JSON.parse(savedNonVegOpts)); } catch {}
+        if (savedIsMixed === 'true') { setIsMixed(true); setFoodPreference('Mixed'); }
+      }
 
       // Jain
       const jf = await AsyncStorage.getItem('jain_family');
@@ -399,8 +429,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const fr = await AsyncStorage.getItem('family_recipes');
       if (fr) try { const recs = JSON.parse(fr); if (Array.isArray(recs)) setFamilyRecipes(recs.map((r: any) => ({ recipe_name: r.recipe_name ?? '', cuisine: r.cuisine ?? '' }))); } catch {}
 
-      // Determine first-time user
-      const isFirst = saved.length === 0 || !savedFoodPref;
+      // Determine first-time user (foodPref state is set by Edge Function call above)
+      const isFirst = saved.length === 0 || !mealPlanContextRef.current?.foodPref;
       setIsFirstTimeUser(isFirst);
 
       // Onboarding 3-day plan shortcut
@@ -418,7 +448,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
           ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d1.getDay()],
           ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d2.getDay()],
         ]);
-        if (!savedFoodPref) setFoodPref('nonveg');
+        if (!mealPlanContextRef.current?.foodPref) setFoodPref('nonveg');
         setStep('generating');
         return;
       }
@@ -1327,8 +1357,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const dd = String(today.getDate()).padStart(2, '0');
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const yyyy = today.getFullYear();
-      const familyName = (await AsyncStorage.getItem('family_name')) || 'Your Family';
-      const pdfLang = (await AsyncStorage.getItem('plan_summary_language')) || 'en';
+      // Use cached Edge Function context for familyName and language; fallback to AsyncStorage
+      const ctx = mealPlanContextRef.current;
+      const familyName = ctx?.familyName || (await AsyncStorage.getItem('family_name')) || 'Your Family';
+      const pdfLang = ctx?.planSummaryLanguage || (await AsyncStorage.getItem('plan_summary_language')) || 'en';
       const dateRange = generatedPlan && generatedPlan.length > 0
         ? `${generatedPlan[0].date} to ${generatedPlan[generatedPlan.length - 1].date}`
         : today.toLocaleDateString();
