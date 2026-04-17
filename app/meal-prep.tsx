@@ -204,10 +204,10 @@ export default function MealPrepScreen() {
           {tonightCount > 0 && (
             <View style={s.tonightBanner}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 8.5, fontWeight: '700', color: colors.white }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.white }}>
                   Tonight before you sleep
                 </Text>
-                <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
                   {tonightCount} {tonightCount === 1 ? 'task' : 'tasks'} remaining
                 </Text>
               </View>
@@ -241,7 +241,7 @@ export default function MealPrepScreen() {
                   >
                     {/* Top row: urgency label + check circle */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 7, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600', color: uStyle.labelColor }}>
+                      <Text style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600', color: uStyle.labelColor }}>
                         {task.urgency === 'tonight' ? 'Urgent' : task.urgency === 'today' ? 'Today' : task.urgency === 'done' ? 'Done' : 'Upcoming'}
                       </Text>
                       <TouchableOpacity onPress={() => toggleDone(task.id)}>
@@ -249,23 +249,23 @@ export default function MealPrepScreen() {
                           s.checkCircle,
                           task.done && { backgroundColor: colors.emerald, borderColor: colors.emerald },
                         ]}>
-                          {task.done && <Text style={{ fontSize: 10, color: colors.white, lineHeight: 14 }}>{'✓'}</Text>}
+                          {task.done && <Text style={{ fontSize: 14, color: colors.white, lineHeight: 14 }}>{'✓'}</Text>}
                         </View>
                       </TouchableOpacity>
                     </View>
 
                     {/* Dish name */}
-                    <Text style={{ fontSize: 9.5, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>{task.dish}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>{task.dish}</Text>
 
                     {/* Instruction */}
-                    <Text style={{ fontSize: 8, color: colors.textSecondary, marginBottom: 5, lineHeight: 12 }}>{task.instruction}</Text>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 5, lineHeight: 12 }}>{task.instruction}</Text>
 
                     {/* Tags row */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <View style={{ backgroundColor: pill.bg, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 6.5, fontWeight: '600', color: pill.color }}>{task.prepType}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: pill.color }}>{task.prepType}</Text>
                       </View>
-                      <Text style={{ fontSize: 7, color: colors.textMuted }}>
+                      <Text style={{ fontSize: 12, color: colors.textMuted }}>
                         For {task.day} {task.meal}
                       </Text>
                     </View>
