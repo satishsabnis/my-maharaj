@@ -2,18 +2,23 @@
 
 const fs   = require('fs');
 const path = require('path');
-const PdfPrinter = require('pdfmake');
-const vfsFonts   = require('pdfmake/build/vfs_fonts');
+const pdfmake  = require('pdfmake');
+const vfsFonts = require('pdfmake/build/vfs_fonts');
 
 // ── Fonts ────────────────────────────────────────────────────────────────────
-const printer = new PdfPrinter({
+pdfmake.virtualfs.writeFileSync('Roboto-Regular.ttf',      Buffer.from(vfsFonts['Roboto-Regular.ttf'],       'base64'));
+pdfmake.virtualfs.writeFileSync('Roboto-Medium.ttf',       Buffer.from(vfsFonts['Roboto-Medium.ttf'],        'base64'));
+pdfmake.virtualfs.writeFileSync('Roboto-Italic.ttf',       Buffer.from(vfsFonts['Roboto-Italic.ttf'],        'base64'));
+pdfmake.virtualfs.writeFileSync('Roboto-MediumItalic.ttf', Buffer.from(vfsFonts['Roboto-MediumItalic.ttf'],  'base64'));
+pdfmake.addFonts({
   Roboto: {
-    normal:      Buffer.from(vfsFonts['Roboto-Regular.ttf'],       'base64'),
-    bold:        Buffer.from(vfsFonts['Roboto-Medium.ttf'],        'base64'),
-    italics:     Buffer.from(vfsFonts['Roboto-Italic.ttf'],        'base64'),
-    bolditalics: Buffer.from(vfsFonts['Roboto-MediumItalic.ttf'],  'base64'),
+    normal:      'Roboto-Regular.ttf',
+    bold:        'Roboto-Medium.ttf',
+    italics:     'Roboto-Italic.ttf',
+    bolditalics: 'Roboto-MediumItalic.ttf',
   },
 });
+pdfmake.setUrlAccessPolicy(() => false);
 
 // ── Logos (read synchronously once at module load) ────────────────────────────
 let maharajLogo = '';
@@ -226,16 +231,11 @@ module.exports = async function handler(req, res) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   try {
-    const pdfDoc = printer.createPdfKitDocument(docDefinition);
-    const chunks = [];
-    pdfDoc.on('data', chunk => chunks.push(chunk));
-    pdfDoc.on('end', () => {
-      const result = Buffer.concat(chunks);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="MyMaharaj_MealPlan.pdf"');
-      res.send(result);
-    });
-    pdfDoc.end();
+    const pdfOutput = pdfmake.createPdf(docDefinition);
+    const buffer = await pdfOutput.getBuffer();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="MyMaharaj_MealPlan.pdf"');
+    res.send(buffer);
   } catch (e) {
     console.error('[generate-pdf] pdfmake error:', e);
     res.status(500).json({ error: e.message });
