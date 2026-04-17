@@ -92,10 +92,19 @@ export default function MenuHistoryScreen() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    loadPlans();
+    (async () => {
+      const loaded = await loadPlans();
+      const flag = await AsyncStorage.getItem('menu_history_auto_open_latest');
+      if (flag === 'true') {
+        await AsyncStorage.removeItem('menu_history_auto_open_latest');
+        if (loaded && loaded.length > 0) {
+          setSelectedPlan(loaded[0]);
+        }
+      }
+    })();
   }, []));
 
-  async function loadPlans() {
+  async function loadPlans(): Promise<MenuPlan[]> {
     setLoading(true);
     try {
       // Try Supabase first
@@ -117,7 +126,7 @@ export default function MenuHistoryScreen() {
             }));
             setPlans(mapped);
             setLoading(false);
-            return;
+            return mapped;
           }
         } catch { /* fall through to AsyncStorage */ }
       }
@@ -133,8 +142,13 @@ export default function MenuHistoryScreen() {
       }
       arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPlans(arr);
-    } catch { setPlans([]); }
-    setLoading(false);
+      setLoading(false);
+      return arr;
+    } catch {
+      setPlans([]);
+      setLoading(false);
+      return [];
+    }
   }
 
   // ─── Feedback handling ─────────────────────────────────────────────────────

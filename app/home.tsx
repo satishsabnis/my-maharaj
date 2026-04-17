@@ -188,8 +188,8 @@ export default function HomeScreen() {
     subtitle: todayPlanSubtitle,
     buttons: [{ text: hasWeekPlan ? 'View Plan' : 'Plan Week', style: 'navy', onPress: async () => {
       if (hasWeekPlan) {
-        await AsyncStorage.setItem('meal_wizard_initial_step', 'plan-summary');
-        router.push('/(app)/meal-wizard' as never);
+        await AsyncStorage.setItem('menu_history_auto_open_latest', 'true');
+        router.push('/(app)/menu-history' as never);
       } else {
         router.push('/(app)/meal-wizard' as never);
       }
