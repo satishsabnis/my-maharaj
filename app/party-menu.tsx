@@ -31,7 +31,7 @@ async function callClaude(system: string, user: string): Promise<string> {
     headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: 1500,
       system,
       messages: [{ role: 'user', content: user }],
     }),
@@ -89,21 +89,59 @@ export default function PartyMenuScreen() {
   async function generate() {
     if (!occasion.trim()) { setError('Please describe the occasion.'); return; }
     setError(''); setLoading(true); setMenu(null);
-    try {
-      const systemPrompt = `You are Maharaj, an expert Indian party menu planner. Generate a complete party menu.
-Occasion: ${occasion}, Date: ${date || 'not specified'}, Guests: ${adults || '0'} adults, ${kids || '0'} kids, Style: ${style}, Notes: ${guestNotes || 'none'}, Specific: ${specific || 'none'}.
-Sections: STARTERS (3-4), MAIN COURSE Rice/Bread (2-3), MAIN COURSE Curries (3-4), Accompaniments (3-4), DESSERTS (2-3).
-Each item: { dishName, isVeg, note }. Return JSON: { occasion, summary, starters, mainRiceBread, mainCurries, mainAccompaniments, desserts }`;
-      const raw = await callClaude(systemPrompt, 'Generate the party menu now.');
-      const match = raw.match(/\{[\s\S]*\}/);
+
+    const guestLine = (adults || '0') + ' adults' + (kids && kids !== '0' ? ', ' + kids + ' kids' : '');
+    const contextLine = [
+      occasion,
+      date ? 'on ' + date : '',
+      guestLine,
+      'Style: ' + style,
+      guestNotes ? 'Notes: ' + guestNotes : '',
+      specific ? 'Special requests: ' + specific : '',
+    ].filter(Boolean).join('. ');
+
+    const systemPrompt =
+      'You are Maharaj, an expert Indian party menu planner. ' +
+      'Return ONLY a valid JSON object — no preamble, no explanation, no markdown fences. ' +
+      'Context: ' + contextLine + '. ' +
+      'JSON shape: {"occasion":"","summary":"","starters":[{"dishName":"","isVeg":true,"note":""}],' +
+      '"mainRiceBread":[{"dishName":"","isVeg":true,"note":""}],' +
+      '"mainCurries":[{"dishName":"","isVeg":true,"note":""}],' +
+      '"mainAccompaniments":[{"dishName":"","isVeg":true,"note":""}],' +
+      '"desserts":[{"dishName":"","isVeg":true,"note":""}]}. ' +
+      'starters 3-4 items. mainRiceBread 2-3 items. mainCurries 3-4 items. mainAccompaniments 3-4 items. desserts 2-3 items. ' +
+      'All dish names must be authentic Indian dishes. Return ONLY the JSON object, nothing else.';
+
+    function tryParse(raw: string): PartyMenuResult | null {
       try {
-        const parsed: PartyMenuResult = JSON.parse(match ? match[0] : raw);
+        const cleaned = raw.replace(/```json|```/g, '').trim();
+        const match = cleaned.match(/{[\s\S]*}/);
+        const parsed = JSON.parse(match ? match[0] : cleaned) as PartyMenuResult;
+        if (!parsed.starters || !parsed.mainCurries || !parsed.desserts) return null;
+        return parsed;
+      } catch { return null; }
+    }
+
+    try {
+      const raw = await callClaude(systemPrompt, 'Generate the party menu now.');
+      const parsed = tryParse(raw);
+      if (parsed) {
         setMenu(parsed);
         setPhase('output');
-      } catch (e) {
-        console.error('[Party Menu] JSON parse failed:', e);
-        Alert.alert('Maharaj had trouble planning', 'Please try again.');
-        setPhase('input');
+      } else {
+        // One retry with ultra-strict instruction
+        const retryRaw = await callClaude(
+          'Return ONLY valid JSON matching this exact schema. No other text.',
+          'Schema: {"occasion":"string","summary":"string","starters":[{"dishName":"string","isVeg":true,"note":"string"}],"mainRiceBread":[{"dishName":"string","isVeg":true,"note":"string"}],"mainCurries":[{"dishName":"string","isVeg":true,"note":"string"}],"mainAccompaniments":[{"dishName":"string","isVeg":true,"note":"string"}],"desserts":[{"dishName":"string","isVeg":true,"note":"string"}]}. Generate for: ' + contextLine
+        );
+        const retryParsed = tryParse(retryRaw);
+        if (retryParsed) {
+          setMenu(retryParsed);
+          setPhase('output');
+        } else {
+          Alert.alert('Maharaj had trouble planning', 'Please try again.');
+          setPhase('input');
+        }
       }
     } catch (err) {
       console.error('[PartyMenu]', err);
