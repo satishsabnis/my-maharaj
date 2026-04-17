@@ -1335,7 +1335,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, familyName, dateRange, content, language: pdfLang }),
+        body: JSON.stringify({
+          familyName,
+          planData: generatedPlan ? { days: generatedPlan } : { days: [] },
+          dateFrom: selectedFrom?.toISOString(),
+          dateTo: selectedTo?.toISOString(),
+          planSummaryLanguage: pdfLang,
+        }),
       });
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('text/html')) {
@@ -2235,27 +2241,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         {/* Download Plan Summary */}
         <TouchableOpacity
           style={{backgroundColor:colors.navy,borderRadius:12,paddingVertical:14,paddingHorizontal:20,alignItems:'center',marginBottom:16}}
-          onPress={async () => {
-            const planLang = await AsyncStorage.getItem('plan_summary_language') || 'English';
-            let content = planPDFContent;
-            if (planLang !== 'English' && SARVAM_LANG_MAP[planLang]) {
-              try {
-                const translatedDays = await Promise.all(
-                  planPDFContent.days.map(async day => ({
-                    ...day,
-                    meals: await Promise.all(
-                      day.meals.map(async meal => ({
-                        ...meal,
-                        dish: meal.dish ? await translateViaSarvam(meal.dish, planLang) : meal.dish,
-                      }))
-                    ),
-                  }))
-                );
-                content = { ...planPDFContent, days: translatedDays };
-              } catch { /* use original if translation fails */ }
-            }
-            void downloadPDF('Meal Plan', content, 'maharaj-meal-plan-DDMMYYYY.pdf');
-          }}
+          onPress={() => void downloadPDF('Meal Plan', {}, 'maharaj-meal-plan-DDMMYYYY.pdf')}
           activeOpacity={0.85}>
           <Text style={{fontSize:14,fontWeight:'700',color:colors.white}}>Download Plan Summary</Text>
           <Text style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:3}}>Full week · tabular · printable</Text>

@@ -1,137 +1,243 @@
-const path = require('path');
+'use strict';
+
 const fs   = require('fs');
-const https = require('https');
+const path = require('path');
+const PdfPrinter = require('pdfmake');
+const vfsFonts   = require('pdfmake/build/vfs_fonts');
 
-function fetchAsBase64(url) {
-  return new Promise((resolve) => {
-    https.get(url, (res) => {
-      const chunks = [];
-      res.on('data', chunk => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
-      res.on('error', () => resolve(''));
-    }).on('error', () => resolve(''));
-  });
-}
+// ── Fonts ────────────────────────────────────────────────────────────────────
+const printer = new PdfPrinter({
+  Roboto: {
+    normal:      Buffer.from(vfsFonts['Roboto-Regular.ttf'],       'base64'),
+    bold:        Buffer.from(vfsFonts['Roboto-Medium.ttf'],        'base64'),
+    italics:     Buffer.from(vfsFonts['Roboto-Italic.ttf'],        'base64'),
+    bolditalics: Buffer.from(vfsFonts['Roboto-MediumItalic.ttf'],  'base64'),
+  },
+});
 
+// ── Logos (read synchronously once at module load) ────────────────────────────
+let maharajLogo = '';
+let bfcLogo     = '';
+try { maharajLogo = fs.readFileSync(path.join(process.cwd(), 'assets/logo.png')).toString('base64'); } catch {}
+try { bfcLogo     = fs.readFileSync(path.join(process.cwd(), 'assets/blueflute-logo.png')).toString('base64'); } catch {}
+
+// ── Language map ──────────────────────────────────────────────────────────────
+const SARVAM_LANG_MAP = {
+  'Hindi': 'hi-IN',   'Marathi': 'mr-IN',  'Tamil': 'ta-IN',   'Telugu': 'te-IN',
+  'Kannada': 'kn-IN', 'Malayalam': 'ml-IN','Bengali': 'bn-IN',  'Gujarati': 'gu-IN',
+  'Punjabi': 'pa-IN',
+  'hi': 'hi-IN', 'mr': 'mr-IN', 'ta': 'ta-IN', 'te': 'te-IN',
+  'kn': 'kn-IN', 'ml': 'ml-IN', 'bn': 'bn-IN', 'gu': 'gu-IN', 'pa': 'pa-IN',
+};
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'POST')   { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const { type, familyName, dateRange, content, language } = req.body;
-  const days = content?.days ?? [];
+  const {
+    familyName = 'My Family',
+    planData,
+    dateFrom,
+    dateTo,
+    planSummaryLanguage = 'English',
+  } = req.body ?? {};
 
-  // Logo
-  let logoDataUri = '';
+  // ── QR code ────────────────────────────────────────────────────────────────
+  let qrBase64 = '';
   try {
-    const logoPath = path.join(process.cwd(), 'assets', 'logo.png');
-    const logoBuffer = fs.readFileSync(logoPath);
-    logoDataUri = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-  } catch { /* logo not available */ }
+    const qrRes    = await fetch('https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://www.my-maharaj.com');
+    const qrBuffer = await qrRes.arrayBuffer();
+    qrBase64       = Buffer.from(qrBuffer).toString('base64');
+  } catch { /* optional */ }
 
-  // QR code
-  let qrDataUri = '';
+  // ── Date formatter ─────────────────────────────────────────────────────────
+  const fmtDate = (d) => {
+    try { return new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+    catch { return String(d ?? ''); }
+  };
+
+  // ── Collect unique dish names ──────────────────────────────────────────────
+  const days = planData?.days ?? [];
+  const allDishNames = [];
+  days.forEach(day => {
+    const a = day.anatomy;
+    if (!a) return;
+    [
+      a.breakfast?.dishName,
+      a.lunch?.curry?.[0]?.dishName,  a.lunch?.curry?.[1]?.dishName,
+      a.lunch?.veg?.dishName,         a.lunch?.raita?.dishName,
+      a.lunch?.bread?.dishName,       a.lunch?.rice?.dishName,
+      a.dinner?.curry?.[0]?.dishName, a.dinner?.curry?.[1]?.dishName,
+      a.dinner?.veg?.dishName,        a.dinner?.raita?.dishName,
+      a.dinner?.bread?.dishName,      a.dinner?.rice?.dishName,
+      a.snack?.dishName,
+    ].filter(Boolean).forEach(n => { if (!allDishNames.includes(n)) allDishNames.push(n); });
+  });
+
+  // ── Sarvam translation ────────────────────────────────────────────────────
+  let getDish = (name) => name || '';
+  const langCode = SARVAM_LANG_MAP[planSummaryLanguage];
+  if (langCode && allDishNames.length > 0) {
+    const apiKey = process.env.SARVAM_API_KEY;
+    if (apiKey) {
+      try {
+        const translationMap = {};
+        await Promise.all(allDishNames.map(async (name) => {
+          try {
+            const resp = await fetch('https://api.sarvam.ai/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'api-subscription-key': apiKey },
+              body: JSON.stringify({
+                input: name,
+                source_language_code: 'en-IN',
+                target_language_code: langCode,
+                speaker_gender: 'Female',
+                mode: 'formal',
+                model: 'mayura:v1',
+                enable_preprocessing: false,
+              }),
+            });
+            const data = await resp.json();
+            if (data.translated_text) translationMap[name] = data.translated_text;
+          } catch { /* keep original */ }
+        }));
+        getDish = (name) => (name ? (translationMap[name] || name) : '');
+      } catch { /* fall through */ }
+    }
+  }
+
+  // ── Table helpers ─────────────────────────────────────────────────────────
+  const hdr = (text) => ({
+    text, bold: true, fontSize: 9, color: '#FFFFFF',
+    fillColor: '#2E5480', alignment: 'center', margin: [4, 5, 4, 5],
+  });
+
+  const cell = (content, fillColor) => ({ ...content, fillColor, margin: [4, 4, 4, 4] });
+
+  // ── Build table rows ───────────────────────────────────────────────────────
+  const tableBody = [[
+    hdr('Day'), hdr('Breakfast'), hdr('Lunch'), hdr('Dinner'), hdr('Supporting'), hdr('Evening'),
+  ]];
+
+  days.forEach((day, rowIndex) => {
+    const a        = day.anatomy || {};
+    const dayDate  = new Date(day.date);
+    const isValid  = !isNaN(dayDate.getTime());
+    const isSunday   = isValid && dayDate.getDay() === 0;
+    const isSaturday = isValid && dayDate.getDay() === 6;
+    const rowFill  = isSunday ? '#E8F5E9' : isSaturday ? '#FFFDE7' : (rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F8F8');
+
+    const dayLabel = isValid
+      ? dayDate.toLocaleDateString('en-GB', { weekday: 'long' }) + '\n' +
+        dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      : (day.day || `Day ${rowIndex + 1}`);
+
+    const lc1 = getDish(a.lunch?.curry?.[0]?.dishName);
+    const lc2 = getDish(a.lunch?.curry?.[1]?.dishName);
+    const dc1 = getDish(a.dinner?.curry?.[0]?.dishName);
+    const dc2 = getDish(a.dinner?.curry?.[1]?.dishName);
+
+    tableBody.push([
+      cell({ text: dayLabel, bold: true, fontSize: 9, color: '#2E5480' }, rowFill),
+      cell({ text: getDish(a.breakfast?.dishName) || '—', fontSize: 9 }, rowFill),
+      cell({ stack: [
+        { text: lc1 || '—', bold: true, fontSize: 9 },
+        { text: '+ ' + (lc2 || '—'), fontSize: 8, color: '#5A7A8A', marginTop: 2 },
+      ]}, rowFill),
+      cell({ stack: [
+        { text: dc1 || '—', bold: true, fontSize: 9 },
+        { text: '+ ' + (dc2 || '—'), fontSize: 8, color: '#5A7A8A', marginTop: 2 },
+      ]}, rowFill),
+      cell({ stack: [
+        { text: [{ text: 'VEG  ', fontSize: 7, color: '#5A7A8A' },   { text: getDish(a.lunch?.veg?.dishName)   || '—', fontSize: 8 }] },
+        { text: [{ text: 'RAITA  ', fontSize: 7, color: '#5A7A8A' }, { text: getDish(a.lunch?.raita?.dishName) || '—', fontSize: 8 }], marginTop: 1 },
+        { text: [{ text: 'BREAD  ', fontSize: 7, color: '#5A7A8A' }, { text: getDish(a.lunch?.bread?.dishName) || '—', fontSize: 8 }], marginTop: 1 },
+        { text: [{ text: 'RICE  ', fontSize: 7, color: '#5A7A8A' },  { text: getDish(a.lunch?.rice?.dishName)  || '—', fontSize: 8 }], marginTop: 1 },
+      ]}, rowFill),
+      cell({ text: getDish(a.snack?.dishName) || '—', fontSize: 9 }, rowFill),
+    ]);
+  });
+
+  // ── Header columns ─────────────────────────────────────────────────────────
+  const leftStack = [];
+  if (bfcLogo)  leftStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130 });
+  if (qrBase64) leftStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6 });
+
+  const centreStack = [];
+  if (maharajLogo) centreStack.push({ image: `data:image/png;base64,${maharajLogo}`, width: 90, alignment: 'center' });
+  centreStack.push({ text: 'My Maharaj',           fontSize: 20, bold: true,  color: '#2E5480', alignment: 'center' });
+  centreStack.push({ text: 'Your Family Meal Plan', fontSize: 11,              color: '#C9A227', alignment: 'center' });
+
+  const rightStack = [
+    { text: familyName,                                    fontSize: 22, bold: true, color: '#2E5480', alignment: 'right' },
+    { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo),  fontSize: 11,             color: '#5A7A8A', alignment: 'right' },
+  ];
+  if (planSummaryLanguage && planSummaryLanguage !== 'English' && planSummaryLanguage !== 'en') {
+    rightStack.push({ text: planSummaryLanguage, fontSize: 9, color: '#5A7A8A', italics: true, alignment: 'right' });
+  }
+
+  // ── Document definition ────────────────────────────────────────────────────
+  const docDefinition = {
+    pageSize:        'A4',
+    pageOrientation: 'landscape',
+    pageMargins:     [20, 20, 20, 40],
+
+    footer: (currentPage, pageCount) => ({
+      columns: [
+        { text: 'My Maharaj · Blue Flute Consulting LLC-FZ · Dubai', fontSize: 8, color: '#5A7A8A', margin: [20, 0, 0, 0] },
+        { text: `Page ${currentPage} of ${pageCount}`,               fontSize: 8, color: '#5A7A8A', alignment: 'right', margin: [0, 0, 20, 0] },
+      ],
+      margin: [0, 5, 0, 0],
+    }),
+
+    content: [
+      // Three-column header
+      {
+        columns: [
+          { width: 160, stack: leftStack },
+          { width: '*', stack: centreStack, alignment: 'center' },
+          { width: 160, stack: rightStack },
+        ],
+      },
+      // Gold rule
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 801, y2: 0, lineWidth: 2, lineColor: '#C9A227' }], margin: [0, 8, 0, 8] },
+      // Meal table
+      {
+        table: {
+          widths:     [70, 100, 150, 150, 231, 100],
+          body:       tableBody,
+          headerRows: 1,
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#E0E0E0',
+          vLineColor: () => '#E0E0E0',
+        },
+      },
+    ],
+
+    defaultStyle: { font: 'Roboto' },
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   try {
-    const qrBase64 = await fetchAsBase64('https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://www.my-maharaj.com');
-    if (qrBase64) qrDataUri = `data:image/png;base64,${qrBase64}`;
-  } catch { /* qr not available */ }
-
-  const displayName = familyName && familyName !== 'Your Family' ? familyName : 'Your Family';
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Maharaj Meal Plan</title>
-<style>
-  @page { size: A4 landscape; margin: 12mm; }
-  @media print { .no-print { display: none; } body { margin: 0; } }
-  @media (max-width: 768px) { body { padding: 8px; } table { font-size: 10px; } th, td { padding: 4px 3px; } }
-  body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #fff; color: #1b3a5c; }
-  .header { background: #1b3a5c; color: white; padding: 14px 20px; margin-bottom: 20px; border-radius: 8px; display: flex; align-items: center; gap: 16px; }
-  .header-logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; }
-  .header-text { flex: 1; }
-  .header h1 { margin: 0; font-size: 20px; font-weight: 600; }
-  .header p { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,0.7); }
-  .print-btn { background: #1a6b5c; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-  th { background: #1b3a5c; color: white; padding: 10px 12px; text-align: left; font-weight: 500; }
-  th:nth-child(1) { width: 10%; }
-  th:nth-child(2) { width: 16%; }
-  th:nth-child(3) { width: 18%; }
-  th:nth-child(4) { width: 18%; }
-  th:nth-child(5) { width: 26%; }
-  th:nth-child(6) { width: 12%; }
-  td { padding: 8px 6px; border-bottom: 0.5px solid #e0e0e0; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
-  tr:nth-child(even) td { background: #f8f9fa; }
-  .day-header td { background: #c9a227; color: #1a1a1a; font-weight: 600; font-size: 13px; }
-  .meal-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
-  .meal-dish { font-size: 13px; color: #1b3a5c; }
-  .footer { margin-top: 20px; font-size: 11px; color: #aaa; display: flex; align-items: center; justify-content: space-between; }
-  .footer-text { flex: 1; }
-  .footer-qr { width: 80px; height: 80px; object-fit: contain; }
-</style>
-</head>
-<body>
-<div class="header">
-  ${logoDataUri ? `<img class="header-logo" src="${logoDataUri}" alt="My Maharaj" />` : ''}
-  <div class="header-text">
-    <h1>My Maharaj Meal Plan</h1>
-    <p>for ${displayName}${dateRange ? ' · ' + dateRange : ''}</p>
-  </div>
-</div>
-<button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
-<table>
-  <thead>
-    <tr>
-      <th>Day</th>
-      <th>Breakfast</th>
-      <th>Lunch</th>
-      <th>Dinner</th>
-      <th>Supporting</th>
-      <th>Evening</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${days.map(day => {
-      const meals = day.meals || [];
-      const get = (label) => meals.find(m => m.label?.toLowerCase().includes(label.toLowerCase()))?.dish || '';
-      const breakfast = get('Breakfast');
-      const lunchCurries = meals.filter(m => m.label?.toLowerCase().includes('lunch curry')).map(m => m.dish).filter(Boolean).join(' + ');
-      const dinnerCurries = meals.filter(m => m.label?.toLowerCase().includes('dinner curry')).map(m => m.dish).filter(Boolean).join(' + ');
-      const lunchVeg = get('Lunch Veg');
-      const lunchRaita = get('Lunch Raita');
-      const lunchBread = get('Lunch Bread');
-      const lunchRice = get('Lunch Rice');
-      const dinnerVeg = get('Dinner Veg');
-      const dinnerRaita = get('Dinner Raita');
-      const dinnerBread = get('Dinner Bread');
-      const dinnerRice = get('Dinner Rice');
-      const snack = get('Snack');
-      return `
-        <tr class="day-header"><td colspan="6">${day.dayName || ''}</td></tr>
-        <tr>
-          <td></td>
-          <td><span class="meal-label">Breakfast</span><span class="meal-dish">${breakfast}</span></td>
-          <td><span class="meal-label">Curry</span><span class="meal-dish">${lunchCurries}</span></td>
-          <td><span class="meal-label">Curry</span><span class="meal-dish">${dinnerCurries}</span></td>
-          <td>
-            <span class="meal-label">Veg</span><span class="meal-dish">${lunchVeg}</span><br>
-            <span class="meal-label" style="margin-top:4px">Raita</span><span class="meal-dish">${lunchRaita}</span><br>
-            <span class="meal-label" style="margin-top:4px">Bread</span><span class="meal-dish">${lunchBread}</span><br>
-            <span class="meal-label" style="margin-top:4px">Rice</span><span class="meal-dish">${lunchRice}</span>
-          </td>
-          <td><span class="meal-label">Snack</span><span class="meal-dish">${snack}</span></td>
-        </tr>`;
-    }).join('')}
-  </tbody>
-</table>
-<div class="footer">
-  <span class="footer-text">Generated by My Maharaj · Blue Flute Consulting LLC-FZ · Dubai</span>
-  ${qrDataUri ? `<img class="footer-qr" src="${qrDataUri}" alt="my-maharaj.com" />` : ''}
-</div>
-</body>
-</html>`;
-
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  return res.send(html);
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    const chunks = [];
+    pdfDoc.on('data', chunk => chunks.push(chunk));
+    pdfDoc.on('end', () => {
+      const result = Buffer.concat(chunks);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="MyMaharaj_MealPlan.pdf"');
+      res.send(result);
+    });
+    pdfDoc.end();
+  } catch (e) {
+    console.error('[generate-pdf] pdfmake error:', e);
+    res.status(500).json({ error: e.message });
+  }
 };

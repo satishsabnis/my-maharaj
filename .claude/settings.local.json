@@ -70,7 +70,10 @@
       "Bash(clip)",
       "Skill(review)",
       "Bash(python3:*)",
-      "Bash(grep -in \"name:''''[^'''']*chicken[^'''']*''''\" seed-dishes*.ts)"
+      "Bash(grep -in \"name:''''[^'''']*chicken[^'''']*''''\" seed-dishes*.ts)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npm list:*)"
     ]
   }
 }
