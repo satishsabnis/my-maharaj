@@ -32,8 +32,17 @@ export default function SplashScreen() {
         return;
       }
       const onboardingShown = await AsyncStorage.getItem('onboarding_shown');
-      const { data: profileRow } = await supabase.from('profiles').select('id').eq('id', session.user.id).maybeSingle();
-      if (!onboardingShown || !profileRow) {
+      const { data: profileRow } = await supabase.from('profiles').select('id, profile_completed').eq('id', session.user.id).maybeSingle();
+      if (!profileRow) {
+        router.replace('/onboarding');
+        return;
+      }
+      if (profileRow.profile_completed) {
+        await AsyncStorage.setItem('onboarding_shown', 'true');
+        router.replace('/home');
+        return;
+      }
+      if (!onboardingShown) {
         router.replace('/onboarding');
         return;
       }
