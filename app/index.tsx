@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ImageBackground, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { navy } from '../theme/colors';
 
@@ -20,34 +19,26 @@ export default function SplashScreen() {
       await new Promise<void>(resolve =>
         Animated.timing(opacity, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => resolve())
       );
-      // Route
-      await new Promise<void>(r => setTimeout(r, 300));
+      // Route — Supabase profile_completed is the sole source of truth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace('/login');
         return;
       }
-      const langSet = await AsyncStorage.getItem('maharaj_lang_set');
-      if (!langSet) {
-        router.replace('/language-select');
-        return;
-      }
-      const onboardingShown = await AsyncStorage.getItem('onboarding_shown');
-      const { data: profileRow } = await supabase.from('profiles').select('id, profile_completed').eq('id', session.user.id).maybeSingle();
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('id, profile_completed')
+        .eq('id', session.user.id)
+        .maybeSingle();
       if (!profileRow) {
         router.replace('/onboarding');
         return;
       }
       if (profileRow.profile_completed) {
-        await AsyncStorage.setItem('onboarding_shown', 'true');
         router.replace('/home');
         return;
       }
-      if (!onboardingShown) {
-        router.replace('/onboarding');
-        return;
-      }
-      router.replace('/home');
+      router.replace('/onboarding');
     };
     run();
   }, []);
