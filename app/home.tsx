@@ -191,9 +191,9 @@ export default function HomeScreen() {
     onCardPress: async () => {
       if (hasWeekPlan) {
         await AsyncStorage.setItem('menu_history_auto_open_latest', 'true');
-        router.push('/(app)/menu-history' as never);
+        router.push('/menu-history' as never);
       } else {
-        router.push('/(app)/meal-wizard' as never);
+        router.push('/meal-wizard' as never);
       }
     },
     buttons: [],
