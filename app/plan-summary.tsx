@@ -14,7 +14,9 @@ const TEAL = '#1A6B5C';
 
 function formatDayLabel(day: MealPlanDayV4): string {
   const d = new Date(day.date + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  const wd  = d.toLocaleDateString('en-GB', { weekday: 'short' });
+  const dt  = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return `${wd}\n${dt}`;
 }
 
 export default function PlanSummaryScreen() {
@@ -119,30 +121,48 @@ export default function PlanSummaryScreen() {
           <Text style={p.hero}>Your 3-day plan is ready, {familyName}</Text>
           <Text style={p.heroSub}>Here's your trailer. Download the PDF or explore on home.</Text>
 
-          {/* Day cards */}
-          {plan.map((day, i) => (
-            <View key={i} style={p.dayCard}>
-              <Text style={p.dayLabel}>{formatDayLabel(day)}</Text>
-              <Text style={p.daySub}>{day.breakfast.cuisine}</Text>
-
-              <Text style={p.sectionLabel}>BREAKFAST</Text>
-              <Text style={p.dishLine}>{day.breakfast.dishName}</Text>
-
-              <Text style={p.sectionLabel}>LUNCH</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Curry: </Text>{day.lunch.curry.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Sabzi: </Text>{day.lunch.sabzi.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Bread: </Text>{day.lunch.bread.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Raita: </Text>{day.lunch.raita.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Rice: </Text>{day.lunch.rice.dishName}</Text>
-
-              <Text style={p.sectionLabel}>DINNER</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Curry: </Text>{day.dinner.curry.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Sabzi: </Text>{day.dinner.sabzi.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Bread: </Text>{day.dinner.bread.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Raita: </Text>{day.dinner.raita.dishName}</Text>
-              <Text style={p.dishLine}><Text style={p.slotLabel}>Rice: </Text>{day.dinner.rice.dishName}</Text>
+          {/* Landscape table */}
+          <Text style={p.scrollHint}>← scroll right for full plan →</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+            <View>
+              <View style={p.tableHeader}>
+                <View style={p.cDay}><Text style={p.headerTxt}>Day</Text></View>
+                <View style={p.cBreakfast}><Text style={p.headerTxt}>Breakfast</Text></View>
+                <View style={p.cLunch}><Text style={p.headerTxt}>Lunch</Text></View>
+                <View style={p.cDinner}><Text style={p.headerTxt}>Dinner</Text></View>
+                <View style={p.cSupporting}><Text style={p.headerTxt}>Supporting</Text></View>
+                <View style={p.cEvening}><Text style={p.headerTxt}>Eve</Text></View>
+              </View>
+              {plan.map((day, i) => (
+                <View key={i} style={[p.tableRow, { backgroundColor: (['#FFF8E1', '#E8F5E9', '#FFFFFF'] as string[])[i] ?? '#FFFFFF' }]}>
+                  <View style={p.cDay}>
+                    <Text style={p.dayCell}>{formatDayLabel(day)}</Text>
+                  </View>
+                  <View style={p.cBreakfast}>
+                    <Text style={p.mainDish} numberOfLines={2}>{day.breakfast.dishName}</Text>
+                    <Text style={p.subDish} numberOfLines={1}>{day.breakfast.cuisine}</Text>
+                  </View>
+                  <View style={p.cLunch}>
+                    <Text style={p.mainDish} numberOfLines={2}>{day.lunch.curry.dishName}</Text>
+                    <Text style={p.subDish} numberOfLines={1}>{day.lunch.sabzi.dishName}</Text>
+                  </View>
+                  <View style={p.cDinner}>
+                    <Text style={p.mainDish} numberOfLines={2}>{day.dinner.curry.dishName}</Text>
+                    <Text style={p.subDish} numberOfLines={1}>{day.dinner.sabzi.dishName}</Text>
+                  </View>
+                  <View style={p.cSupporting}>
+                    <Text style={p.supportRow} numberOfLines={1}><Text style={p.supportLbl}>VEG  </Text>{day.lunch.sabzi.dishName}</Text>
+                    <Text style={p.supportRow} numberOfLines={1}><Text style={p.supportLbl}>RAITA  </Text>{day.lunch.raita.dishName}</Text>
+                    <Text style={p.supportRow} numberOfLines={1}><Text style={p.supportLbl}>BREAD  </Text>{day.lunch.bread.dishName}</Text>
+                    <Text style={p.supportRow} numberOfLines={1}><Text style={p.supportLbl}>RICE  </Text>{day.lunch.rice.dishName}</Text>
+                  </View>
+                  <View style={p.cEvening}>
+                    <Text style={p.subDish}>—</Text>
+                  </View>
+                </View>
+              ))}
             </View>
-          ))}
+          </ScrollView>
 
           {/* Download CTA */}
           {Platform.OS === 'web' && (
@@ -199,14 +219,26 @@ const p = StyleSheet.create({
   navRow:  { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
 
   hero:    { fontSize: 22, fontWeight: '800', color: NAVY, marginTop: 16, marginBottom: 4 },
-  heroSub: { fontSize: 14, color: '#5A7A8A', marginBottom: 20, lineHeight: 20 },
+  heroSub: { fontSize: 14, color: '#5A7A8A', marginBottom: 10, lineHeight: 20 },
 
-  dayCard:      { backgroundColor: 'rgba(255,255,255,0.90)', borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(46,84,128,0.18)', padding: 16, marginBottom: 14 },
-  dayLabel:     { fontSize: 17, fontWeight: '800', color: NAVY, marginBottom: 2 },
-  daySub:       { fontSize: 12, color: '#5A7A8A', marginBottom: 12 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#6A8A9A', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 10, marginBottom: 4 },
-  dishLine:     { fontSize: 14, color: NAVY, fontWeight: '500', lineHeight: 20, marginBottom: 2 },
-  slotLabel:    { fontSize: 12, fontWeight: '400', color: '#6A8A9A' },
+  scrollHint: { fontSize: 12, color: '#8AAABB', textAlign: 'center', marginBottom: 10, letterSpacing: 0.3 },
+
+  tableHeader:  { flexDirection: 'row', backgroundColor: NAVY, borderTopLeftRadius: 8, borderTopRightRadius: 8, overflow: 'hidden' },
+  tableRow:     { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.10)' },
+  headerTxt:    { fontSize: 10, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.6, textTransform: 'uppercase', textAlign: 'center' as const },
+
+  cDay:         { width: 90,  padding: 8, justifyContent: 'center' as const, borderRightWidth: 1, borderRightColor: 'rgba(46,84,128,0.12)' },
+  cBreakfast:   { width: 150, padding: 8, justifyContent: 'center' as const, borderRightWidth: 1, borderRightColor: 'rgba(46,84,128,0.12)' },
+  cLunch:       { width: 190, padding: 8, justifyContent: 'center' as const, borderRightWidth: 1, borderRightColor: 'rgba(46,84,128,0.12)' },
+  cDinner:      { width: 190, padding: 8, justifyContent: 'center' as const, borderRightWidth: 1, borderRightColor: 'rgba(46,84,128,0.12)' },
+  cSupporting:  { width: 210, padding: 8, justifyContent: 'center' as const, borderRightWidth: 1, borderRightColor: 'rgba(46,84,128,0.12)' },
+  cEvening:     { width: 70,  padding: 8, justifyContent: 'center' as const },
+
+  dayCell:    { fontSize: 12, fontWeight: '700', color: NAVY, lineHeight: 17 },
+  mainDish:   { fontSize: 13, fontWeight: '700', color: NAVY, lineHeight: 18, marginBottom: 2 },
+  subDish:    { fontSize: 11, color: '#5A7A8A', lineHeight: 15 },
+  supportRow: { fontSize: 11, color: NAVY, lineHeight: 17 },
+  supportLbl: { fontSize: 9, fontWeight: '600', color: '#6A8A9A', letterSpacing: 0.4 },
 
   downloadBtn:     { backgroundColor: TEAL, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   downloadBtnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },

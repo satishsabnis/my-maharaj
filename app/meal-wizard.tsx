@@ -1375,27 +1375,15 @@ Return ONLY valid JSON (no markdown) in this exact format:
           planSummaryLanguage: pdfLang,
         }),
       });
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('text/html')) {
-        const html = await response.text();
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-      } else {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename.replace('DDMMYYYY', `${dd}${mm}${yyyy}`);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename.replace('DDMMYYYY', `${dd}${mm}${yyyy}`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch {
       Alert.alert('Download failed', 'Please try again.');
     }
