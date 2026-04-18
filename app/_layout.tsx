@@ -244,6 +244,7 @@ export default function Layout() {
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="review-plan" />
+      <Stack.Screen name="plan-summary" />
       <Stack.Screen name="family-recipes" />
       <Stack.Screen name="cook" options={{ headerShown: false }} />
     </Stack>

@@ -43,7 +43,7 @@ function TickButton({ onPress }: { onPress: () => void }) {
 
 export default function OnboardingScreen() {
   const [step, setStep]                           = useState<1 | 2 | 3 | 4>(1);
-  const [familyName, setFamilyName]               = useState('My Family');
+  const [familyName, setFamilyName]               = useState('');
   const [selectedCuisines, setSelectedCuisines]   = useState<string[]>([]);
   const [diet, setDiet]                           = useState<'veg' | 'nonveg' | null>(null);
   const [saving, setSaving]                       = useState(false);

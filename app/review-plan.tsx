@@ -8,15 +8,14 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import { buttons } from '../constants/theme';
 import {
   generate3DaySamplePlan, ZONE_CUISINE_MAP,
-  MealPlanDay, AnatomyComponent,
+  MealPlanDayV4,
 } from '../lib/ai';
+import { setHandoffPlan } from '../lib/planHandoff';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const NAVY  = '#2E5480';
 const TEAL  = '#1A6B5C';
-const MINT  = '#D4EDE5';
-const WHITE_SEMI = 'rgba(255,255,255,0.9)';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -31,17 +30,34 @@ function formatDate(dateStr: string): string {
 
 function getZoneForUser(cuisines: string[]): string[] {
   const lower = cuisines.map(c => c.toLowerCase());
+  const union = new Set<string>();
   for (const members of Object.values(ZONE_CUISINE_MAP)) {
-    if (lower.some(c => members.map(m => m.toLowerCase()).includes(c))) return members;
+    if (lower.some(c => members.map(m => m.toLowerCase()).includes(c))) {
+      members.forEach(m => union.add(m));
+    }
   }
-  return ZONE_CUISINE_MAP['West'];
+  return union.size > 0 ? [...union] : ZONE_CUISINE_MAP['West'];
+}
+
+function getAllDishNames(p: MealPlanDayV4[]): string[] {
+  const names: string[] = [];
+  p.forEach(day => {
+    names.push(
+      day.breakfast.dishName,
+      day.lunch.curry.dishName, day.lunch.sabzi.dishName,
+      day.lunch.bread.dishName, day.lunch.raita.dishName, day.lunch.rice.dishName,
+      day.dinner.curry.dishName, day.dinner.sabzi.dishName,
+      day.dinner.bread.dishName, day.dinner.raita.dishName, day.dinner.rice.dishName,
+    );
+  });
+  return names.filter(Boolean);
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ReviewPlanScreen() {
   const [loading, setLoading]               = useState(true);
-  const [plan, setPlan]                     = useState<MealPlanDay[]>([]);
+  const [plan, setPlan]                     = useState<MealPlanDayV4[]>([]);
   const [activeDay, setActiveDay]           = useState(0);
   const [confirmedDays, setConfirmedDays]   = useState([false, false, false]);
   const [saving, setSaving]                 = useState(false);
@@ -65,14 +81,17 @@ export default function ReviewPlanScreen() {
   type SwapState = {
     visible: boolean;
     dayIdx: number;
-    mealType: 'breakfast' | 'lunch' | 'dinner';
+    slot: string;
+    mealKey: string;
     currentDish: string;
+    dayLabel: string;
   };
   const [swapSheet, setSwapSheet] = useState<SwapState>({
-    visible: false, dayIdx: 0, mealType: 'lunch', currentDish: '',
+    visible: false, dayIdx: 0, slot: 'breakfast', mealKey: 'breakfast', currentDish: '', dayLabel: '',
   });
   const [swapCuisineSugg, setSwapCuisineSugg] = useState<string[]>([]);
   const [swapZoneSugg, setSwapZoneSugg]       = useState<string[]>([]);
+  const [swapAllSugg, setSwapAllSugg]         = useState<string[]>([]);
   const [swapExpanded, setSwapExpanded]       = useState(false);
 
   // ── Load on mount ─────────────────────────────────────────────────────────
@@ -86,7 +105,6 @@ export default function ReviewPlanScreen() {
       if (!user) { router.replace('/login'); return; }
       setUserId(user.id);
 
-      // Profile row
       const { data: profile } = await supabase
         .from('profiles')
         .select('veg_days, dietary_profile_completed, regenerate_count_today, regenerate_count_date')
@@ -104,7 +122,6 @@ export default function ReviewPlanScreen() {
       setRegenCount(count);
       setRegenCountDate(storedDate);
 
-      // Cuisine preferences
       const { data: cuisineRows } = await supabase
         .from('cuisine_preferences')
         .select('cuisine_name')
@@ -112,7 +129,6 @@ export default function ReviewPlanScreen() {
       const cuisines = (cuisineRows ?? []).map((r: any) => r.cuisine_name as string);
       setUserCuisines(cuisines);
 
-      // Generate plan
       const days = await generate3DaySamplePlan({
         userId: user.id,
         cuisines: cuisines.length > 0 ? cuisines : ['Maharashtrian'],
@@ -126,102 +142,66 @@ export default function ReviewPlanScreen() {
     }
   }
 
-  // ── Dish helpers ──────────────────────────────────────────────────────────
-
-  function getMainDish(day: MealPlanDay, mealType: 'breakfast' | 'lunch' | 'dinner'): string {
-    const a = day.anatomy;
-    if (!a) return '';
-    if (mealType === 'breakfast') return a.breakfast?.dishName ?? '';
-    const meal = mealType === 'lunch' ? a.lunch : a.dinner;
-    if (!meal) return '';
-    const curry = meal.curry;
-    if (Array.isArray(curry)) return curry[0]?.dishName ?? '';
-    return (curry as AnatomyComponent | undefined)?.dishName ?? '';
-  }
-
-  function getSecondaryDishes(day: MealPlanDay, mealType: 'lunch' | 'dinner'): string[] {
-    const a = day.anatomy;
-    if (!a) return [];
-    const meal = mealType === 'lunch' ? a.lunch : a.dinner;
-    if (!meal) return [];
-    const parts: string[] = [];
-    if (Array.isArray(meal.curry) && meal.curry[1]?.dishName) parts.push(meal.curry[1].dishName);
-    if (meal.veg?.dishName)   parts.push(meal.veg.dishName);
-    if (meal.raita?.dishName) parts.push(meal.raita.dishName);
-    if (meal.bread?.dishName) parts.push(meal.bread.dishName);
-    if (meal.rice?.dishName)  parts.push(meal.rice.dishName);
-    return parts;
-  }
-
   // ── Swap ──────────────────────────────────────────────────────────────────
 
-  async function openSwapSheet(dayIdx: number, mealType: 'breakfast' | 'lunch' | 'dinner') {
+  async function openSwapSheet(dayIdx: number, slot: string, mealKey: string, currentDishName: string) {
     const day = plan[dayIdx];
     if (!day) return;
-    const currentDish = getMainDish(day, mealType);
-    const slotFilter = mealType === 'breakfast' ? 'breakfast'
-      : mealType === 'lunch' ? 'lunch_curry' : 'dinner_curry';
-    const dayName = day.day;
-    const isVegDay = dayName === 'Saturday' || foodPref === 'veg';
+    const isVegDay = day.dayName === 'Saturday' || foodPref === 'veg';
     const zoneCuisines = getZoneForUser(userCuisines);
+    const allCuisines = [...new Set([...userCuisines, ...zoneCuisines])];
+    const usedDishes = getAllDishNames(plan);
 
     try {
       let qBase = supabase
         .from('dishes')
         .select('name')
         .eq('is_banned', false)
-        .eq('is_jain', false)
-        .eq('is_fasting', false)
-        .filter('slot', 'ov', `{${slotFilter}}`);
+        .filter('slot', 'cs', `{${slot}}`);
       if (isVegDay) qBase = qBase.eq('is_veg', true);
+      if (usedDishes.length > 0) {
+        qBase = qBase.not('name', 'in', `(${usedDishes.map((n: string) => `"${n}"`).join(',')})`);
+      }
 
+      const cuisineFilter = userCuisines.length > 0 ? userCuisines : allCuisines;
       const { data: cuisineDishes } = await qBase
-        .filter('cuisine', 'ov', `{${userCuisines.join(',')}}`)
+        .filter('cuisine', 'ov', `{${cuisineFilter.join(',')}}`)
         .limit(10);
-      const cuisineSugg = (cuisineDishes ?? [])
-        .map((d: any) => d.name as string)
-        .filter((n: string) => n !== currentDish)
-        .slice(0, 2);
+      const cuisineSugg = (cuisineDishes ?? []).map((d: any) => d.name as string).slice(0, 2);
 
       const { data: zoneDishes } = await qBase
-        .filter('cuisine', 'ov', `{${zoneCuisines.join(',')}}`)
-        .limit(20);
-      const zoneSugg = (zoneDishes ?? [])
-        .map((d: any) => d.name as string)
-        .filter((n: string) => n !== currentDish && !cuisineSugg.includes(n))
-        .slice(0, 2);
+        .filter('cuisine', 'ov', `{${allCuisines.join(',')}}`)
+        .limit(30);
+      const allZone = (zoneDishes ?? []).map((d: any) => d.name as string);
+      const zoneSugg = allZone.filter((n: string) => !cuisineSugg.includes(n)).slice(0, 2);
+      const allSugg  = [...cuisineSugg, ...allZone.filter((n: string) => !cuisineSugg.includes(n))].slice(0, 20);
 
       setSwapCuisineSugg(cuisineSugg);
       setSwapZoneSugg(zoneSugg);
+      setSwapAllSugg(allSugg);
     } catch {
       setSwapCuisineSugg([]);
       setSwapZoneSugg([]);
+      setSwapAllSugg([]);
     }
 
     setSwapExpanded(false);
-    setSwapSheet({ visible: true, dayIdx, mealType, currentDish });
+    setSwapSheet({ visible: true, dayIdx, slot, mealKey, currentDish: currentDishName, dayLabel: day.dayName });
   }
 
-  function applySwap(dayIdx: number, mealType: 'breakfast' | 'lunch' | 'dinner', newDish: string) {
-    setPlan(prev => prev.map((day, i) => {
+  function applySwap(dayIdx: number, mealKey: string, newDish: string) {
+    setPlan(prev => prev.map((day, i): MealPlanDayV4 => {
       if (i !== dayIdx) return day;
-      const anatomy = { ...(day.anatomy ?? {}) };
-      if (mealType === 'breakfast' && anatomy.breakfast) {
-        anatomy.breakfast = { ...anatomy.breakfast, dishName: newDish };
-      } else if (mealType === 'lunch' && anatomy.lunch) {
-        const curry = anatomy.lunch.curry;
-        const newCurry = Array.isArray(curry)
-          ? [{ ...curry[0], dishName: newDish }, ...curry.slice(1)]
-          : { ...(curry as AnatomyComponent), dishName: newDish };
-        anatomy.lunch = { ...anatomy.lunch, curry: newCurry };
-      } else if (mealType === 'dinner' && anatomy.dinner) {
-        const curry = anatomy.dinner.curry;
-        const newCurry = Array.isArray(curry)
-          ? [{ ...curry[0], dishName: newDish }, ...curry.slice(1)]
-          : { ...(curry as AnatomyComponent), dishName: newDish };
-        anatomy.dinner = { ...anatomy.dinner, curry: newCurry };
+      if (mealKey === 'breakfast') {
+        return { ...day, breakfast: { ...day.breakfast, dishName: newDish } };
       }
-      return { ...day, anatomy };
+      const dotIdx = mealKey.indexOf('.');
+      const meal   = mealKey.slice(0, dotIdx) as 'lunch' | 'dinner';
+      const slot   = mealKey.slice(dotIdx + 1) as keyof MealPlanDayV4['lunch'];
+      return {
+        ...day,
+        [meal]: { ...day[meal], [slot]: { ...day[meal][slot], dishName: newDish } },
+      } as MealPlanDayV4;
     }));
     setSwapSheet(s => ({ ...s, visible: false }));
   }
@@ -242,7 +222,6 @@ export default function ReviewPlanScreen() {
       if (!user) return;
       const dates = plan.map(d => d.date);
 
-      // Save plan_json to meal_plans
       await supabase.from('meal_plans').insert({
         user_id: user.id,
         period_start: dates[0],
@@ -252,15 +231,16 @@ export default function ReviewPlanScreen() {
         generated_at: new Date().toISOString(),
       });
 
-      // Mark profile_completed = true in Supabase
       await supabase.from('profiles')
         .update({ profile_completed: true })
         .eq('id', user.id);
 
-      router.replace('/home');
+      setHandoffPlan(plan);
+      router.replace('/plan-summary' as never);
     } catch (e) {
       console.error('[ReviewPlan] handleConfirmPlan error:', e);
-      router.replace('/home');
+      setHandoffPlan(plan);
+      router.replace('/plan-summary' as never);
     } finally {
       setSaving(false);
     }
@@ -275,7 +255,7 @@ export default function ReviewPlanScreen() {
     }
     const today = todayStr();
     const effective = regenCountDate === today ? regenCount : 0;
-    if (effective >= 5) return; // fully disabled
+    if (effective >= 5) return;
 
     if (effective === 3) {
       setRegenConfirmText('You can regenerate 2 more times today');
@@ -298,7 +278,7 @@ export default function ReviewPlanScreen() {
     try {
       const today = todayStr();
       const effective = regenCountDate === today ? regenCount : 0;
-      const newCount = effective + 1;
+      const newCount  = effective + 1;
 
       await supabase.from('profiles').update({
         regenerate_count_today: newCount,
@@ -323,7 +303,7 @@ export default function ReviewPlanScreen() {
 
   // ── Derived state ─────────────────────────────────────────────────────────
 
-  const today = todayStr();
+  const today               = todayStr();
   const effectiveRegenCount = regenCountDate === today ? regenCount : 0;
   const regenFullyDisabled  = dietaryProfileCompleted && effectiveRegenCount >= 5;
   const regenOpacity        = !dietaryProfileCompleted ? 0.55
@@ -412,40 +392,64 @@ export default function ReviewPlanScreen() {
 
               {/* BREAKFAST */}
               <View style={r.mealCard}>
-                <View style={r.mealCardHeader}>
-                  <Text style={r.mealLabel}>BREAKFAST</Text>
-                  <TouchableOpacity onPress={() => openSwapSheet(activeDay, 'breakfast')} activeOpacity={0.8}>
-                    <Text style={r.swapLink}>Swap ›</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={r.mainDish}>{getMainDish(activeDayData, 'breakfast')}</Text>
+                <Text style={r.mealLabel}>BREAKFAST</Text>
+                <TouchableOpacity
+                  style={r.dishRow}
+                  onPress={() => openSwapSheet(activeDay, 'breakfast', 'breakfast', activeDayData.breakfast.dishName)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[r.dishName, { flex: 1 }]}>{activeDayData.breakfast.dishName}</Text>
+                  <Text style={r.swapLink}>Swap ›</Text>
+                </TouchableOpacity>
               </View>
 
               {/* LUNCH */}
               <View style={r.mealCard}>
-                <View style={r.mealCardHeader}>
-                  <Text style={r.mealLabel}>LUNCH</Text>
-                  <TouchableOpacity onPress={() => openSwapSheet(activeDay, 'lunch')} activeOpacity={0.8}>
-                    <Text style={r.swapLink}>Swap ›</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={r.mainDish}>{getMainDish(activeDayData, 'lunch')}</Text>
-                {getSecondaryDishes(activeDayData, 'lunch').map((d, i) => (
-                  <Text key={i} style={r.secondaryDish}>{d}</Text>
+                <Text style={r.mealLabel}>LUNCH</Text>
+                {([
+                  { label: 'Curry', slot: 'lunch_curry', mealKey: 'lunch.curry', dishName: activeDayData.lunch.curry.dishName },
+                  { label: 'Sabzi', slot: 'veg_side',    mealKey: 'lunch.sabzi', dishName: activeDayData.lunch.sabzi.dishName },
+                  { label: 'Bread', slot: 'bread',       mealKey: 'lunch.bread', dishName: activeDayData.lunch.bread.dishName },
+                  { label: 'Raita', slot: 'raita',       mealKey: 'lunch.raita', dishName: activeDayData.lunch.raita.dishName },
+                  { label: 'Rice',  slot: 'rice',        mealKey: 'lunch.rice',  dishName: activeDayData.lunch.rice.dishName },
+                ] as const).map((item, i) => (
+                  <React.Fragment key={item.mealKey}>
+                    {i > 0 && <View style={r.rowSep} />}
+                    <TouchableOpacity
+                      style={r.dishRow}
+                      onPress={() => openSwapSheet(activeDay, item.slot, item.mealKey, item.dishName)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={r.rowLabel}>{item.label}</Text>
+                      <Text style={r.dishName}>{item.dishName}</Text>
+                      <Text style={r.swapLink}>Swap ›</Text>
+                    </TouchableOpacity>
+                  </React.Fragment>
                 ))}
               </View>
 
               {/* DINNER */}
               <View style={r.mealCard}>
-                <View style={r.mealCardHeader}>
-                  <Text style={r.mealLabel}>DINNER</Text>
-                  <TouchableOpacity onPress={() => openSwapSheet(activeDay, 'dinner')} activeOpacity={0.8}>
-                    <Text style={r.swapLink}>Swap ›</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={r.mainDish}>{getMainDish(activeDayData, 'dinner')}</Text>
-                {getSecondaryDishes(activeDayData, 'dinner').map((d, i) => (
-                  <Text key={i} style={r.secondaryDish}>{d}</Text>
+                <Text style={r.mealLabel}>DINNER</Text>
+                {([
+                  { label: 'Curry', slot: 'dinner_curry', mealKey: 'dinner.curry', dishName: activeDayData.dinner.curry.dishName },
+                  { label: 'Sabzi', slot: 'veg_side',     mealKey: 'dinner.sabzi', dishName: activeDayData.dinner.sabzi.dishName },
+                  { label: 'Bread', slot: 'bread',        mealKey: 'dinner.bread', dishName: activeDayData.dinner.bread.dishName },
+                  { label: 'Raita', slot: 'raita',        mealKey: 'dinner.raita', dishName: activeDayData.dinner.raita.dishName },
+                  { label: 'Rice',  slot: 'rice',         mealKey: 'dinner.rice',  dishName: activeDayData.dinner.rice.dishName },
+                ] as const).map((item, i) => (
+                  <React.Fragment key={item.mealKey}>
+                    {i > 0 && <View style={r.rowSep} />}
+                    <TouchableOpacity
+                      style={r.dishRow}
+                      onPress={() => openSwapSheet(activeDay, item.slot, item.mealKey, item.dishName)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={r.rowLabel}>{item.label}</Text>
+                      <Text style={r.dishName}>{item.dishName}</Text>
+                      <Text style={r.swapLink}>Swap ›</Text>
+                    </TouchableOpacity>
+                  </React.Fragment>
                 ))}
               </View>
             </View>
@@ -478,8 +482,8 @@ export default function ReviewPlanScreen() {
           >
             <TouchableOpacity activeOpacity={1} style={r.sheet}>
               <Text style={r.sheetHeader}>
-                SWAP {swapSheet.mealType.toUpperCase()},{' '}
-                {activeDayData ? activeDayData.day.toUpperCase() : ''}
+                SWAP {swapSheet.mealKey.replace('.', ' ').toUpperCase()},{' '}
+                {swapSheet.dayLabel.toUpperCase()}
               </Text>
               <Text style={r.sheetCurrent}>Current: {swapSheet.currentDish}</Text>
 
@@ -490,7 +494,7 @@ export default function ReviewPlanScreen() {
                     <TouchableOpacity
                       key={i}
                       style={r.swapOption}
-                      onPress={() => applySwap(swapSheet.dayIdx, swapSheet.mealType, d)}
+                      onPress={() => applySwap(swapSheet.dayIdx, swapSheet.mealKey, d)}
                       activeOpacity={0.8}
                     >
                       <Text style={r.swapOptionText}>{d}</Text>
@@ -506,7 +510,7 @@ export default function ReviewPlanScreen() {
                     <TouchableOpacity
                       key={i}
                       style={r.swapOption}
-                      onPress={() => applySwap(swapSheet.dayIdx, swapSheet.mealType, d)}
+                      onPress={() => applySwap(swapSheet.dayIdx, swapSheet.mealKey, d)}
                       activeOpacity={0.8}
                     >
                       <Text style={r.swapOptionText}>{d}</Text>
@@ -521,17 +525,17 @@ export default function ReviewPlanScreen() {
                 style={{ marginTop: 10 }}
               >
                 <Text style={r.seeAllLink}>
-                  See all {swapSheet.mealType} options {swapExpanded ? '\u25b2' : '\u203a'}
+                  See all {swapSheet.slot.replace(/_/g, ' ')} options {swapExpanded ? '\u25b2' : '\u203a'}
                 </Text>
               </TouchableOpacity>
 
               {swapExpanded && (
                 <ScrollView style={{ maxHeight: 200, marginTop: 8 }}>
-                  {[...swapCuisineSugg, ...swapZoneSugg].map((d, i) => (
+                  {swapAllSugg.map((d, i) => (
                     <TouchableOpacity
                       key={i}
                       style={r.swapOption}
-                      onPress={() => applySwap(swapSheet.dayIdx, swapSheet.mealType, d)}
+                      onPress={() => applySwap(swapSheet.dayIdx, swapSheet.mealKey, d)}
                       activeOpacity={0.8}
                     >
                       <Text style={r.swapOptionText}>{d}</Text>
@@ -576,7 +580,7 @@ export default function ReviewPlanScreen() {
           </View>
         </Modal>
 
-        {/* ── Regen confirm popup (count 3 or 4) ───────────────────────── */}
+        {/* ── Regen confirm popup ───────────────────────────────────────── */}
         <Modal
           visible={regenConfirmVisible}
           animationType="fade"
@@ -618,60 +622,54 @@ export default function ReviewPlanScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const r = StyleSheet.create({
-  bg:           { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  loadingText:  { marginTop: 16, color: NAVY, fontSize: 15, fontWeight: '500', textAlign: 'center' },
+  bg:             { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  loadingText:    { marginTop: 16, color: NAVY, fontSize: 15, fontWeight: '500', textAlign: 'center' },
 
-  // Navigation
-  navRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+  navRow:         { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
 
-  // Controls
-  controlRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
-  regenBtn:     { borderWidth: 1.5, borderColor: NAVY, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.85)' },
-  regenBtnText: { fontSize: 13, fontWeight: '700', color: NAVY },
-  regenTooltip: { fontSize: 10, color: '#8AAABB', marginTop: 2, textAlign: 'center' },
-  regenCountHint:{ fontSize: 10, color: TEAL, marginTop: 2, textAlign: 'center' },
+  controlRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
+  regenBtn:       { borderWidth: 1.5, borderColor: NAVY, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.85)' },
+  regenBtnText:   { fontSize: 13, fontWeight: '700', color: NAVY },
+  regenTooltip:   { fontSize: 10, color: '#8AAABB', marginTop: 2, textAlign: 'center' },
+  regenCountHint: { fontSize: 10, color: TEAL, marginTop: 2, textAlign: 'center' },
 
-  // Day tabs
-  dayTabs:      { flexDirection: 'row', gap: 6 },
-  dayTab:       { borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.75)' },
-  dayTabActive: { backgroundColor: NAVY },
-  dayTabText:   { fontSize: 13, fontWeight: '600', color: NAVY },
+  dayTabs:        { flexDirection: 'row', gap: 6 },
+  dayTab:         { borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.75)' },
+  dayTabActive:   { backgroundColor: NAVY },
+  dayTabText:     { fontSize: 13, fontWeight: '600', color: NAVY },
   dayTabTextActive: { color: '#FFFFFF' },
 
-  // Body
-  body:         { paddingHorizontal: 16, paddingTop: 8 },
-  dayHeading:   { fontSize: 20, fontWeight: '800', color: NAVY, marginBottom: 2 },
-  daySubText:   { fontSize: 13, color: '#5A7A8A', marginBottom: 14 },
+  body:           { paddingHorizontal: 16, paddingTop: 8 },
+  dayHeading:     { fontSize: 20, fontWeight: '800', color: NAVY, marginBottom: 2 },
+  daySubText:     { fontSize: 13, color: '#5A7A8A', marginBottom: 14 },
 
-  // Meal cards
   mealCard:       { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(46,84,128,0.18)', padding: 14, marginBottom: 10 },
-  mealCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  mealLabel:      { fontSize: 11, fontWeight: '700', color: '#6A8A9A', letterSpacing: 1, textTransform: 'uppercase' },
-  swapLink:       { fontSize: 14, fontWeight: '600', color: NAVY },
-  mainDish:       { fontSize: 16, fontWeight: '700', color: NAVY, marginBottom: 4 },
-  secondaryDish:  { fontSize: 13, color: '#5A7A8A', marginTop: 2 },
+  mealLabel:      { fontSize: 11, fontWeight: '700', color: '#6A8A9A', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
 
-  // Bottom CTA
-  ctaContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, backgroundColor: 'rgba(255,255,255,0.92)' },
-  ctaBtn:       { backgroundColor: TEAL, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  ctaBtnText:   { fontSize: 17, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
+  dishRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  rowLabel:       { fontSize: 11, fontWeight: '600', color: '#6A8A9A', letterSpacing: 0.5, width: 42, textTransform: 'uppercase' },
+  dishName:       { flex: 1, fontSize: 14, fontWeight: '500', color: NAVY },
+  swapLink:       { fontSize: 11, fontWeight: '600', color: TEAL, marginLeft: 8 },
+  rowSep:         { height: 1, backgroundColor: 'rgba(46,84,128,0.08)', marginHorizontal: -2 },
 
-  // Swap sheet
-  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet:        { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
-  sheetHeader:  { fontSize: 13, fontWeight: '700', color: '#6A8A9A', letterSpacing: 1, marginBottom: 4 },
-  sheetCurrent: { fontSize: 15, fontWeight: '600', color: NAVY, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.12)', paddingBottom: 12 },
-  sheetSection: { fontSize: 11, fontWeight: '700', color: '#6A8A9A', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 10, marginBottom: 6 },
-  swapOption:   { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.08)' },
-  swapOptionText:{ fontSize: 15, color: NAVY, fontWeight: '500' },
-  seeAllLink:   { fontSize: 14, color: TEAL, fontWeight: '600', textAlign: 'center', paddingVertical: 4 },
+  ctaContainer:   { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, backgroundColor: 'rgba(255,255,255,0.92)' },
+  ctaBtn:         { backgroundColor: TEAL, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  ctaBtnText:     { fontSize: 17, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
 
-  // Popups
-  popupOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
-  popup:        { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, width: '100%' },
-  popupTitle:   { fontSize: 18, fontWeight: '800', color: NAVY, marginBottom: 10 },
-  popupBody:    { fontSize: 14, color: '#5A7A8A', lineHeight: 21, marginBottom: 20 },
-  popupButtons: { flexDirection: 'row', gap: 10 },
+  sheetOverlay:   { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet:          { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  sheetHeader:    { fontSize: 13, fontWeight: '700', color: '#6A8A9A', letterSpacing: 1, marginBottom: 4 },
+  sheetCurrent:   { fontSize: 15, fontWeight: '600', color: NAVY, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.12)', paddingBottom: 12 },
+  sheetSection:   { fontSize: 11, fontWeight: '700', color: '#6A8A9A', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 10, marginBottom: 6 },
+  swapOption:     { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.08)' },
+  swapOptionText: { fontSize: 15, color: NAVY, fontWeight: '500' },
+  seeAllLink:     { fontSize: 14, color: TEAL, fontWeight: '600', textAlign: 'center', paddingVertical: 4 },
+
+  popupOverlay:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  popup:               { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, width: '100%' },
+  popupTitle:          { fontSize: 18, fontWeight: '800', color: NAVY, marginBottom: 10 },
+  popupBody:           { fontSize: 14, color: '#5A7A8A', lineHeight: 21, marginBottom: 20 },
+  popupButtons:        { flexDirection: 'row', gap: 10 },
   popupBtnOutline:     { flex: 1, borderWidth: 1.5, borderColor: NAVY, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   popupBtnOutlineText: { fontSize: 15, fontWeight: '700', color: NAVY },
   popupBtnFilled:      { flex: 1, backgroundColor: NAVY, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
