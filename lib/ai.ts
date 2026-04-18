@@ -50,6 +50,16 @@ export interface MealPlanDay {
   anatomy?: DayAnatomy;
 }
 
+export type DishSlot = { dishName: string; cuisine: string; slot: string }
+
+export type MealPlanDayV4 = {
+  date: string;
+  dayName: string;
+  breakfast: DishSlot;
+  lunch: { curry: DishSlot; sabzi: DishSlot; bread: DishSlot; raita: DishSlot; rice: DishSlot };
+  dinner: { curry: DishSlot; sabzi: DishSlot; bread: DishSlot; raita: DishSlot; rice: DishSlot };
+}
+
 export interface GroceryItem {
   name: string;
   qty: string;
@@ -1098,12 +1108,13 @@ export const ZONE_CUISINE_MAP: Record<string, string[]> = {
 
 function getZoneForCuisines(cuisines: string[]): string[] {
   const lower = cuisines.map(c => c.toLowerCase());
+  const union = new Set<string>();
   for (const members of Object.values(ZONE_CUISINE_MAP)) {
     if (lower.some(c => members.map(m => m.toLowerCase()).includes(c))) {
-      return members;
+      members.forEach(m => union.add(m));
     }
   }
-  return ZONE_CUISINE_MAP['West'];
+  return union.size > 0 ? [...union] : ZONE_CUISINE_MAP['West'];
 }
 
 // ─── 3-day sample plan generator (no Claude call) ────────────────────────────
@@ -1112,89 +1123,82 @@ export async function generate3DaySamplePlan(params: {
   userId: string;
   cuisines: string[];
   foodPref: 'veg' | 'nonveg';
-  zoneCuisines?: string[];
-}): Promise<MealPlanDay[]> {
+}): Promise<MealPlanDayV4[]> {
   const { cuisines, foodPref } = params;
-  const zoneCuisines = params.zoneCuisines ?? getZoneForCuisines(cuisines);
 
-  // Expanded cuisine set: user's selections + zone cuisines
+  // Zone-filtered cuisine list: user selections + all sibling cuisines from matching zones
+  const zoneCuisines = getZoneForCuisines(cuisines);
   const allCuisines = [...new Set([...cuisines, ...zoneCuisines])];
-  const dietaryTags: string[] = foodPref === 'veg' ? ['veg'] : [];
-  const pool = await fetchDishPool(allCuisines, dietaryTags);
+
+  // Helper: query one dish for a slot, excluding already-used names
+  async function pickDish(
+    slot: string,
+    requireNonVeg: boolean,
+    usedDishNames: Set<string>,
+  ): Promise<DishSlot> {
+    let query = supabase
+      .from('dishes')
+      .select('name, cuisine, is_veg')
+      .filter('slot', 'cs', `{${slot}}`)
+      .filter('cuisine', 'ov', `{${allCuisines.join(',')}}`)
+      .not('name', 'in', `(${[...usedDishNames].map(n => `"${n}"`).join(',') || '""'})`);
+
+    if (requireNonVeg) {
+      query = query.eq('is_veg', false);
+    } else if (foodPref === 'veg') {
+      query = query.eq('is_veg', true);
+    }
+
+    const { data } = await query.limit(50);
+    if (!data || data.length === 0) {
+      // Fallback: same slot, any cuisine, ignore used
+      const { data: fallback } = await supabase
+        .from('dishes')
+        .select('name, cuisine, is_veg')
+        .filter('slot', 'cs', `{${slot}}`)
+        .limit(20);
+      const row = fallback?.[Math.floor(Math.random() * (fallback?.length ?? 1))] ?? { name: slot, cuisine: 'Various' };
+      usedDishNames.add(row.name);
+      return { dishName: row.name, cuisine: row.cuisine, slot };
+    }
+
+    const row = data[Math.floor(Math.random() * data.length)];
+    usedDishNames.add(row.name);
+    return { dishName: row.name, cuisine: row.cuisine, slot };
+  }
 
   // 3 days starting today
   const today = new Date();
-  const dates: string[] = [];
+  const usedDishNames = new Set<string>();
+  const dayResults: MealPlanDayV4[] = [];
+
   for (let i = 0; i < 3; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-
-  const NON_VEG_KW = ['chicken','mutton','fish','prawn','lamb','beef','pork','egg','crab','lobster',
-    'shrimp','meat','keema','mince','gosht','murg','machli','jhinga','tuna','pomfret','rohu','hilsa',
-    'surmai','paplet','bangda','tisreo','kingfish','rawas','mandeli','halwa','kolambi','kekda'];
-  const isNVDish = (n: string) => NON_VEG_KW.some(k => n.toLowerCase().includes(k));
-
-  const usedNames = new Set<string>();
-  const dayResults: MealPlanDay[] = [];
-
-  for (let i = 0; i < dates.length; i++) {
-    const date    = dates[i];
-    const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    const date    = d.toISOString().split('T')[0];
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
     const isVegDay = dayName === 'Saturday' || foodPref === 'veg';
-    const isEffectivelyNonVeg = foodPref === 'nonveg' && !isVegDay;
-    const cuisineStr = cuisines.join(', ');
+    const wantNonVeg = foodPref === 'nonveg' && !isVegDay;
 
-    const breakfast    = selectDishFromPool(pool, 'breakfast',     false,               usedNames, []);
-    const lunchCurry1  = selectDishFromPool(pool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, []);
-    const lunchCurry2  = selectDishFromPool(pool, 'lunch_curry_2', false,               usedNames, []);
-    const lunchVeg     = selectDishFromPool(pool, 'lunch_veg',     false,               usedNames, []);
-    const lunchRaita   = selectDishFromPool(pool, 'lunch_raita',   false,               usedNames, []);
-    const lunchBread   = selectDishFromPool(pool, 'lunch_bread',   false,               usedNames, []);
-    const lunchRice    = selectDishFromPool(pool, 'lunch_rice',    false,               usedNames, []);
-    const dinnerCurry1 = selectDishFromPool(pool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, []);
-    const dinnerCurry2 = selectDishFromPool(pool, 'dinner_curry_2', false,              usedNames, []);
-    const dinnerVeg    = selectDishFromPool(pool, 'dinner_veg',    false,               usedNames, []);
-    const dinnerRaita  = selectDishFromPool(pool, 'dinner_raita',  false,               usedNames, []);
-    const dinnerBread  = selectDishFromPool(pool, 'dinner_bread',  false,               usedNames, []);
-    const dinnerRice   = selectDishFromPool(pool, 'dinner_rice',   false,               usedNames, []);
-
-    const anatomy: DayAnatomy = {
-      breakfast: { dishName: breakfast,   isVeg: !isNVDish(breakfast),   cuisine: cuisineStr, ingredients: [] },
-      lunch: {
-        curry: [
-          { dishName: lunchCurry1, isVeg: !isNVDish(lunchCurry1), cuisine: cuisineStr, ingredients: [] },
-          { dishName: lunchCurry2, isVeg: !isNVDish(lunchCurry2), cuisine: cuisineStr, ingredients: [] },
-        ],
-        veg:   { dishName: lunchVeg,   isVeg: true, ingredients: [] },
-        raita: { dishName: lunchRaita, isVeg: true, ingredients: [] },
-        bread: { dishName: lunchBread, isVeg: true, ingredients: [] },
-        rice:  { dishName: lunchRice,  isVeg: true, ingredients: [] },
-      },
-      dinner: {
-        curry: [
-          { dishName: dinnerCurry1, isVeg: !isNVDish(dinnerCurry1), cuisine: cuisineStr, ingredients: [] },
-          { dishName: dinnerCurry2, isVeg: !isNVDish(dinnerCurry2), cuisine: cuisineStr, ingredients: [] },
-        ],
-        veg:   { dishName: dinnerVeg,   isVeg: true, ingredients: [] },
-        raita: { dishName: dinnerRaita, isVeg: true, ingredients: [] },
-        bread: { dishName: dinnerBread, isVeg: true, ingredients: [] },
-        rice:  { dishName: dinnerRice,  isVeg: true, ingredients: [] },
-      },
-    };
+    // Sequential picks so usedDishNames is updated between each query (dedup correctness)
+    const breakfast   = await pickDish('breakfast',    false,       usedDishNames);
+    const lunchCurry  = await pickDish('lunch_curry',  wantNonVeg,  usedDishNames);
+    const lunchSabzi  = await pickDish('veg_side',     false,       usedDishNames);
+    const lunchBread  = await pickDish('bread',        false,       usedDishNames);
+    const lunchRaita  = await pickDish('raita',        false,       usedDishNames);
+    const lunchRice   = await pickDish('rice',         false,       usedDishNames);
+    const dinnerCurry = await pickDish('dinner_curry', wantNonVeg,  usedDishNames);
+    const dinnerSabzi = await pickDish('veg_side',     false,       usedDishNames);
+    const dinnerBread = await pickDish('bread',        false,       usedDishNames);
+    const dinnerRaita = await pickDish('raita',        false,       usedDishNames);
+    const dinnerRice  = await pickDish('rice',         false,       usedDishNames);
 
     dayResults.push({
       date,
-      day: dayName,
-      breakfast: { options: [{ name: breakfast,   vegetarian: !isNVDish(breakfast),   tags: ['breakfast'], ingredients: [], steps: [] }] },
-      lunch:     { options: [{ name: lunchCurry1,  vegetarian: !isNVDish(lunchCurry1),
-        description: `Curry: ${lunchCurry1} | Curry 2: ${lunchCurry2} | Veg: ${lunchVeg} | Raita: ${lunchRaita} | Bread: ${lunchBread} | Rice: ${lunchRice}`,
-        tags: [], ingredients: [], steps: [] }] },
-      dinner:    { options: [{ name: dinnerCurry1, vegetarian: !isNVDish(dinnerCurry1),
-        description: `Curry: ${dinnerCurry1} | Curry 2: ${dinnerCurry2} | Veg: ${dinnerVeg} | Raita: ${dinnerRaita} | Bread: ${dinnerBread} | Rice: ${dinnerRice}`,
-        tags: [], ingredients: [], steps: [] }] },
-      anatomy,
+      dayName,
+      breakfast,
+      lunch:  { curry: lunchCurry,  sabzi: lunchSabzi,  bread: lunchBread,  raita: lunchRaita,  rice: lunchRice  },
+      dinner: { curry: dinnerCurry, sabzi: dinnerSabzi, bread: dinnerBread, raita: dinnerRaita, rice: dinnerRice },
     });
   }
 
