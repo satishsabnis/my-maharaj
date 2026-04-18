@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
@@ -36,9 +35,19 @@ export default function LoginScreen() {
         password,
       });
       if (error) { setFormError('Invalid email or password. Please try again.'); return; }
-      const profileDone = await AsyncStorage.getItem('profile_setup_complete');
-      if (!profileDone) {
-        router.replace('/dietary-profile');
+      // Profile completion check — Supabase is the sole source of truth
+      const { data: { user: signedInUser } } = await supabase.auth.getUser();
+      if (signedInUser) {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('profile_completed')
+          .eq('id', signedInUser.id)
+          .maybeSingle();
+        if (profileRow?.profile_completed) {
+          router.replace('/home');
+        } else {
+          router.replace('/onboarding' as never);
+        }
       } else {
         router.replace('/home');
       }
