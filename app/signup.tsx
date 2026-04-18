@@ -48,7 +48,7 @@ export default function SignupScreen() {
         identifyUser(user.id, { name: name.trim(), email: email.trim().toLowerCase() });
         track('user_registered');
       }
-      router.replace('/profile-setup');
+      router.replace('/onboarding' as never);
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Sign up failed. Please try again.');
     } finally {
