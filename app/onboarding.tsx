@@ -4,7 +4,6 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 
 const NAVY = '#2E5480';
@@ -37,7 +36,6 @@ function ProgressDots({ active }: { active: 1 | 2 | 3 }) {
 function TickButton({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity style={s.tickBtn} onPress={onPress} activeOpacity={0.8}>
-      {/* White tick via unicode — clean, no SVG dependency */}
       <Text style={s.tickText}>{'\u2713'}</Text>
     </TouchableOpacity>
   );
@@ -58,15 +56,19 @@ export default function OnboardingScreen() {
     });
   }
 
-  async function saveAndNavigate(destination: '/dietary-profile' | '/meal-wizard', planDays?: '3') {
+  async function handleGenerate() {
     setSaving(true);
     try {
       const user = await getSessionUser();
       if (user) {
+        const vegDays = diet === 'veg'
+          ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+          : [];
+
         await supabase.from('profiles').upsert({
           id: user.id,
           family_name: familyName.trim() || 'My Family',
-          profile_completed: false,
+          veg_days: vegDays,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
 
@@ -78,24 +80,9 @@ export default function OnboardingScreen() {
         }
       }
 
-      const stores: [string, string][] = [
-        ['dietary_food_pref', diet ?? 'nonveg'],
-        ['dietary_is_mixed', 'false'],
-        ['onboarding_complete', 'true'],
-        ['onboarding_shown', 'true'],
-        ['family_name', familyName.trim() || 'My Family'],
-      ];
-      if (planDays) stores.push(['onboarding_plan_days', planDays]);
-      await AsyncStorage.multiSet(stores);
-
-      router.replace(destination as never);
+      router.replace('/review-plan' as never);
     } catch {
-      await AsyncStorage.multiSet([
-        ['onboarding_complete', 'true'],
-        ['onboarding_shown', 'true'],
-      ]);
-      if (planDays) await AsyncStorage.setItem('onboarding_plan_days', planDays);
-      router.replace(destination as never);
+      router.replace('/review-plan' as never);
     } finally {
       setSaving(false);
     }
@@ -188,7 +175,6 @@ export default function OnboardingScreen() {
           {/* ── Screen 3: Diet ─────────────────────────────────────────── */}
           {step === 3 && (
             <View style={{ flex: 1 }}>
-              {/* Top section — dots + title + subtitle */}
               <ScrollView
                 contentContainerStyle={s.scrollFlex}
                 showsVerticalScrollIndicator={false}
@@ -198,7 +184,6 @@ export default function OnboardingScreen() {
                   <Text style={s.header}>Your Family's Diet</Text>
                   <Text style={s.sub}>Tap one to continue</Text>
                 </View>
-                {/* Vertically centred diet buttons */}
                 <View style={s.screen3Mid}>
                   <TouchableOpacity
                     style={s.dietBtnGold}
@@ -221,7 +206,7 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* ── Screen 4: Plan prompt ──────────────────────────────────── */}
+          {/* ── Screen 4: Summary + Generate ──────────────────────────── */}
           {step === 4 && (
             <View style={{ flex: 1 }}>
               <ScrollView
@@ -229,30 +214,40 @@ export default function OnboardingScreen() {
                 showsVerticalScrollIndicator={false}
               >
                 <View style={s.screen3Top}>
-                  <Text style={s.header}>Almost there</Text>
-                  <Text style={s.sub}>Maharaj can plan better with more details</Text>
+                  <Text style={s.header}>Ready to plan</Text>
+                  <Text style={s.sub}>Maharaj will build your 3-day plan</Text>
                 </View>
                 <View style={s.screen3Mid}>
-                  <Text style={s.profilePromptText}>
-                    Complete your Family Profile for personalised results
-                  </Text>
-                  <View style={{ height: 20 }} />
+                  {/* YOUR CHOICES summary card */}
+                  <View style={s.summaryCard}>
+                    <Text style={s.summaryCardTitle}>YOUR CHOICES</Text>
+                    <View style={s.summaryRow}>
+                      <Text style={s.summaryLabel}>Family</Text>
+                      <Text style={s.summaryValue}>{familyName.trim() || 'My Family'}</Text>
+                    </View>
+                    <View style={s.summaryRow}>
+                      <Text style={s.summaryLabel}>Cuisines</Text>
+                      <Text style={s.summaryValue}>
+                        {selectedCuisines.length > 0 ? selectedCuisines.join(', ') : 'None selected'}
+                      </Text>
+                    </View>
+                    <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+                      <Text style={s.summaryLabel}>Food preference</Text>
+                      <Text style={s.summaryValue}>
+                        {diet === 'veg' ? 'Vegetarian' : 'Non-vegetarian'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ height: 24 }} />
                   <TouchableOpacity
                     style={[s.btnGold, saving && { opacity: 0.5 }]}
-                    onPress={() => saveAndNavigate('/dietary-profile')}
+                    onPress={handleGenerate}
                     disabled={saving}
                     activeOpacity={0.85}
                   >
-                    <Text style={s.btnGoldText}>Complete Family Profile</Text>
-                  </TouchableOpacity>
-                  <View style={{ height: 14 }} />
-                  <TouchableOpacity
-                    style={[s.btnOutline, saving && { opacity: 0.5 }]}
-                    onPress={() => saveAndNavigate('/meal-wizard', '3')}
-                    disabled={saving}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={s.btnOutlineText}>Generate my 3-day plan</Text>
+                    <Text style={s.btnGoldText}>
+                      {saving ? 'Preparing...' : 'Generate my 3-day plan'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -286,7 +281,7 @@ const s = StyleSheet.create({
   input:              { backgroundColor: WHITE_SEMI, borderRadius: 12, borderWidth: 1.5, borderColor: NAVY, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: NAVY, marginBottom: 24, textAlign: 'center' },
   // Buttons
   btnGold:            { backgroundColor: GOLD, borderRadius: 24, paddingVertical: 15, alignItems: 'center', marginBottom: 4 },
-  btnGoldText:        { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  btnGoldText:        { fontSize: 16, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' },
   btnOutline:         { borderWidth: 2, borderColor: NAVY, borderRadius: 24, paddingVertical: 14, alignItems: 'center', backgroundColor: WHITE_SEMI },
   btnOutlineText:     { fontSize: 16, fontWeight: '700', color: NAVY },
   // Cuisine chips
@@ -305,6 +300,10 @@ const s = StyleSheet.create({
   dietBtnOutline:     { borderWidth: 2, borderColor: NAVY, borderRadius: 14, paddingVertical: 20, alignItems: 'center', backgroundColor: WHITE_SEMI },
   dietBtnOutlineText: { fontSize: 17, fontWeight: '700', color: NAVY },
   dietHint:           { fontSize: 12, color: '#8AAABB', textAlign: 'center', marginTop: 16 },
-  // Screen 4
-  profilePromptText:  { fontSize: 16, fontWeight: '500', color: NAVY, textAlign: 'center', lineHeight: 24 },
+  // Summary card (step 4)
+  summaryCard:        { backgroundColor: WHITE_SEMI, borderRadius: 14, borderWidth: 1.5, borderColor: NAVY, padding: 16 },
+  summaryCardTitle:   { fontSize: 11, fontWeight: '700', color: '#6A8A9A', letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
+  summaryRow:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.12)' },
+  summaryLabel:       { fontSize: 13, color: '#5A7A8A', flex: 1 },
+  summaryValue:       { fontSize: 13, fontWeight: '700', color: NAVY, flex: 2, textAlign: 'right' },
 });

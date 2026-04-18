@@ -1086,3 +1086,117 @@ export async function generateMealPlanFast(
 
   return { days: dayResults, grocery_list: [], ...(fridgeNote ? { fridgeNote } : {}) };
 }
+
+// ─── Zone mapping ─────────────────────────────────────────────────────────────
+
+export const ZONE_CUISINE_MAP: Record<string, string[]> = {
+  West:  ['Maharashtrian', 'Goan', 'Gujarati', 'Malvani', 'Konkani', 'Sindhi'],
+  North: ['Punjabi', 'Awadhi', 'Kashmiri', 'Himachali', 'Rajasthani', 'Bihari', 'Uttarakhandi'],
+  South: ['Tamil', 'Kerala', 'Karnataka', 'Andhra', 'Hyderabadi', 'Telangana'],
+  East:  ['Bengali', 'Odia', 'Assamese', 'Manipuri', 'Chhattisgarhi'],
+};
+
+function getZoneForCuisines(cuisines: string[]): string[] {
+  const lower = cuisines.map(c => c.toLowerCase());
+  for (const members of Object.values(ZONE_CUISINE_MAP)) {
+    if (lower.some(c => members.map(m => m.toLowerCase()).includes(c))) {
+      return members;
+    }
+  }
+  return ZONE_CUISINE_MAP['West'];
+}
+
+// ─── 3-day sample plan generator (no Claude call) ────────────────────────────
+
+export async function generate3DaySamplePlan(params: {
+  userId: string;
+  cuisines: string[];
+  foodPref: 'veg' | 'nonveg';
+  zoneCuisines?: string[];
+}): Promise<MealPlanDay[]> {
+  const { cuisines, foodPref } = params;
+  const zoneCuisines = params.zoneCuisines ?? getZoneForCuisines(cuisines);
+
+  // Expanded cuisine set: user's selections + zone cuisines
+  const allCuisines = [...new Set([...cuisines, ...zoneCuisines])];
+  const dietaryTags: string[] = foodPref === 'veg' ? ['veg'] : [];
+  const pool = await fetchDishPool(allCuisines, dietaryTags);
+
+  // 3 days starting today
+  const today = new Date();
+  const dates: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+
+  const NON_VEG_KW = ['chicken','mutton','fish','prawn','lamb','beef','pork','egg','crab','lobster',
+    'shrimp','meat','keema','mince','gosht','murg','machli','jhinga','tuna','pomfret','rohu','hilsa',
+    'surmai','paplet','bangda','tisreo','kingfish','rawas','mandeli','halwa','kolambi','kekda'];
+  const isNVDish = (n: string) => NON_VEG_KW.some(k => n.toLowerCase().includes(k));
+
+  const usedNames = new Set<string>();
+  const dayResults: MealPlanDay[] = [];
+
+  for (let i = 0; i < dates.length; i++) {
+    const date    = dates[i];
+    const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    const isVegDay = dayName === 'Saturday' || foodPref === 'veg';
+    const isEffectivelyNonVeg = foodPref === 'nonveg' && !isVegDay;
+    const cuisineStr = cuisines.join(', ');
+
+    const breakfast    = selectDishFromPool(pool, 'breakfast',     false,               usedNames, []);
+    const lunchCurry1  = selectDishFromPool(pool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, []);
+    const lunchCurry2  = selectDishFromPool(pool, 'lunch_curry_2', false,               usedNames, []);
+    const lunchVeg     = selectDishFromPool(pool, 'lunch_veg',     false,               usedNames, []);
+    const lunchRaita   = selectDishFromPool(pool, 'lunch_raita',   false,               usedNames, []);
+    const lunchBread   = selectDishFromPool(pool, 'lunch_bread',   false,               usedNames, []);
+    const lunchRice    = selectDishFromPool(pool, 'lunch_rice',    false,               usedNames, []);
+    const dinnerCurry1 = selectDishFromPool(pool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, []);
+    const dinnerCurry2 = selectDishFromPool(pool, 'dinner_curry_2', false,              usedNames, []);
+    const dinnerVeg    = selectDishFromPool(pool, 'dinner_veg',    false,               usedNames, []);
+    const dinnerRaita  = selectDishFromPool(pool, 'dinner_raita',  false,               usedNames, []);
+    const dinnerBread  = selectDishFromPool(pool, 'dinner_bread',  false,               usedNames, []);
+    const dinnerRice   = selectDishFromPool(pool, 'dinner_rice',   false,               usedNames, []);
+
+    const anatomy: DayAnatomy = {
+      breakfast: { dishName: breakfast,   isVeg: !isNVDish(breakfast),   cuisine: cuisineStr, ingredients: [] },
+      lunch: {
+        curry: [
+          { dishName: lunchCurry1, isVeg: !isNVDish(lunchCurry1), cuisine: cuisineStr, ingredients: [] },
+          { dishName: lunchCurry2, isVeg: !isNVDish(lunchCurry2), cuisine: cuisineStr, ingredients: [] },
+        ],
+        veg:   { dishName: lunchVeg,   isVeg: true, ingredients: [] },
+        raita: { dishName: lunchRaita, isVeg: true, ingredients: [] },
+        bread: { dishName: lunchBread, isVeg: true, ingredients: [] },
+        rice:  { dishName: lunchRice,  isVeg: true, ingredients: [] },
+      },
+      dinner: {
+        curry: [
+          { dishName: dinnerCurry1, isVeg: !isNVDish(dinnerCurry1), cuisine: cuisineStr, ingredients: [] },
+          { dishName: dinnerCurry2, isVeg: !isNVDish(dinnerCurry2), cuisine: cuisineStr, ingredients: [] },
+        ],
+        veg:   { dishName: dinnerVeg,   isVeg: true, ingredients: [] },
+        raita: { dishName: dinnerRaita, isVeg: true, ingredients: [] },
+        bread: { dishName: dinnerBread, isVeg: true, ingredients: [] },
+        rice:  { dishName: dinnerRice,  isVeg: true, ingredients: [] },
+      },
+    };
+
+    dayResults.push({
+      date,
+      day: dayName,
+      breakfast: { options: [{ name: breakfast,   vegetarian: !isNVDish(breakfast),   tags: ['breakfast'], ingredients: [], steps: [] }] },
+      lunch:     { options: [{ name: lunchCurry1,  vegetarian: !isNVDish(lunchCurry1),
+        description: `Curry: ${lunchCurry1} | Curry 2: ${lunchCurry2} | Veg: ${lunchVeg} | Raita: ${lunchRaita} | Bread: ${lunchBread} | Rice: ${lunchRice}`,
+        tags: [], ingredients: [], steps: [] }] },
+      dinner:    { options: [{ name: dinnerCurry1, vegetarian: !isNVDish(dinnerCurry1),
+        description: `Curry: ${dinnerCurry1} | Curry 2: ${dinnerCurry2} | Veg: ${dinnerVeg} | Raita: ${dinnerRaita} | Bread: ${dinnerBread} | Rice: ${dinnerRice}`,
+        tags: [], ingredients: [], steps: [] }] },
+      anatomy,
+    });
+  }
+
+  return dayResults;
+}

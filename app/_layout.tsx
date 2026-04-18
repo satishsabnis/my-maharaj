@@ -164,10 +164,14 @@ export default function Layout() {
       setSession(sess);
       identifyUser(sess.user.id, { email: sess.user.email });
 
-      // Profile setup check
-      const profileSetup = await AsyncStorage.getItem('profile_setup_complete');
-      if (!profileSetup || profileSetup === 'false') {
-        router.replace('/dietary-profile?firstSetup=true' as never);
+      // Profile completion check — Supabase is the sole source of truth, no AsyncStorage fallback
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('profile_completed')
+        .eq('id', sess.user.id)
+        .maybeSingle();
+      if (!profileRow || !profileRow.profile_completed) {
+        router.replace('/onboarding' as never);
         setLoading(false);
         return;
       }
@@ -239,6 +243,7 @@ export default function Layout() {
       <Stack.Screen name="faq" />
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="onboarding" />
+      <Stack.Screen name="review-plan" />
       <Stack.Screen name="family-recipes" />
       <Stack.Screen name="cook" options={{ headerShown: false }} />
     </Stack>

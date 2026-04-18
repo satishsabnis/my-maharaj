@@ -37,6 +37,7 @@ export default function HomeScreen() {
   const [todayMeals, setTodayMeals] = useState<{breakfast:string;lunch:string;dinner:string}|null>(null);
   const [mealFeedback, setMealFeedback] = useState({ breakfast: false, lunch: false, dinner: false });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -79,6 +80,19 @@ export default function HomeScreen() {
         setFirstName(first);
         setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
         setEmail(user.email ?? '');
+
+        // Dietary profile popup check
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('dietary_profile_completed, last_profile_popup_dismissed_at')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profileRow && !profileRow.dietary_profile_completed) {
+          const dismissed: string | null = profileRow.last_profile_popup_dismissed_at;
+          const show = !dismissed ||
+            (Date.now() - new Date(dismissed).getTime()) > 48 * 60 * 60 * 1000;
+          if (show) setShowProfilePopup(true);
+        }
       }
 
       const [md, cwp, occ, prep] = await Promise.all([
@@ -382,6 +396,65 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* ── DIETARY PROFILE POPUP ── */}
+        <Modal
+          visible={showProfilePopup}
+          animationType="fade"
+          transparent
+          onRequestClose={async () => {
+            setShowProfilePopup(false);
+            const user = await getSessionUser();
+            if (user) {
+              await supabase.from('profiles')
+                .update({ last_profile_popup_dismissed_at: new Date().toISOString() })
+                .eq('id', user.id);
+            }
+          }}
+        >
+          <TouchableOpacity
+            style={s.popupOverlay}
+            activeOpacity={1}
+            onPress={async () => {
+              setShowProfilePopup(false);
+              const user = await getSessionUser();
+              if (user) {
+                await supabase.from('profiles')
+                  .update({ last_profile_popup_dismissed_at: new Date().toISOString() })
+                  .eq('id', user.id);
+              }
+            }}
+          >
+            <TouchableOpacity activeOpacity={1} style={s.popup}>
+              <TouchableOpacity
+                style={s.popupClose}
+                onPress={async () => {
+                  setShowProfilePopup(false);
+                  const user = await getSessionUser();
+                  if (user) {
+                    await supabase.from('profiles')
+                      .update({ last_profile_popup_dismissed_at: new Date().toISOString() })
+                      .eq('id', user.id);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={s.popupCloseText}>{'\u00D7'}</Text>
+              </TouchableOpacity>
+              <Text style={s.popupTitle}>Personalise your plans</Text>
+              <Text style={s.popupBody}>
+                Add family details so Maharaj can plan for everyone's health and preferences.
+              </Text>
+              <TouchableOpacity
+                style={s.popupBtn}
+                onPress={() => { setShowProfilePopup(false); router.push('/dietary-profile' as never); }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.popupBtnText}>Add family details</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
         {/* ── DRAWER OVERLAY ── */}
         {isDrawerOpen && (
           <TouchableOpacity style={s.drawerOverlay} activeOpacity={1} onPress={closeDrawer}>
@@ -447,4 +520,13 @@ const s = StyleSheet.create({
   drawerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 13 },
   drawerLabel: { fontSize: 13, fontWeight: '500', color: colors.navy },
   drawerChevron: { fontSize: 16, color: '#D1D5DB' },
+  // Dietary profile popup
+  popupOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  popup:           { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, width: '100%' },
+  popupClose:      { position: 'absolute', top: 12, right: 14, padding: 4 },
+  popupCloseText:  { fontSize: 22, color: '#8AAABB', fontWeight: '400' },
+  popupTitle:      { fontSize: 18, fontWeight: '800', color: colors.navy, marginBottom: 10, paddingRight: 24 },
+  popupBody:       { fontSize: 14, color: colors.textMuted, lineHeight: 21, marginBottom: 20 },
+  popupBtn:        { backgroundColor: colors.navy, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  popupBtnText:    { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });
