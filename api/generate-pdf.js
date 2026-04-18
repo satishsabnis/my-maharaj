@@ -168,22 +168,25 @@ module.exports = async function handler(req, res) {
   });
 
   // ── Header columns ─────────────────────────────────────────────────────────
-  const leftStack = [];
-  if (bfcLogo)  leftStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130 });
-  if (qrBase64) leftStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6 });
-
-  const centreStack = [];
-  if (maharajLogo) centreStack.push({ image: `data:image/png;base64,${maharajLogo}`, width: 90, alignment: 'center' });
-  centreStack.push({ text: 'My Maharaj',           fontSize: 20, bold: true,  color: '#2E5480', alignment: 'center' });
-  centreStack.push({ text: 'Your Family Meal Plan', fontSize: 11,              color: '#C9A227', alignment: 'center' });
-
-  const rightStack = [
-    { text: familyName,                                    fontSize: 22, bold: true, color: '#2E5480', alignment: 'right' },
-    { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo),  fontSize: 11,             color: '#5A7A8A', alignment: 'right' },
+  // LEFT: family name + date range
+  const leftStack = [
+    { text: familyName,                                   fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
+    { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo), fontSize: 11,             color: '#5A7A8A', alignment: 'left' },
   ];
   if (planSummaryLanguage && planSummaryLanguage !== 'English' && planSummaryLanguage !== 'en') {
-    rightStack.push({ text: planSummaryLanguage, fontSize: 9, color: '#5A7A8A', italics: true, alignment: 'right' });
+    leftStack.push({ text: planSummaryLanguage, fontSize: 9, color: '#5A7A8A', italics: true, alignment: 'left' });
   }
+
+  // CENTRE: Maharaj logo (120px) + title
+  const centreStack = [];
+  if (maharajLogo) centreStack.push({ image: `data:image/png;base64,${maharajLogo}`, width: 120, alignment: 'center' });
+  centreStack.push({ text: 'My Maharaj',            fontSize: 20, bold: true, color: '#2E5480', alignment: 'center' });
+  centreStack.push({ text: 'Your Family Meal Plan',  fontSize: 11,             color: '#C9A227', alignment: 'center' });
+
+  // RIGHT: BFC logo + QR
+  const rightStack = [];
+  if (bfcLogo)  rightStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130, alignment: 'right' });
+  if (qrBase64) rightStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6, alignment: 'right' });
 
   // ── Document definition ────────────────────────────────────────────────────
   const docDefinition = {

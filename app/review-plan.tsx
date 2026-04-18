@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, ImageBackground, Modal, SafeAreaView,
+  Animated, ImageBackground, Modal, SafeAreaView,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -94,6 +94,18 @@ export default function ReviewPlanScreen() {
   const [swapAllSugg, setSwapAllSugg]         = useState<string[]>([]);
   const [swapExpanded, setSwapExpanded]       = useState(false);
 
+  // ── Pulsing hero (loading state) ──────────────────────────────────────────
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 600, useNativeDriver: true }),
+      ]),
+      { iterations: -1 }
+    ).start();
+  }, []);
+
   // ── Load on mount ─────────────────────────────────────────────────────────
 
   useEffect(() => { void loadData(); }, []);
@@ -149,13 +161,13 @@ export default function ReviewPlanScreen() {
     if (!day) return;
     const isVegDay = day.dayName === 'Saturday' || foodPref === 'veg';
     const zoneCuisines = getZoneForUser(userCuisines);
-    const allCuisines = [...new Set([...userCuisines, ...zoneCuisines])];
-    const usedDishes = getAllDishNames(plan);
+    const allCuisines  = [...new Set([...userCuisines, ...zoneCuisines])];
+    const usedDishes   = getAllDishNames(plan);
 
     try {
       let qBase = supabase
         .from('dishes')
-        .select('name')
+        .select('name, cuisine')
         .eq('is_banned', false)
         .filter('slot', 'cs', `{${slot}}`);
       if (isVegDay) qBase = qBase.eq('is_veg', true);
@@ -163,18 +175,29 @@ export default function ReviewPlanScreen() {
         qBase = qBase.not('name', 'in', `(${usedDishes.map((n: string) => `"${n}"`).join(',')})`);
       }
 
-      const cuisineFilter = userCuisines.length > 0 ? userCuisines : allCuisines;
-      const { data: cuisineDishes } = await qBase
-        .filter('cuisine', 'ov', `{${cuisineFilter.join(',')}}`)
-        .limit(10);
-      const cuisineSugg = (cuisineDishes ?? []).map((d: any) => d.name as string).slice(0, 2);
-
-      const { data: zoneDishes } = await qBase
+      const { data: poolData } = await qBase
         .filter('cuisine', 'ov', `{${allCuisines.join(',')}}`)
-        .limit(30);
-      const allZone = (zoneDishes ?? []).map((d: any) => d.name as string);
-      const zoneSugg = allZone.filter((n: string) => !cuisineSugg.includes(n)).slice(0, 2);
-      const allSugg  = [...cuisineSugg, ...allZone.filter((n: string) => !cuisineSugg.includes(n))].slice(0, 20);
+        .limit(50);
+
+      // Fisher-Yates shuffle for true randomisation on every open
+      const pool = (poolData ?? []) as { name: string; cuisine: string[] }[];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+
+      const cuisineSugg: string[] = [];
+      const zoneSugg:    string[] = [];
+      const allSugg:     string[] = [];
+
+      for (const dish of pool) {
+        if (allSugg.length >= 20) break;
+        const dc = Array.isArray(dish.cuisine) ? dish.cuisine : [];
+        const isUserCuisineMatch = userCuisines.length === 0 || dc.some(c => userCuisines.includes(c));
+        if (isUserCuisineMatch && cuisineSugg.length < 2) cuisineSugg.push(dish.name);
+        else if (!isUserCuisineMatch && zoneSugg.length < 2) zoneSugg.push(dish.name);
+        allSugg.push(dish.name);
+      }
 
       setSwapCuisineSugg(cuisineSugg);
       setSwapZoneSugg(zoneSugg);
@@ -322,7 +345,11 @@ export default function ReviewPlanScreen() {
       <View style={{ flex: 1 }}>
         <ImageBackground source={require('../assets/background.png')} style={r.bg} resizeMode="cover" />
         <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={NAVY} size="large" />
+          <Animated.Image
+            source={require('../assets/logo.png')}
+            style={{ width: 180, height: 180, transform: [{ scale: pulseAnim }] }}
+            resizeMode="contain"
+          />
           <Text style={r.loadingText}>Maharaj is preparing your plan...</Text>
         </SafeAreaView>
       </View>
