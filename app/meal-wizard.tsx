@@ -363,17 +363,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
         if (savedIsMixed === 'true') { setIsMixed(true); setFoodPreference('Mixed'); }
       }
 
-      // Jain
-      const jf = await AsyncStorage.getItem('jain_family');
-      if (jf === 'true') setIsJainFamily(true);
-
-      // Profile completion status + dietary profile flag for day-cap
-      const { data: profData } = await supabase.from('profiles').select('profile_completed, dietary_profile_completed').eq('id', user.id).maybeSingle();
+      // Profile completion status + dietary profile flag for day-cap + jain/cooking prefs
+      const { data: profData } = await supabase.from('profiles').select('profile_completed, dietary_profile_completed, jain_family, cooking_pattern').eq('id', user.id).maybeSingle();
       setProfileCompleted((profData as any)?.profile_completed !== false);
       setIsFullUser((profData as any)?.dietary_profile_completed === true);
-
-      // Cooking pattern
-      const cp = await AsyncStorage.getItem('cooking_pattern');
+      setIsJainFamily((profData as any)?.jain_family === true);
+      const cp = (profData as any)?.cooking_pattern;
       if (cp) setCookingPattern(cp);
 
       // Fasting info — parse from members' health_notes and fasting_days_text
@@ -532,7 +527,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
-        .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,plan_summary_language,veg_days,community,avoidance_list,cooking_pattern,sunday_extra_curry,sunday_sweet,breakfast_preferences,additional_dietary_rules,meal_template_curry,meal_template_veg,meal_template_raita,meal_template_bread,meal_template_rice')
+        .select('breakfast_count,lunch_count,dinner_count,appetite_level,app_language,plan_summary_language,veg_days,community,avoidance_list,cooking_pattern,jain_family,sunday_extra_curry,sunday_sweet,breakfast_preferences,additional_dietary_rules,meal_template_curry,meal_template_veg,meal_template_raita,meal_template_bread,meal_template_rice')
         .eq('id', userId).maybeSingle();
       if (profileErr) console.error('[MealWizard] profile query error:', profileErr.message);
 
@@ -610,11 +605,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
       await AsyncStorage.setItem('dietary_nonveg_opts', JSON.stringify(nonVegOpts));
       await AsyncStorage.setItem('dietary_is_mixed', String(effectiveIsMixed));
 
-      // Read additional family profile fields for generation
-      const cookingPatternRaw = await AsyncStorage.getItem('cooking_pattern');
-      const cookingPattern = cookingPatternRaw || undefined;
-      const jainFamilyRaw = await AsyncStorage.getItem('jain_family');
-      const jainFamily = jainFamilyRaw === 'true' ? true : jainFamilyRaw === 'false' ? false : undefined;
+      // Read additional family profile fields for generation (from Supabase profile fetched above)
+      const cookingPattern = profile?.cooking_pattern || undefined;
+      const jainFamily = profile?.jain_family === true ? true : profile?.jain_family === false ? false : undefined;
       const mealTemplateCurry = await AsyncStorage.getItem('meal_template_curry') || '';
       const mealTemplateVeg = await AsyncStorage.getItem('meal_template_veg') || '';
       const mealTemplateRaita = await AsyncStorage.getItem('meal_template_raita') || '';
