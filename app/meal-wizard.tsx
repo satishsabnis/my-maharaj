@@ -423,9 +423,14 @@ Return ONLY valid JSON (no markdown) in this exact format:
         if (avoidRaw) setFamilyAvoids(avoidRaw.split(',').map(s => s.trim()).filter(Boolean));
       }
 
-      // Family recipes
-      const fr = await AsyncStorage.getItem('family_recipes');
-      if (fr) try { const recs = JSON.parse(fr); if (Array.isArray(recs)) setFamilyRecipes(recs.map((r: any) => ({ recipe_name: r.recipe_name ?? '', cuisine: r.cuisine ?? '' }))); } catch {}
+      // Family recipes — read from Supabase (source of truth)
+      const { data: frData } = await supabase
+        .from('family_recipes')
+        .select('id, recipe_name, cuisine')
+        .eq('user_id', user.id);
+      if (frData && Array.isArray(frData)) {
+        setFamilyRecipes(frData.map((r: any) => ({ recipe_name: r.recipe_name ?? '', cuisine: r.cuisine ?? '' })));
+      }
 
       // Determine first-time user (foodPref state is set by Edge Function call above)
       const isFirst = saved.length === 0 || !mealPlanContextRef.current?.foodPref;
