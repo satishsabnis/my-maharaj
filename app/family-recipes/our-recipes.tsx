@@ -1,9 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert, Image, ImageBackground, Modal, Platform,
   SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, getSessionUser } from '../../lib/supabase';
@@ -56,7 +56,7 @@ async function extractRecipe(base64: string, mimeType: string): Promise<FamilyRe
 
   const res = await fetch(`${BASE}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
@@ -90,6 +90,9 @@ export default function OurRecipesScreen() {
   const [detailRecipe, setDetailRecipe] = useState<FamilyRecipe | null>(null);
   const [showSheet,    setShowSheet]    = useState(false);
   const [saved,        setSaved]        = useState(false);
+
+  const { openSheet } = useLocalSearchParams<{ openSheet?: string }>();
+  useEffect(() => { if (openSheet === 'true') setShowSheet(true); }, []);
 
   useFocusEffect(useCallback(() => { loadRecipes(); }, []));
 
@@ -276,7 +279,6 @@ export default function OurRecipesScreen() {
                     {recipe.source} · {recipe.cuisine}
                   </Text>
                 </View>
-                <View style={s.inPlansBadge}><Text style={s.inPlansTxt}>In plans</Text></View>
               </TouchableOpacity>
             ))
           )}
@@ -410,8 +412,6 @@ const s = StyleSheet.create({
   recipeIconTxt:   { fontSize: 14, fontWeight: '700', color: WHITE },
   recipeName:      { fontSize: 13, fontWeight: '700', color: NAVY },
   recipeMeta:      { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  inPlansBadge:    { backgroundColor: 'rgba(201,162,39,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(201,162,39,0.4)' },
-  inPlansTxt:      { fontSize: 9, color: '#92600A', fontWeight: '700' },
   tag:             { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
   btnGold:         { backgroundColor: GOLD, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 18, alignSelf: 'flex-start' },
   btnGoldTxt:      { fontSize: 13, fontWeight: '500', color: '#1A1A1A' },

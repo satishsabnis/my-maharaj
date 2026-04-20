@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ImageBackground, SafeAreaView, ScrollView, StyleSheet,
+  Alert, ImageBackground, SafeAreaView, ScrollView, StyleSheet,
   Text, TouchableOpacity, View, Platform,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -70,7 +70,7 @@ export default function FamilyRecipesScreen() {
             <View style={s.cardBtns}>
               <TouchableOpacity
                 style={s.btnGold}
-                onPress={() => router.push('/family-recipes/our-recipes' as never)}
+                onPress={() => router.push({ pathname: '/family-recipes/our-recipes', params: { openSheet: 'true' } } as never)}
                 activeOpacity={0.85}
               >
                 <Text style={s.btnGoldTxt}>Add recipe</Text>
@@ -105,6 +105,33 @@ export default function FamilyRecipesScreen() {
             </View>
           </View>
 
+          {/* Share & Capture card */}
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Text style={s.cardTitle}>Share & Capture</Text>
+              <View style={s.comingSoonPill}><Text style={s.comingSoonTxt}>Coming soon</Text></View>
+            </View>
+            <Text style={s.cardSub}>
+              Save recipes from Instagram, WhatsApp, YouTube — or record at a restaurant.
+            </Text>
+            <View style={s.cardBtns}>
+              <TouchableOpacity
+                style={[s.btnGold, { opacity: 0.5 }]}
+                onPress={() => Alert.alert('Coming soon', "We're building this — coming soon")}
+                activeOpacity={0.85}
+              >
+                <Text style={s.btnGoldTxt}>Import from social</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.btnNavyOutline, { opacity: 0.5 }]}
+                onPress={() => Alert.alert('Coming soon', "We're building this — coming soon")}
+                activeOpacity={0.85}
+              >
+                <Text style={s.btnNavyOutlineTxt}>Capture at restaurant</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -132,6 +159,8 @@ const s = StyleSheet.create({
   cardBtns:   { flexDirection: 'row', gap: 10 },
   btnGold:    { backgroundColor: GOLD, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 20 },
   btnGoldTxt: { fontSize: 13, fontWeight: '500', color: '#1A1A1A' },
-  btnNavyOutline: { borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 18 },
+  btnNavyOutline:    { borderWidth: 1.5, borderColor: NAVY, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 18 },
   btnNavyOutlineTxt: { fontSize: 13, fontWeight: '500', color: NAVY },
+  comingSoonPill:    { backgroundColor: GOLD, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
+  comingSoonTxt:     { fontSize: 9, fontWeight: '700', color: '#1A1A1A' },
 });

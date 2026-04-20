@@ -10,8 +10,8 @@ import { buttons } from '../../constants/theme';
 
 const NAVY  = '#2E5480';
 const GOLD  = '#C9A227';
+const TEAL  = '#1A6B5C';
 const WHITE = '#FFFFFF';
-const RED   = '#DC2626';
 
 interface Dish {
   id: string;
@@ -269,7 +269,7 @@ export default function RegularDishesScreen() {
         {/* Footer pill */}
         <View style={s.footerPill} pointerEvents="none">
           <View style={[s.pill, activeTab === 'banned' && s.pillBanned]}>
-            <Text style={s.pillTxt}>
+            <Text style={[s.pillTxt, activeTab === 'banned' && { color: WHITE }]}>
               {activeTab === 'favourites'
                 ? `${selected.size} dishes selected`
                 : `${banned.size} dishes banned`}
@@ -288,7 +288,7 @@ const s = StyleSheet.create({
   tabRow:             { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
   mainTab:            { flex: 1, borderRadius: 20, paddingVertical: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1.5, borderColor: 'rgba(46,84,128,0.2)' },
   mainTabActive:      { backgroundColor: NAVY, borderColor: NAVY },
-  mainTabBanned:      { backgroundColor: RED, borderColor: RED },
+  mainTabBanned:      { backgroundColor: NAVY, borderColor: NAVY },
   mainTabTxt:         { fontSize: 13, fontWeight: '600', color: NAVY },
   mainTabTxtActive:   { color: WHITE },
   mainTabTxtBanned:   { color: WHITE },
@@ -311,10 +311,10 @@ const s = StyleSheet.create({
   dishSlot:           { fontSize: 11, color: '#6B7280', marginTop: 1 },
   checkbox:           { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: 'rgba(46,84,128,0.4)', alignItems: 'center', justifyContent: 'center' },
   checkboxSelected:   { backgroundColor: NAVY, borderColor: NAVY },
-  checkboxBanned:     { backgroundColor: RED, borderColor: RED },
+  checkboxBanned:     { backgroundColor: NAVY, borderColor: NAVY },
   checkmark:          { fontSize: 13, color: WHITE, fontWeight: '700' },
   footerPill:         { position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center' },
   pill:               { backgroundColor: GOLD, borderRadius: 24, paddingVertical: 8, paddingHorizontal: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-  pillBanned:         { backgroundColor: RED },
+  pillBanned:         { backgroundColor: TEAL },
   pillTxt:            { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
 });
