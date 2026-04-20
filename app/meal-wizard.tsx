@@ -214,6 +214,8 @@ export default function MealWizardScreen() {
 
   // Profile completion gate
   const [profileCompleted, setProfileCompleted] = useState(true);
+  const [isFullUser, setIsFullUser] = useState(false);
+  const [capPopupVisible, setCapPopupVisible] = useState(false);
 
   // Jain
   const [isJainFamily, setIsJainFamily] = useState(false);
@@ -365,9 +367,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const jf = await AsyncStorage.getItem('jain_family');
       if (jf === 'true') setIsJainFamily(true);
 
-      // Profile completion status
-      const { data: profData } = await supabase.from('profiles').select('profile_completed').eq('id', user.id).maybeSingle();
+      // Profile completion status + dietary profile flag for day-cap
+      const { data: profData } = await supabase.from('profiles').select('profile_completed, dietary_profile_completed').eq('id', user.id).maybeSingle();
       setProfileCompleted((profData as any)?.profile_completed !== false);
+      setIsFullUser((profData as any)?.dietary_profile_completed === true);
 
       // Cooking pattern
       const cp = await AsyncStorage.getItem('cooking_pattern');
@@ -1431,10 +1434,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const dateStr = toYMD(d);
       return { label: shortDay, date: String(dateNum), dateStr };
     });
-    if (selectedDays.length === 0) {
-      setSelectedDays(dayChips.map(c => c.dateStr));  // default: all 7 days selected
-    }
-
     const profileCuisinesDisplay = selectedCuisines.length > 0
       ? selectedCuisines.length <= 3
         ? selectedCuisines
@@ -1471,9 +1470,15 @@ Return ONLY valid JSON (no markdown) in this exact format:
             return (
               <TouchableOpacity
                 key={dateStr}
-                onPress={() => setSelectedDays(prev =>
-                  prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr]
-                )}
+                onPress={() => {
+                  if (selectedDays.includes(dateStr)) {
+                    setSelectedDays(prev => prev.filter(d => d !== dateStr));
+                  } else if (isFullUser || selectedDays.length < 3) {
+                    setSelectedDays(prev => [...prev, dateStr]);
+                  } else {
+                    setCapPopupVisible(true);
+                  }
+                }}
                 style={{
                   width: 48,
                   height: 56,
@@ -1490,7 +1495,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
             );
           })}
         </ScrollView>
-        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:16}}>{selectedDays.length > 0 ? `${selectedDays.length} day${selectedDays.length > 1 ? 's' : ''} selected` : 'Tap days to select'}</Text>
+        <Text style={{fontSize:10,color:colors.textMuted,marginBottom:4}}>{selectedDays.length > 0 ? `${selectedDays.length} day${selectedDays.length > 1 ? 's' : ''} selected` : 'Tap days to select'}</Text>
+        {!isFullUser && (
+          <TouchableOpacity onPress={() => router.push('/dietary-profile' as never)} activeOpacity={0.8} style={{marginBottom:12}}>
+            <Text style={{fontSize:12,color:colors.teal,textDecorationLine:'underline'}}>Complete your profile to plan up to 7 days →</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Element 2: Free text */}
         <Text style={{fontSize:16,fontWeight:'700',color:colors.navy,marginBottom:8}}>Anything specific this week?</Text>
@@ -2473,6 +2483,32 @@ Return ONLY valid JSON (no markdown) in this exact format:
       <Modal visible={altModalVisible} transparent animationType="slide" onRequestClose={() => setAltModalVisible(false)}>
         <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.4)',justifyContent:'flex-end'}}>
           {renderAlternatives()}
+        </View>
+      </Modal>
+
+      {/* Day-cap popup for pre-profile users */}
+      <Modal visible={capPopupVisible} transparent animationType="fade" onRequestClose={() => setCapPopupVisible(false)}>
+        <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.45)',justifyContent:'center',alignItems:'center',paddingHorizontal:24}}>
+          <View style={{backgroundColor:'#FFFFFF',borderRadius:16,padding:24,width:'100%'}}>
+            <Text style={{fontSize:16,fontWeight:'700',color:'#2E5480',marginBottom:10}}>Plan limit reached</Text>
+            <Text style={{fontSize:14,color:'#5A7A8A',lineHeight:21,marginBottom:20}}>Complete your family profile to plan up to 7 days at a time.</Text>
+            <View style={{flexDirection:'row',gap:10}}>
+              <TouchableOpacity
+                style={{flex:1,borderWidth:1.5,borderColor:'#9CA3AF',borderRadius:10,paddingVertical:12,alignItems:'center'}}
+                onPress={() => setCapPopupVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={{fontSize:14,fontWeight:'600',color:'#6B7280'}}>Not now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{flex:1,backgroundColor:'#2E5480',borderRadius:10,paddingVertical:12,alignItems:'center'}}
+                onPress={() => { setCapPopupVisible(false); router.push('/dietary-profile' as never); }}
+                activeOpacity={0.8}
+              >
+                <Text style={{fontSize:14,fontWeight:'700',color:'#FFFFFF'}}>Complete profile</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
