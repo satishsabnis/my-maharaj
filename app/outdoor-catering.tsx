@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Animated, ImageBackground, Platform,
-  SafeAreaView, ScrollView, StyleSheet, Text,
+  Alert, Animated, Platform,
+  ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../constants/theme';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { supabase, getSessionUser } from '../lib/supabase';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +37,7 @@ interface CanteenResult {
 async function callClaude(system: string, user: string): Promise<string> {
   const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
@@ -53,6 +55,15 @@ async function callClaude(system: string, user: string): Promise<string> {
 const DIETARY_OPTS = ['Veg only', 'Non-veg', 'Mixed', 'Individual'];
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 
+// ── Date placeholder ─────────────────────────────────────────────────────────
+
+const todayPlaceholder = (() => {
+  const t = new Date();
+  const dd = String(t.getDate()).padStart(2, '0');
+  const mm = String(t.getMonth() + 1).padStart(2, '0');
+  return `${dd}-${mm}-${t.getFullYear()}`;
+})();
+
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function OutdoorCateringScreen() {
@@ -62,6 +73,7 @@ export default function OutdoorCateringScreen() {
   // Group / Corporate fields
   const [occasion, setOccasion] = useState('');
   const [date, setDate] = useState('');
+  const [dateError, setDateError] = useState('');
   const [people, setPeople] = useState('');
   const [dietary, setDietary] = useState(DIETARY_OPTS[0]);
   const [showDietDrop, setShowDietDrop] = useState(false);
@@ -101,7 +113,7 @@ export default function OutdoorCateringScreen() {
 
   function resetAll() {
     setPhase('select'); setGroupResult(null); setCanteenResult(null);
-    setOccasion(''); setDate(''); setPeople(''); setDietary(DIETARY_OPTS[0]);
+    setOccasion(''); setDate(''); setDateError(''); setPeople(''); setDietary(DIETARY_OPTS[0]);
     setRestrictions(''); setSpecific('');
     setCoversPerDay(''); setCuisinePref(''); setBudgetPerCover('');
     setMealTypes(['Lunch']); setError(''); setLoading(false);
@@ -111,7 +123,25 @@ export default function OutdoorCateringScreen() {
     setMealTypes(prev => prev.includes(mt) ? prev.filter(x => x !== mt) : [...prev, mt]);
   }
 
+  function handleDateChange(text: string) {
+    const digits = text.replace(/\D/g, '');
+    let masked = digits;
+    if (digits.length > 2) masked = digits.slice(0, 2) + '-' + digits.slice(2);
+    if (digits.length > 4) masked = digits.slice(0, 2) + '-' + digits.slice(2, 4) + '-' + digits.slice(4, 8);
+    setDate(masked);
+    if (dateError) setDateError('');
+  }
+
+  function validateDate() {
+    if (!date) return;
+    const parts = date.split('-');
+    if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+      setDateError('Enter date as DD-MM-YYYY');
+    }
+  }
+
   async function generate() {
+    if (date && dateError) return;
     setError(''); setLoading(true); setGroupResult(null); setCanteenResult(null);
     try {
       if (useCase === 'canteen') {
@@ -156,31 +186,67 @@ Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg
     } finally { setLoading(false); }
   }
 
-  function downloadPDF() {
+  async function downloadPDF() {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}h2{color:${colors.navy};font-size:14px;border-bottom:1px solid #E5E7EB;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:${colors.navy};color:${colors.white};padding:8px;font-size:11px;text-align:left}td{padding:8px;font-size:11px;border:1px solid #E5E7EB}</style></head><body>`;
-    if (groupResult) {
-      html += `<h1>Outdoor Catering: ${occasion}</h1><p>${groupResult.summary || ''}</p>`;
-      const sec = (t: string, items: DishItem[]) => items?.length ? `<h2>${t}</h2><table><tr><th>#</th><th>Dish</th><th>Note</th></tr>${items.map((it, i) => `<tr><td>${i + 1}</td><td>${it.isVeg ? '(V)' : '(NV)'} ${it.dishName}</td><td>${it.note || ''}</td></tr>`).join('')}</table>` : '';
-      html += sec('Starters', groupResult.starters) + sec('Mains', groupResult.mains) + sec('Accompaniments', groupResult.accompaniments);
-    } else if (canteenResult) {
-      html += '<h1>2-Day Rotating Canteen Menu</h1>';
-      [{ label: 'Day 1', data: canteenResult.day1 }, { label: 'Day 2', data: canteenResult.day2 }].forEach(({ label, data }) => {
-        html += `<h2>${label}</h2>`;
-        (['breakfast', 'lunch', 'dinner', 'snacks'] as const).forEach(slot => {
-          const items = data[slot];
-          if (items?.length) {
-            html += `<h3>${slot.charAt(0).toUpperCase() + slot.slice(1)}</h3><ul>${items.map(it => `<li>${it.isVeg ? '(V)' : '(NV)'} ${it.dishName}${it.note ? ' - ' + it.note : ''}</li>`).join('')}</ul>`;
-          }
-        });
+    try {
+      const user = await getSessionUser();
+      let familyName = 'My Family';
+      if (user) {
+        const { data: prof } = await supabase
+          .from('profiles').select('family_name').eq('id', user.id).maybeSingle();
+        familyName = prof?.family_name ?? 'My Family';
+      }
+
+      let body: Record<string, unknown>;
+      let filename: string;
+      if (groupResult) {
+        body = {
+          type: 'outdoor-group',
+          familyName,
+          occasion,
+          date,
+          people,
+          dietary,
+          summary: groupResult.summary,
+          starters: groupResult.starters,
+          mains: groupResult.mains,
+          accompaniments: groupResult.accompaniments,
+          notes: groupResult.notes,
+        };
+        filename = `maharaj-outdoor-${date.replace(/-/g, '') || 'menu'}.pdf`;
+      } else if (canteenResult) {
+        body = {
+          type: 'outdoor-canteen',
+          familyName,
+          coversPerDay,
+          cuisinePref,
+          day1: canteenResult.day1,
+          day2: canteenResult.day2,
+          notes: canteenResult.notes,
+        };
+        filename = 'maharaj-canteen-menu.pdf';
+      } else return;
+
+      const resp = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET,
+        } as Record<string, string>,
+        body: JSON.stringify(body),
       });
+      if (!resp.ok) throw new Error('PDF generation failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('[OutdoorCatering] PDF error:', err);
+      Alert.alert('Download failed', 'Please try again.');
     }
-    html += '<script>setTimeout(function(){window.print()},800)</script></body></html>';
-    const blob = new Blob([html], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'maharaj-outdoor-catering.html';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   // ── Dish row renderer ──────────────────────────────────────────────────────
@@ -189,12 +255,12 @@ Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg
     return (
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 5 }}>
         <View style={{
-          width: 6, height: 6, borderRadius: 3, marginTop: 2, marginRight: 6,
+          width: 6, height: 6, borderRadius: 3, marginTop: 4, marginRight: 6,
           backgroundColor: item.isVeg ? colors.emerald : colors.danger,
         }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 7.5, fontWeight: '700', color: colors.navy }}>{item.dishName}</Text>
-          {item.note ? <Text style={{ fontSize: 6.5, color: colors.textMuted, marginTop: 1 }}>{item.note}</Text> : null}
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy }}>{item.dishName}</Text>
+          {item.note ? <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 1 }}>{item.note}</Text> : null}
         </View>
       </View>
     );
@@ -216,7 +282,7 @@ Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg
     if (!items?.length) return null;
     return (
       <View style={{ marginBottom: 6 }}>
-        <Text style={{ fontSize: 7, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>{title}</Text>
+        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>{title}</Text>
         {items.map((it, i) => <DishRow key={i} item={it} />)}
       </View>
     );
@@ -225,321 +291,291 @@ Return JSON: { summary, starters:[{dishName,isVeg,note}], mains:[{dishName,isVeg
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1 }}>
-      <ImageBackground
-        source={require('../assets/background.png')}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
-        resizeMode="cover"
-      />
-
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => {
-            if (phase === 'output') setPhase('input');
-            else if (phase === 'input') setPhase('select');
-            else router.back();
-          }} style={s.backBtn}>
-            <Text style={s.backTxt}>Back</Text>
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Outdoor Catering</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
-            <Text style={s.homeTxt}>Home</Text>
-          </TouchableOpacity>
+    <ScreenWrapper
+      title="Outdoor Catering"
+      onBack={() => {
+        if (phase === 'output') setPhase('input');
+        else if (phase === 'input') setPhase('select');
+        else router.back();
+      }}
+      showHome
+    >
+      {/* Loading overlay */}
+      {loading && (
+        <View style={s.loadingOverlay}>
+          <Animated.Image
+            source={require('../assets/logo.png')}
+            style={{ width: 140, height: 140, transform: [{ scale: pulseAnim }] }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontSize: 17, color: colors.textSecondary, marginTop: 10 }}>
+            Maharaj is planning your menu...
+          </Text>
         </View>
+      )}
 
-        {/* Loading overlay */}
-        {loading && (
-          <View style={s.loadingOverlay}>
-            <Animated.Image
-              source={require('../assets/logo.png')}
-              style={{ width: 80, height: 80, transform: [{ scale: pulseAnim }] }}
-              resizeMode="contain"
-            />
-            <Text style={{ fontSize: 17, color: colors.textSecondary, marginTop: 10 }}>
-              Maharaj is planning your menu...
+      {/* ─── SELECT phase ─────────────────────────────────────────────── */}
+      {!loading && phase === 'select' && (
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          <View style={s.tipCard}>
+            <Text style={s.tipText}>
+              What are you planning? I will suggest food that travels well, needs no reheating,
+              and suits your group and occasion.
             </Text>
           </View>
-        )}
 
-        {/* ─── SELECT phase ─────────────────────────────────────────────── */}
-        {!loading && phase === 'select' && (
-          <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-            <View style={s.tipCard}>
-              <Text style={s.tipText}>
-                What are you planning? I will suggest food that travels well, needs no reheating,
-                and suits your group and occasion.
-              </Text>
-            </View>
+          {/* Group Trip */}
+          <TouchableOpacity
+            style={[s.card, { backgroundColor: 'rgba(30,158,94,0.08)' }]}
+            onPress={() => { setUseCase('group'); setPhase('input'); }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
+              Group Trip or Outdoor Event
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              Trek, picnic, beach day, road trip, sports event
+            </Text>
+          </TouchableOpacity>
 
-            {/* Group Trip */}
-            <TouchableOpacity
-              style={[s.card, { backgroundColor: 'rgba(30,158,94,0.08)' }]}
-              onPress={() => { setUseCase('group'); setPhase('input'); }}
-            >
-              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
-                Group Trip or Outdoor Event
-              </Text>
-              <Text style={{ fontSize: 7, color: colors.textSecondary }}>
-                Trek, picnic, beach day, road trip, sports event
-              </Text>
-            </TouchableOpacity>
+          {/* Corporate */}
+          <TouchableOpacity
+            style={[s.card, { backgroundColor: 'rgba(26,58,92,0.07)' }]}
+            onPress={() => { setUseCase('corporate'); setPhase('input'); }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
+              Corporate Event
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              Office outing, team lunch, client entertainment
+            </Text>
+          </TouchableOpacity>
 
-            {/* Corporate */}
-            <TouchableOpacity
-              style={[s.card, { backgroundColor: 'rgba(26,58,92,0.07)' }]}
-              onPress={() => { setUseCase('corporate'); setPhase('input'); }}
-            >
-              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
-                Corporate Event
-              </Text>
-              <Text style={{ fontSize: 7, color: colors.textSecondary }}>
-                Office outing, team lunch, client entertainment
-              </Text>
-            </TouchableOpacity>
+          {/* Canteen */}
+          <TouchableOpacity
+            style={[s.card, { backgroundColor: 'rgba(201,162,39,0.08)' }]}
+            onPress={() => { setUseCase('canteen'); setPhase('input'); }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
+              Canteen or Catering Business
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              Daily operator, rotating 2-day cycle menu
+            </Text>
+          </TouchableOpacity>
 
-            {/* Canteen */}
-            <TouchableOpacity
-              style={[s.card, { backgroundColor: 'rgba(201,162,39,0.08)' }]}
-              onPress={() => { setUseCase('canteen'); setPhase('input'); }}
-            >
-              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
-                Canteen or Catering Business
-              </Text>
-              <Text style={{ fontSize: 7, color: colors.textSecondary }}>
-                Daily operator, rotating 2-day cycle menu
-              </Text>
-            </TouchableOpacity>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
 
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
+      {/* ─── INPUT phase ──────────────────────────────────────────────── */}
+      {!loading && phase === 'input' && (
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+          {/* Change use case link */}
+          <TouchableOpacity onPress={() => setPhase('select')} style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 14, color: colors.emerald, fontWeight: '600' }}>
+              Change use case
+            </Text>
+          </TouchableOpacity>
 
-        {/* ─── INPUT phase ──────────────────────────────────────────────── */}
-        {!loading && phase === 'input' && (
-          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-            {/* Change use case link */}
-            <TouchableOpacity onPress={() => setPhase('select')} style={{ marginBottom: 10 }}>
-              <Text style={{ fontSize: 7.5, color: colors.emerald, fontWeight: '600' }}>
-                Change use case
-              </Text>
-            </TouchableOpacity>
+          {useCase !== 'canteen' ? (
+            <>
+              {/* Group / Corporate form */}
+              <Text style={s.label}>Occasion</Text>
+              <TextInput style={s.input} value={occasion} onChangeText={setOccasion}
+                placeholder={useCase === 'corporate' ? 'e.g. Team offsite lunch' : 'e.g. Weekend trek to Lonavala'}
+                placeholderTextColor={colors.textHint} />
 
-            {useCase !== 'canteen' ? (
-              <>
-                {/* Group / Corporate form */}
-                <Text style={s.label}>Occasion</Text>
-                <TextInput style={s.input} value={occasion} onChangeText={setOccasion}
-                  placeholder={useCase === 'corporate' ? 'e.g. Team offsite lunch' : 'e.g. Weekend trek to Lonavala'}
-                  placeholderTextColor={colors.textHint} />
+              <Text style={s.label}>Date</Text>
+              <TextInput
+                style={s.input}
+                value={date}
+                onChangeText={handleDateChange}
+                onBlur={validateDate}
+                placeholder={todayPlaceholder}
+                placeholderTextColor={colors.textHint}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+              {dateError ? <Text style={s.error}>{dateError}</Text> : null}
 
-                <Text style={s.label}>Date</Text>
-                <TextInput style={s.input} value={date} onChangeText={setDate}
-                  placeholder="e.g. 20 May 2026" placeholderTextColor={colors.textHint} />
+              <Text style={s.label}>Number of people</Text>
+              <TextInput style={s.input} value={people} onChangeText={setPeople}
+                keyboardType="numeric" placeholder="e.g. 25" placeholderTextColor={colors.textHint} />
 
-                <Text style={s.label}>Number of people</Text>
-                <TextInput style={s.input} value={people} onChangeText={setPeople}
-                  keyboardType="numeric" placeholder="e.g. 25" placeholderTextColor={colors.textHint} />
-
-                <Text style={s.label}>Dietary</Text>
-                <TouchableOpacity style={s.input} onPress={() => setShowDietDrop(!showDietDrop)}>
-                  <Text style={{ fontSize: 15, color: colors.textPrimary }}>{dietary}</Text>
-                </TouchableOpacity>
-                {showDietDrop && (
-                  <View style={s.dropdown}>
-                    {DIETARY_OPTS.map(opt => (
-                      <TouchableOpacity key={opt} style={s.dropItem} onPress={() => { setDietary(opt); setShowDietDrop(false); }}>
-                        <Text style={{ fontSize: 15, color: opt === dietary ? colors.emerald : colors.textPrimary, fontWeight: opt === dietary ? '700' : '400' }}>{opt}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                <Text style={s.label}>Restrictions</Text>
-                <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={restrictions}
-                  onChangeText={setRestrictions} multiline placeholder="e.g. No pork, nut allergy for 2"
-                  placeholderTextColor={colors.textHint} />
-
-                <Text style={s.label}>Anything specific</Text>
-                <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={specific}
-                  onChangeText={setSpecific} multiline placeholder="e.g. Need easy to carry finger food"
-                  placeholderTextColor={colors.textHint} />
-              </>
-            ) : (
-              <>
-                {/* Canteen form */}
-                <Text style={s.label}>Covers per day</Text>
-                <TextInput style={s.input} value={coversPerDay} onChangeText={setCoversPerDay}
-                  keyboardType="numeric" placeholder="e.g. 150" placeholderTextColor={colors.textHint} />
-
-                <Text style={s.label}>Cuisine preference</Text>
-                <TextInput style={s.input} value={cuisinePref} onChangeText={setCuisinePref}
-                  placeholder="e.g. North Indian, South Indian mix" placeholderTextColor={colors.textHint} />
-
-                <Text style={s.label}>Budget per cover</Text>
-                <TextInput style={s.input} value={budgetPerCover} onChangeText={setBudgetPerCover}
-                  placeholder="e.g. AED 15" placeholderTextColor={colors.textHint} />
-
-                <Text style={s.label}>Meal types</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                  {MEAL_TYPES.map(mt => {
-                    const active = mealTypes.includes(mt);
-                    return (
-                      <TouchableOpacity
-                        key={mt}
-                        onPress={() => toggleMealType(mt)}
-                        style={{
-                          paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-                          backgroundColor: active ? colors.emerald : 'transparent',
-                          borderWidth: 1,
-                          borderColor: active ? colors.emerald : colors.navy,
-                        }}
-                      >
-                        <Text style={{ fontSize: 7.5, fontWeight: '500', color: active ? colors.white : colors.navy }}>{mt}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+              <Text style={s.label}>Dietary</Text>
+              <TouchableOpacity style={s.input} onPress={() => setShowDietDrop(!showDietDrop)}>
+                <Text style={{ fontSize: 15, color: colors.textPrimary }}>{dietary}</Text>
+              </TouchableOpacity>
+              {showDietDrop && (
+                <View style={s.dropdown}>
+                  {DIETARY_OPTS.map(opt => (
+                    <TouchableOpacity key={opt} style={s.dropItem} onPress={() => { setDietary(opt); setShowDietDrop(false); }}>
+                      <Text style={{ fontSize: 15, color: opt === dietary ? colors.emerald : colors.textPrimary, fontWeight: opt === dietary ? '700' : '400' }}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              </>
-            )}
+              )}
 
-            {error ? <Text style={s.error}>{error}</Text> : null}
+              <Text style={s.label}>Restrictions</Text>
+              <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={restrictions}
+                onChangeText={setRestrictions} multiline placeholder="e.g. No pork, nut allergy for 2"
+                placeholderTextColor={colors.textHint} />
 
-            <TouchableOpacity
-              style={[s.generateBtn, (useCase !== 'canteen' && !occasion.trim()) && { opacity: 0.5 }]}
-              onPress={generate}
-              disabled={loading || (useCase !== 'canteen' && !occasion.trim())}
-            >
-              <Text style={s.generateBtnTxt}>Ask Maharaj to Plan</Text>
-            </TouchableOpacity>
+              <Text style={s.label}>Anything specific</Text>
+              <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={specific}
+                onChangeText={setSpecific} multiline placeholder="e.g. Need easy to carry finger food"
+                placeholderTextColor={colors.textHint} />
+            </>
+          ) : (
+            <>
+              {/* Canteen form */}
+              <Text style={s.label}>Covers per day</Text>
+              <TextInput style={s.input} value={coversPerDay} onChangeText={setCoversPerDay}
+                keyboardType="numeric" placeholder="e.g. 150" placeholderTextColor={colors.textHint} />
 
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
+              <Text style={s.label}>Cuisine preference</Text>
+              <TextInput style={s.input} value={cuisinePref} onChangeText={setCuisinePref}
+                placeholder="e.g. North Indian, South Indian mix" placeholderTextColor={colors.textHint} />
 
-        {/* ─── OUTPUT phase ─────────────────────────────────────────────── */}
-        {!loading && phase === 'output' && (
-          <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-            {/* Group / Corporate output */}
-            {groupResult && (
-              <>
-                <View style={s.goldBanner}>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
-                    {occasion}
+              <Text style={s.label}>Budget per cover</Text>
+              <TextInput style={s.input} value={budgetPerCover} onChangeText={setBudgetPerCover}
+                placeholder="e.g. AED 15" placeholderTextColor={colors.textHint} />
+
+              <Text style={s.label}>Meal types</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {MEAL_TYPES.map(mt => {
+                  const active = mealTypes.includes(mt);
+                  return (
+                    <TouchableOpacity
+                      key={mt}
+                      onPress={() => toggleMealType(mt)}
+                      style={{
+                        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+                        backgroundColor: active ? colors.emerald : 'transparent',
+                        borderWidth: 1,
+                        borderColor: active ? colors.emerald : colors.navy,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: active ? colors.white : colors.navy }}>{mt}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {error ? <Text style={s.error}>{error}</Text> : null}
+
+          <TouchableOpacity
+            style={[s.generateBtn, (useCase !== 'canteen' && !occasion.trim()) && { opacity: 0.5 }]}
+            onPress={generate}
+            disabled={loading || (useCase !== 'canteen' && !occasion.trim())}
+          >
+            <Text style={s.generateBtnTxt}>Ask Maharaj to Plan</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
+
+      {/* ─── OUTPUT phase ─────────────────────────────────────────────── */}
+      {!loading && phase === 'output' && (
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          {/* Group / Corporate output */}
+          {groupResult && (
+            <>
+              <View style={s.goldBanner}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
+                  {occasion}
+                </Text>
+                {date ? <Text style={{ fontSize: 12, color: colors.textSecondary }}>{date}</Text> : null}
+                {people ? <Text style={{ fontSize: 12, color: colors.textSecondary }}>{people} people  --  {dietary}</Text> : null}
+                {groupResult.summary ? (
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 5, lineHeight: 18 }}>
+                    {groupResult.summary}
                   </Text>
-                  {date ? <Text style={{ fontSize: 7, color: colors.textSecondary }}>{date}</Text> : null}
-                  {people ? <Text style={{ fontSize: 7, color: colors.textSecondary }}>{people} people  --  {dietary}</Text> : null}
-                  {groupResult.summary ? (
-                    <Text style={{ fontSize: 7.5, color: colors.textSecondary, marginTop: 5, lineHeight: 11 }}>
-                      {groupResult.summary}
+                ) : null}
+              </View>
+
+              <MenuSection title="STARTERS" items={groupResult.starters} />
+              <MenuSection title="MAINS" items={groupResult.mains} />
+              <MenuSection title="ACCOMPANIMENTS" items={groupResult.accompaniments} />
+
+              {groupResult.notes?.length > 0 && (
+                <View style={[s.card, { marginBottom: 10 }]}>
+                  <Text style={s.sectionTitle}>NOTES</Text>
+                  {groupResult.notes.map((n, i) => (
+                    <Text key={i} style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 3 }}>
+                      {'\u2022'} {n}
                     </Text>
-                  ) : null}
+                  ))}
                 </View>
+              )}
+            </>
+          )}
 
-                <MenuSection title="STARTERS" items={groupResult.starters} />
-                <MenuSection title="MAINS" items={groupResult.mains} />
-                <MenuSection title="ACCOMPANIMENTS" items={groupResult.accompaniments} />
+          {/* Canteen output */}
+          {canteenResult && (
+            <>
+              {/* Gold badge */}
+              <View style={[s.goldBanner, { alignItems: 'center', marginBottom: 12 }]}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold }}>2-day rotating cycle</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                  {coversPerDay} covers/day  --  {cuisinePref || 'Mixed cuisine'}
+                </Text>
+              </View>
 
-                {groupResult.notes?.length > 0 && (
-                  <View style={[s.card, { marginBottom: 10 }]}>
-                    <Text style={s.sectionTitle}>NOTES</Text>
-                    {groupResult.notes.map((n, i) => (
-                      <Text key={i} style={{ fontSize: 7, color: colors.textSecondary, lineHeight: 11, marginBottom: 3 }}>
-                        {'\u2022'} {n}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
+              {/* Day 1 */}
+              <View style={[s.card, { marginBottom: 10 }]}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 8 }}>Day 1</Text>
+                <CanteenMealSection title="Breakfast" items={canteenResult.day1.breakfast} />
+                <CanteenMealSection title="Lunch" items={canteenResult.day1.lunch} />
+                <CanteenMealSection title="Dinner" items={canteenResult.day1.dinner} />
+                <CanteenMealSection title="Snacks" items={canteenResult.day1.snacks} />
+              </View>
 
-            {/* Canteen output */}
-            {canteenResult && (
-              <>
-                {/* Gold badge */}
-                <View style={[s.goldBanner, { alignItems: 'center', marginBottom: 12 }]}>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: colors.gold }}>2-day rotating cycle</Text>
-                  <Text style={{ fontSize: 7, color: colors.textSecondary, marginTop: 2 }}>
-                    {coversPerDay} covers/day  --  {cuisinePref || 'Mixed cuisine'}
-                  </Text>
-                </View>
+              {/* Day 2 */}
+              <View style={[s.card, { marginBottom: 10 }]}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 8 }}>Day 2</Text>
+                <CanteenMealSection title="Breakfast" items={canteenResult.day2.breakfast} />
+                <CanteenMealSection title="Lunch" items={canteenResult.day2.lunch} />
+                <CanteenMealSection title="Dinner" items={canteenResult.day2.dinner} />
+                <CanteenMealSection title="Snacks" items={canteenResult.day2.snacks} />
+              </View>
 
-                {/* Day 1 */}
+              {canteenResult.notes?.length > 0 && (
                 <View style={[s.card, { marginBottom: 10 }]}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: colors.navy, marginBottom: 8 }}>Day 1</Text>
-                  <CanteenMealSection title="Breakfast" items={canteenResult.day1.breakfast} />
-                  <CanteenMealSection title="Lunch" items={canteenResult.day1.lunch} />
-                  <CanteenMealSection title="Dinner" items={canteenResult.day1.dinner} />
-                  <CanteenMealSection title="Snacks" items={canteenResult.day1.snacks} />
+                  <Text style={s.sectionTitle}>NOTES</Text>
+                  {canteenResult.notes.map((n, i) => (
+                    <Text key={i} style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 3 }}>
+                      {'\u2022'} {n}
+                    </Text>
+                  ))}
                 </View>
+              )}
+            </>
+          )}
 
-                {/* Day 2 */}
-                <View style={[s.card, { marginBottom: 10 }]}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: colors.navy, marginBottom: 8 }}>Day 2</Text>
-                  <CanteenMealSection title="Breakfast" items={canteenResult.day2.breakfast} />
-                  <CanteenMealSection title="Lunch" items={canteenResult.day2.lunch} />
-                  <CanteenMealSection title="Dinner" items={canteenResult.day2.dinner} />
-                  <CanteenMealSection title="Snacks" items={canteenResult.day2.snacks} />
-                </View>
+          {/* Bottom buttons */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <TouchableOpacity style={s.downloadBtn} onPress={downloadPDF}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.white }}>Download PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.planAgainBtn} onPress={resetAll}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.navy }}>Plan Again</Text>
+            </TouchableOpacity>
+          </View>
 
-                {canteenResult.notes?.length > 0 && (
-                  <View style={[s.card, { marginBottom: 10 }]}>
-                    <Text style={s.sectionTitle}>NOTES</Text>
-                    {canteenResult.notes.map((n, i) => (
-                      <Text key={i} style={{ fontSize: 7, color: colors.textSecondary, lineHeight: 11, marginBottom: 3 }}>
-                        {'\u2022'} {n}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* Bottom buttons */}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-              <TouchableOpacity style={s.downloadBtn} onPress={downloadPDF}>
-                <Text style={{ fontSize: 8, fontWeight: '600', color: colors.white }}>Download PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.planAgainBtn} onPress={resetAll}>
-                <Text style={{ fontSize: 8, fontWeight: '600', color: colors.navy }}>Plan Again</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
-      </SafeAreaView>
-    </View>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
+    </ScreenWrapper>
   );
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#2E5480',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  backTxt: { fontSize: 15, fontWeight: '700', color: '#2E5480' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
-  homeBtn: {
-    backgroundColor: '#2E5480',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  homeTxt: { fontSize: 15, fontWeight: '700', color: colors.white },
   scroll: { padding: 12, paddingBottom: 24 },
   tipCard: {
     backgroundColor: 'rgba(30,158,94,0.08)',

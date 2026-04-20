@@ -287,6 +287,168 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  // ── Outdoor Group / Corporate PDF (early return) ─────────────────────────
+  if (type === 'outdoor-group') {
+    const { occasion: evtOccasion = '', date: evtDate = '', people: evtPeople = '', dietary: evtDietary = '',
+            summary: evtSummary = '', starters = [], mains = [], accompaniments = [], notes: evtNotes = [] } = req.body;
+
+    const outdoorLeftStack = [
+      { text: familyName,                                              fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
+      { text: evtDate ? `Event date: ${evtDate}` : '',                fontSize: 11,             color: '#5A7A8A', alignment: 'left' },
+      { text: evtOccasion,                                             fontSize: 13,             color: '#2E5480', alignment: 'left' },
+    ];
+
+    const outdoorBody = [
+      {
+        columns: [
+          { width: 160, stack: outdoorLeftStack, margin: [0, 50, 0, 0] },
+          { width: '*', stack: centreStack,      alignment: 'center' },
+          { width: 160, stack: rightStack,       margin: [0, 24, 0, 0] },
+        ],
+      },
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595, y2: 0, lineWidth: 2, lineColor: '#C9A227' }], margin: [0, 8, 0, 8] },
+    ];
+
+    if (evtPeople || evtDietary) {
+      outdoorBody.push({ text: [evtPeople ? `${evtPeople} people` : '', evtPeople && evtDietary ? '  \u2022  ' : '', evtDietary || ''].join(''), fontSize: 11, color: '#5A7A8A', margin: [0, 0, 0, 4] });
+    }
+    if (evtSummary) {
+      outdoorBody.push({ text: evtSummary, fontSize: 10, color: '#5A7A8A', margin: [0, 0, 0, 10], italics: true });
+    }
+
+    const OUTDOOR_SECTIONS = [
+      { key: 'starters',        title: 'Starters',        items: starters },
+      { key: 'mains',           title: 'Mains',           items: mains },
+      { key: 'accompaniments',  title: 'Accompaniments',  items: accompaniments },
+    ];
+
+    OUTDOOR_SECTIONS.forEach(({ title, items }) => {
+      if (!items || items.length === 0) return;
+      outdoorBody.push({ text: title, fontSize: 13, bold: true, color: '#2E5480', margin: [0, 10, 0, 4] });
+      outdoorBody.push({
+        table: {
+          widths: ['*', '*', 40],
+          body: items.map(dish => [
+            { text: dish.dishName || '', fontSize: 11, bold: true, color: '#2E5480' },
+            { text: dish.note    || '', fontSize: 10,             color: '#5A7A8A' },
+            { text: '\u25cf',           fontSize: 10, color: dish.isVeg ? '#1E9E5E' : '#E24B4A', alignment: 'center' },
+          ]),
+        },
+        layout: { hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#E0E0E0' },
+        margin: [0, 0, 0, 4],
+      });
+    });
+
+    if (evtNotes && evtNotes.length > 0) {
+      outdoorBody.push({ text: 'Notes', fontSize: 13, bold: true, color: '#2E5480', margin: [0, 10, 0, 4] });
+      evtNotes.forEach(n => {
+        outdoorBody.push({ text: `\u2022  ${n}`, fontSize: 10, color: '#5A7A8A', margin: [8, 1, 0, 1] });
+      });
+    }
+
+    const outdoorDoc = {
+      pageSize: 'A4', pageMargins: [40, 40, 40, 40],
+      footer: (currentPage, pageCount) => ({
+        columns: [
+          { text: 'My Maharaj · Blue Flute Consulting LLC-FZ · Dubai', fontSize: 8, color: '#5A7A8A', margin: [20, 0, 0, 0] },
+          { text: `Page ${currentPage} of ${pageCount}`,               fontSize: 8, color: '#5A7A8A', alignment: 'right', margin: [0, 0, 20, 0] },
+        ],
+        margin: [0, 5, 0, 0],
+      }),
+      content: outdoorBody,
+      defaultStyle: { font: 'Roboto' },
+    };
+
+    try {
+      const pdfOut = pdfmake.createPdf(outdoorDoc);
+      const buf    = await pdfOut.getBuffer();
+      const dateStr = evtDate.split('-').join('');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="maharaj-outdoor-${dateStr || 'menu'}.pdf"`);
+      return res.send(buf);
+    } catch (e) {
+      console.error('[generate-pdf] outdoor-group error:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Outdoor Canteen PDF (early return) ────────────────────────────────────
+  if (type === 'outdoor-canteen') {
+    const { coversPerDay = '', cuisinePref = '', day1 = {}, day2 = {}, notes: cNotes = [] } = req.body;
+
+    const canteenLeftStack = [
+      { text: familyName,                                           fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
+      { text: '2-Day Rotating Canteen Menu',                        fontSize: 13,             color: '#2E5480', alignment: 'left' },
+      { text: [coversPerDay ? `${coversPerDay} covers/day` : '', coversPerDay && cuisinePref ? '  \u2022  ' : '', cuisinePref || ''].join(''), fontSize: 11, color: '#5A7A8A', alignment: 'left' },
+    ];
+
+    const canteenBody = [
+      {
+        columns: [
+          { width: 160, stack: canteenLeftStack, margin: [0, 50, 0, 0] },
+          { width: '*', stack: centreStack,      alignment: 'center' },
+          { width: 160, stack: rightStack,       margin: [0, 24, 0, 0] },
+        ],
+      },
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595, y2: 0, lineWidth: 2, lineColor: '#C9A227' }], margin: [0, 8, 0, 8] },
+    ];
+
+    const SLOT_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks'];
+    const SLOT_TITLES = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
+
+    [{ label: 'Day 1', data: day1 }, { label: 'Day 2', data: day2 }].forEach(({ label, data }) => {
+      canteenBody.push({ text: label, fontSize: 14, bold: true, color: '#2E5480', margin: [0, 12, 0, 6] });
+      SLOT_ORDER.forEach(slot => {
+        const items = data[slot];
+        if (!items || items.length === 0) return;
+        canteenBody.push({ text: SLOT_TITLES[slot], fontSize: 11, bold: true, color: '#1A6B5C', margin: [0, 4, 0, 2] });
+        canteenBody.push({
+          table: {
+            widths: ['*', '*', 40],
+            body: items.map(dish => [
+              { text: dish.dishName || '', fontSize: 11, bold: true, color: '#2E5480' },
+              { text: dish.note    || '', fontSize: 10,             color: '#5A7A8A' },
+              { text: '\u25cf',           fontSize: 10, color: dish.isVeg ? '#1E9E5E' : '#E24B4A', alignment: 'center' },
+            ]),
+          },
+          layout: { hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#E0E0E0' },
+          margin: [0, 0, 0, 4],
+        });
+      });
+    });
+
+    if (cNotes && cNotes.length > 0) {
+      canteenBody.push({ text: 'Notes', fontSize: 13, bold: true, color: '#2E5480', margin: [0, 10, 0, 4] });
+      cNotes.forEach(n => {
+        canteenBody.push({ text: `\u2022  ${n}`, fontSize: 10, color: '#5A7A8A', margin: [8, 1, 0, 1] });
+      });
+    }
+
+    const canteenDoc = {
+      pageSize: 'A4', pageMargins: [40, 40, 40, 40],
+      footer: (currentPage, pageCount) => ({
+        columns: [
+          { text: 'My Maharaj · Blue Flute Consulting LLC-FZ · Dubai', fontSize: 8, color: '#5A7A8A', margin: [20, 0, 0, 0] },
+          { text: `Page ${currentPage} of ${pageCount}`,               fontSize: 8, color: '#5A7A8A', alignment: 'right', margin: [0, 0, 20, 0] },
+        ],
+        margin: [0, 5, 0, 0],
+      }),
+      content: canteenBody,
+      defaultStyle: { font: 'Roboto' },
+    };
+
+    try {
+      const pdfOut = pdfmake.createPdf(canteenDoc);
+      const buf    = await pdfOut.getBuffer();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="maharaj-canteen-menu.pdf"');
+      return res.send(buf);
+    } catch (e) {
+      console.error('[generate-pdf] outdoor-canteen error:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Grocery PDF (early return) ────────────────────────────────────────────
   if (type === 'grocery') {
     const groceryContent = [
