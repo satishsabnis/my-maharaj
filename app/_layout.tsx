@@ -27,12 +27,17 @@ async function migrateAsyncStorageToSupabase() {
       try {
         const plans = JSON.parse(menuRaw);
         if (Array.isArray(plans) && plans.length > 0) {
+          const { data: cuisineRows } = await supabase
+            .from('cuisine_preferences')
+            .select('cuisine_name')
+            .eq('user_id', user.id)
+            .or('is_excluded.eq.false,is_excluded.is.null');
+          const userCuisines = Array.from(new Set((cuisineRows || []).map((r: any) => r.cuisine_name).filter(Boolean)));
           const rows = plans.map((p: any) => ({
             user_id: user.id,
             period_start: p.days?.[0]?.date || new Date().toISOString().split('T')[0],
             period_end: p.days?.[p.days.length - 1]?.date || new Date().toISOString().split('T')[0],
-            date_range: p.dateRange || '',
-            cuisine: 'Various',
+            cuisines: userCuisines,
             food_pref: 'veg',
             plan_json: { days: p.days || [] },
             generated_at: p.createdAt || new Date().toISOString(),

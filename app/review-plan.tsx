@@ -246,12 +246,18 @@ export default function ReviewPlanScreen() {
       const user = await getSessionUser();
       if (!user) return;
       const dates = plan.map(d => d.date);
+      const { data: cuisineRows } = await supabase
+        .from('cuisine_preferences')
+        .select('cuisine_name')
+        .eq('user_id', user.id)
+        .or('is_excluded.eq.false,is_excluded.is.null');
+      const userCuisines = Array.from(new Set((cuisineRows || []).map((r: any) => r.cuisine_name).filter(Boolean)));
 
       await supabase.from('meal_plans').insert({
         user_id: user.id,
         period_start: dates[0],
         period_end:   dates[dates.length - 1],
-        date_range:   `${dates[0]} to ${dates[dates.length - 1]}`,
+        cuisines:     userCuisines,
         plan_json:    { days: plan },
         generated_at: new Date().toISOString(),
       });
