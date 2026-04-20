@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Platform,
+  Alert, Animated, Modal, Platform,
   ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -8,6 +8,8 @@ import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../constants/theme';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { supabase, getSessionUser } from '../lib/supabase';
+import { ZONE_CUISINE_MAP } from '../lib/ai';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,8 @@ interface PartyMenuResult {
   mainAccompaniments: DishItem[];
   desserts: DishItem[];
 }
+
+type SectionField = 'starters' | 'mainRiceBread' | 'mainCurries' | 'mainAccompaniments' | 'desserts';
 
 // ── API ──────────────────────────────────────────────────────────────────────
 
@@ -48,6 +52,43 @@ const STYLES = [
   'Thali-style', 'Plated', 'Street food party', 'Family-style',
 ];
 
+const SECTION_TO_SLOTS: Record<string, string[]> = {
+  starters:       ['snack', 'starter'],
+  riceAndBread:   ['rice', 'bread'],
+  curries:        ['lunch_curry', 'dinner_curry'],
+  accompaniments: ['veg_side', 'raita'],
+  desserts:       ['dessert', 'sweet'],
+};
+
+const SECTION_RESULT_KEY: Record<string, SectionField> = {
+  starters:       'starters',
+  riceAndBread:   'mainRiceBread',
+  curries:        'mainCurries',
+  accompaniments: 'mainAccompaniments',
+  desserts:       'desserts',
+};
+
+const SECTION_DISPLAY: Record<string, string> = {
+  starters:       'STARTERS',
+  riceAndBread:   'RICE & BREAD',
+  curries:        'CURRIES',
+  accompaniments: 'ACCOMPANIMENTS',
+  desserts:       'DESSERTS',
+};
+
+// ── Zone helper (verbatim from review-plan.tsx) ───────────────────────────────
+
+function getZoneForUser(cuisines: string[]): string[] {
+  const lower = cuisines.map(c => c.toLowerCase());
+  const union = new Set<string>();
+  for (const members of Object.values(ZONE_CUISINE_MAP)) {
+    if (lower.some(c => members.map(m => m.toLowerCase()).includes(c))) {
+      members.forEach(m => union.add(m));
+    }
+  }
+  return union.size > 0 ? [...union] : ZONE_CUISINE_MAP['West'];
+}
+
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function PartyMenuScreen() {
@@ -70,13 +111,42 @@ export default function PartyMenuScreen() {
   const [guestNotes, setGuestNotes] = useState('');
   const [specific, setSpecific] = useState('');
 
+  // User / cuisine
+  const [userCuisines, setUserCuisines] = useState<string[]>([]);
+
   // Output
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [menu, setMenu] = useState<PartyMenuResult | null>(null);
 
+  // Swap sheet
+  type SwapDish = { name: string; description: string; isVeg: boolean };
+  type SwapState = { visible: boolean; dishName: string; sectionKey: string } | null;
+  const [swapSheet, setSwapSheet]           = useState<SwapState>(null);
+  const [swapCuisineSugg, setSwapCuisineSugg] = useState<SwapDish[]>([]);
+  const [swapZoneSugg, setSwapZoneSugg]       = useState<SwapDish[]>([]);
+  const [swapAllSugg, setSwapAllSugg]         = useState<SwapDish[]>([]);
+  const [swapExpanded, setSwapExpanded]       = useState(false);
+
   // Pulsing logo animation
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // ── Load cuisines at mount ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const user = await getSessionUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('cuisine_preferences')
+          .select('cuisine_name')
+          .eq('user_id', user.id)
+          .eq('is_excluded', false);
+        setUserCuisines((data ?? []).map((r: any) => r.cuisine_name as string).filter(Boolean));
+      } catch {}
+    })();
+  }, []);
 
   useEffect(() => {
     if (!loading) return;
@@ -98,6 +168,8 @@ export default function PartyMenuScreen() {
     setStarterCount(3); setMainVegCount(4); setMainNonVegCount(2);
     setMainVegCountNV(2); setSideCount(3); setDessertCount(2);
     setGuestNotes(''); setSpecific(''); setError(''); setLoading(false);
+    setSwapSheet(null); setSwapCuisineSugg([]); setSwapZoneSugg([]);
+    setSwapAllSugg([]); setSwapExpanded(false);
   }, []));
 
   function handleDateChange(raw: string) {
@@ -201,9 +273,84 @@ export default function PartyMenuScreen() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
+  // ── Swap ──────────────────────────────────────────────────────────────────
+
+  async function openSwapSheet(dishName: string, sectionKey: string) {
+    if (!menu) return;
+    const slots = SECTION_TO_SLOTS[sectionKey] ?? [];
+    const zoneCuisines = getZoneForUser(userCuisines);
+    const allCuisines  = [...new Set([...userCuisines, ...zoneCuisines])];
+
+    const usedDishes = [
+      ...menu.starters, ...menu.mainRiceBread, ...menu.mainCurries,
+      ...menu.mainAccompaniments, ...menu.desserts,
+    ].map(d => d.dishName).filter(Boolean);
+
+    try {
+      let q = supabase
+        .from('dishes')
+        .select('name, description, is_veg, cuisine')
+        .eq('is_banned', false)
+        .filter('slot', 'ov', `{${slots.join(',')}}`);
+      if (foodPref === 'veg') q = q.eq('is_veg', true);
+      if (usedDishes.length > 0) {
+        q = q.not('name', 'in', `(${usedDishes.map(n => `"${n}"`).join(',')})`);
+      }
+      const { data: poolData } = await q.limit(50);
+
+      const pool = (poolData ?? []) as { name: string; description: string; is_veg: boolean; cuisine: string[] }[];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+
+      const cuisineSugg: SwapDish[] = [];
+      const zoneSugg:    SwapDish[] = [];
+      const allSugg:     SwapDish[] = [];
+
+      for (const dish of pool) {
+        if (allSugg.length >= 20) break;
+        const dc = Array.isArray(dish.cuisine) ? dish.cuisine : [];
+        const isUserCuisineMatch = userCuisines.length === 0 || dc.some(c => userCuisines.includes(c));
+        const item: SwapDish = { name: dish.name, description: dish.description ?? '', isVeg: dish.is_veg };
+        if (isUserCuisineMatch && cuisineSugg.length < 2) cuisineSugg.push(item);
+        else if (!isUserCuisineMatch && zoneSugg.length < 2) zoneSugg.push(item);
+        allSugg.push(item);
+      }
+
+      setSwapCuisineSugg(cuisineSugg);
+      setSwapZoneSugg(zoneSugg);
+      setSwapAllSugg(allSugg);
+    } catch {
+      setSwapCuisineSugg([]); setSwapZoneSugg([]); setSwapAllSugg([]);
+    }
+
+    setSwapExpanded(false);
+    setSwapSheet({ visible: true, dishName, sectionKey });
+  }
+
+  function applySwap(newDish: SwapDish) {
+    if (!swapSheet || !menu) return;
+    const resultKey = SECTION_RESULT_KEY[swapSheet.sectionKey];
+    if (!resultKey) return;
+    setMenu(prev => {
+      if (!prev) return prev;
+      const section = prev[resultKey] as DishItem[];
+      return {
+        ...prev,
+        [resultKey]: section.map(d =>
+          d.dishName === swapSheet.dishName
+            ? { dishName: newDish.name, note: newDish.description || undefined, isVeg: newDish.isVeg }
+            : d
+        ),
+      };
+    });
+    setSwapSheet(null);
+  }
+
   // ── Sub-components ────────────────────────────────────────────────────────
 
-  function DishRow({ item }: { item: DishItem }) {
+  function DishRow({ item, sectionKey }: { item: DishItem; sectionKey: string }) {
     return (
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 5 }}>
         <View style={{
@@ -214,17 +361,24 @@ export default function PartyMenuScreen() {
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.navy }}>{item.dishName}</Text>
           {item.note ? <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 1 }}>{item.note}</Text> : null}
         </View>
+        <TouchableOpacity
+          style={s.swapBtn}
+          onPress={() => openSwapSheet(item.dishName, sectionKey)}
+          activeOpacity={0.8}
+        >
+          <Text style={s.swapBtnTxt}>Swap ›</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  function MenuSection({ title, items }: { title: string; items?: DishItem[] }) {
+  function MenuSection({ title, items, sectionKey }: { title: string; items?: DishItem[]; sectionKey: string }) {
     if (!items?.length) return null;
     return (
       <View style={{ marginBottom: 10 }}>
         <Text style={s.sectionTitle}>{title}</Text>
         <View style={s.card}>
-          {items.map((it, i) => <DishRow key={i} item={it} />)}
+          {items.map((it, i) => <DishRow key={i} item={it} sectionKey={sectionKey} />)}
         </View>
       </View>
     );
@@ -402,11 +556,11 @@ export default function PartyMenuScreen() {
           </View>
 
           {/* Sections */}
-          <MenuSection title="STARTERS" items={menu.starters} />
-          <MenuSection title="RICE & BREAD" items={menu.mainRiceBread} />
-          <MenuSection title="CURRIES" items={menu.mainCurries} />
-          <MenuSection title="ACCOMPANIMENTS" items={menu.mainAccompaniments} />
-          <MenuSection title="DESSERTS" items={menu.desserts} />
+          <MenuSection title="STARTERS"       items={menu.starters}         sectionKey="starters" />
+          <MenuSection title="RICE & BREAD"   items={menu.mainRiceBread}    sectionKey="riceAndBread" />
+          <MenuSection title="CURRIES"        items={menu.mainCurries}      sectionKey="curries" />
+          <MenuSection title="ACCOMPANIMENTS" items={menu.mainAccompaniments} sectionKey="accompaniments" />
+          <MenuSection title="DESSERTS"       items={menu.desserts}         sectionKey="desserts" />
 
           {/* Bottom buttons */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
@@ -425,6 +579,87 @@ export default function PartyMenuScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      {/* ── Swap bottom sheet ─────────────────────────────────────────────── */}
+      <Modal
+        visible={swapSheet?.visible ?? false}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSwapSheet(null)}
+      >
+        <TouchableOpacity
+          style={s.sheetOverlay}
+          activeOpacity={1}
+          onPress={() => setSwapSheet(null)}
+        >
+          <TouchableOpacity activeOpacity={1} style={s.sheet}>
+            <Text style={s.sheetHeader}>
+              SWAP {SECTION_DISPLAY[swapSheet?.sectionKey ?? ''] ?? ''}
+            </Text>
+            <Text style={s.sheetCurrent}>Current: {swapSheet?.dishName}</Text>
+
+            {swapCuisineSugg.length > 0 && (
+              <>
+                <Text style={s.sheetSection}>FROM YOUR CUISINES</Text>
+                {swapCuisineSugg.map((d, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={s.swapOption}
+                    onPress={() => applySwap(d)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={s.swapOptionName}>{d.name}</Text>
+                    {d.description ? <Text style={s.swapOptionDesc}>{d.description}</Text> : null}
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            {swapZoneSugg.length > 0 && (
+              <>
+                <Text style={s.sheetSection}>FROM YOUR REGION</Text>
+                {swapZoneSugg.map((d, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={s.swapOption}
+                    onPress={() => applySwap(d)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={s.swapOptionName}>{d.name}</Text>
+                    {d.description ? <Text style={s.swapOptionDesc}>{d.description}</Text> : null}
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            <TouchableOpacity
+              onPress={() => setSwapExpanded(e => !e)}
+              activeOpacity={0.8}
+              style={{ marginTop: 10 }}
+            >
+              <Text style={s.seeAllLink}>
+                See all options {swapExpanded ? '\u25b2' : '\u203a'}
+              </Text>
+            </TouchableOpacity>
+
+            {swapExpanded && (
+              <ScrollView style={{ maxHeight: 200, marginTop: 8 }}>
+                {swapAllSugg.map((d, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={s.swapOption}
+                    onPress={() => applySwap(d)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={s.swapOptionName}>{d.name}</Text>
+                    {d.description ? <Text style={s.swapOptionDesc}>{d.description}</Text> : null}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
     </ScreenWrapper>
   );
@@ -563,6 +798,8 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
   },
+  swapBtn:     { marginLeft: 8, paddingVertical: 2 },
+  swapBtnTxt:  { fontSize: 11, fontWeight: '600', color: colors.teal },
   downloadBtn: {
     flex: 2,
     backgroundColor: colors.emerald,
@@ -579,4 +816,13 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
+  sheetOverlay:   { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet:          { backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  sheetHeader:    { fontSize: 13, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, marginBottom: 4 },
+  sheetCurrent:   { fontSize: 15, fontWeight: '600', color: colors.navy, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.12)', paddingBottom: 12 },
+  sheetSection:   { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 10, marginBottom: 6 },
+  swapOption:     { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.08)' },
+  swapOptionName: { fontSize: 14, color: colors.navy, fontWeight: '600' },
+  swapOptionDesc: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  seeAllLink:     { fontSize: 14, color: colors.teal, fontWeight: '600', textAlign: 'center', paddingVertical: 4 },
 });
