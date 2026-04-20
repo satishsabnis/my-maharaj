@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { colors, cards } from '../constants/theme';
+import { FESTIVALS_2026, type FestivalEntry } from '../constants/festivals';
 
 const SCREEN_W = Dimensions.get('window').width;
 const SCREEN_H = Dimensions.get('window').height;
@@ -37,6 +38,7 @@ export default function HomeScreen() {
   const [todayMeals, setTodayMeals] = useState<{breakfast:string;lunch:string;dinner:string}|null>(null);
   const [mealFeedback, setMealFeedback] = useState({ breakfast: false, lunch: false, dinner: false });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [upcomingFestivals, setUpcomingFestivals] = useState<FestivalEntry[]>([]);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -160,6 +162,15 @@ export default function HomeScreen() {
       }
       if (occ) try { setOccasions(JSON.parse(occ)); } catch {}
       if (prep) try { const tasks = JSON.parse(prep); setMealPrepCount(Array.isArray(tasks) ? tasks.length : 0); } catch {}
+
+      // Festival reminder — next 14 days (today inclusive)
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      const windowEnd = new Date(todayStart); windowEnd.setDate(windowEnd.getDate() + 14);
+      const nearFestivals = FESTIVALS_2026.filter(f => {
+        const fd = new Date(`${f.date} 2026`);
+        return fd >= todayStart && fd <= windowEnd;
+      });
+      setUpcomingFestivals(nearFestivals);
     }
     void load();
   }, []);
@@ -237,6 +248,29 @@ export default function HomeScreen() {
     onCardPress: () => router.push({ pathname: '/ask-maharaj', params: { initialMessage: tipOfDay, initialLabel: 'Maharaj tip' } } as never),
     buttons: [],
   });
+
+  // Card F — Festival reminder (next 14 days)
+  if (upcomingFestivals.length > 0) {
+    const nearest = upcomingFestivals[0];
+    const festDate = new Date(`${nearest.date} 2026`);
+    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((festDate.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+    const whenLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+    const festTitle = upcomingFestivals.length === 1
+      ? nearest.name
+      : `${nearest.name} & ${upcomingFestivals.length - 1} more`;
+    feedCards.push({
+      type: 'festival',
+      bg: { backgroundColor: 'rgba(201,162,39,0.1)', borderLeftWidth: 3, borderLeftColor: colors.gold },
+      borderColor: colors.gold,
+      label: 'Festival',
+      labelColor: colors.gold,
+      title: festTitle,
+      sub: `${whenLabel} -- time to start planning`,
+      onCardPress: () => router.push('/festivals' as never),
+      buttons: [{ text: 'Plan menu', style: 'navy', onPress: () => router.push('/party-menu' as never) }],
+    });
+  }
 
   // Card 1 — Saturday grocery
   if (dayOfWeek === 'Saturday' || (dayOfWeek === 'Friday' && hour >= 18 && maharajDay === 'Saturday')) {

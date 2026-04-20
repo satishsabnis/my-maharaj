@@ -7,39 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { colors } from '../constants/theme';
-
-// ─── Festival data ───────────────────────────────────────────────────────────
-
-interface FestivalEntry {
-  name: string;
-  date: string;   // e.g. '30 Mar'
-  food: string;
-}
-
-const FESTIVALS_2026: FestivalEntry[] = [
-  { name: 'Lohri', date: '13 Jan', food: 'Sarson da Saag, Makki Roti, Gajak, Til Rewdi' },
-  { name: 'Makar Sankranti / Pongal', date: '14 Jan', food: 'Til Laddoo, Pongal rice, Gajak, Chikki' },
-  { name: 'Maha Shivratri', date: '26 Feb', food: 'Sabudana Khichdi, fruits, milk, no non-veg' },
-  { name: 'Holi', date: '4 Mar', food: 'Gujiya, Thandai, Dahi Bhalle, Malpua' },
-  { name: 'Eid ul Fitr', date: '20 Mar', food: 'Biryani, Sheer Kurma, Seviyan' },
-  { name: 'Gudi Padwa / Ugadi', date: '21 Mar', food: 'Puran Poli, Shrikhand, Aam Panha' },
-  { name: 'Ram Navami', date: '27 Mar', food: 'Panchamrit, Panjiri, fruits, no non-veg' },
-  { name: 'Hanuman Jayanti', date: '10 Apr', food: 'Prasad, fruit chaat, no non-veg' },
-  { name: 'Baisakhi', date: '14 Apr', food: 'Sarson da Saag, Makki Roti, Lassi, Meethe Chawal' },
-  { name: 'Akshaya Tritiya', date: '29 Apr', food: 'Sattvic food, sweets, fruits' },
-  { name: 'Eid ul Adha', date: '27 May', food: 'Mutton dishes, Biryani, Haleem' },
-  { name: 'Guru Purnima', date: '3 Jul', food: 'Langar food, dal, rice, kheer' },
-  { name: 'Independence Day', date: '15 Aug', food: 'Tri-colour sweets, festive thali' },
-  { name: 'Janmashtami', date: '17 Aug', food: 'Makhana, Panchamrit, Panjiri, Dahi Handi' },
-  { name: 'Ganesh Chaturthi', date: '24 Aug', food: 'Modak, Ukadiche Modak, Varan Bhaat' },
-  { name: 'Raksha Bandhan', date: '3 Sep', food: 'Sweets, mithai, festive thali' },
-  { name: 'Navratri begins', date: '12 Oct', food: 'Vrat food, Sabudana, Kuttu, fruits' },
-  { name: 'Karwa Chauth', date: '16 Oct', food: 'Sargi thali, moon-viewing sweets, halwa' },
-  { name: 'Dussehra', date: '21 Oct', food: 'Regional sweets, festive meals' },
-  { name: 'Guru Nanak Jayanti', date: '5 Nov', food: 'Langar food, dal, rice, kheer' },
-  { name: 'Diwali', date: '8 Nov', food: 'Mithai, Farsan, Faral, Chakli' },
-  { name: 'Christmas', date: '25 Dec', food: 'Plum cake, roast, festive sweets' },
-];
+import { FESTIVALS_2026, type FestivalEntry } from '../constants/festivals';
 
 const MONTH_ABBRS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -94,8 +62,10 @@ export default function FestivalsScreen() {
   // Family occasions matching current month
   const thisMonthOccasions = occasions.filter(o => o.day.includes(monthAbbr));
 
-  // Full calendar display
-  const visibleFestivals = showAll ? FESTIVALS_2026 : FESTIVALS_2026.slice(0, 6);
+  // Full calendar — only upcoming (today or later), with show-all toggle
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const upcomingFestivals = FESTIVALS_2026.filter(f => new Date(`${f.date} 2026`) >= todayStart);
+  const visibleFestivals = showAll ? upcomingFestivals : upcomingFestivals.slice(0, 6);
 
   // ─── Modal helpers ─────────────────────────────────────────────────────────
 
@@ -218,6 +188,12 @@ export default function FestivalsScreen() {
         {/* ── Section 3: Full Calendar ── */}
         <Text style={[s.sectionTitle, { marginTop: 14 }]}>Full Calendar -- 2026</Text>
 
+        {upcomingFestivals.length === 0 && (
+          <View style={s.card}>
+            <Text style={s.mutedText}>No upcoming festivals this year.</Text>
+          </View>
+        )}
+
         {visibleFestivals.map((f, i) => (
           <View key={`cal-${i}`} style={s.card}>
             <View style={s.festRow}>
@@ -231,7 +207,7 @@ export default function FestivalsScreen() {
           </View>
         ))}
 
-        {!showAll && FESTIVALS_2026.length > 6 && (
+        {!showAll && upcomingFestivals.length > 6 && (
           <TouchableOpacity onPress={() => setShowAll(true)} activeOpacity={0.7}>
             <Text style={s.viewAllLink}>View all 2026 festivals</Text>
           </TouchableOpacity>
@@ -561,7 +537,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnText: {
-    fontSize: 8,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.white,
   },
@@ -575,7 +551,7 @@ const s = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   cancelBtnText: {
-    fontSize: 8,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.navy,
   },
