@@ -1269,6 +1269,7 @@ export default function DietaryProfileScreen() {
         notif_festivals: state.notifFestivals,
         notif_lab_reports: state.notifLabReports,
         notif_insurance_reminders: state.notifInsurance,
+        dietary_profile_completed: true,
         updated_at: new Date().toISOString(),
       };
       
