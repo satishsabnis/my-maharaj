@@ -31,6 +31,7 @@ interface MenuPlan {
   id: string;
   createdAt: string;
   dateRange: string;
+  cuisines?: string[];
   days: DayPlan[];
 }
 
@@ -55,6 +56,25 @@ function formatTimestamp(iso: string): string {
     const d = new Date(iso);
     return `${d.getDate()} ${MONTHS_ABBR[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   } catch { return ''; }
+}
+
+function formatDateRange(from?: string | null, to?: string | null): string {
+  if (!from && !to) return '—';
+  const fmt = (ymd: string) => {
+    const [y, m, d] = ymd.split('-');
+    return `${d}-${m}-${y}`;
+  };
+  if (!from) return fmt(to!);
+  if (!to)   return fmt(from);
+  if (from === to) return fmt(from);
+  return `${fmt(from)} — ${fmt(to)}`;
+}
+
+function formatCuisines(cuisines?: string[]): string {
+  if (!cuisines || cuisines.length === 0) return '—';
+  if (cuisines.length === 1) return cuisines[0];
+  if (cuisines.length <= 3) return cuisines.join(', ');
+  return 'Pan-Indian';
 }
 
 function dishName(entry: MealEntry | string | null | undefined): string {
@@ -113,7 +133,7 @@ export default function MenuHistoryScreen() {
         try {
           const { data, error } = await supabase
             .from('meal_plans')
-            .select('id, period_start, period_end, date_range, plan_json, generated_at')
+            .select('id, period_start, period_end, cuisines, plan_json, generated_at')
             .eq('user_id', user.id)
             .order('generated_at', { ascending: false })
             .limit(20);
@@ -121,15 +141,8 @@ export default function MenuHistoryScreen() {
             const mapped: MenuPlan[] = data.map((row: any) => ({
               id: row.id,
               createdAt: row.generated_at,
-              dateRange: row.date_range || (() => {
-                const fmt = (d: string | null) => {
-                  if (!d) return '—';
-                  const dt = new Date(d);
-                  if (isNaN(dt.getTime())) return '—';
-                  return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-                };
-                return `${fmt(row.period_start)} — ${fmt(row.period_end)}`;
-              })(),
+              dateRange: formatDateRange(row.period_start, row.period_end),
+              cuisines: row.cuisines || [],
               days: row.plan_json?.days ?? [],
             }));
             setPlans(mapped);
@@ -217,6 +230,9 @@ export default function MenuHistoryScreen() {
           </TouchableOpacity>
 
           <Text style={s.detailRange}>{selectedPlan.dateRange}</Text>
+          {selectedPlan.cuisines && selectedPlan.cuisines.length > 0 && (
+            <Text style={s.cuisineSub}>{formatCuisines(selectedPlan.cuisines)}</Text>
+          )}
 
           {(selectedPlan.days ?? []).map((day, idx) => {
             const dateLabel = day.date ? new Date(day.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : '';
@@ -373,7 +389,7 @@ export default function MenuHistoryScreen() {
                     <Text style={s.dayCountText}>{dayCount(plan)} days</Text>
                   </View>
                 </View>
-                <Text style={s.cuisineSub}>Various</Text>
+                <Text style={s.cuisineSub}>{formatCuisines(plan.cuisines)}</Text>
                 <View style={s.cardBottomRow}>
                   <Text style={s.timestampText}>{formatTimestamp(plan.createdAt)}</Text>
                   <Text style={s.chevron}>{'>'}</Text>

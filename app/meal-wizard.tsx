@@ -1064,16 +1064,20 @@ Return ONLY valid JSON (no markdown) in this exact format:
     try {
       const user = await getSessionUser();
       if (!user || !selectedFrom || !selectedTo) return;
-      const dateRange = `${selectedFrom.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
       const dates = confirmedPlan.map((d: any) => d.date).filter(Boolean).sort();
       const periodStart = dates[0] ?? toYMD(selectedFrom);
       const periodEnd   = dates[dates.length - 1] ?? toYMD(selectedTo);
+      const { data: cuisineRows } = await supabase
+        .from('cuisine_preferences')
+        .select('cuisine_name')
+        .eq('user_id', user.id)
+        .or('is_excluded.eq.false,is_excluded.is.null');
+      const userCuisines = Array.from(new Set((cuisineRows || []).map((r: any) => r.cuisine_name).filter(Boolean)));
       const { data, error } = await supabase.from('meal_plans').insert({
         user_id: user.id,
         period_start: periodStart,
         period_end: periodEnd,
-        date_range: dateRange,
-        cuisine: 'Various',
+        cuisines: userCuisines,
         food_pref: foodPref ?? 'veg',
         plan_json: { days: confirmedPlan },
       }).select('id').single();
@@ -1400,8 +1404,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
           await AsyncStorage.setItem('confirmed_meal_plan', JSON.stringify(generatedPlan));
           await AsyncStorage.setItem('meal_plan_date', new Date().toISOString());
           const existing = JSON.parse(await AsyncStorage.getItem('menu_history') || '[]');
-          const dateRange = `${selectedFrom?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} — ${selectedTo?.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
-          const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), dateRange, days: confirmedPlan.map(d => ({ date: d.date, dayName: d.dayName, breakfast: d.breakfast?.name || '\u2014', lunch: d.lunch?.name || '\u2014', snack: d.snack?.name || '\u2014', dinner: d.dinner?.name || '\u2014' })) };
+          const newEntry = { id: Date.now().toString(), createdAt: new Date().toISOString(), days: confirmedPlan.map(d => ({ date: d.date, dayName: d.dayName, breakfast: d.breakfast?.name || '\u2014', lunch: d.lunch?.name || '\u2014', snack: d.snack?.name || '\u2014', dinner: d.dinner?.name || '\u2014' })) };
           await AsyncStorage.setItem('menu_history', JSON.stringify([newEntry, ...existing].slice(0, 20)));
           await AsyncStorage.setItem('maharaj_plan_ready', 'true');
           const dishNames = confirmedPlan.flatMap(d => [d.breakfast?.name, d.lunch?.name, d.snack?.name, d.dinner?.name].filter(Boolean));
