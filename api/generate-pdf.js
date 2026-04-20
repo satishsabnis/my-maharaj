@@ -61,11 +61,20 @@ module.exports = async function handler(req, res) {
     qrBase64       = Buffer.from(qrBuffer).toString('base64');
   } catch { /* optional */ }
 
-  // ── Date formatter ─────────────────────────────────────────────────────────
+  // ── Date formatter (pure string — no Date() to avoid timezone drift) ───────
   const fmtDate = (d) => {
-    try { return new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
-    catch { return String(d ?? ''); }
+    if (!d) return '';
+    const parts = String(d).split('-');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return String(d);
   };
+  const todayFormatted = (() => {
+    const t = new Date();
+    const dd = String(t.getUTCDate()).padStart(2, '0');
+    const mm = String(t.getUTCMonth() + 1).padStart(2, '0');
+    const yyyy = t.getUTCFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  })();
 
   // ── Collect unique dish names ──────────────────────────────────────────────
   const days = planData?.days ?? [];
@@ -170,10 +179,14 @@ module.exports = async function handler(req, res) {
   });
 
   // ── Header columns ─────────────────────────────────────────────────────────
-  // LEFT: family name + date range
+  // LEFT: family name + list date + plan date range
+  const planDateText = (dateFrom && dateTo && dateFrom !== dateTo)
+    ? `List for plan from: ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`
+    : `List for plan: ${fmtDate(dateFrom || dateTo)}`;
   const leftStack = [
-    { text: familyName,                                   fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
-    { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo), fontSize: 13,             color: '#5A7A8A', alignment: 'left' },
+    { text: familyName,    fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
+    { text: `List date: ${todayFormatted}`, fontSize: 11, color: '#5A7A8A', alignment: 'left' },
+    { text: planDateText,  fontSize: 13,             color: '#2E5480', alignment: 'left' },
   ];
   if (planSummaryLanguage && planSummaryLanguage !== 'English' && planSummaryLanguage !== 'en') {
     leftStack.push({ text: planSummaryLanguage, fontSize: 9, color: '#5A7A8A', italics: true, alignment: 'left' });
@@ -204,8 +217,7 @@ module.exports = async function handler(req, res) {
       // Gold rule
       { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595, y2: 0, lineWidth: 2, lineColor: '#C9A227' }], margin: [0, 8, 0, 8] },
       // Title
-      { text: 'Shopping List', fontSize: 18, bold: true, color: '#2E5480', margin: [0, 0, 0, 2] },
-      { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo), fontSize: 11, color: '#5A7A8A', margin: [0, 0, 0, 14] },
+      { text: 'Shopping List', fontSize: 18, bold: true, color: '#2E5480', margin: [0, 0, 0, 14] },
     ];
     // Category blocks
     (content?.categories ?? []).forEach(cat => {
