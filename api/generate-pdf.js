@@ -49,6 +49,8 @@ module.exports = async function handler(req, res) {
     dateFrom,
     dateTo,
     planSummaryLanguage = 'English',
+    type,
+    content,
   } = req.body ?? {};
 
   // ── QR code ────────────────────────────────────────────────────────────────
@@ -187,6 +189,57 @@ module.exports = async function handler(req, res) {
   const rightStack = [];
   if (bfcLogo)  rightStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130, alignment: 'right' });
   if (qrBase64) rightStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6, alignment: 'right' });
+
+  // ── Grocery PDF (early return) ────────────────────────────────────────────
+  if (type === 'grocery') {
+    const groceryContent = [
+      // Shared brand header
+      {
+        columns: [
+          { width: 160, stack: leftStack,   margin: [0, 50, 0, 0] },
+          { width: '*', stack: centreStack, alignment: 'center' },
+          { width: 160, stack: rightStack,  margin: [0, 50, 0, 0] },
+        ],
+      },
+      // Gold rule
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595, y2: 0, lineWidth: 2, lineColor: '#C9A227' }], margin: [0, 8, 0, 8] },
+      // Title
+      { text: 'Shopping List', fontSize: 18, bold: true, color: '#2E5480', margin: [0, 0, 0, 2] },
+      { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo), fontSize: 11, color: '#5A7A8A', margin: [0, 0, 0, 14] },
+    ];
+    // Category blocks
+    (content?.categories ?? []).forEach(cat => {
+      groceryContent.push({ text: cat.name, fontSize: 14, bold: true, color: '#2E5480', margin: [0, 8, 0, 4] });
+      (cat.items ?? []).forEach(item => {
+        const qty = [item.quantity, item.unit].filter(Boolean).join(' ');
+        const label = qty ? `${qty}  ${item.name}` : item.name;
+        groceryContent.push({ text: `\u2022  ${label}`, fontSize: 11, margin: [8, 1, 0, 1] });
+      });
+    });
+    const groceryDoc = {
+      pageSize:      'A4',
+      pageMargins:   [30, 20, 30, 40],
+      footer: (currentPage, pageCount) => ({
+        columns: [
+          { text: 'My Maharaj · Blue Flute Consulting LLC-FZ · Dubai', fontSize: 8, color: '#5A7A8A', margin: [20, 0, 0, 0] },
+          { text: `Page ${currentPage} of ${pageCount}`, fontSize: 8, color: '#5A7A8A', alignment: 'right', margin: [0, 0, 20, 0] },
+        ],
+        margin: [0, 5, 0, 0],
+      }),
+      content: groceryContent,
+      defaultStyle: { font: 'Roboto' },
+    };
+    try {
+      const pdfOut = pdfmake.createPdf(groceryDoc);
+      const buf = await pdfOut.getBuffer();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="MyMaharaj_ShoppingList.pdf"');
+      return res.send(buf);
+    } catch (e) {
+      console.error('[generate-pdf] grocery error:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
 
   // ── Document definition ────────────────────────────────────────────────────
   const docDefinition = {

@@ -61,6 +61,7 @@ export default function ReviewPlanScreen() {
   const [activeDay, setActiveDay]           = useState(0);
   const [confirmedDays, setConfirmedDays]   = useState([false, false, false]);
   const [saving, setSaving]                 = useState(false);
+  const [completedDays, setCompletedDays]   = useState(0);
 
   // User state
   const [userId, setUserId]                 = useState('');
@@ -145,6 +146,7 @@ export default function ReviewPlanScreen() {
         userId: user.id,
         cuisines: cuisines.length > 0 ? cuisines : ['Maharashtrian'],
         foodPref: fp,
+        onProgress: (n) => setCompletedDays(n),
       });
       setPlan(days);
     } catch (e) {
@@ -311,10 +313,12 @@ export default function ReviewPlanScreen() {
       setRegenCount(newCount);
       setRegenCountDate(today);
 
+      setCompletedDays(0);
       const days = await generate3DaySamplePlan({
         userId,
         cuisines: userCuisines.length > 0 ? userCuisines : ['Maharashtrian'],
         foodPref,
+        onProgress: (n) => setCompletedDays(n),
       });
       setPlan(days);
     } catch (e) {
@@ -351,6 +355,21 @@ export default function ReviewPlanScreen() {
             resizeMode="contain"
           />
           <Text style={r.loadingText}>Maharaj is preparing your plan...</Text>
+          {/* 3-day progress dots */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
+            {[0, 1, 2].map(i => {
+              const isDone    = i < completedDays;
+              const isCurrent = i === completedDays;
+              return (
+                <View key={i} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isDone ? '#1E9E5E' : 'transparent', borderWidth: 2, borderColor: isDone ? '#1E9E5E' : isCurrent ? '#2E5480' : '#D1D5DB', alignItems: 'center', justifyContent: 'center' }}>
+                  {isDone
+                    ? <Text style={{ fontSize: 12, color: '#FFFFFF', fontWeight: '700' }}>{'\u2713'}</Text>
+                    : <Text style={{ fontSize: 10, fontWeight: '700', color: isCurrent ? '#2E5480' : '#9CA3AF' }}>{i + 1}</Text>
+                  }
+                </View>
+              );
+            })}
+          </View>
         </SafeAreaView>
       </View>
     );

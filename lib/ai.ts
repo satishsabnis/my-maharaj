@@ -1123,8 +1123,9 @@ export async function generate3DaySamplePlan(params: {
   userId: string;
   cuisines: string[];
   foodPref: 'veg' | 'nonveg';
+  onProgress?: (completed: number) => void;
 }): Promise<MealPlanDayV4[]> {
-  const { cuisines, foodPref } = params;
+  const { cuisines, foodPref, onProgress } = params;
 
   // Zone-filtered cuisine list: user selections + all sibling cuisines from matching zones
   const zoneCuisines = getZoneForCuisines(cuisines);
@@ -1200,6 +1201,7 @@ export async function generate3DaySamplePlan(params: {
       lunch:  { curry: lunchCurry,  sabzi: lunchSabzi,  bread: lunchBread,  raita: lunchRaita,  rice: lunchRice  },
       dinner: { curry: dinnerCurry, sabzi: dinnerSabzi, bread: dinnerBread, raita: dinnerRaita, rice: dinnerRice },
     });
+    onProgress?.(i + 1);
   }
 
   return dayResults;
