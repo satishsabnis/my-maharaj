@@ -203,6 +203,90 @@ module.exports = async function handler(req, res) {
   if (bfcLogo)  rightStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130, alignment: 'center' });
   if (qrBase64) rightStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6, alignment: 'center' });
 
+  // ── Party Menu PDF (early return) ────────────────────────────────────────
+  if (type === 'party') {
+    const partyDate     = req.body.date     || '';
+    const partyOccasion = req.body.occasion || '';
+
+    // LEFT: family name + party date + occasion
+    const partyLeftStack = [
+      { text: familyName,                                    fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
+      { text: partyDate ? `Party date: ${partyDate}` : '',  fontSize: 11,             color: '#5A7A8A', alignment: 'left' },
+      { text: partyOccasion,                                 fontSize: 13,             color: '#2E5480', alignment: 'left' },
+    ];
+
+    const SECTION_ORDER = ['starters', 'riceAndBread', 'curries', 'accompaniments', 'desserts'];
+    const SECTION_TITLES = {
+      starters:       'Starters',
+      riceAndBread:   'Rice & Bread',
+      curries:        'Curries',
+      accompaniments: 'Accompaniments',
+      desserts:       'Desserts',
+    };
+
+    const partyBody = [
+      // Three-column brand header
+      {
+        columns: [
+          { width: 160, stack: partyLeftStack, margin: [0, 50, 0, 0] },
+          { width: '*', stack: centreStack,    alignment: 'center' },
+          { width: 160, stack: rightStack,     margin: [0, 24, 0, 0] },
+        ],
+      },
+      // Gold rule
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595, y2: 0, lineWidth: 2, lineColor: '#C9A227' }], margin: [0, 8, 0, 8] },
+    ];
+
+    const sectionData = content || {};
+    SECTION_ORDER.forEach(key => {
+      const items = sectionData[key];
+      if (!items || items.length === 0) return;
+      partyBody.push({ text: SECTION_TITLES[key], fontSize: 13, bold: true, color: '#2E5480', margin: [0, 12, 0, 6] });
+      partyBody.push({
+        table: {
+          widths: ['*', '*', 40],
+          body: items.map(dish => [
+            { text: dish.name || '',  fontSize: 11, bold: true, color: '#2E5480' },
+            { text: dish.note || '',  fontSize: 10,             color: '#5A7A8A' },
+            { text: '\u25cf',        fontSize: 10, color: dish.isVeg ? '#1E9E5E' : '#E24B4A', alignment: 'center' },
+          ]),
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0,
+          hLineColor: () => '#E0E0E0',
+        },
+        margin: [0, 0, 0, 4],
+      });
+    });
+
+    const partyDoc = {
+      pageSize:    'A4',
+      pageMargins: [40, 40, 40, 40],
+      footer: (currentPage, pageCount) => ({
+        columns: [
+          { text: 'My Maharaj · Blue Flute Consulting LLC-FZ · Dubai', fontSize: 8, color: '#5A7A8A', margin: [20, 0, 0, 0] },
+          { text: `Page ${currentPage} of ${pageCount}`,               fontSize: 8, color: '#5A7A8A', alignment: 'right', margin: [0, 0, 20, 0] },
+        ],
+        margin: [0, 5, 0, 0],
+      }),
+      content:      partyBody,
+      defaultStyle: { font: 'Roboto' },
+    };
+
+    try {
+      const pdfOut  = pdfmake.createPdf(partyDoc);
+      const buf     = await pdfOut.getBuffer();
+      const dateStr = partyDate.split('-').join('');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="maharaj-party-menu-${dateStr}.pdf"`);
+      return res.send(buf);
+    } catch (e) {
+      console.error('[generate-pdf] party error:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Grocery PDF (early return) ────────────────────────────────────────────
   if (type === 'grocery') {
     const groceryContent = [

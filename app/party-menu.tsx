@@ -259,18 +259,64 @@ export default function PartyMenuScreen() {
     } finally { setLoading(false); }
   }
 
-  function downloadMenu() {
-    if (!menu || Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const sectionHTML = (title: string, items: DishItem[]) => {
-      if (!items?.length) return '';
-      return `<h2>${title}</h2><table><tr><th>#</th><th>Dish</th><th>Note</th></tr>${items.map((it, i) => `<tr><td>${i + 1}</td><td>${it.isVeg ? '(V)' : '(NV)'} <strong>${it.dishName}</strong></td><td>${it.note || ''}</td></tr>`).join('')}</table>`;
-    };
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:A4;margin:15mm}body{font-family:Arial,sans-serif}h2{color:${colors.navy};font-size:14px;margin:16px 0 8px;border-bottom:1px solid #E5E7EB;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:${colors.navy};color:${colors.white};padding:8px;font-size:11px;text-align:left}td{padding:8px;font-size:11px;border:1px solid #E5E7EB}</style></head><body><h1>${menu.occasion || occasion}</h1><p>${menu.summary || ''}</p>${sectionHTML('Starters', menu.starters)}${sectionHTML('Rice & Bread', menu.mainRiceBread)}${sectionHTML('Curries', menu.mainCurries)}${sectionHTML('Accompaniments', menu.mainAccompaniments)}${sectionHTML('Desserts', menu.desserts)}<script>setTimeout(function(){window.print()},800)</script></body></html>`;
-    const blob = new Blob([html], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'maharaj-party-menu.html';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  async function downloadMenu() {
+    if (!menu) return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    try {
+      const user = await getSessionUser();
+      let familyName = 'My Family';
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('family_name')
+          .eq('id', user.id)
+          .single();
+        if (profile?.family_name) familyName = profile.family_name;
+      }
+
+      const mapSection = (items: DishItem[]) =>
+        items.map(d => ({ name: d.dishName, note: d.note ?? '', isVeg: d.isVeg }));
+
+      const payload = {
+        type: 'party',
+        familyName,
+        date,
+        occasion: menu.occasion || occasion,
+        content: {
+          starters:       mapSection(menu.starters ?? []),
+          riceAndBread:   mapSection(menu.mainRiceBread ?? []),
+          curries:        mapSection(menu.mainCurries ?? []),
+          accompaniments: mapSection(menu.mainAccompaniments ?? []),
+          desserts:       mapSection(menu.desserts ?? []),
+        },
+      };
+
+      const resp = await fetch('https://my-maharaj.vercel.app/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET,
+        } as Record<string, string>,
+        body: JSON.stringify(payload),
+      });
+
+      if (!resp.ok) { Alert.alert('Could not generate PDF', 'Please try again.'); return; }
+
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const dateStr = date ? date.split('-').join('') : 'menu';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `maharaj-party-menu-${dateStr}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('[PartyMenu] downloadMenu error:', err);
+      Alert.alert('Could not download PDF', 'Please try again.');
+    }
   }
 
   // ── Swap ──────────────────────────────────────────────────────────────────
