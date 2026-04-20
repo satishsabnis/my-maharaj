@@ -1,23 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Platform,
-  SafeAreaView, ScrollView, StyleSheet, Text,
-  TextInput, TouchableOpacity, View, ActivityIndicator,
+  Alert, Animated, Easing, KeyboardAvoidingView, Platform,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity,
+  View, ActivityIndicator,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { Audio } from 'expo-av';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Poppins_400Regular } from '@expo-google-fonts/poppins';
 import { supabase, getSessionUser } from '../lib/supabase';
-import { navy, gold, white, textSec, border } from '../theme/colors';
-import MarqueeTicker from '../components/MarqueeTicker';
+import { colors } from '../theme/colors';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 interface Message { role: 'user' | 'assistant'; content: string; }
 interface MealResult { title: string; meals: { slot: string; name: string; description: string }[]; tips?: string[]; }
 
+const LANG_MAP: Record<string, string> = {
+  'English': 'en-IN', 'Hindi': 'hi-IN', 'Marathi': 'mr-IN',
+  'Tamil': 'ta-IN', 'Telugu': 'te-IN', 'Kannada': 'kn-IN',
+  'Malayalam': 'ml-IN', 'Bengali': 'bn-IN', 'Gujarati': 'gu-IN', 'Punjabi': 'pa-IN',
+};
+
 async function callClaude(messages: { role: string; content: string }[], systemPrompt: string): Promise<string> {
   const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, system: systemPrompt, messages }),
   });
   const data = await res.json();
@@ -27,16 +35,16 @@ async function callClaude(messages: { role: string; content: string }[], systemP
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')   // bold-italic
-    .replace(/\*\*(.*?)\*\*/g, '$1')         // bold
-    .replace(/\*(.*?)\*/g, '$1')             // italic
-    .replace(/#{1,6}\s/g, '')                // headers
-    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')    // code
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1')      // links
-    .replace(/^\s*[-*+]\s/gm, '\u2022 ')     // bullets
-    .replace(/---+/g, '')                     // horizontal rules
-    .replace(/___+/g, '')                     // underline rules
-    .replace(/:[a-z_]+:/g, '')                // emoji shortcodes
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/^\s*[-*+]\s/gm, '\u2022 ')
+    .replace(/---+/g, '')
+    .replace(/___+/g, '')
+    .replace(/:[a-z_]+:/g, '')
     .trim();
 }
 
@@ -58,7 +66,6 @@ function renderResponseText(text: string) {
   return lines.map((line, i) => {
     const trimmed = line.trim();
     if (!trimmed) return <View key={i} style={{height:6}} />;
-    // Sub-header: short line ending with : or starting with caps word followed by :
     const isHeader = (trimmed.length < 40 && trimmed.endsWith(':')) || /^[A-Z][a-z]+:/.test(trimmed);
     if (isHeader) {
       return (
@@ -72,17 +79,19 @@ function renderResponseText(text: string) {
 }
 
 export default function AskMaharajScreen() {
-  const { initialMessage, initialLabel } = useLocalSearchParams<{ initialMessage?: string; initialLabel?: string }>();
+  const { initialMessage } = useLocalSearchParams<{ initialMessage?: string; initialLabel?: string }>();
   const [fontsLoaded] = useFonts({ Poppins_400Regular });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [mealResult, setMealResult] = useState<MealResult | null>(null);
   const [listening, setListening] = useState(false);
-  const [lastVoiceInput, setLastVoiceInput] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const lastAiBubbleRef = useRef<View>(null);
+  const audioRef = useRef<any>(null);
+  const soundRef = useRef<any>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [familyCount, setFamilyCount] = useState(0);
   const [userName, setUserName] = useState('');
@@ -124,6 +133,24 @@ export default function AskMaharajScreen() {
     })();
   }, []);
 
+  function scrollToLastAiBubble() {
+    setTimeout(() => {
+      if (lastAiBubbleRef.current && scrollRef.current) {
+        try {
+          (lastAiBubbleRef.current as any).measureLayout(
+            scrollRef.current as any,
+            (x: number, y: number) => { scrollRef.current?.scrollTo({ y, animated: true }); },
+            () => { scrollRef.current?.scrollToEnd({ animated: true }); }
+          );
+        } catch {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }
+      } else {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    }, 150);
+  }
+
   // Auto-send initialMessage from tip card tap
   const autoSentRef = useRef(false);
   useEffect(() => {
@@ -150,7 +177,7 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
         setMessages([userMsg, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
       } finally {
         setLoading(false);
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+        scrollToLastAiBubble();
       }
     })();
   }, [initialMessage]);
@@ -165,7 +192,6 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
       ]);
       const memberCtx = (members ?? []).map((m: any) => `${m.name} (${m.age}yo)${m.health_notes ? ': ' + m.health_notes : ''}`).join('; ');
       const cuisineCtx = (cuisines ?? []).map((c: any) => c.cuisine_name).join(', ');
-      // FIX 7: Read dietary from AsyncStorage (where meal wizard saves it)
       const savedFoodPref = await AsyncStorage.getItem('dietary_food_pref');
       const savedNonVegOpts = await AsyncStorage.getItem('dietary_nonveg_opts');
       let dietCtx = '';
@@ -176,12 +202,10 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
       } else {
         dietCtx = 'Dietary preference not set — assume vegetarian.';
       }
-      console.log('[AskMaharaj] Dietary context:', dietCtx);
       return [memberCtx ? `Family: ${memberCtx}` : '', cuisineCtx ? `Cuisines: ${cuisineCtx}` : '', dietCtx].filter(Boolean).join('\n');
     } catch { return ''; }
   }
 
-  // Intent detection — routes to correct screen before AI call
   function detectIntent(msg: string): string | null {
     const m = msg.toLowerCase();
     if (m.includes('plan my week') || m.includes('meal plan') || m.includes('generate plan') || m.includes('plan this week')) return 'meal-wizard';
@@ -193,13 +217,67 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
     return null;
   }
 
+  async function stopSpeaking() {
+    if (Platform.OS === 'web') {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    } else {
+      if (soundRef.current) {
+        try { await soundRef.current.stopAsync(); await soundRef.current.unloadAsync(); } catch {}
+        soundRef.current = null;
+      }
+    }
+    setSpeakingIndex(null);
+    setIsPaused(false);
+  }
+
+  async function speakMessage(text: string, msgIndex: number) {
+    await stopSpeaking();
+    setSpeakingIndex(msgIndex);
+    setIsPaused(false);
+    const speechText = stripForSpeech(text);
+    const langCode = LANG_MAP[userLanguages[0]] || 'en-IN';
+    try {
+      const res = await fetch('https://my-maharaj.vercel.app/api/sarvam-tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
+        body: JSON.stringify({ text: speechText, language: langCode }),
+      });
+      const data = await res.json();
+      if (!data.audio) throw new Error('No audio');
+      if (Platform.OS === 'web') {
+        const audio = new (window as any).Audio(`data:audio/wav;base64,${data.audio}`);
+        audioRef.current = audio;
+        audio.onended = () => { setSpeakingIndex(null); setIsPaused(false); };
+        audio.play();
+      } else {
+        const { sound } = await Audio.Sound.createAsync({ uri: `data:audio/wav;base64,${data.audio}` });
+        soundRef.current = sound;
+        sound.setOnPlaybackStatusUpdate((status: any) => {
+          if (status.didJustFinish) { setSpeakingIndex(null); setIsPaused(false); soundRef.current = null; }
+        });
+        await sound.playAsync();
+      }
+    } catch {
+      setSpeakingIndex(null);
+    }
+  }
+
+  function pauseSpeaking() {
+    if (Platform.OS === 'web') { audioRef.current?.pause(); }
+    else { soundRef.current?.pauseAsync(); }
+    setIsPaused(true);
+  }
+
+  function resumeSpeaking() {
+    if (Platform.OS === 'web') { audioRef.current?.play(); }
+    else { soundRef.current?.playAsync(); }
+    setIsPaused(false);
+  }
+
   async function send() {
     const text = input.trim();
-    const wasVoice = lastVoiceInput;
-    setLastVoiceInput(false);
     if (!text || loading) return;
 
-    // Check intent before AI call
     const intent = detectIntent(text);
     if (intent) {
       setInput('');
@@ -233,169 +311,161 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
       if (mealMatch) { try { setMealResult(JSON.parse(mealMatch[1]) as MealResult); } catch {} }
       const clean = stripMarkdown(response.replace(/MEAL_JSON_START[\s\S]*?MEAL_JSON_END/g, '').trim());
       setMessages(prev => [...prev, { role: 'assistant', content: clean }]);
-      // Auto-speak disabled — user taps Speak button explicitly
-    } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Sorry, something went wrong. Please try again.` }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
     } finally {
       setLoading(false);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      scrollToLastAiBubble();
     }
   }
 
   function startVoice() {
-    if (Platform.OS !== 'web') { setInput('Voice works in the web version. Please type.'); return; }
+    if (Platform.OS !== 'web') {
+      Alert.alert('Voice Input', 'Voice input works in the web version. Please type your question.');
+      return;
+    }
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setInput('Voice not supported in this browser.'); return; }
     const r = new SR(); r.lang = 'en-IN'; r.continuous = false; r.interimResults = false;
     setListening(true);
-    r.onresult = (e: any) => { setInput(e.results[0][0].transcript); setLastVoiceInput(true); setListening(false); };
+    r.onresult = (e: any) => { setInput(e.results[0][0].transcript); setListening(false); };
     r.onerror = () => setListening(false);
     r.onend = () => setListening(false);
     r.start();
   }
 
   return (
-    <View style={{flex:1}}>
-      {/* Background covers 100% */}
-      <ImageBackground source={require('../assets/background.png')} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}} resizeMode="cover" />
-
-      <SafeAreaView style={{flex:1}}>
-        {/* Header */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={{borderWidth:1.5,borderColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
-            <Text style={{fontSize:15,fontWeight:'700',color:'#2E5480'}}>Back</Text>
-          </TouchableOpacity>
-          <Text style={{flex:1,fontSize:16,fontWeight:'700',color:'#2E5480',textAlign:'center'}}>Ask Maharaj</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={{backgroundColor:'#2E5480',borderRadius:8,paddingVertical:6,paddingHorizontal:12}}>
-            <Text style={{fontSize:15,fontWeight:'700',color:'white'}}>Home</Text>
-          </TouchableOpacity>
-        </View>
-        <MarqueeTicker />
-
-        <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-          {/* Messages */}
-          <ScrollView ref={scrollRef} contentContainerStyle={{padding:14,paddingBottom:80}} showsVerticalScrollIndicator={false}>
-            {messages.length === 0 && (
-              <View style={{alignItems:'center',paddingVertical:20,paddingHorizontal:12}}>
-                <Animated.Image
-                  source={require('../assets/logo.png')}
-                  style={{width:88,height:88,transform:[{scale:pulseAnim}],marginBottom:4}}
-                  resizeMode="contain"
-                />
-                <Text style={{fontSize:16,fontWeight:'700',color:navy,marginTop:4,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
-                <Text style={{fontSize:13,color:textSec,textAlign:'center',lineHeight:20,marginBottom:16}}>Ask me anything — meals, fridge, shopping, nutrition. Or choose below.</Text>
-                <View style={{width:'100%',flexDirection:'row',flexWrap:'wrap',gap:8}}>
-                  {['Plan my week','What is in my fridge?','Party menu','Shopping list','Meal prep','Outdoor trip'].map(s_ => (
-                    <TouchableOpacity key={s_} style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,padding:10,borderWidth:1,borderColor:border,flexBasis:'47%',flexGrow:0}} onPress={() => {
-                      const intent = detectIntent(s_);
-                      if (intent) { router.push(`/${intent}` as never); }
-                      else { setInput(s_); }
-                    }}>
-                      <Text style={{fontSize:12,color:navy,fontWeight:'500'}}>{s_}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+    <ScreenWrapper title="Ask Maharaj" onBack={() => router.back()} showHome>
+      <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <ScrollView ref={scrollRef} contentContainerStyle={{padding:14,paddingBottom:80}} showsVerticalScrollIndicator={false}>
+          {messages.length === 0 && (
+            <View style={{alignItems:'center',paddingVertical:20,paddingHorizontal:12}}>
+              <Animated.Image
+                source={require('../assets/logo.png')}
+                style={{width:140,height:140,transform:[{scale:pulseAnim}],marginBottom:4}}
+                resizeMode="contain"
+              />
+              <Text style={{fontSize:16,fontWeight:'700',color:colors.navy,marginTop:4,marginBottom:6,textAlign:'center'}}>Namaste{userName ? ` ${userName}` : ''}. I am your Maharaj.</Text>
+              <Text style={{fontSize:13,color:colors.textSec,textAlign:'center',lineHeight:20,marginBottom:16}}>Ask me anything — meals, fridge, shopping, nutrition. Or choose below.</Text>
+              <View style={{width:'100%',flexDirection:'row',flexWrap:'wrap',gap:8}}>
+                {['Plan my week','What is in my fridge?','Party menu','Shopping list','Meal prep','Outdoor trip'].map(s_ => (
+                  <TouchableOpacity key={s_} style={{backgroundColor:'rgba(255,255,255,0.92)',borderRadius:10,padding:10,borderWidth:1,borderColor:colors.border,flexBasis:'47%',flexGrow:0}} onPress={() => {
+                    const intent = detectIntent(s_);
+                    if (intent) { router.push(`/${intent}` as never); }
+                    else { setInput(s_); }
+                  }}>
+                    <Text style={{fontSize:12,color:colors.navy,fontWeight:'500'}}>{s_}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            )}
+            </View>
+          )}
 
-            {messages.map((msg, i) => (
-              <View key={i} style={msg.role === 'user' ? s.userBubble : s.aiBubble}>
+          {messages.map((msg, i) => {
+            const isLastAI = i === messages.length - 1 && msg.role === 'assistant';
+            return (
+              <View
+                key={i}
+                ref={isLastAI ? lastAiBubbleRef : undefined}
+                style={msg.role === 'user' ? s.userBubble : s.aiBubble}
+              >
                 {msg.role === 'user' ? (
-                  <Text style={{fontSize:14,lineHeight:22,color:white}}>{msg.content}</Text>
+                  <Text style={{fontSize:14,lineHeight:22,color:colors.white}}>{msg.content}</Text>
                 ) : (
                   <View>{renderResponseText(msg.content)}</View>
                 )}
                 {msg.role === 'assistant' && (
-                  <TouchableOpacity style={{alignSelf:'flex-end',marginTop:8,backgroundColor:isSpeaking?'#C9A227':'#2E5480',borderRadius:24,paddingHorizontal:24,paddingVertical:12,minWidth:48,minHeight:48,alignItems:'center',justifyContent:'center'}} onPress={() => {
-                    if (typeof window !== 'undefined' && window.speechSynthesis) {
-                      if (isSpeaking && !isPaused) { window.speechSynthesis.pause(); setIsPaused(true); return; }
-                      if (isSpeaking && isPaused) { window.speechSynthesis.resume(); setIsPaused(false); return; }
-                      window.speechSynthesis.cancel();
-                      const u = new SpeechSynthesisUtterance(stripForSpeech(msg.content).slice(0,500));
-                      u.lang = 'en-IN'; u.rate = 0.9; u.pitch = 0.85;
-                      const voices = window.speechSynthesis.getVoices();
-                      u.voice = voices.find(v => v.name.includes('Rishi'))
-                        || voices.find(v => v.name.includes('David'))
-                        || voices.find(v => v.name.includes('Daniel'))
-                        || voices.find(v => v.name.includes('Google UK English Male'))
-                        || voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('female'))
-                        || voices.find(v => v.lang.startsWith('en'))
-                        || null;
-                      u.onend = () => { setIsSpeaking(false); setIsPaused(false); };
-                      setIsSpeaking(true); setIsPaused(false);
-                      window.speechSynthesis.speak(u);
-                    }
-                  }}>
-                    <Text style={{fontSize:14,fontWeight:'600',color:isSpeaking?'#2E5480':'#C9A227'}}>{isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Speak'}</Text>
-                  </TouchableOpacity>
+                  <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:8,gap:8}}>
+                    {speakingIndex === i ? (
+                      <>
+                        <TouchableOpacity
+                          style={{backgroundColor:colors.gold,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
+                          onPress={isPaused ? resumeSpeaking : pauseSpeaking}
+                        >
+                          <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>{isPaused ? 'Resume' : 'Pause'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{backgroundColor:'rgba(26,58,92,0.12)',borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
+                          onPress={stopSpeaking}
+                        >
+                          <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Stop</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <TouchableOpacity
+                        style={{backgroundColor:colors.navy,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center',opacity:speakingIndex !== null ? 0.4 : 1}}
+                        onPress={() => speakMessage(msg.content, i)}
+                        disabled={speakingIndex !== null}
+                      >
+                        <Text style={{fontSize:14,fontWeight:'600',color:colors.gold}}>Speak</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
-            ))}
+            );
+          })}
 
-            {loading && (
-              <View style={s.aiBubble}>
-                <ActivityIndicator color={navy} size="small" />
-                <Text style={{fontSize:13,color:textSec,fontStyle:'italic',marginTop:4}}>Thinking...</Text>
-              </View>
-            )}
+          {loading && (
+            <View style={s.aiBubble}>
+              <ActivityIndicator color={colors.navy} size="small" />
+              <Text style={{fontSize:13,color:colors.textSec,fontStyle:'italic',marginTop:4}}>Thinking...</Text>
+            </View>
+          )}
 
-            {/* Meal result cards — matching wizard card style */}
-            {mealResult && (
-              <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:16,padding:14,marginBottom:12,borderWidth:1,borderColor:border}}>
-                <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:10}}>{mealResult.title ?? 'Your Meal Plan'}</Text>
-                {mealResult.meals.map((meal, i) => (
-                  <View key={i} style={{backgroundColor:'#F8FFFE',borderRadius:12,padding:12,marginBottom:8,borderWidth:1,borderColor:'#E5E7EB'}}>
-                    <View style={{backgroundColor:'#E8F5E9',borderRadius:6,paddingHorizontal:8,paddingVertical:3,alignSelf:'flex-start',marginBottom:6}}>
-                      <Text style={{fontSize:10,fontWeight:'700',color:'#1A6B5C'}}>{meal.slot}</Text>
-                    </View>
-                    <Text style={{fontSize:16,fontWeight:'800',color:navy,marginBottom:3}}>{meal.name}</Text>
-                    <Text style={{fontSize:13,color:textSec,lineHeight:20}}>{meal.description}</Text>
+          {mealResult && (
+            <View style={{backgroundColor:'rgba(255,255,255,0.95)',borderRadius:16,padding:14,marginBottom:12,borderWidth:1,borderColor:colors.border}}>
+              <Text style={{fontSize:16,fontWeight:'800',color:colors.navy,marginBottom:10}}>{mealResult.title ?? 'Your Meal Plan'}</Text>
+              {mealResult.meals.map((meal, i) => (
+                <View key={i} style={{backgroundColor:'#F8FFFE',borderRadius:12,padding:12,marginBottom:8,borderWidth:1,borderColor:'#E5E7EB'}}>
+                  <View style={{backgroundColor:'#E8F5E9',borderRadius:6,paddingHorizontal:8,paddingVertical:3,alignSelf:'flex-start',marginBottom:6}}>
+                    <Text style={{fontSize:13,fontWeight:'700',color:'#1A6B5C'}}>{meal.slot}</Text>
                   </View>
-                ))}
-                {mealResult.tips?.length ? (
-                  <View style={{backgroundColor:'#FFFBEB',borderRadius:10,padding:10,marginBottom:8,borderWidth:1,borderColor:'#FDE68A'}}>
-                    <Text style={{fontSize:12,fontWeight:'700',color:'#B45309',marginBottom:4}}>Maharaj's Tips</Text>
-                    {mealResult.tips.map((t, i) => <Text key={i} style={{fontSize:12,color:'#78350F',lineHeight:18}}>{'\u2022'} {t}</Text>)}
-                  </View>
-                ) : null}
-                <View style={{flexDirection:'row',gap:8,marginTop:4}}>
-                  <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:10,paddingVertical:9,alignItems:'center'}} onPress={() => { setMealResult(null); setInput('Suggest different meals'); }}>
-                    <Text style={{fontSize:11,fontWeight:'600',color:navy}}>Regenerate</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:10,paddingVertical:9,alignItems:'center'}} onPress={() => router.push('/meal-wizard' as never)}>
-                    <Text style={{fontSize:11,fontWeight:'500',color:white}}>Full Weekly Plan</Text>
-                  </TouchableOpacity>
+                  <Text style={{fontSize:16,fontWeight:'800',color:colors.navy,marginBottom:3}}>{meal.name}</Text>
+                  <Text style={{fontSize:13,color:colors.textSec,lineHeight:20}}>{meal.description}</Text>
                 </View>
+              ))}
+              {mealResult.tips?.length ? (
+                <View style={{backgroundColor:'#FFFBEB',borderRadius:10,padding:10,marginBottom:8,borderWidth:1,borderColor:'#FDE68A'}}>
+                  <Text style={{fontSize:12,fontWeight:'700',color:'#B45309',marginBottom:4}}>Maharaj's Tips</Text>
+                  {mealResult.tips.map((t, i) => <Text key={i} style={{fontSize:12,color:'#78350F',lineHeight:18}}>{'\u2022'} {t}</Text>)}
+                </View>
+              ) : null}
+              <View style={{flexDirection:'row',gap:8,marginTop:4}}>
+                <TouchableOpacity style={{flex:1,borderWidth:1.5,borderColor:'rgba(27,58,92,0.2)',borderRadius:10,paddingVertical:9,alignItems:'center'}} onPress={() => { setMealResult(null); setInput('Suggest different meals'); }}>
+                  <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Regenerate</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{flex:1,backgroundColor:colors.navy,borderRadius:10,paddingVertical:9,alignItems:'center'}} onPress={() => router.push('/meal-wizard' as never)}>
+                  <Text style={{fontSize:14,fontWeight:'500',color:colors.white}}>Full Weekly Plan</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </ScrollView>
+            </View>
+          )}
+        </ScrollView>
 
-          {/* Input bar — pinned outside ScrollView */}
-          <View style={{backgroundColor:'white',borderTopWidth:0.5,borderTopColor:'rgba(201,162,39,0.3)',padding:8,flexDirection:'row',alignItems:'flex-end',gap:8}}>
-            <TouchableOpacity onPress={startVoice} style={{width:36,height:36,borderRadius:18,backgroundColor:listening?gold:'#F0F5FA',alignItems:'center',justifyContent:'center'}}>
-              <Svg width={18} height={18} viewBox="0 0 24 24">
-                <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill={listening?'white':'#2E5480'} />
-                <Path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke={listening?'white':'#2E5480'} strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                <Path d="M12 19v4M8 23h8" stroke={listening?'white':'#2E5480'} strokeWidth="1.5" strokeLinecap="round" fill="none" />
-              </Svg>
-            </TouchableOpacity>
-            <TextInput style={s.input} value={input} onChangeText={setInput} placeholder="Ask Maharaj anything..." placeholderTextColor={textSec} multiline maxLength={500} returnKeyType="send" onSubmitEditing={send} />
-            <TouchableOpacity style={[s.sendBtn, (!input.trim()||loading) && {opacity:0.4}]} onPress={send} disabled={!input.trim()||loading}>
-              <Text style={{fontSize:20,color:white,fontWeight:'700',lineHeight:24}}>{'\u2191'}</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={{fontSize:9,color:'#9CA3AF',textAlign:'center',paddingVertical:2,backgroundColor:'rgba(255,255,255,0.92)'}}>{familyCount > 0 ? `Maharaj knows your ${familyCount} family members` : 'Add family in Profile for personalised answers'}{hasPlan ? ' \u00B7 Plan loaded' : ''}</Text>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
+        {/* Input bar */}
+        <View style={{backgroundColor:'white',borderTopWidth:0.5,borderTopColor:'rgba(201,162,39,0.3)',padding:8,flexDirection:'row',alignItems:'flex-end',gap:8}}>
+          <TouchableOpacity onPress={startVoice} style={{width:36,height:36,borderRadius:18,backgroundColor:listening?colors.gold:'#F0F5FA',alignItems:'center',justifyContent:'center'}}>
+            <Svg width={18} height={18} viewBox="0 0 24 24">
+              <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill={listening?'white':colors.navy} />
+              <Path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke={listening?'white':colors.navy} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <Path d="M12 19v4M8 23h8" stroke={listening?'white':colors.navy} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            </Svg>
+          </TouchableOpacity>
+          <TextInput style={s.input} value={input} onChangeText={setInput} placeholder="Ask Maharaj anything..." placeholderTextColor={colors.textSec} multiline maxLength={500} returnKeyType="send" onSubmitEditing={send} />
+          <TouchableOpacity style={[s.sendBtn, (!input.trim()||loading) && {opacity:0.4}]} onPress={send} disabled={!input.trim()||loading}>
+            <Text style={{fontSize:20,color:colors.white,fontWeight:'700',lineHeight:24}}>{'\u2191'}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={{fontSize:12,color:'#9CA3AF',textAlign:'center',paddingVertical:2,backgroundColor:'rgba(255,255,255,0.92)'}}>{familyCount > 0 ? `Maharaj knows your ${familyCount} family members` : 'Add family in Profile for personalised answers'}{hasPlan ? ' \u00B7 Plan loaded' : ''}</Text>
+      </KeyboardAvoidingView>
+    </ScreenWrapper>
   );
 }
 
 const s = StyleSheet.create({
-  header: { flexDirection:'row', alignItems:'center', paddingHorizontal:14, paddingTop:Platform.OS==='web'?14:Platform.OS==='android'?25:8, paddingBottom:10, backgroundColor:'rgba(255,255,255,0.88)', borderBottomWidth:1, borderBottomColor:'rgba(27,58,92,0.1)' },
-  userBubble: { alignSelf:'flex-end', backgroundColor:navy, borderRadius:16, borderBottomRightRadius:4, padding:12, marginBottom:10, maxWidth:'82%' },
-  aiBubble: { alignSelf:'flex-start', backgroundColor:'rgba(255,255,255,0.94)', borderRadius:16, borderBottomLeftRadius:4, padding:12, marginBottom:10, maxWidth:'88%', borderWidth:1, borderColor:border },
-  inputBar: { flexDirection:'row', alignItems:'flex-end', gap:8, padding:10, paddingBottom:Platform.OS==='ios'?30:Platform.OS==='android'?20:8, backgroundColor:'rgba(255,255,255,0.94)', borderTopWidth:1, borderTopColor:'rgba(27,58,92,0.1)' },
-  input: { flex:1, borderWidth:1.5, borderColor:border, borderRadius:14, paddingHorizontal:12, paddingVertical:8, fontSize:14, color:navy, backgroundColor:white, maxHeight:90 } as any,
-  sendBtn: { width:40, height:40, borderRadius:20, backgroundColor:navy, alignItems:'center', justifyContent:'center' },
+  userBubble: { alignSelf:'flex-end', backgroundColor:colors.navy, borderRadius:16, borderBottomRightRadius:4, padding:12, marginBottom:10, maxWidth:'82%' },
+  aiBubble: { alignSelf:'flex-start', backgroundColor:'rgba(255,255,255,0.94)', borderRadius:16, borderBottomLeftRadius:4, padding:12, marginBottom:10, maxWidth:'88%', borderWidth:1, borderColor:colors.border },
+  input: { flex:1, borderWidth:1.5, borderColor:colors.border, borderRadius:14, paddingHorizontal:12, paddingVertical:8, fontSize:14, color:colors.navy, backgroundColor:colors.white, maxHeight:90 } as any,
+  sendBtn: { width:40, height:40, borderRadius:20, backgroundColor:colors.navy, alignItems:'center', justifyContent:'center' },
 });
