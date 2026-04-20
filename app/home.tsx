@@ -79,9 +79,72 @@ export default function HomeScreen() {
         setFirstName(first);
         setInitials(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'));
         setEmail(user.email ?? '');
-
       }
 
+      const today = new Date().toISOString().split('T')[0];
+
+      // Shared extractors — v4 MealPlanDayV4 shape first, legacy shapes as fallback
+      const getBreakfast = (d: any): string =>
+        d?.breakfast?.dishName          ||
+        d?.anatomy?.breakfast?.dishName ||
+        d?.dishes?.breakfast            ||
+        d?.breakfast?.name              ||
+        d?.breakfast?.options?.[0]?.name || '';
+      const getLunchMain = (d: any): string => {
+        if (d?.lunch?.curry?.dishName) return d.lunch.curry.dishName;
+        const c = d?.anatomy?.lunch?.curry;
+        if (Array.isArray(c)) return c[0]?.dishName || '';
+        if (c?.dishName) return c.dishName;
+        return d?.dishes?.lunch_curry_1 || d?.lunch?.name || d?.lunch?.options?.[0]?.name || '';
+      };
+      const getDinnerMain = (d: any): string => {
+        if (d?.dinner?.curry?.dishName) return d.dinner.curry.dishName;
+        const c = d?.anatomy?.dinner?.curry;
+        if (Array.isArray(c)) return c[0]?.dishName || '';
+        if (c?.dishName) return c.dishName;
+        return d?.dishes?.dinner_curry_1 || d?.dinner?.name || d?.dinner?.options?.[0]?.name || '';
+      };
+
+      function applyPlanDays(days: any[]) {
+        setHasWeekPlan(true);
+        const dayIdx = days.findIndex((d: any) => d.date >= today);
+        setPlanDayX(dayIdx >= 0 ? dayIdx + 1 : days.length);
+        setPlanDayY(days.length);
+        const todayPlan = days.find((d: any) => d.date === today);
+        if (todayPlan) {
+          setTodayMeals({
+            breakfast: getBreakfast(todayPlan),
+            lunch:     getLunchMain(todayPlan),
+            dinner:    getDinnerMain(todayPlan),
+          });
+          const h = new Date().getHours();
+          setMealFeedback({ breakfast: h >= 10, lunch: h >= 14, dinner: h >= 21 });
+        }
+      }
+
+      // ── Primary: Supabase query for active plan ──────────────────────
+      let planLoaded = false;
+      if (user) {
+        try {
+          const { data: activePlan } = await supabase
+            .from('meal_plans')
+            .select('id, period_start, period_end, date_range, plan_json, generated_at')
+            .eq('user_id', user.id)
+            .lte('period_start', today)
+            .gte('period_end', today)
+            .order('generated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const days: any[] = activePlan?.plan_json?.days ?? [];
+          if (Array.isArray(days) && days.length > 0) {
+            planLoaded = true;
+            applyPlanDays(days);
+          }
+        } catch {}
+      }
+
+      // ── Fallback: AsyncStorage (pre-v4 / offline) ────────────────────
       const [md, cwp, occ, prep] = await Promise.all([
         AsyncStorage.getItem('maharaj_day'),
         AsyncStorage.getItem('confirmed_meal_plan'),
@@ -89,43 +152,10 @@ export default function HomeScreen() {
         AsyncStorage.getItem('meal_prep_tasks'),
       ]);
       if (md) setMaharajDay(md);
-      if (cwp) {
+      if (!planLoaded && cwp) {
         try {
           const plan = JSON.parse(cwp);
-          if (Array.isArray(plan) && plan.length > 0) {
-            setHasWeekPlan(true);
-            const today = new Date().toISOString().split('T')[0];
-            const dayIdx = plan.findIndex((d: any) => d.date >= today);
-            setPlanDayX(dayIdx >= 0 ? dayIdx + 1 : plan.length);
-            setPlanDayY(plan.length);
-            const todayPlan = plan.find((d: any) => d.date === today);
-            if (todayPlan) {
-              const getBreakfast = (d: any): string =>
-                d?.anatomy?.breakfast?.dishName ||
-                d?.dishes?.breakfast ||
-                d?.breakfast?.name ||
-                d?.breakfast?.options?.[0]?.name || '';
-              const getLunchMain = (d: any): string => {
-                const curry = d?.anatomy?.lunch?.curry;
-                if (Array.isArray(curry)) return curry[0]?.dishName || '';
-                if (curry?.dishName) return curry.dishName;
-                return d?.dishes?.lunch_curry_1 || d?.lunch?.name || d?.lunch?.options?.[0]?.name || '';
-              };
-              const getDinnerMain = (d: any): string => {
-                const curry = d?.anatomy?.dinner?.curry;
-                if (Array.isArray(curry)) return curry[0]?.dishName || '';
-                if (curry?.dishName) return curry.dishName;
-                return d?.dishes?.dinner_curry_1 || d?.dinner?.name || d?.dinner?.options?.[0]?.name || '';
-              };
-              setTodayMeals({
-                breakfast: getBreakfast(todayPlan),
-                lunch: getLunchMain(todayPlan),
-                dinner: getDinnerMain(todayPlan),
-              });
-              const h = new Date().getHours();
-              setMealFeedback({ breakfast: h >= 10, lunch: h >= 14, dinner: h >= 21 });
-            }
-          }
+          if (Array.isArray(plan) && plan.length > 0) applyPlanDays(plan);
         } catch {}
       }
       if (occ) try { setOccasions(JSON.parse(occ)); } catch {}
