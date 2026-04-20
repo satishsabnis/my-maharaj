@@ -1191,7 +1191,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
           name: it.name,
         })),
       }));
-    await downloadPDF('Shopping List', { categories }, 'maharaj-shopping-list-DDMMYYYY.pdf');
+    await downloadPDF('grocery', { categories }, 'maharaj-shopping-list-DDMMYYYY.pdf');
   }
 
   // ── Scan functions ───────────────────────────────────────────────────────
