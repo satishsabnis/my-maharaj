@@ -1082,8 +1082,11 @@ Return ONLY valid JSON (no markdown) in this exact format:
         plan_json: { days: confirmedPlan },
       }).select('id').single();
       if (error) { console.error('[MealWizard] savePlanToSupabase error:', error.message); return; }
-      // Generate prep tasks linked to this plan
-      if (data?.id) await generateMealPrepTasks(confirmedPlan, user.id, data.id);
+      // Persist plan UUID so meal-prep screen can filter by current plan
+      if (data?.id) {
+        await AsyncStorage.setItem('current_plan_id', data.id);
+        await generateMealPrepTasks(confirmedPlan, user.id, data.id);
+      }
     } catch (e) { console.error('[MealWizard] savePlanToSupabase catch:', e); }
   }
 
@@ -1095,6 +1098,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
   async function generateMealPrepTasks(confirmedPlan: any[], userId: string, planId: string) {
     try {
+      // Clear stale tasks from previous plans before inserting new ones
+      const { error: delErr } = await supabase.from('meal_prep_tasks').delete().eq('user_id', userId);
+      if (delErr) console.error('[MealWizard] delete old prep tasks error:', delErr.message);
+
       const tasks: any[] = [];
       const today = new Date();
 
@@ -1153,13 +1160,9 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
       if (tasks.length === 0) return;
 
-      // Save to Supabase
+      // Save to Supabase — tasks now live exclusively here with real UUIDs
       const { error } = await supabase.from('meal_prep_tasks').insert(tasks);
       if (error) console.error('[MealWizard] generateMealPrepTasks error:', error.message);
-
-      // Also save to AsyncStorage for offline access
-      const asTasks = tasks.map((t, i) => ({ ...t, id: `${planId}-${i}` }));
-      await AsyncStorage.setItem('meal_prep_tasks', JSON.stringify(asTasks));
     } catch (e) { console.error('[MealWizard] generateMealPrepTasks catch:', e); }
   }
 

@@ -1,12 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import {
-  Animated, ImageBackground, SafeAreaView, ScrollView,
+  Animated, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { colors } from '../constants/theme';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -87,36 +88,30 @@ export default function MealPrepScreen() {
 
   async function loadPrepTasks() {
     try {
-      // Try Supabase first
       const user = await getSessionUser();
       if (user) {
-        try {
-          const { data, error } = await supabase
-            .from('meal_prep_tasks')
-            .select('id, dish, day, meal, prep_type, instruction, timing, urgency, done')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-          if (!error && data && data.length > 0) {
-            const mapped: PrepTask[] = data.map((row: any) => ({
-              id: row.id,
-              dish: row.dish,
-              day: row.day,
-              meal: row.meal,
-              prepType: row.prep_type,
-              instruction: row.instruction,
-              timing: row.timing,
-              urgency: row.done ? 'done' : row.urgency,
-              done: row.done,
-            }));
-            setTasks(mapped);
-            setLoaded(true);
-            return;
-          }
-        } catch { /* fall through to AsyncStorage */ }
+        const currentPlanId = await AsyncStorage.getItem('current_plan_id');
+        let query = supabase
+          .from('meal_prep_tasks')
+          .select('id, dish, day, meal, prep_type, instruction, timing, urgency, done')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (currentPlanId) query = query.eq('plan_id', currentPlanId);
+        const { data, error } = await query;
+        if (!error && data) {
+          setTasks(data.map((row: any) => ({
+            id: row.id,
+            dish: row.dish,
+            day: row.day,
+            meal: row.meal,
+            prepType: row.prep_type,
+            instruction: row.instruction,
+            timing: row.timing,
+            urgency: row.done ? 'done' : row.urgency,
+            done: row.done,
+          })));
+        }
       }
-      // Fallback: AsyncStorage
-      const raw = await AsyncStorage.getItem('meal_prep_tasks');
-      if (raw) setTasks(JSON.parse(raw));
     } catch {}
     setLoaded(true);
   }
@@ -157,25 +152,7 @@ export default function MealPrepScreen() {
   const tonightCount = tasks.filter(t => t.urgency === 'tonight' && !t.done).length;
 
   return (
-    <View style={{ flex: 1 }}>
-      <ImageBackground
-        source={require('../assets/background.png')}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
-        resizeMode="cover"
-      />
-
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Text style={s.backTxt}>Back</Text>
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Meal Prep</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
-            <Text style={s.homeTxt}>Home</Text>
-          </TouchableOpacity>
-        </View>
-
+    <ScreenWrapper title="Meal Prep" onBack={() => router.back()} showHome>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           {/* Tip card */}
           <View style={s.tipCard}>
@@ -258,7 +235,7 @@ export default function MealPrepScreen() {
                     <Text style={{ fontSize: 14, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>{task.dish}</Text>
 
                     {/* Instruction */}
-                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 5, lineHeight: 12 }}>{task.instruction}</Text>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 5, lineHeight: 19 }}>{task.instruction}</Text>
 
                     {/* Tags row */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -277,38 +254,13 @@ export default function MealPrepScreen() {
 
           <View style={{ height: 40 }} />
         </ScrollView>
-      </SafeAreaView>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#2E5480',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  backTxt: { fontSize: 15, fontWeight: '700', color: '#2E5480' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
-  homeBtn: {
-    backgroundColor: '#2E5480',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  homeTxt: { fontSize: 15, fontWeight: '700', color: colors.white },
   scroll: { padding: 12, paddingBottom: 24 },
   tipCard: {
     backgroundColor: 'rgba(30,158,94,0.08)',
