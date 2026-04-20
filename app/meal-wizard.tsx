@@ -1360,16 +1360,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const dateRange = generatedPlan && generatedPlan.length > 0
         ? `${generatedPlan[0].date} to ${generatedPlan[generatedPlan.length - 1].date}`
         : today.toLocaleDateString();
+      const postBody = type === 'grocery'
+        ? JSON.stringify({ type: 'grocery', familyName, dateFrom: selectedFrom?.toISOString(), dateTo: selectedTo?.toISOString(), content })
+        : JSON.stringify({ familyName, planData: generatedPlan ? { days: generatedPlan } : { days: [] }, dateFrom: selectedFrom?.toISOString(), dateTo: selectedTo?.toISOString(), planSummaryLanguage: pdfLang });
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          familyName,
-          planData: generatedPlan ? { days: generatedPlan } : { days: [] },
-          dateFrom: selectedFrom?.toISOString(),
-          dateTo: selectedTo?.toISOString(),
-          planSummaryLanguage: pdfLang,
-        }),
+        body: postBody,
       });
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
