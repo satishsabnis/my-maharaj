@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Animated, ImageBackground, Platform,
-  SafeAreaView, ScrollView, StyleSheet, Text,
+  Alert, Animated, Platform,
+  ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../constants/theme';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ interface PartyMenuResult {
 async function callClaude(system: string, user: string): Promise<string> {
   const res = await fetch('https://my-maharaj.vercel.app/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1500,
@@ -41,9 +41,12 @@ async function callClaude(system: string, user: string): Promise<string> {
   return (data?.content?.[0]?.text ?? '').replace(/```json|```/g, '').trim();
 }
 
-// ── Dropdown helpers ─────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
-const STYLES = ['Sit-down dinner', 'Buffet', 'Cocktail and snacks', 'High tea'];
+const STYLES = [
+  'Sit-down dinner', 'Buffet', 'Cocktail and snacks', 'High tea',
+  'Thali-style', 'Plated', 'Street food party', 'Family-style',
+];
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -53,10 +56,17 @@ export default function PartyMenuScreen() {
   // Form fields
   const [occasion, setOccasion] = useState('');
   const [date, setDate] = useState('');
+  const [dateError, setDateError] = useState(false);
   const [adults, setAdults] = useState('');
   const [kids, setKids] = useState('');
   const [style, setStyle] = useState(STYLES[0]);
-  const [showStyleDrop, setShowStyleDrop] = useState(false);
+  const [foodPref, setFoodPref] = useState<'veg' | 'nonveg'>('veg');
+  const [starterCount, setStarterCount] = useState(3);
+  const [mainVegCount, setMainVegCount] = useState(4);
+  const [mainNonVegCount, setMainNonVegCount] = useState(2);
+  const [mainVegCountNV, setMainVegCountNV] = useState(2);
+  const [sideCount, setSideCount] = useState(3);
+  const [dessertCount, setDessertCount] = useState(2);
   const [guestNotes, setGuestNotes] = useState('');
   const [specific, setSpecific] = useState('');
 
@@ -82,20 +92,49 @@ export default function PartyMenuScreen() {
 
   useFocusEffect(useCallback(() => {
     setPhase('input'); setMenu(null); setOccasion(''); setDate('');
+    setDateError(false);
     setAdults(''); setKids(''); setStyle(STYLES[0]);
+    setFoodPref('veg');
+    setStarterCount(3); setMainVegCount(4); setMainNonVegCount(2);
+    setMainVegCountNV(2); setSideCount(3); setDessertCount(2);
     setGuestNotes(''); setSpecific(''); setError(''); setLoading(false);
   }, []));
 
+  function handleDateChange(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    let masked = digits;
+    if (digits.length > 4) masked = digits.slice(0, 2) + '-' + digits.slice(2, 4) + '-' + digits.slice(4);
+    else if (digits.length > 2) masked = digits.slice(0, 2) + '-' + digits.slice(2);
+    setDate(masked);
+    setDateError(false);
+  }
+
+  function validateDate() {
+    if (!date || date.length < 10) { setDateError(false); return; }
+    const parts = date.split('-');
+    if (parts.length !== 3) { setDateError(true); return; }
+    const dd = parseInt(parts[0], 10), mm = parseInt(parts[1], 10), yyyy = parseInt(parts[2], 10);
+    const entered = new Date(yyyy, mm - 1, dd);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    setDateError(entered < today);
+  }
+
   async function generate() {
     if (!occasion.trim()) { setError('Please describe the occasion.'); return; }
+    if (dateError) { setError('Please enter a valid future date.'); return; }
     setError(''); setLoading(true); setMenu(null);
 
     const guestLine = (adults || '0') + ' adults' + (kids && kids !== '0' ? ', ' + kids + ' kids' : '');
+    const curryCountDesc = foodPref === 'nonveg'
+      ? `${mainNonVegCount} non-veg + ${mainVegCountNV} veg curries`
+      : `${mainVegCount} veg curries`;
+    const totalCurries = foodPref === 'nonveg' ? mainNonVegCount + mainVegCountNV : mainVegCount;
     const contextLine = [
       occasion,
       date ? 'on ' + date : '',
       guestLine,
       'Style: ' + style,
+      'Food preference: ' + (foodPref === 'veg' ? 'Vegetarian only' : 'Vegetarian and Non-vegetarian'),
       guestNotes ? 'Notes: ' + guestNotes : '',
       specific ? 'Special requests: ' + specific : '',
     ].filter(Boolean).join('. ');
@@ -109,7 +148,7 @@ export default function PartyMenuScreen() {
       '"mainCurries":[{"dishName":"","isVeg":true,"note":""}],' +
       '"mainAccompaniments":[{"dishName":"","isVeg":true,"note":""}],' +
       '"desserts":[{"dishName":"","isVeg":true,"note":""}]}. ' +
-      'starters 3-4 items. mainRiceBread 2-3 items. mainCurries 3-4 items. mainAccompaniments 3-4 items. desserts 2-3 items. ' +
+      `starters ${starterCount} items. mainRiceBread 2-3 items. mainCurries ${totalCurries} items (${curryCountDesc}). mainAccompaniments ${sideCount} items. desserts ${dessertCount} items. ` +
       'All dish names must be authentic Indian dishes. Return ONLY the JSON object, nothing else.';
 
     function tryParse(raw: string): PartyMenuResult | null {
@@ -129,7 +168,6 @@ export default function PartyMenuScreen() {
         setMenu(parsed);
         setPhase('output');
       } else {
-        // One retry with ultra-strict instruction
         const retryRaw = await callClaude(
           'Return ONLY valid JSON matching this exact schema. No other text.',
           'Schema: {"occasion":"string","summary":"string","starters":[{"dishName":"string","isVeg":true,"note":"string"}],"mainRiceBread":[{"dishName":"string","isVeg":true,"note":"string"}],"mainCurries":[{"dishName":"string","isVeg":true,"note":"string"}],"mainAccompaniments":[{"dishName":"string","isVeg":true,"note":"string"}],"desserts":[{"dishName":"string","isVeg":true,"note":"string"}]}. Generate for: ' + contextLine
@@ -163,18 +201,18 @@ export default function PartyMenuScreen() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
-  // ── Dish row renderer ────────────────────────────────────────────────────────
+  // ── Sub-components ────────────────────────────────────────────────────────
 
   function DishRow({ item }: { item: DishItem }) {
     return (
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 5 }}>
         <View style={{
-          width: 6, height: 6, borderRadius: 3, marginTop: 2, marginRight: 6,
+          width: 6, height: 6, borderRadius: 3, marginTop: 4, marginRight: 6,
           backgroundColor: item.isVeg ? colors.emerald : colors.danger,
         }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 7.5, fontWeight: '700', color: colors.navy }}>{item.dishName}</Text>
-          {item.note ? <Text style={{ fontSize: 6.5, color: colors.textMuted, marginTop: 1 }}>{item.note}</Text> : null}
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.navy }}>{item.dishName}</Text>
+          {item.note ? <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 1 }}>{item.note}</Text> : null}
         </View>
       </View>
     );
@@ -185,9 +223,25 @@ export default function PartyMenuScreen() {
     return (
       <View style={{ marginBottom: 10 }}>
         <Text style={s.sectionTitle}>{title}</Text>
-        <View style={s.sectionDivider} />
         <View style={s.card}>
           {items.map((it, i) => <DishRow key={i} item={it} />)}
+        </View>
+      </View>
+    );
+  }
+
+  function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+    return (
+      <View style={s.stepperRow}>
+        <Text style={s.stepperLabel}>{label}</Text>
+        <View style={s.stepperControls}>
+          <TouchableOpacity style={s.stepperBtn} onPress={() => onChange(Math.max(1, value - 1))}>
+            <Text style={s.stepperBtnTxt}>-</Text>
+          </TouchableOpacity>
+          <Text style={s.stepperVal}>{value}</Text>
+          <TouchableOpacity style={s.stepperBtn} onPress={() => onChange(Math.min(8, value + 1))}>
+            <Text style={s.stepperBtnTxt}>+</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -196,190 +250,189 @@ export default function PartyMenuScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1 }}>
-      <ImageBackground
-        source={require('../assets/background.png')}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
-        resizeMode="cover"
-      />
+    <ScreenWrapper title="Party Menu" onBack={() => phase === 'output' ? setPhase('input') : router.back()}>
 
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => phase === 'output' ? setPhase('input') : router.back()} style={s.backBtn}>
-            <Text style={s.backTxt}>Back</Text>
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Party Menu</Text>
-          <TouchableOpacity onPress={() => router.push('/home' as never)} style={s.homeBtn}>
-            <Text style={s.homeTxt}>Home</Text>
-          </TouchableOpacity>
+      {/* Loading overlay */}
+      {loading && (
+        <View style={s.loadingOverlay}>
+          <Animated.Image
+            source={require('../assets/logo.png')}
+            style={{ width: 140, height: 140, transform: [{ scale: pulseAnim }] }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontSize: 17, color: colors.textSecondary, marginTop: 10 }}>
+            Maharaj is planning your menu...
+          </Text>
         </View>
+      )}
 
-        {/* Loading overlay */}
-        {loading && (
-          <View style={s.loadingOverlay}>
-            <Animated.Image
-              source={require('../assets/logo.png')}
-              style={{ width: 80, height: 80, transform: [{ scale: pulseAnim }] }}
-              resizeMode="contain"
-            />
-            <Text style={{ fontSize: 17, color: colors.textSecondary, marginTop: 10 }}>
-              Maharaj is planning your menu...
+      {!loading && phase === 'input' && (
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+          {/* Tip card */}
+          <View style={s.tipCard}>
+            <Text style={s.tipText}>
+              Tell me about the occasion and your guests. I will plan a complete menu — starters, mains,
+              desserts — scaled for your party and respectful of every guest's dietary needs.
             </Text>
           </View>
-        )}
 
-        {!loading && phase === 'input' && (
-          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-            {/* Tip card */}
-            <View style={s.tipCard}>
-              <Text style={s.tipText}>
-                Tell me about the occasion and your guests. I will plan a complete menu — starters, mains,
-                desserts — scaled for your party and respectful of every guest's dietary needs.
-              </Text>
+          {/* Occasion */}
+          <Text style={s.label}>Occasion</Text>
+          <TextInput style={s.input} value={occasion} onChangeText={setOccasion}
+            placeholder="e.g. Birthday, Anniversary, Housewarming"
+            placeholderTextColor={colors.textHint} />
+
+          {/* Date */}
+          <Text style={s.label}>Date (DD-MM-YYYY)</Text>
+          <TextInput
+            style={[s.input, dateError && { borderColor: colors.danger }]}
+            value={date}
+            onChangeText={handleDateChange}
+            onBlur={validateDate}
+            placeholder="DD-MM-YYYY"
+            placeholderTextColor={colors.textHint}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          {dateError && <Text style={s.dateErrorTxt}>Date must be today or in the future</Text>}
+
+          {/* Adults + Kids */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.label}>Adults</Text>
+              <TextInput style={s.input} value={adults} onChangeText={setAdults}
+                keyboardType="numeric" placeholder="0" placeholderTextColor={colors.textHint} />
             </View>
-
-            {/* Occasion */}
-            <Text style={s.label}>Occasion</Text>
-            <TextInput style={s.input} value={occasion} onChangeText={setOccasion}
-              placeholder="e.g. Birthday, Anniversary, Housewarming"
-              placeholderTextColor={colors.textHint} />
-
-            {/* Date */}
-            <Text style={s.label}>Date</Text>
-            <TextInput style={s.input} value={date} onChangeText={setDate}
-              placeholder="e.g. 15 May 2026"
-              placeholderTextColor={colors.textHint} />
-
-            {/* Adults + Kids */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.label}>Adults</Text>
-                <TextInput style={s.input} value={adults} onChangeText={setAdults}
-                  keyboardType="numeric" placeholder="0" placeholderTextColor={colors.textHint} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.label}>Kids</Text>
-                <TextInput style={s.input} value={kids} onChangeText={setKids}
-                  keyboardType="numeric" placeholder="0" placeholderTextColor={colors.textHint} />
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.label}>Kids</Text>
+              <TextInput style={s.input} value={kids} onChangeText={setKids}
+                keyboardType="numeric" placeholder="0" placeholderTextColor={colors.textHint} />
             </View>
+          </View>
 
-            {/* Style dropdown */}
-            <Text style={s.label}>Style</Text>
-            <TouchableOpacity style={s.input} onPress={() => setShowStyleDrop(!showStyleDrop)}>
-              <Text style={{ fontSize: 15, color: colors.textPrimary }}>{style}</Text>
-            </TouchableOpacity>
-            {showStyleDrop && (
-              <View style={s.dropdown}>
-                {STYLES.map(st => (
-                  <TouchableOpacity key={st} style={s.dropItem} onPress={() => { setStyle(st); setShowStyleDrop(false); }}>
-                    <Text style={{ fontSize: 15, color: st === style ? colors.emerald : colors.textPrimary, fontWeight: st === style ? '700' : '400' }}>{st}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+          {/* Style grid */}
+          <Text style={s.label}>Style</Text>
+          <View style={s.styleGrid}>
+            {STYLES.map(st => (
+              <TouchableOpacity
+                key={st}
+                style={[s.styleChip, style === st && s.styleChipActive]}
+                onPress={() => setStyle(st)}
+              >
+                <Text style={[s.styleChipTxt, style === st && s.styleChipTxtActive]}>{st}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-            {/* Guest dietary notes */}
-            <Text style={s.label}>Guest dietary notes</Text>
-            <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={guestNotes}
-              onChangeText={setGuestNotes} multiline placeholder="e.g. 2 guests Jain, 1 gluten-free"
-              placeholderTextColor={colors.textHint} />
-
-            {/* Anything specific */}
-            <Text style={s.label}>Anything specific</Text>
-            <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={specific}
-              onChangeText={setSpecific} multiline placeholder="e.g. Must have pani puri counter"
-              placeholderTextColor={colors.textHint} />
-
-            {error ? <Text style={s.error}>{error}</Text> : null}
-
-            {/* Generate button */}
+          {/* Veg / Non-veg toggle */}
+          <Text style={s.label}>Food preference</Text>
+          <View style={s.toggle}>
             <TouchableOpacity
-              style={[s.generateBtn, !occasion.trim() && { opacity: 0.5 }]}
-              onPress={generate}
-              disabled={!occasion.trim() || loading}
+              style={[s.toggleBtn, foodPref === 'veg' && s.toggleBtnActive]}
+              onPress={() => setFoodPref('veg')}
             >
-              <Text style={s.generateBtnTxt}>Ask Maharaj to Plan</Text>
+              <Text style={[s.toggleTxt, foodPref === 'veg' && s.toggleTxtActive]}>Veg</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.toggleBtn, foodPref === 'nonveg' && s.toggleBtnActive]}
+              onPress={() => setFoodPref('nonveg')}
+            >
+              <Text style={[s.toggleTxt, foodPref === 'nonveg' && s.toggleTxtActive]}>Non-veg</Text>
+            </TouchableOpacity>
+          </View>
 
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
+          {/* Dish count steppers */}
+          <Text style={s.label}>Dish counts</Text>
+          <View style={s.card}>
+            <Stepper label="Starters" value={starterCount} onChange={setStarterCount} />
+            {foodPref === 'veg'
+              ? <Stepper label="Mains" value={mainVegCount} onChange={setMainVegCount} />
+              : <>
+                  <Stepper label="Non-veg mains" value={mainNonVegCount} onChange={setMainNonVegCount} />
+                  <Stepper label="Veg mains" value={mainVegCountNV} onChange={setMainVegCountNV} />
+                </>
+            }
+            <Stepper label="Sides" value={sideCount} onChange={setSideCount} />
+            <Stepper label="Desserts" value={dessertCount} onChange={setDessertCount} />
+          </View>
 
-        {!loading && phase === 'output' && menu && (
-          <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-            {/* Gold context banner */}
-            <View style={s.goldBanner}>
-              <Text style={{ fontSize: 8, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
-                {menu.occasion || occasion}
+          {/* Guest dietary notes */}
+          <Text style={s.label}>Guest dietary notes</Text>
+          <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={guestNotes}
+            onChangeText={setGuestNotes} multiline placeholder="e.g. 2 guests Jain, 1 gluten-free"
+            placeholderTextColor={colors.textHint} />
+
+          {/* Anything specific */}
+          <Text style={s.label}>Anything specific</Text>
+          <TextInput style={[s.input, { minHeight: 50, textAlignVertical: 'top' }]} value={specific}
+            onChangeText={setSpecific} multiline placeholder="e.g. Must have pani puri counter"
+            placeholderTextColor={colors.textHint} />
+
+          {error ? <Text style={s.error}>{error}</Text> : null}
+
+          {/* Generate button */}
+          <TouchableOpacity
+            style={[s.generateBtn, (!occasion.trim() || dateError) && { opacity: 0.5 }]}
+            onPress={generate}
+            disabled={!occasion.trim() || dateError || loading}
+          >
+            <Text style={s.generateBtnTxt}>Ask Maharaj to Plan</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
+
+      {!loading && phase === 'output' && menu && (
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          {/* Gold context banner */}
+          <View style={s.goldBanner}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.navy, marginBottom: 3 }}>
+              {menu.occasion || occasion}
+            </Text>
+            {date ? <Text style={{ fontSize: 13, color: colors.textSecondary }}>{date}</Text> : null}
+            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+              {adults || '0'} adults, {kids || '0'} kids  --  {style}
+            </Text>
+            {menu.summary ? (
+              <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 5, lineHeight: 18 }}>
+                {menu.summary}
               </Text>
-              {date ? <Text style={{ fontSize: 7, color: colors.textSecondary }}>{date}</Text> : null}
-              <Text style={{ fontSize: 7, color: colors.textSecondary }}>
-                {adults || '0'} adults, {kids || '0'} kids  --  {style}
-              </Text>
-              {menu.summary ? (
-                <Text style={{ fontSize: 7.5, color: colors.textSecondary, marginTop: 5, lineHeight: 11 }}>
-                  {menu.summary}
-                </Text>
-              ) : null}
-            </View>
+            ) : null}
+          </View>
 
-            {/* Sections */}
-            <MenuSection title="STARTERS" items={menu.starters} />
-            <MenuSection title="RICE & BREAD" items={menu.mainRiceBread} />
-            <MenuSection title="CURRIES" items={menu.mainCurries} />
-            <MenuSection title="ACCOMPANIMENTS" items={menu.mainAccompaniments} />
-            <MenuSection title="DESSERTS" items={menu.desserts} />
+          {/* Sections */}
+          <MenuSection title="STARTERS" items={menu.starters} />
+          <MenuSection title="RICE & BREAD" items={menu.mainRiceBread} />
+          <MenuSection title="CURRIES" items={menu.mainCurries} />
+          <MenuSection title="ACCOMPANIMENTS" items={menu.mainAccompaniments} />
+          <MenuSection title="DESSERTS" items={menu.desserts} />
 
-            {/* Bottom buttons */}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-              <TouchableOpacity style={s.downloadBtn} onPress={downloadMenu}>
-                <Text style={{ fontSize: 8, fontWeight: '600', color: colors.white }}>Download Menu</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.planAgainBtn} onPress={() => {
-                setPhase('input'); setMenu(null); setOccasion(''); setDate('');
-                setAdults(''); setKids(''); setGuestNotes(''); setSpecific(''); setError('');
-              }}>
-                <Text style={{ fontSize: 8, fontWeight: '600', color: colors.navy }}>Plan Again</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Bottom buttons */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <TouchableOpacity style={s.downloadBtn} onPress={downloadMenu}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.white }}>Download Menu</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.regenerateBtn} onPress={() => {
+              setPhase('input'); setMenu(null); setOccasion(''); setDate('');
+              setDateError(false);
+              setAdults(''); setKids(''); setGuestNotes(''); setSpecific(''); setError('');
+            }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.navy }}>Regenerate</Text>
+            </TouchableOpacity>
+          </View>
 
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
-      </SafeAreaView>
-    </View>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
+
+    </ScreenWrapper>
   );
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#2E5480',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  backTxt: { fontSize: 15, fontWeight: '700', color: '#2E5480' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.navy, textAlign: 'center', flex: 1 },
-  homeBtn: {
-    backgroundColor: '#2E5480',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  homeTxt: { fontSize: 15, fontWeight: '700', color: colors.white },
   scroll: { padding: 12, paddingBottom: 24 },
   tipCard: {
     backgroundColor: 'rgba(30,158,94,0.08)',
@@ -409,20 +462,65 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: colors.textPrimary,
   },
-  dropdown: {
+  dateErrorTxt: { fontSize: 12, color: colors.danger, marginTop: 3 },
+  styleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  styleChip: {
+    width: '48%',
+    backgroundColor: colors.cardBg,
+    borderWidth: 1.5,
+    borderColor: colors.cardBorder,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  styleChipActive: {
+    backgroundColor: 'rgba(46,84,128,0.08)',
+    borderColor: colors.navy,
+  },
+  styleChipTxt: { fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
+  styleChipTxtActive: { color: colors.navy, fontWeight: '700' },
+  toggle: {
+    flexDirection: 'row',
     backgroundColor: colors.cardBg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: 10,
-    marginTop: 2,
     overflow: 'hidden',
+    marginBottom: 4,
   },
-  dropItem: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
   },
+  toggleBtnActive: { backgroundColor: colors.navy },
+  toggleTxt: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  toggleTxtActive: { color: colors.white },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  stepperLabel: { fontSize: 14, color: colors.textPrimary },
+  stepperControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepperBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnTxt: { fontSize: 16, fontWeight: '700', color: colors.navy, lineHeight: 20 },
+  stepperVal: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, minWidth: 20, textAlign: 'center' },
   error: { fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: 10 },
   generateBtn: {
     backgroundColor: colors.emerald,
@@ -456,7 +554,6 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(30,158,94,0.2)',
   },
-  sectionDivider: {},
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
@@ -473,7 +570,7 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  planAgainBtn: {
+  regenerateBtn: {
     flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 1.5,
