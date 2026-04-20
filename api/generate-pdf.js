@@ -198,10 +198,10 @@ module.exports = async function handler(req, res) {
   centreStack.push({ text: 'My Maharaj',               fontSize: 20, bold: true, color: '#2E5480', alignment: 'center' });
   centreStack.push({ text: 'Your personal meal planner', fontSize: 11,             color: '#C9A227', alignment: 'center' });
 
-  // RIGHT: BFC logo + QR
+  // RIGHT: BFC logo + QR (both centred so QR sits on same vertical axis as BFC logo)
   const rightStack = [];
-  if (bfcLogo)  rightStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130, alignment: 'right' });
-  if (qrBase64) rightStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6, alignment: 'right' });
+  if (bfcLogo)  rightStack.push({ image: `data:image/png;base64,${bfcLogo}`, width: 130, alignment: 'center' });
+  if (qrBase64) rightStack.push({ image: `data:image/png;base64,${qrBase64}`, width: 55, marginTop: 6, alignment: 'center' });
 
   // ── Grocery PDF (early return) ────────────────────────────────────────────
   if (type === 'grocery') {
@@ -211,7 +211,7 @@ module.exports = async function handler(req, res) {
         columns: [
           { width: 160, stack: leftStack,   margin: [0, 50, 0, 0] },
           { width: '*', stack: centreStack, alignment: 'center' },
-          { width: 160, stack: rightStack,  margin: [0, 50, 0, 0] },
+          { width: 160, stack: rightStack,  margin: [0, 24, 0, 0] },
         ],
       },
       // Gold rule
@@ -273,7 +273,7 @@ module.exports = async function handler(req, res) {
         columns: [
           { width: 160, stack: leftStack,  margin: [0, 50, 0, 0] },
           { width: '*', stack: centreStack, alignment: 'center' },
-          { width: 160, stack: rightStack, margin: [0, 50, 0, 0] },
+          { width: 160, stack: rightStack, margin: [0, 24, 0, 0] },
         ],
       },
       // Gold rule
