@@ -9,20 +9,7 @@ import { supabase, getSessionUser } from '../lib/supabase';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { navy, gold, white, textSec, border, errorRed, successGreen } from '../theme/colors';
-
-// ─── Sync utility — called from meal-wizard when shopping list is confirmed ──
-
-export const syncFridgeWithShoppingList = async (shoppingList: { title: string; items: string[] }[]) => {
-  try {
-    const existing = JSON.parse(await AsyncStorage.getItem('fridge_inventory') || '[]');
-    const allShoppingItems = shoppingList.flatMap(cat => cat.items);
-    const updated = existing.filter((fi: any) => !allShoppingItems.some((si: string) => si.toLowerCase().includes(fi.name?.toLowerCase()?.split(' ')[0])));
-    await AsyncStorage.setItem('fridge_inventory', JSON.stringify(updated));
-    await AsyncStorage.setItem('last_plan_sync', new Date().toISOString());
-  } catch {}
-};
+import { navy, gold, white, textSec, border, errorRed, successGreen, peacock } from '../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,7 +36,7 @@ async function callClaude(messages: any[], systemPrompt?: string): Promise<strin
   const base = 'https://my-maharaj.vercel.app';
   const res = await fetch(`${base}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
@@ -80,6 +67,7 @@ export default function MyFridgeScreen() {
   const [manualItem,   setManualItem]   = useState({ item_name:'', quantity:'', unit:'', store:'', buy_date: new Date().toISOString().split('T')[0] });
   const [scannedPages, setScannedPages] = useState<string[]>([]);
   const [showPageReview, setShowPageReview] = useState(false);
+  const [showScanSheet, setShowScanSheet] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -251,9 +239,9 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
 
         {/* Action buttons */}
         <View style={s.actionRow}>
-          <TouchableOpacity style={s.scanBtn} onPress={scanPage} disabled={scanning} activeOpacity={0.85}>
+          <TouchableOpacity style={s.scanBtn} onPress={() => setShowScanSheet(true)} disabled={scanning} activeOpacity={0.85}>
             {scanning ? <ActivityIndicator color={white} size="small" /> : null}
-            <Text style={s.scanBtnTxt}>Scan Bill</Text>
+            <Text style={s.scanBtnTxt}>Scan</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.scanBtn, s.scanBtnSecondary]} onPress={() => setShowManual(true)} activeOpacity={0.85}>
             <Text style={[s.scanBtnTxt, { color: navy }]}>Add Manually</Text>
@@ -267,12 +255,12 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
               <TouchableOpacity style={{flex:1,backgroundColor:navy,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={scanPage}>
                 <Text style={{fontSize:13,fontWeight:'600',color:white}}>Scan Another Page</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{flex:1,backgroundColor:'#16A34A',borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={processAllPages}>
+              <TouchableOpacity style={{flex:1,backgroundColor:peacock,borderRadius:12,paddingVertical:12,alignItems:'center'}} onPress={processAllPages}>
                 <Text style={{fontSize:13,fontWeight:'600',color:white}}>Done - Process Bill</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={{alignItems:'center',paddingTop:8}} onPress={() => { setScannedPages([]); setShowPageReview(false); }}>
-              <Text style={{fontSize:12,color:'#9CA3AF'}}>Cancel</Text>
+              <Text style={{fontSize:12,color:textSec}}>Cancel</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -331,6 +319,36 @@ If store name not visible, use "Unknown Store". Extract every food item you can 
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Scan type sheet */}
+      <Modal visible={showScanSheet} animationType="slide" transparent onRequestClose={() => setShowScanSheet(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Choose scan type</Text>
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={s.sheetOptionGold}
+                onPress={() => { setShowScanSheet(false); scanPage(); }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.sheetOptionGoldTxt}>Scan Bill</Text>
+                <Text style={s.sheetOptionSub}>Photograph a printed grocery receipt</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.sheetOptionOutline, { opacity: 0.6 }]}
+                onPress={() => { setShowScanSheet(false); Alert.alert('Coming Soon', "We're building this — coming soon"); }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.sheetOptionOutlineTxt}>Scan Trolley</Text>
+                <Text style={[s.sheetOptionSub, { color: textSec }]}>Photograph your shopping cart (coming soon)</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={{ alignItems: 'center', paddingTop: 16 }} onPress={() => setShowScanSheet(false)}>
+              <Text style={{ fontSize: 14, color: textSec, fontWeight: '600' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Manual entry modal */}
       <Modal visible={showManual} animationType="slide" transparent onRequestClose={() => setShowManual(false)}>
@@ -412,8 +430,12 @@ const s = StyleSheet.create({
   actionRow:   { flexDirection: 'row', gap: 10, marginBottom: 12 },
   scanBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: navy, borderRadius: 14, paddingVertical: 14 },
   scanBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.9)', borderWidth: 1.5, borderColor: border },
-  scanBtnIcon: { fontSize: 20 },
   scanBtnTxt:  { fontSize: 14, fontWeight: '700', color: white },
+  sheetOptionGold:     { backgroundColor: gold, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
+  sheetOptionGoldTxt:  { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 3 },
+  sheetOptionOutline:  { backgroundColor: white, borderWidth: 1.5, borderColor: navy, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
+  sheetOptionOutlineTxt:{ fontSize: 15, fontWeight: '700', color: navy, marginBottom: 3 },
+  sheetOptionSub:      { fontSize: 12, color: 'rgba(26,26,26,0.55)', textAlign: 'center' },
   smartFridgeBanner: { flexDirection: 'row', gap: 10, backgroundColor: 'rgba(201,162,39,0.12)', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(201,162,39,0.3)' },
   smartFridgeIcon: { fontSize: 18 },
   smartFridgeTxt:  { flex: 1, fontSize: 12, color: '#78350F', lineHeight: 18 },
