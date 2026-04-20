@@ -105,7 +105,7 @@ async function askClaude(prompt: string): Promise<string> {
 
   const res = await fetch(`${BASE}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
@@ -121,7 +121,7 @@ async function askClaude(prompt: string): Promise<string> {
 async function askClaudeStream(prompt: string): Promise<string> {
   const res = await fetch(`${BASE}/api/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
@@ -153,7 +153,7 @@ async function askClaudeStream(prompt: string): Promise<string> {
 async function askClaudeJson(prompt: string, maxTokens: number): Promise<string> {
   const res = await fetch(`${BASE}/api/claude`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET },
+    headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
@@ -301,7 +301,7 @@ async function fetchDishPool(
     }
   } catch { /* Supabase unavailable — use DISH_DATA */ }
 
-  console.error('[DISH_DATA FALLBACK] Supabase returned insufficient results, falling back to in-memory data. Pool size:', data?.length ?? 0);
+  console.error('[DISH_DATA FALLBACK] Supabase returned insufficient results, falling back to in-memory data. Pool size:', 0);
 
   // ── 2. In-memory DISH_DATA fallback ──────────────────────────────────────
   // Map old DISH_DATA shape (meal_type/dietary arrays) → new PoolDish shape (slot/boolean flags)

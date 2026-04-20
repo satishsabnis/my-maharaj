@@ -1326,7 +1326,6 @@ export default function DietaryProfileScreen() {
         ['plan_summary_language', state.planSummaryLanguage],
         ['shopping_list_language', state.shoppingLanguage],
         ['phone_number', state.phoneNumber],
-        ['profile_setup_complete', 'true'],
         ['dietary_food_pref', state.vegDays.length === 7 ? 'veg' : 'nonveg'],
         ['dietary_is_mixed', String(state.vegDays.length > 0 && state.vegDays.length < 7)],
       ]);
