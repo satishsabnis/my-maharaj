@@ -171,17 +171,17 @@ module.exports = async function handler(req, res) {
   // LEFT: family name + date range
   const leftStack = [
     { text: familyName,                                   fontSize: 22, bold: true, color: '#2E5480', alignment: 'left' },
-    { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo), fontSize: 11,             color: '#5A7A8A', alignment: 'left' },
+    { text: fmtDate(dateFrom) + ' — ' + fmtDate(dateTo), fontSize: 13,             color: '#5A7A8A', alignment: 'left' },
   ];
   if (planSummaryLanguage && planSummaryLanguage !== 'English' && planSummaryLanguage !== 'en') {
     leftStack.push({ text: planSummaryLanguage, fontSize: 9, color: '#5A7A8A', italics: true, alignment: 'left' });
   }
 
-  // CENTRE: Maharaj logo (120px) + title
+  // CENTRE: Maharaj logo (160px) + title
   const centreStack = [];
-  if (maharajLogo) centreStack.push({ image: `data:image/png;base64,${maharajLogo}`, width: 120, alignment: 'center' });
-  centreStack.push({ text: 'My Maharaj',            fontSize: 20, bold: true, color: '#2E5480', alignment: 'center' });
-  centreStack.push({ text: 'Your Family Meal Plan',  fontSize: 11,             color: '#C9A227', alignment: 'center' });
+  if (maharajLogo) centreStack.push({ image: `data:image/png;base64,${maharajLogo}`, width: 160, alignment: 'center' });
+  centreStack.push({ text: 'My Maharaj',               fontSize: 20, bold: true, color: '#2E5480', alignment: 'center' });
+  centreStack.push({ text: 'Your personal meal planner', fontSize: 11,             color: '#C9A227', alignment: 'center' });
 
   // RIGHT: BFC logo + QR
   const rightStack = [];
@@ -206,9 +206,9 @@ module.exports = async function handler(req, res) {
       // Three-column header
       {
         columns: [
-          { width: 160, stack: leftStack },
+          { width: 160, stack: leftStack,  margin: [0, 50, 0, 0] },
           { width: '*', stack: centreStack, alignment: 'center' },
-          { width: 160, stack: rightStack },
+          { width: 160, stack: rightStack, margin: [0, 50, 0, 0] },
         ],
       },
       // Gold rule
