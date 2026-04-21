@@ -5,7 +5,7 @@ import {
   View, ActivityIndicator,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Poppins_400Regular } from '@expo-google-fonts/poppins';
@@ -90,7 +90,8 @@ export default function AskMaharajScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const audioRef = useRef<any>(null);
-  const soundRef = useRef<any>(null);
+  const soundRef = useRef<ReturnType<typeof useAudioPlayer> | null>(null);
+  const nativePlayer = useAudioPlayer(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [familyCount, setFamilyCount] = useState(0);
   const [userName, setUserName] = useState('');
@@ -214,7 +215,7 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
       if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     } else {
       if (soundRef.current) {
-        try { await soundRef.current.stopAsync(); await soundRef.current.unloadAsync(); } catch {}
+        try { soundRef.current.pause(); } catch {}
         soundRef.current = null;
       }
     }
@@ -236,27 +237,24 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
         body: JSON.stringify({ text: speechText, language: langCode }),
       });
       const data = await res.json();
-      console.log('Sarvam response ok:', res.ok, 'has audio:', !!data.audio);
-      if (Platform.OS === 'web') {
-        Alert.alert('TTS Debug', `ok:${res.ok} audio:${!!data.audio} status:${res.status}`);
-      }
+      console.log('TTS response:', res.ok, res.status, 'has audio:', !!data.audio, 'audio length:', data.audio?.length);
       if (!data.audio) throw new Error('No audio');
       if (Platform.OS === 'web') {
+        console.log('Playing audio, length:', data.audio?.length);
         const audio = new (window as any).Audio(`data:audio/wav;base64,${data.audio}`);
         audioRef.current = audio;
         audio.onended = () => { setSpeakingIndex(null); setIsPaused(false); };
         audio.play();
       } else {
-        const { sound } = await Audio.Sound.createAsync({ uri: `data:audio/wav;base64,${data.audio}` });
-        soundRef.current = sound;
-        sound.setOnPlaybackStatusUpdate((status: any) => {
-          if (status.didJustFinish) { setSpeakingIndex(null); setIsPaused(false); soundRef.current = null; }
+        const sub = nativePlayer.addListener('playbackStatusUpdate', (status: any) => {
+          if (status.didJustFinish) { setSpeakingIndex(null); setIsPaused(false); soundRef.current = null; sub.remove(); }
         });
-        await sound.playAsync();
+        nativePlayer.replace({ uri: `data:audio/wav;base64,${data.audio}` });
+        nativePlayer.play();
+        soundRef.current = nativePlayer;
       }
     } catch (err) {
-      console.log('Sarvam TTS error:', err);
-      Alert.alert('TTS Debug', String(err));
+      console.error('TTS catch error:', err);
       setSpeakingIndex(null);
       setIsPaused(false);
     }
@@ -264,13 +262,13 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
 
   function pauseSpeaking() {
     if (Platform.OS === 'web') { audioRef.current?.pause(); }
-    else { soundRef.current?.pauseAsync(); }
+    else { soundRef.current?.pause(); }
     setIsPaused(true);
   }
 
   function resumeSpeaking() {
     if (Platform.OS === 'web') { audioRef.current?.play(); }
-    else { soundRef.current?.playAsync(); }
+    else { soundRef.current?.play(); }
     setIsPaused(false);
   }
 
