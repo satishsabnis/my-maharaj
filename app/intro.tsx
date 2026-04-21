@@ -1,676 +1,309 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  ImageBackground,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  ImageBackground, Image, Animated, Dimensions, SafeAreaView, Platform,
 } from 'react-native';
-import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../constants/theme';
-import Button from '../components/Button';
+import { useRouter } from 'expo-router';
 
-const SW = Dimensions.get('window').width;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ── Slide definitions ─────────────────────────────────────────────────────────
-type Slide = {
-  id: string;
-  tag: string;
-  title: string;
-  subtitle?: string;
-  banner?: string;
-  microline?: string;
-  showHero?: boolean;
-  showFamily?: boolean;
-  showPlan?: boolean;
-  showChat?: boolean;
-  showCook?: boolean;
+const C = {
+  navy: '#2E5480', gold: '#C9A227', teal: '#1A6B5C',
+  mint: '#D4EDE5', white: '#FFFFFF', dark: '#1A1A1A',
+  grey: '#888888', lightYellow: '#fef6e0', darkYellow: '#8a6200',
+  lightBlue: '#e8eef8', lightOrange: '#fde8d8', darkOrange: '#b84c1a',
 };
 
-const SLIDES: Slide[] = [
-  {
-    id: 'hero',
-    showHero: true,
-    tag: 'YOUR PERSONAL MEAL PLANNER',
-    title: 'Stop Thinking About What to Cook',
-    subtitle: 'Your daily meals — planned, decided, and ready.',
-  },
-  {
-    id: 'family',
-    showFamily: true,
-    tag: 'BUILT FOR YOUR FAMILY',
-    title: 'Every Member · Every Diet · Every Health Condition',
-    banner: 'Set once — applied silently to every plan, every day.',
-  },
-  {
-    id: 'plan',
-    showPlan: true,
-    tag: 'ONE TAP. ONE WEEK.',
-    title: 'One Tap Weekly — Meal Plan to Shopping List',
-    banner: 'Every Sunday, your week is planned, your grocery list is ready — mapped with your fridge inventory.',
-  },
-  {
-    id: 'ask',
-    showChat: true,
-    tag: 'YOUR FOOD BRAIN',
-    title: 'Complex Meal Planning Made Effortless',
-    banner: 'Party menus, fridge check, outdoor trips, meal prep — voice or text, done in seconds.',
-  },
-  {
-    id: 'cook',
-    showCook: true,
-    tag: 'MAHARAJ COOK',
-    title: 'Your Cook Arrives Knowing Exactly What to Cook Today',
-    microline: 'No calls. No guesswork.',
-    banner: "Maharaj Cook delivers your family's meals to the kitchen — automatically, in Indian multi-lingual audio, every morning.",
-  },
-];
+const BG = require('../assets/background.png');
+const LOGO = require('../assets/maharaj-logo.png');
 
-// ── Pulsing ring around logo (screen 1) ──────────────────────────────────────
-function PulsingRing() {
-  const scale = useRef(new Animated.Value(1)).current;
+function Overlay() {
+  return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(46,84,128,0.70)' }]} />;
+}
 
-  React.useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 1.06, duration: 1000, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1.0,  duration: 1000, useNativeDriver: true }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
+function SlideShell({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 120 }}>
+      <ImageBackground source={BG} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Overlay />
+      <View style={s.slideInner}>{children}</View>
+    </View>
+  );
+}
+
+function Tag({ text }: { text: string }) {
+  return <Text style={s.tag}>{text}</Text>;
+}
+function Title({ text }: { text: string }) {
+  return <Text style={s.title}>{text}</Text>;
+}
+function Banner({ text }: { text: string }) {
+  return <View style={s.banner}><Text style={s.bannerText}>{text}</Text></View>;
+}
+
+// SCREEN 1
+function HeroSlide({ pulse }: { pulse: Animated.Value }) {
+  return (
+    <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 120 }}>
+      <ImageBackground source={BG} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <View style={s.heroWrap}>
+        <Animated.View style={[s.pulseRing, { transform: [{ scale: pulse }] }]}>
+          <Image source={LOGO} style={s.heroLogo} resizeMode="contain" />
+        </Animated.View>
+        <View style={s.heroText}>
+          <Tag text="YOUR PERSONAL MEAL PLANNER" />
+          <Text style={s.heroTitle}>Stop Thinking About{'\n'}What to Cook</Text>
+          <Text style={s.heroSub}>Your daily meals — planned, decided, and ready.</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// SCREEN 2
+function FamilySlide() {
+  const members = [
+    { id: 'M1', bg: C.navy, txtColor: C.white, tags: [['Maharashtrian','cu'],['Malvani','cu'],['Diabetes-friendly','he']] },
+    { id: 'M2', bg: C.teal, txtColor: C.white, tags: [['Vegetarian','di'],['Low sodium','he']] },
+    { id: 'M3', bg: C.gold, txtColor: C.dark, tags: [['Jain','di'],['No root vegetables','he']] },
+  ];
+  const tagStyle = (t: string) => t === 'cu'
+    ? { bg: C.lightYellow, txt: C.darkYellow }
+    : t === 'di' ? { bg: C.mint, txt: C.teal }
+    : { bg: C.lightBlue, txt: C.navy };
+  return (
+    <SlideShell>
+      <Image source={LOGO} style={s.slideLogo} resizeMode="contain" />
+      <Tag text="BUILT FOR YOUR FAMILY" />
+      <Title text={'Every Member · Every Diet\nEvery Health Condition'} />
+      <View style={s.cards}>
+        {members.map(m => (
+          <View key={m.id} style={[s.memberCard, { borderColor: C.gold }]}>
+            <View style={[s.avatar, { backgroundColor: m.bg }]}>
+              <Text style={[s.avatarTxt, { color: m.txtColor }]}>{m.id}</Text>
+            </View>
+            <View style={s.tagRow}>
+              {m.tags.map(([label, type]) => {
+                const ts = tagStyle(type);
+                return (
+                  <View key={label} style={[s.pill, { backgroundColor: ts.bg }]}>
+                    <Text style={[s.pillTxt, { color: ts.txt }]}>{label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+      </View>
+      <Banner text="Set once — applied silently to every plan, every day." />
+    </SlideShell>
+  );
+}
+
+// SCREEN 3
+function WeeklySlide() {
+  const days = [
+    { label: 'TUESDAY', meals: [['Breakfast','Misal Pav',true],['Lunch','Dalimbi Usal',true],['Dinner','Kolambi Bhaat Malvani',false]] },
+    { label: 'WEDNESDAY', meals: [['Breakfast','Kande Pohe Malvani',true],['Lunch','Matki Usal + Takatli Dal',true],['Dinner','Coconut Rice Malvani',true]] },
+    { label: 'THURSDAY', meals: [['Breakfast','Egg Bhurji Maharashtra',false],['Lunch','Kolhapuri Dal + Daalichi Amti',true],['Dinner','Vangi Bhaat',true]] },
+  ] as const;
+  return (
+    <SlideShell>
+      <Image source={LOGO} style={s.slideLogo} resizeMode="contain" />
+      <Tag text="ONE TAP. ONE WEEK." />
+      <Title text={'One Tap Weekly —\nMeal Plan to Shopping List'} />
+      <View style={s.cards}>
+        {days.map(d => (
+          <View key={d.label} style={[s.dayCard, { borderColor: C.navy }]}>
+            <Text style={s.dayLabel}>{d.label}</Text>
+            {d.meals.map(([type, dish, veg]) => (
+              <View key={type} style={s.mealRow}>
+                <Text style={s.mealType}>{type}</Text>
+                <Text style={s.mealDish} numberOfLines={1}>{dish}</Text>
+                <View style={[s.badge, veg ? s.vegBadge : s.nvBadge]}>
+                  <Text style={[s.badgeTxt, veg ? s.vegTxt : s.nvTxt]}>{veg ? 'Veg' : 'NV'}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+      <Banner text="Every Sunday, your week is planned, your grocery list is ready — mapped with your fridge inventory." />
+    </SlideShell>
+  );
+}
+
+// SCREEN 4
+function AskSlide() {
+  return (
+    <SlideShell>
+      <Image source={LOGO} style={s.slideLogo} resizeMode="contain" />
+      <Tag text="YOUR FOOD BRAIN" />
+      <Title text={'Complex Meal Planning\nMade Effortless'} />
+      <View style={[s.chatCard, { borderColor: C.navy }]}>
+        {['Guests coming tonight','What can I cook in 20 mins?','3-day meal prep'].map(q => (
+          <View key={q} style={s.userBubble}>
+            <Text style={s.userBubbleTxt}>{q}</Text>
+          </View>
+        ))}
+        <View style={s.maharajBubble}>
+          <Text style={s.maharajBubbleTxt}>Here are 3 ideas for tonight...</Text>
+        </View>
+      </View>
+      <Banner text="Party menus, fridge check, outdoor trips, meal prep — voice or text, done in seconds." />
+    </SlideShell>
+  );
+}
+
+// SCREEN 5
+function CookSlide() {
+  return (
+    <SlideShell>
+      <Image source={LOGO} style={s.slideLogo} resizeMode="contain" />
+      <Tag text="MAHARAJ COOK" />
+      <Title text={'Your Cook Arrives Knowing\nExactly What to Cook Today'} />
+      <View style={[s.cookCard, { borderColor: C.teal }]}>
+        <View style={s.cookHeader}>
+          <View style={[s.avatar, { backgroundColor: C.navy }]}>
+            <Text style={[s.avatarTxt, { color: C.white }]}>S</Text>
+          </View>
+          <View>
+            <Text style={s.cookGreeting}>नमस्ते, Cook</Text>
+            <Text style={s.cookDate}>Tuesday, 21 April</Text>
+          </View>
+        </View>
+        {[['सुबह का नाश्ता','Misal Pav'],['दोपहर का खाना','Dalimbi Usal'],['रात का खाना','Maharashtrian Dal Fry']].map(([hin,dish]) => (
+          <View key={dish} style={s.cookMeal}>
+            <Text style={s.hindiLabel}>{hin}</Text>
+            <Text style={s.cookDish}>{dish}</Text>
+          </View>
+        ))}
+        <View style={s.ttsBtn}>
+          <Text style={s.ttsBtnTxt}>▶ आज का मेनू सुनें</Text>
+        </View>
+      </View>
+      <Banner text="Maharaj Cook delivers your family's meals to the kitchen — automatically, in Indian multi-lingual audio, every morning." />
+      <Text style={s.microLine}>No calls. No guesswork.</Text>
+    </SlideShell>
+  );
+}
+
+// MAIN
+export default function IntroScreen() {
+  const router = useRouter();
+  const ref = useRef<FlatList>(null);
+  const [idx, setIdx] = useState(0);
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const a = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1.06, duration: 1000, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1.0, duration: 1000, useNativeDriver: true }),
+    ]));
+    a.start();
+    return () => a.stop();
   }, []);
 
-  return (
-    <Animated.View
-      style={[s.pulseRing, { transform: [{ scale }] }]}
-      pointerEvents="none"
-    />
-  );
-}
+  const slides = ['hero','family','weekly','ask','cook'];
 
-// ── Family member cards (screen 2) ────────────────────────────────────────────
-const MEMBERS = [
-  {
-    initials: 'M1',
-    avatarBg: colors.navy,
-    avatarText: colors.white,
-    tags: [
-      { label: 'Maharashtrian', type: 'cuisine' },
-      { label: 'Malvani',       type: 'cuisine' },
-      { label: 'Diabetes-friendly', type: 'health' },
-    ],
-  },
-  {
-    initials: 'M2',
-    avatarBg: colors.teal,
-    avatarText: colors.white,
-    tags: [
-      { label: 'Vegetarian',  type: 'diet' },
-      { label: 'Low sodium',  type: 'health' },
-    ],
-  },
-  {
-    initials: 'M3',
-    avatarBg: colors.gold,
-    avatarText: colors.navy,
-    tags: [
-      { label: 'Jain',               type: 'diet' },
-      { label: 'No root vegetables', type: 'diet' },
-    ],
-  },
-];
+  const next = () => {
+    const n = idx + 1;
+    ref.current?.scrollToIndex({ index: n, animated: true });
+    setIdx(n);
+  };
 
-function tagColors(type: string): { bg: string; text: string } {
-  if (type === 'cuisine') return { bg: '#fef6e0', text: '#8a6200' };
-  if (type === 'health')  return { bg: '#e8eef8', text: colors.navy };
-  return { bg: colors.mintLight, text: colors.teal };
-}
-
-function FamilyCards() {
-  return (
-    <View style={s.familyCards}>
-      {MEMBERS.map(m => (
-        <View key={m.initials} style={s.memberCard}>
-          <View style={[s.memberAvatar, { backgroundColor: m.avatarBg }]}>
-            <Text style={[s.memberAvatarText, { color: m.avatarText }]}>{m.initials}</Text>
-          </View>
-          <View style={s.memberTagRow}>
-            {m.tags.map(t => {
-              const tc = tagColors(t.type);
-              return (
-                <View key={t.label} style={[s.tagPill, { backgroundColor: tc.bg }]}>
-                  <Text style={[s.tagPillText, { color: tc.text }]}>{t.label}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ── Three day-cards (screen 3) ────────────────────────────────────────────────
-const PLAN_DAYS = [
-  {
-    day: 'TUESDAY',
-    meals: [
-      { type: 'BRKFST', dish: 'Misal Pav',            veg: true  },
-      { type: 'LUNCH',  dish: 'Dalimbi Usal',          veg: true  },
-      { type: 'DINNER', dish: 'Kolambi Bhaat Malvani', veg: false },
-    ],
-  },
-  {
-    day: 'WEDNESDAY',
-    meals: [
-      { type: 'BRKFST', dish: 'Kande Pohe Malvani',       veg: true },
-      { type: 'LUNCH',  dish: 'Matki Usal + Takatli Dal', veg: true },
-      { type: 'DINNER', dish: 'Coconut Rice Malvani',      veg: true },
-    ],
-  },
-  {
-    day: 'THURSDAY',
-    meals: [
-      { type: 'BRKFST', dish: 'Egg Bhurji Maharashtra',        veg: false },
-      { type: 'LUNCH',  dish: 'Kolhapuri Dal + Daalichi Amti', veg: true  },
-      { type: 'DINNER', dish: 'Vangi Bhaat',                    veg: true  },
-    ],
-  },
-];
-
-function ThreeDayCards() {
-  return (
-    <View style={s.dayCardsWrap}>
-      {PLAN_DAYS.map(d => (
-        <View key={d.day} style={s.dayCard}>
-          <Text style={s.dayLabel}>{d.day}</Text>
-          {d.meals.map(m => (
-            <View key={m.type} style={s.dayMealRow}>
-              <Text style={s.dayMealType}>{m.type}</Text>
-              <Text style={s.dayMealDish} numberOfLines={1}>{m.dish}</Text>
-              <View style={[s.vegBadge, m.veg ? s.vegBadgeV : s.vegBadgeNv]}>
-                <Text style={[s.vegBadgeText, m.veg ? s.vegBadgeTextV : s.vegBadgeTextNv]}>
-                  {m.veg ? 'V' : 'NV'}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ── Chat preview (screen 4) ───────────────────────────────────────────────────
-function ChatPreview() {
-  return (
-    <View style={s.chatWrap}>
-      <View style={s.chatBubbleUser}>
-        <Text style={s.chatTextUser}>Can we have a light dinner tonight?</Text>
-      </View>
-      <View style={s.chatRowAi}>
-        <Image source={require('../assets/logo.png')} style={s.chatAvatar} resizeMode="contain" />
-        <View style={s.chatBubbleAi}>
-          <Text style={s.chatTextAi}>
-            I have swapped dinner to Daliya Khichdi with curd. Light and easy to digest.
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ── Cook card (screen 5) ──────────────────────────────────────────────────────
-const COOK_ROWS = [
-  { label: 'BRKFST', dish: 'Kande Pohe Malvani',  veg: true  },
-  { label: 'LUNCH',  dish: 'Dalimbi Usal + Roti', veg: true  },
-  { label: 'DINNER', dish: 'Kolambi Bhaat Malvani', veg: false },
-];
-
-function CookCard() {
-  return (
-    <View style={s.cookCard}>
-      <Text style={s.cookCardTitle}>Today for your cook</Text>
-      {COOK_ROWS.map(r => (
-        <View key={r.label} style={s.cookRow}>
-          <Text style={s.cookMeal}>{r.label}</Text>
-          <Text style={s.cookDish} numberOfLines={1}>{r.dish}</Text>
-          <View style={[s.vegBadge, r.veg ? s.vegBadgeV : s.vegBadgeNv]}>
-            <Text style={[s.vegBadgeText, r.veg ? s.vegBadgeTextV : s.vegBadgeTextNv]}>
-              {r.veg ? 'V' : 'NV'}
-            </Text>
-          </View>
-        </View>
-      ))}
-      <View style={s.cookTtsRow}>
-        <View style={s.cookTtsIcon} />
-        <Text style={s.cookTtsLabel}>Read aloud in Hindi</Text>
-      </View>
-    </View>
-  );
-}
-
-// ── Pagination dots ───────────────────────────────────────────────────────────
-function Dots({ active }: { active: number }) {
-  return (
-    <View style={s.dotsRow}>
-      {SLIDES.map((sl, i) => (
-        <View
-          key={sl.id}
-          style={[s.dot, i === active ? s.dotActive : s.dotInactive]}
-        />
-      ))}
-    </View>
-  );
-}
-
-// ── Main carousel ─────────────────────────────────────────────────────────────
-export default function IntroCarousel() {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const listRef = useRef<FlatList>(null);
-
-  async function finish() {
-    await AsyncStorage.setItem('hasSeenOnboarding', '1');
+  const finish = async () => {
+    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
     router.replace('/login');
-  }
+  };
 
-  function goNext() {
-    if (activeIdx < SLIDES.length - 1) {
-      listRef.current?.scrollToIndex({ index: activeIdx + 1, animated: true });
-    }
-  }
-
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-  const onViewRef = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) setActiveIdx(viewableItems[0].index ?? 0);
-  });
-
-  function getItemLayout(_: any, index: number) {
-    return { length: SW, offset: SW * index, index };
-  }
-
-  function renderSlide({ item, index }: { item: Slide; index: number }) {
-    const isLast = index === SLIDES.length - 1;
-
-    return (
-      <ImageBackground
-        source={require('../assets/background.png')}
-        style={s.slideBg}
-        resizeMode="cover"
-      >
-        <View style={s.slideContent}>
-
-          {/* ── Screen 1: hero — large logo occupying top 50% ── */}
-          {item.showHero && (
-            <View style={s.heroTop}>
-              <View style={s.logoWrap}>
-                <PulsingRing />
-                <Image
-                  source={require('../assets/logo.png')}
-                  style={s.heroLogo}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-          )}
-
-          {/* ── Screens 2–5: small logo at top ── */}
-          {!item.showHero && (
-            <View style={s.slideLogoRow}>
-              <Image
-                source={require('../assets/logo.png')}
-                style={s.slideLogoSmall}
-                resizeMode="contain"
-              />
-            </View>
-          )}
-
-          {/* Tag */}
-          <Text style={s.tag}>{item.tag}</Text>
-
-          {/* Title */}
-          <Text style={[s.title, item.showHero && s.titleHero]}>{item.title}</Text>
-
-          {/* Subtitle — screen 1 only */}
-          {item.subtitle ? <Text style={s.subtitle}>{item.subtitle}</Text> : null}
-
-          {/* Micro-line — screen 5 only */}
-          {item.microline ? <Text style={s.microline}>{item.microline}</Text> : null}
-
-          {/* Illustration */}
-          <View style={s.illustration}>
-            {item.showFamily ? <FamilyCards /> : null}
-            {item.showPlan   ? <ThreeDayCards /> : null}
-            {item.showChat   ? <ChatPreview /> : null}
-            {item.showCook   ? <CookCard /> : null}
-          </View>
-
-          {/* Banner — screens 2–5 */}
-          {item.banner ? (
-            <View style={s.banner}>
-              <Text style={s.bannerText}>{item.banner}</Text>
-            </View>
-          ) : null}
-
-          {/* Bottom nav */}
-          <View style={s.bottomNav}>
-            <View style={s.dotsCenter}>
-              <Dots active={activeIdx} />
-            </View>
-            {!isLast ? (
-              <View style={s.nextWrap}>
-                <Button
-                  title="Next"
-                  onPress={goNext}
-                  variant="secondary"
-                  style={{ width: 110, height: 44 }}
-                />
-              </View>
-            ) : (
-              <Button title="Start My First Plan" onPress={finish} variant="secondary" />
-            )}
-          </View>
-
-        </View>
-      </ImageBackground>
-    );
-  }
+  const renderItem = ({ item }: { item: string }) => {
+    if (item === 'hero') return <HeroSlide pulse={pulse} />;
+    if (item === 'family') return <FamilySlide />;
+    if (item === 'weekly') return <WeeklySlide />;
+    if (item === 'ask') return <AskSlide />;
+    return <CookSlide />;
+  };
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Outer bg covers safe-area edges on platforms that need it */}
-      <ImageBackground
-        source={require('../assets/background.png')}
-        style={s.outerBg}
-        resizeMode="cover"
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.navy }}>
+      <FlatList
+        ref={ref}
+        data={slides}
+        renderItem={renderItem}
+        keyExtractor={i => i}
+        horizontal pagingEnabled scrollEnabled
+        showsHorizontalScrollIndicator={false}
+        getItemLayout={(_, i) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * i, index: i })}
+        onMomentumScrollEnd={e => setIdx(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
       />
-      <SafeAreaView style={{ flex: 1 }}>
-        <FlatList
-          ref={listRef}
-          data={SLIDES}
-          keyExtractor={item => item.id}
-          renderItem={renderSlide}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          getItemLayout={getItemLayout}
-          onViewableItemsChanged={onViewRef.current}
-          viewabilityConfig={viewabilityConfig}
-          scrollEventThrottle={16}
-        />
-      </SafeAreaView>
-    </View>
+      <View style={s.dotsRow}>
+        {slides.map((_, i) => (
+          <View key={i} style={[s.dot, i === idx ? s.dotOn : s.dotOff]} />
+        ))}
+      </View>
+      <View style={s.navRow}>
+        {idx < 4
+          ? <TouchableOpacity style={s.nextBtn} onPress={next}><Text style={s.nextTxt}>Next</Text></TouchableOpacity>
+          : <TouchableOpacity style={s.ctaBtn} onPress={finish}><Text style={s.ctaTxt}>Start My First Plan</Text></TouchableOpacity>
+        }
+      </View>
+    </SafeAreaView>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  outerBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-
-  // Each slide is a full-width ImageBackground
-  slideBg: { width: SW, flex: 1 },
-  slideContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-
-  // Screen 1 hero — large logo, top 50%
-  heroTop: {
-    flex: 0.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoWrap: {
-    width: 200,
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroLogo: { width: 160, height: 160, zIndex: 1 },
-  pulseRing: {
-    position: 'absolute',
-    width: 196,
-    height: 196,
-    borderRadius: 98,
-    borderWidth: 2,
-    borderColor: colors.gold,
-    zIndex: 0,
-  },
-
-  // Screens 2–5 small logo at top
-  slideLogoRow: { alignItems: 'center', marginBottom: 10 },
-  slideLogoSmall: { width: 40, height: 40 },
-
-  // Tag label
-  tag: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.teal,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-
-  // Title
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.navy,
-    textAlign: 'center',
-    marginBottom: 8,
-    lineHeight: 30,
-  },
-  titleHero: { fontSize: 32, lineHeight: 40 },
-
-  // Subtitle (screen 1)
-  subtitle: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 8,
-  },
-
-  // Micro-line (screen 5)
-  microline: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.teal,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-
-  // Illustration container
-  illustration: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-
-  // ── Family cards (screen 2) ──────────────────────────────────────────────
-  familyCards: { width: '100%', gap: 6 },
-  memberCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.gold,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 10,
-  },
-  memberAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  memberAvatarText: { fontSize: 12, fontWeight: '700' },
-  memberTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, flex: 1 },
-  tagPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  tagPillText: { fontSize: 10, fontWeight: '600' },
-
-  // ── Three day-cards (screen 3) ───────────────────────────────────────────
-  dayCardsWrap: { width: '100%', gap: 4 },
-  dayCard: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.navy,
-    padding: 8,
-  },
-  dayLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.navy,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  dayMealRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 3,
-  },
-  dayMealType: {
-    fontSize: 9,
-    color: colors.textMuted,
-    width: 46,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  dayMealDish: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#1A1A1A',
-    flex: 1,
-  },
-
-  // Shared veg/non-veg badge (screens 3, 5)
-  vegBadge: {
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    marginLeft: 4,
-  },
-  vegBadgeV:   { backgroundColor: colors.mintLight },
-  vegBadgeNv:  { backgroundColor: '#fde8d8' },
-  vegBadgeText: { fontSize: 8, fontWeight: '800' },
-  vegBadgeTextV:  { color: colors.teal },
-  vegBadgeTextNv: { color: '#b84c1a' },
-
-  // ── Chat preview (screen 4) ──────────────────────────────────────────────
-  chatWrap: { width: '100%', gap: 8 },
-  chatBubbleUser: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.navy,
-    borderRadius: 14,
-    borderBottomRightRadius: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    maxWidth: '80%',
-  },
-  chatTextUser: { color: colors.white, fontSize: 13, lineHeight: 20 },
-  chatRowAi: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  chatAvatar: { width: 28, height: 28, borderRadius: 14, flexShrink: 0, marginTop: 2 },
-  chatBubbleAi: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 14,
-    borderBottomLeftRadius: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(46,84,128,0.15)',
-  },
-  chatTextAi: { color: colors.navy, fontSize: 13, lineHeight: 20 },
-
-  // ── Cook card (screen 5) ─────────────────────────────────────────────────
-  cookCard: {
-    width: '100%',
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.navy,
-    padding: 10,
-  },
-  cookCardTitle: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  cookRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(46,84,128,0.08)',
-  },
-  cookMeal: {
-    fontSize: 9,
-    color: colors.textMuted,
-    width: 46,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  cookDish: { fontSize: 11, fontWeight: '500', color: colors.navy, flex: 1 },
-  cookTtsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 8,
-  },
-  cookTtsIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.gold,
-    opacity: 0.85,
-  },
-  cookTtsLabel: { fontSize: 11, color: colors.teal, fontWeight: '600' },
-
-  // ── Banner (screens 2–5) ─────────────────────────────────────────────────
-  banner: {
-    backgroundColor: colors.navy,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  bannerText: {
-    fontSize: 12,
-    color: colors.white,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-
-  // ── Bottom navigation ────────────────────────────────────────────────────
-  bottomNav: { marginTop: 10, paddingBottom: 4 },
-  dotsCenter: { alignItems: 'center', marginBottom: 10 },
-  dotsRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dot: { borderRadius: 3 },
-  dotActive:   { width: 18, height: 6, backgroundColor: colors.gold },
-  dotInactive: { width: 6,  height: 6, backgroundColor: colors.navy, opacity: 0.3 },
-
-  nextWrap: { alignItems: 'flex-end' },
+  slideInner: { flex: 1, alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 },
+  heroWrap: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 32, paddingHorizontal: 24 },
+  pulseRing: { width: 200, height: 200, borderRadius: 100, borderWidth: 2, borderColor: C.gold, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(201,162,39,0.08)' },
+  heroLogo: { width: 160, height: 160 },
+  heroText: { alignItems: 'center' },
+  heroTitle: { fontFamily: 'Poppins_700Bold', fontSize: 32, fontWeight: '700', color: C.white, textAlign: 'center', lineHeight: 40, marginBottom: 12 },
+  heroSub: { fontFamily: 'Poppins_400Regular', fontSize: 17, color: 'rgba(255,255,255,0.80)', textAlign: 'center', lineHeight: 26 },
+  slideLogo: { width: 52, height: 52, marginBottom: 6 },
+  tag: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: C.gold, letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 4, textAlign: 'center' },
+  title: { fontFamily: 'Poppins_700Bold', fontSize: 22, fontWeight: '700', color: C.white, textAlign: 'center', lineHeight: 30, marginBottom: 10 },
+  cards: { width: '100%', gap: 6, flex: 1 },
+  memberCard: { backgroundColor: C.white, borderRadius: 14, borderWidth: 1.5, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  avatarTxt: { fontSize: 11, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, flex: 1 },
+  pill: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  pillTxt: { fontSize: 9, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
+  dayCard: { backgroundColor: C.white, borderRadius: 14, borderWidth: 1.5, padding: 8, flex: 1 },
+  dayLabel: { fontSize: 8, fontWeight: '700', color: C.navy, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4, fontFamily: 'Poppins_700Bold' },
+  mealRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 4 },
+  mealType: { fontSize: 8, color: C.grey, width: 52, fontFamily: 'Poppins_400Regular' },
+  mealDish: { fontSize: 9, fontWeight: '500', color: C.dark, flex: 1, fontFamily: 'Poppins_500Medium' },
+  badge: { borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
+  vegBadge: { backgroundColor: C.mint }, nvBadge: { backgroundColor: C.lightOrange },
+  badgeTxt: { fontSize: 7, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
+  vegTxt: { color: C.teal }, nvTxt: { color: C.darkOrange },
+  chatCard: { backgroundColor: C.white, borderRadius: 14, borderWidth: 1.5, padding: 12, width: '100%', gap: 8, flex: 1 },
+  userBubble: { backgroundColor: C.navy, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, alignSelf: 'flex-end', maxWidth: '80%' },
+  userBubbleTxt: { color: C.white, fontSize: 12, fontFamily: 'Poppins_400Regular' },
+  maharajBubble: { backgroundColor: C.gold, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, alignSelf: 'flex-start', maxWidth: '80%' },
+  maharajBubbleTxt: { color: C.dark, fontSize: 12, fontFamily: 'Poppins_400Regular' },
+  cookCard: { backgroundColor: C.white, borderRadius: 14, borderWidth: 1.5, padding: 12, width: '100%', flex: 1 },
+  cookHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.1)' },
+  cookGreeting: { fontSize: 14, fontWeight: '700', color: C.navy, fontFamily: 'Poppins_700Bold' },
+  cookDate: { fontSize: 10, color: C.grey, fontFamily: 'Poppins_400Regular' },
+  cookMeal: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(46,84,128,0.07)' },
+  hindiLabel: { fontSize: 9, color: C.grey, marginBottom: 2, fontFamily: 'Poppins_400Regular' },
+  cookDish: { fontSize: 13, fontWeight: '700', color: C.dark, textDecorationLine: 'underline', fontFamily: 'Poppins_700Bold' },
+  ttsBtn: { backgroundColor: C.gold, borderRadius: 8, padding: 10, alignItems: 'center', marginTop: 10 },
+  ttsBtnTxt: { fontSize: 12, fontWeight: '700', color: C.dark, fontFamily: 'Poppins_700Bold' },
+  banner: { backgroundColor: C.navy, borderRadius: 12, padding: 12, width: '100%', marginTop: 8 },
+  bannerText: { color: C.white, fontSize: 11, textAlign: 'center', lineHeight: 17, fontFamily: 'Poppins_400Regular' },
+  microLine: { color: 'rgba(255,255,255,0.6)', fontSize: 11, textAlign: 'center', marginTop: 6, fontFamily: 'Poppins_400Regular' },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 10, gap: 6 },
+  dot: { height: 6, borderRadius: 3 },
+  dotOn: { width: 18, backgroundColor: C.gold },
+  dotOff: { width: 6, backgroundColor: 'rgba(46,84,128,0.30)' },
+  navRow: { paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 8 : 16 },
+  nextBtn: { backgroundColor: C.gold, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, alignSelf: 'flex-end' },
+  nextTxt: { color: C.dark, fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+  ctaBtn: { backgroundColor: C.gold, borderRadius: 12, paddingVertical: 16, alignItems: 'center', width: '100%' },
+  ctaTxt: { color: C.dark, fontSize: 16, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
 });
