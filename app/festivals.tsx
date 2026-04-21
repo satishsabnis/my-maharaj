@@ -196,18 +196,20 @@ export default function FestivalsScreen() {
           </View>
         )}
 
-        {visibleFestivals.map((f, i) => (
-          <View key={`cal-${i}`} style={s.card}>
-            <View style={s.festRow}>
-              <Text style={s.calName}>{f.name}</Text>
+        <View style={s.calList}>
+          {visibleFestivals.map((f, i) => (
+            <View
+              key={`cal-${i}`}
+              style={[
+                s.calRow,
+                i < visibleFestivals.length - 1 && s.calRowBorder,
+              ]}
+            >
               <Text style={s.calDate}>{f.date}</Text>
+              <Text style={s.calName}>{f.name}</Text>
             </View>
-            <Text style={s.calFood}>{f.food}</Text>
-            <View style={s.tagRow}>
-              <View style={s.greenPill}><Text style={s.greenPillText}>Universal</Text></View>
-            </View>
-          </View>
-        ))}
+          ))}
+        </View>
 
         {!showAll && upcomingFestivals.length > 6 && (
           <TouchableOpacity onPress={() => setShowAll(true)} activeOpacity={0.7}>
@@ -462,20 +464,35 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Full calendar cards
-  calName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.navy,
+  // Full calendar list
+  calList: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: colors.cardBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    marginBottom: 6,
+  },
+  calRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+  },
+  calRowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.cardBorder,
   },
   calDate: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textMuted,
+    width: 70,
   },
-  calFood: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 5,
+  calName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.navy,
+    flex: 1,
   },
 
   viewAllLink: {
