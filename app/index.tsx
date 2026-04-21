@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ImageBackground, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { navy } from '../theme/colors';
 
@@ -22,7 +23,8 @@ export default function SplashScreen() {
       // Route — Supabase profile_completed is the sole source of truth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.replace('/login');
+        const seen = await AsyncStorage.getItem('hasSeenOnboarding');
+        router.replace((seen ? '/login' : '/intro') as never);
         return;
       }
       const { data: profileRow } = await supabase
