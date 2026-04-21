@@ -1306,10 +1306,10 @@ Return ONLY valid JSON (no markdown) in this exact format:
     if (step === 'plan-summary') {
       Alert.alert(
         'Go back?',
-        'Going back will lose your generated plan. Are you sure?',
+        'Your generated plan will be lost.',
         [
           { text: 'Stay', style: 'cancel' },
-          { text: 'Go back', style: 'destructive', onPress: () => setStep('wizard') },
+          { text: 'Go back', style: 'destructive', onPress: () => router.back() },
         ]
       );
       return;
