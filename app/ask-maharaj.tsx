@@ -227,7 +227,11 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
     await stopSpeaking();
     setSpeakingIndex(msgIndex);
     setIsPaused(false);
-    const speechText = stripForSpeech(text);
+    const stripped = stripForSpeech(text);
+    const speechText = stripped.length <= 500
+      ? stripped
+      : stripped.slice(0, 500).replace(/[^.!?]*$/, '').trim()
+        || stripped.slice(0, 500);
     const langCode = ISO_TO_SARVAM[appLang] || 'en-IN';
     try {
       console.log('Calling Sarvam TTS');
