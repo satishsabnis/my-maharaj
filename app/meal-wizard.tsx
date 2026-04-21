@@ -216,6 +216,11 @@ export default function MealWizardScreen() {
   const [profileCompleted, setProfileCompleted] = useState(true);
   const [isFullUser, setIsFullUser] = useState(false);
   const [capPopupVisible, setCapPopupVisible] = useState(false);
+  const [sundayPopupVisible, setSundayPopupVisible] = useState(false);
+  const [pendingGenerate, setPendingGenerate] = useState(false);
+  const [sundayFeastOn, setSundayFeastOn] = useState(false);
+  const [sundayExtraCurry, setSundayExtraCurry] = useState('');
+  const [sundaySweet, setSundaySweet] = useState('');
 
   // Jain
   const [isJainFamily, setIsJainFamily] = useState(false);
@@ -432,6 +437,21 @@ Return ONLY valid JSON (no markdown) in this exact format:
         setFamilyRecipes(frData.map((r: any) => ({ recipe_name: r.recipe_name ?? '', cuisine: r.cuisine ?? '' })));
       }
 
+      // Sunday special — load into state so handleGenerate can show popup
+      try {
+        let sec = await AsyncStorage.getItem('sunday_extra_curry') || '';
+        let sws = await AsyncStorage.getItem('sunday_sweet') || '';
+        if (!sec || !sws) {
+          const { data: sunRow } = await supabase.from('profiles').select('sunday_extra_curry, sunday_sweet').eq('id', user.id).maybeSingle();
+          if (sunRow) {
+            if (!sec && sunRow.sunday_extra_curry) { sec = sunRow.sunday_extra_curry; await AsyncStorage.setItem('sunday_extra_curry', sec); }
+            if (!sws && sunRow.sunday_sweet)       { sws = sunRow.sunday_sweet;       await AsyncStorage.setItem('sunday_sweet', sws); }
+          }
+        }
+        if (sec) setSundayExtraCurry(sec);
+        if (sws) setSundaySweet(sws);
+      } catch { /* non-fatal */ }
+
       // Determine first-time user (foodPref state is set by Edge Function call above)
       const isFirst = saved.length === 0 || !mealPlanContextRef.current?.foodPref;
       setIsFirstTimeUser(isFirst);
@@ -618,25 +638,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
       const mealTemplateRaita = await AsyncStorage.getItem('meal_template_raita') || '';
       const mealTemplateBread = await AsyncStorage.getItem('meal_template_bread') || '';
       const mealTemplateRice = await AsyncStorage.getItem('meal_template_rice') || '';
-      let sundayExtraCurry = await AsyncStorage.getItem('sunday_extra_curry') || '';
-      let sundaySweet = await AsyncStorage.getItem('sunday_sweet') || '';
-      // Fallback: if AsyncStorage empty, read from Supabase profiles
-      if (!sundayExtraCurry || !sundaySweet) {
-        try {
-          const { data: profileRow } = await supabase.from('profiles').select('sunday_extra_curry, sunday_sweet').eq('id', userId).maybeSingle();
-          if (profileRow) {
-            if (!sundayExtraCurry && profileRow.sunday_extra_curry) {
-              sundayExtraCurry = profileRow.sunday_extra_curry;
-              await AsyncStorage.setItem('sunday_extra_curry', sundayExtraCurry);
-            }
-            if (!sundaySweet && profileRow.sunday_sweet) {
-              sundaySweet = profileRow.sunday_sweet;
-              await AsyncStorage.setItem('sunday_sweet', sundaySweet);
-            }
-          }
-        } catch { /* non-fatal — generation continues without Sunday special */ }
-      }
-
       const dates = [...selectedDays].sort();
       setGeneratingProgress({ current: 0, total: dates.length });
 
@@ -695,8 +696,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
         mealTemplateRaita,
         mealTemplateBread,
         mealTemplateRice,
-        sundayExtraCurry,
-        sundaySweet,
+        sundayExtraCurry: sundayFeastOn ? sundayExtraCurry : '',
+        sundaySweet: sundayFeastOn ? sundaySweet : '',
       },
       // onProgress — called after each day completes
       (current, total) => {
@@ -735,7 +736,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
       setError(e instanceof Error ? e.message : 'Generation failed. Please try again.');
       setStep('wizard');
     }
-  }, [selectedFrom, selectedTo, foodPref, foodPreference, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert, hasGuests, guestCuisine, guestDays, extraCuisines, perDayCuisine, freeText, selectedCuisines, selectedSlots, profileCompleted]);
+  }, [selectedFrom, selectedTo, foodPref, foodPreference, vegType, nonVegOpts, familyMembers, unwellIds, nutritionGoals, bfPrefs, lnPrefs, dnPrefs, snPrefs, includeDessert, hasGuests, guestCuisine, guestDays, extraCuisines, perDayCuisine, freeText, selectedCuisines, selectedSlots, profileCompleted, sundayFeastOn, sundayExtraCurry, sundaySweet]);
 
   useEffect(() => {
     if (step === 'generating') void runGeneration();
@@ -746,18 +747,6 @@ Return ONLY valid JSON (no markdown) in this exact format:
   function buildObservations(dates: string[]) {
     const obs: Observation[] = [];
     let obsId = 0;
-
-    // Check for Sundays
-    const hasSunday = dates.some(d => new Date(d).getDay() === 0);
-    if (hasSunday) {
-      obs.push({
-        id: String(++obsId),
-        label: 'Sunday Special',
-        text: 'Maharaj noticed a Sunday in your plan. Would you like a special or elaborate Sunday meal?',
-        answered: false,
-        answer: null,
-      });
-    }
 
     // Check for festivals (parse string components to avoid UTC timezone off-by-one)
     FESTIVALS_2026.forEach(fest => {
@@ -1426,6 +1415,18 @@ Return ONLY valid JSON (no markdown) in this exact format:
     }, 2500);
   }
 
+  // ── proceedToGenerate — component-level so Sunday popup can call it ─────────
+
+  function proceedToGenerate() {
+    const targetDates = [...selectedDays]
+      .map(d => new Date(d))
+      .sort((a, b) => a.getTime() - b.getTime());
+    setSelectedFrom(targetDates[0]);
+    setSelectedTo(targetDates[targetDates.length - 1]);
+    if (!foodPref) setFoodPref('veg');
+    setStep('generating');
+  }
+
   // ── Step Renders ──────────────────────────────────────────────────────────
 
   function renderWizard() {
@@ -1448,20 +1449,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
     function handleGenerate() {
       if (selectedDays.length === 0) { setError('Please select at least one day'); return; }
-      // Compute dates from selected days
-      const today = startOfDay(new Date());
-      const dayMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
-      const todayDow = today.getDay();
-      const targetDates = selectedDays.map(d => {
-        const targetDow = dayMap[d] ?? 0;
-        let diff = targetDow - todayDow;
-        if (diff <= 0) diff += 7;
-        return addDays(today, diff);
-      }).sort((a, b) => a.getTime() - b.getTime());
-      setSelectedFrom(targetDates[0]);
-      setSelectedTo(targetDates[targetDates.length - 1]);
-      if (!foodPref) setFoodPref('veg');
-      setStep('generating');
+      const hasSundaySelected = selectedDays.some(d => new Date(d).getDay() === 0);
+      if (hasSundaySelected && sundayExtraCurry) {
+        setPendingGenerate(true);
+        setSundayPopupVisible(true);
+        return;
+      }
+      proceedToGenerate();
     }
 
     return (
@@ -1869,6 +1863,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
                     {isSunday && <View style={{backgroundColor:'#c9a227',borderRadius:6,paddingHorizontal:8,paddingVertical:3}}><Text style={{fontSize:10,fontWeight:'500',color:'#1a1a1a'}}>Sunday</Text></View>}
                     {festivalMatch && <View style={{backgroundColor:'#FEF3C7',borderRadius:6,paddingHorizontal:8,paddingVertical:3}}><Text style={{fontSize:10,fontWeight:'500',color:'#92400E'}}>{festivalMatch.name}</Text></View>}
                   </View>
+                  {isSunday && sundayFeastOn && sundayExtraCurry && (
+                    <View style={{backgroundColor:colors.mintLight,borderRadius:8,padding:8,marginTop:4,marginBottom:8}}>
+                      <Text style={{fontSize:12,color:colors.navy,fontWeight:'600'}}>
+                        Sunday Feast: {sundayExtraCurry}{sundaySweet ? ` · ${sundaySweet}` : ''}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Meal slots */}
                   {!hasAnatomy && !hasLegacy ? (
@@ -2487,6 +2488,38 @@ Return ONLY valid JSON (no markdown) in this exact format:
       <Modal visible={altModalVisible} transparent animationType="slide" onRequestClose={() => setAltModalVisible(false)}>
         <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.4)',justifyContent:'flex-end'}}>
           {renderAlternatives()}
+        </View>
+      </Modal>
+
+      {/* Sunday feast popup */}
+      <Modal visible={sundayPopupVisible} transparent animationType="fade" onRequestClose={() => { setSundayPopupVisible(false); setSundayFeastOn(false); }}>
+        <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'center',alignItems:'center',padding:24}}>
+          <View style={{backgroundColor:'white',borderRadius:16,padding:24,width:'100%'}}>
+            <View style={{backgroundColor:colors.gold,borderRadius:10,padding:12,marginBottom:16,alignItems:'center'}}>
+              <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Sunday Special</Text>
+            </View>
+            <Text style={{fontSize:14,color:colors.navy,lineHeight:22,marginBottom:8}}>
+              Maharaj noticed a Sunday in your plan.
+            </Text>
+            <Text style={{fontSize:13,color:colors.textMuted,lineHeight:20,marginBottom:24}}>
+              Would you like a special Sunday feast with{' '}
+              {sundayExtraCurry}{sundaySweet ? ` and ${sundaySweet}` : ''}?
+            </Text>
+            <View style={{flexDirection:'row',gap:12}}>
+              <TouchableOpacity
+                style={{flex:1,borderWidth:1.5,borderColor:colors.navy,borderRadius:10,paddingVertical:12,alignItems:'center'}}
+                onPress={() => { setSundayFeastOn(false); setSundayPopupVisible(false); proceedToGenerate(); }}
+              >
+                <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{flex:1,backgroundColor:colors.gold,borderRadius:10,paddingVertical:12,alignItems:'center'}}
+                onPress={() => { setSundayFeastOn(true); setSundayPopupVisible(false); proceedToGenerate(); }}
+              >
+                <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Yes, feast!</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 

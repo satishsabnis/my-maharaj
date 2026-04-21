@@ -38,6 +38,7 @@ export interface DayAnatomy {
   lunch?: MealAnatomy;
   dinner?: MealAnatomy;
   snack?: AnatomyComponent;
+  sweet?: AnatomyComponent;
 }
 
 export interface MealPlanDay {
@@ -886,6 +887,7 @@ export async function generateMealPlanFast(
 
       // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
       let finalLunchCurry1 = lunchCurry1;
+      let sundaySweetComp: AnatomyComponent | null = null;
       if (isSunday) {
         const sundayPoolDishes = dayPool.filter(d =>
           d.allowed_days && d.allowed_days.includes('Sunday') &&
@@ -916,6 +918,27 @@ export async function generateMealPlanFast(
             usedNames.add(finalLunchCurry1);
           }
         }
+
+        // Sunday sweet — query by exact name, store for anatomy.sweet
+        if (params.sundaySweet) {
+          try {
+            const { data: sweetDish } = await supabase
+              .from('dishes')
+              .select('name, is_veg')
+              .eq('name', params.sundaySweet)
+              .eq('is_banned', false)
+              .maybeSingle();
+            if (sweetDish) {
+              sundaySweetComp = {
+                dishName: sweetDish.name,
+                isVeg: sweetDish.is_veg !== false,
+                cuisine: cuisineStr,
+                ingredients: dishIngredients(sweetDish.name),
+              };
+            }
+          } catch { /* non-fatal */ }
+        }
+
       }
 
       // ── Assemble anatomy ──────────────────────────────────────────────────
@@ -958,6 +981,10 @@ export async function generateMealPlanFast(
 
       if (slots.includes('snack')) {
         anatomy.snack = { dishName: snack, isVeg: !isNonVegDish(snack), cuisine: cuisineStr, ingredients: dishIngredients(snack) };
+      }
+
+      if (sundaySweetComp) {
+        anatomy.sweet = sundaySweetComp;
       }
 
       // ── Build MealSlots ───────────────────────────────────────────────────
