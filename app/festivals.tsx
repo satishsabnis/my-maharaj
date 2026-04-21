@@ -55,15 +55,17 @@ export default function FestivalsScreen() {
   }, []));
 
   const monthAbbr = currentMonthAbbr();
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
-  // Festivals in current month
-  const thisMonthFestivals = FESTIVALS_2026.filter(f => f.date.endsWith(monthAbbr));
+  // Festivals in current month — only today or later
+  const thisMonthFestivals = FESTIVALS_2026.filter(f =>
+    f.date.endsWith(monthAbbr) && new Date(`${f.date} 2026`) >= todayStart
+  );
 
   // Family occasions matching current month
   const thisMonthOccasions = occasions.filter(o => o.day.includes(monthAbbr));
 
   // Full calendar — only upcoming (today or later), with show-all toggle
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const upcomingFestivals = FESTIVALS_2026.filter(f => new Date(`${f.date} 2026`) >= todayStart);
   const visibleFestivals = showAll ? upcomingFestivals : upcomingFestivals.slice(0, 6);
 
