@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Easing, KeyboardAvoidingView, Platform,
+  Alert, Animated, Easing, Image, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity,
   View, ActivityIndicator,
 } from 'react-native';
@@ -366,53 +366,62 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
           )}
 
           {messages.map((msg, i) => (
-            <View
-              key={i}
-              style={msg.role === 'user' ? s.userBubble : s.aiBubble}
-            >
-              {msg.role === 'assistant' && i === lastAiIdx && (
-                <View nativeID="last-ai-bubble" />
-              )}
-              {msg.role === 'user' ? (
+            msg.role === 'user' ? (
+              <View key={i} style={s.userBubble}>
                 <Text style={{fontSize:14,lineHeight:22,color:colors.white}}>{msg.content}</Text>
-              ) : (
-                <View>{renderResponseText(msg.content)}</View>
-              )}
-              {msg.role === 'assistant' && (
-                <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:8,gap:8}}>
-                  {speakingIndex === i ? (
-                    <>
+              </View>
+            ) : (
+              <View key={i} style={{flexDirection:'row',alignItems:'flex-start',gap:8,marginBottom:8}}>
+                <Image
+                  source={require('../assets/logo.png')}
+                  style={{width:28,height:28,borderRadius:14,marginTop:4,flexShrink:0}}
+                  resizeMode="contain"
+                />
+                <View style={[s.aiBubble,{flex:1,marginBottom:0}]}>
+                  {i === lastAiIdx && <View nativeID="last-ai-bubble" />}
+                  <View>{renderResponseText(msg.content)}</View>
+                  <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:8,gap:8}}>
+                    {speakingIndex === i ? (
+                      <>
+                        <TouchableOpacity
+                          style={{backgroundColor:colors.gold,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
+                          onPress={isPaused ? resumeSpeaking : pauseSpeaking}
+                        >
+                          <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>{isPaused ? 'Resume' : 'Pause'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{backgroundColor:'rgba(26,58,92,0.12)',borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
+                          onPress={stopSpeaking}
+                        >
+                          <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Stop</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
                       <TouchableOpacity
-                        style={{backgroundColor:colors.gold,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
-                        onPress={isPaused ? resumeSpeaking : pauseSpeaking}
+                        style={{backgroundColor:colors.navy,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center',opacity:speakingIndex !== null ? 0.4 : 1}}
+                        onPress={() => speakMessage(msg.content, i)}
+                        disabled={speakingIndex !== null}
                       >
-                        <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>{isPaused ? 'Resume' : 'Pause'}</Text>
+                        <Text style={{fontSize:14,fontWeight:'600',color:colors.gold}}>Speak</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={{backgroundColor:'rgba(26,58,92,0.12)',borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
-                        onPress={stopSpeaking}
-                      >
-                        <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Stop</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <TouchableOpacity
-                      style={{backgroundColor:colors.navy,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center',opacity:speakingIndex !== null ? 0.4 : 1}}
-                      onPress={() => speakMessage(msg.content, i)}
-                      disabled={speakingIndex !== null}
-                    >
-                      <Text style={{fontSize:14,fontWeight:'600',color:colors.gold}}>Speak</Text>
-                    </TouchableOpacity>
-                  )}
+                    )}
+                  </View>
                 </View>
-              )}
-            </View>
+              </View>
+            )
           ))}
 
           {loading && (
-            <View style={s.aiBubble}>
-              <ActivityIndicator color={colors.navy} size="small" />
-              <Text style={{fontSize:13,color:colors.textSec,fontStyle:'italic',marginTop:4}}>Thinking...</Text>
+            <View style={{flexDirection:'row',alignItems:'flex-start',gap:8,marginBottom:8}}>
+              <Image
+                source={require('../assets/logo.png')}
+                style={{width:28,height:28,borderRadius:14,marginTop:4,flexShrink:0}}
+                resizeMode="contain"
+              />
+              <View style={[s.aiBubble,{flex:1,marginBottom:0}]}>
+                <ActivityIndicator color={colors.navy} size="small" />
+                <Text style={{fontSize:13,color:colors.textSec,fontStyle:'italic',marginTop:4}}>Thinking...</Text>
+              </View>
             </View>
           )}
 
