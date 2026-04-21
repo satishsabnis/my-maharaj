@@ -19,7 +19,7 @@ const BG = require('../assets/background.png');
 const LOGO = require('../assets/maharaj-logo.png');
 
 function Overlay() {
-  return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(46,84,128,0.70)' }]} />;
+  return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(46,84,128,0.45)' }]} />;
 }
 
 function SlideShell({ children }: { children: React.ReactNode }) {
@@ -45,8 +45,7 @@ function Banner({ text }: { text: string }) {
 // SCREEN 1
 function HeroSlide({ pulse }: { pulse: Animated.Value }) {
   return (
-    <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 120 }}>
-      <ImageBackground source={BG} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+    <ImageBackground source={require('../assets/background.png')} resizeMode="cover" style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 120 }}>
       <View style={s.heroWrap}>
         <Animated.View style={[s.pulseRing, { transform: [{ scale: pulse }] }]}>
           <Image source={LOGO} style={s.heroLogo} resizeMode="contain" />
@@ -57,7 +56,7 @@ function HeroSlide({ pulse }: { pulse: Animated.Value }) {
           <Text style={s.heroSub}>Your daily meals — planned, decided, and ready.</Text>
         </View>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -261,7 +260,7 @@ const s = StyleSheet.create({
   heroText: { alignItems: 'center' },
   heroTitle: { fontSize: 32, fontWeight: '700', color: C.white, textAlign: 'center', lineHeight: 40, marginBottom: 12 },
   heroSub: { fontSize: 17, color: 'rgba(255,255,255,0.80)', textAlign: 'center', lineHeight: 26 },
-  slideLogo: { width: 52, height: 52, marginBottom: 6 },
+  slideLogo: { width: 80, height: 80, marginBottom: 8 },
   tag: { fontSize: 11, color: C.gold, letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 4, textAlign: 'center' },
   title: { fontSize: 22, fontWeight: '700', color: C.white, textAlign: 'center', lineHeight: 30, marginBottom: 10 },
   cards: { width: '100%', gap: 6, flex: 1 },
@@ -271,7 +270,7 @@ const s = StyleSheet.create({
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, flex: 1 },
   pill: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   pillTxt: { fontSize: 9, fontWeight: '600' },
-  dayCard: { backgroundColor: C.white, borderRadius: 14, borderWidth: 1.5, padding: 8, flex: 1 },
+  dayCard: { backgroundColor: C.white, borderRadius: 14, borderWidth: 1.5, padding: 8, marginBottom: 6 },
   dayLabel: { fontSize: 8, fontWeight: '700', color: C.navy, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 },
   mealRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 4 },
   mealType: { fontSize: 8, color: C.grey, width: 52 },
