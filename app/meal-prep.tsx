@@ -91,25 +91,52 @@ export default function MealPrepScreen() {
       const user = await getSessionUser();
       if (user) {
         const currentPlanId = await AsyncStorage.getItem('current_plan_id');
-        let query = supabase
-          .from('meal_prep_tasks')
-          .select('id, dish, day, meal, prep_type, instruction, timing, urgency, done')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        if (currentPlanId) query = query.eq('plan_id', currentPlanId);
-        const { data, error } = await query;
-        if (!error && data) {
-          setTasks(data.map((row: any) => ({
-            id: row.id,
-            dish: row.dish,
-            day: row.day,
-            meal: row.meal,
-            prepType: row.prep_type,
-            instruction: row.instruction,
-            timing: row.timing,
-            urgency: row.done ? 'done' : row.urgency,
-            done: row.done,
-          })));
+        if (currentPlanId) {
+          // Scoped query — v4.01.24+ plans
+          const { data, error } = await supabase
+            .from('meal_prep_tasks')
+            .select('id, dish, day, meal, prep_type, instruction, timing, urgency, done')
+            .eq('user_id', user.id)
+            .eq('plan_id', currentPlanId)
+            .order('created_at', { ascending: false });
+          if (!error && data) {
+            setTasks(data.map((row: any) => ({
+              id: row.id,
+              dish: row.dish,
+              day: row.day,
+              meal: row.meal,
+              prepType: row.prep_type,
+              instruction: row.instruction,
+              timing: row.timing,
+              urgency: row.done ? 'done' : row.urgency,
+              done: row.done,
+            })));
+          }
+        } else {
+          // Fallback — pre-v4.01.24 plans with no stored plan_id
+          const { data, error } = await supabase
+            .from('meal_prep_tasks')
+            .select('id, plan_id, dish, day, meal, prep_type, instruction, timing, urgency, done')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (!error && data && data.length > 0) {
+            // Persist the plan_id from the first row for future scoped loads
+            if (data[0].plan_id) {
+              await AsyncStorage.setItem('current_plan_id', data[0].plan_id);
+            }
+            setTasks(data.map((row: any) => ({
+              id: row.id,
+              dish: row.dish,
+              day: row.day,
+              meal: row.meal,
+              prepType: row.prep_type,
+              instruction: row.instruction,
+              timing: row.timing,
+              urgency: row.done ? 'done' : row.urgency,
+              done: row.done,
+            })));
+          }
         }
       }
     } catch {}
