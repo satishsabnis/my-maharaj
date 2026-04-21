@@ -16,10 +16,10 @@ import ScreenWrapper from '../components/ScreenWrapper';
 interface Message { role: 'user' | 'assistant'; content: string; }
 interface MealResult { title: string; meals: { slot: string; name: string; description: string }[]; tips?: string[]; }
 
-const LANG_MAP: Record<string, string> = {
-  'English': 'en-IN', 'Hindi': 'hi-IN', 'Marathi': 'mr-IN',
-  'Tamil': 'ta-IN', 'Telugu': 'te-IN', 'Kannada': 'kn-IN',
-  'Malayalam': 'ml-IN', 'Bengali': 'bn-IN', 'Gujarati': 'gu-IN', 'Punjabi': 'pa-IN',
+const ISO_TO_SARVAM: Record<string, string> = {
+  'en': 'en-IN', 'hi': 'hi-IN', 'mr': 'mr-IN',
+  'ta': 'ta-IN', 'te': 'te-IN', 'kn': 'kn-IN',
+  'ml': 'ml-IN', 'bn': 'bn-IN', 'gu': 'gu-IN', 'pa': 'pa-IN',
 };
 
 async function callClaude(messages: { role: string; content: string }[], systemPrompt: string): Promise<string> {
@@ -89,7 +89,6 @@ export default function AskMaharajScreen() {
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const lastAiBubbleRef = useRef<View>(null);
   const audioRef = useRef<any>(null);
   const soundRef = useRef<any>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -97,7 +96,7 @@ export default function AskMaharajScreen() {
   const [userName, setUserName] = useState('');
   const [hasPlan, setHasPlan] = useState(false);
   const [familyContextStr, setFamilyContextStr] = useState('');
-  const [userLanguages, setUserLanguages] = useState<string[]>(['English']);
+  const [appLang, setAppLang] = useState<string>('en');
 
   // Logo pulse — infinite loop
   useEffect(() => {
@@ -127,24 +126,17 @@ export default function AskMaharajScreen() {
         setFamilyContextStr(summary ? `\nFAMILY PROFILE:\n${summary}\nStores: ${storePref || 'any'}\nCooking: ${cookSkill || 'moderate'}\nFasting: ${fastDays || 'none'}\n` : '');
         const plan = await AsyncStorage.getItem('maharaj_plan_ready');
         if (plan) setHasPlan(true);
-        const langs = await AsyncStorage.getItem('app_languages');
-        if (langs) try { setUserLanguages(JSON.parse(langs)); } catch {}
+        const appLangStored = await AsyncStorage.getItem('app_language');
+        if (appLangStored) setAppLang(appLangStored);
       } catch {}
     })();
   }, []);
 
-  function scrollToLastAiBubble() {
+  function scrollToNewMessage() {
     setTimeout(() => {
-      if (lastAiBubbleRef.current && scrollRef.current) {
-        try {
-          (lastAiBubbleRef.current as any).measureLayout(
-            scrollRef.current as any,
-            (x: number, y: number) => { scrollRef.current?.scrollTo({ y, animated: true }); },
-            () => { scrollRef.current?.scrollToEnd({ animated: true }); }
-          );
-        } catch {
-          scrollRef.current?.scrollToEnd({ animated: true });
-        }
+      if (Platform.OS === 'web') {
+        const el = document.getElementById('last-ai-bubble');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
         scrollRef.current?.scrollToEnd({ animated: true });
       }
@@ -163,7 +155,7 @@ export default function AskMaharajScreen() {
     (async () => {
       try {
         const profileCtx = await getProfileContext();
-        const lang = userLanguages[0] || 'English';
+        const lang = appLang || 'en';
         const tipSystemPrompt = `CRITICAL: You MUST respond ENTIRELY in ${lang}. Never switch languages mid-response. Even if the user writes in another language, always reply in ${lang}.
 
 ${familyContextStr}
@@ -177,7 +169,7 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
         setMessages([userMsg, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
       } finally {
         setLoading(false);
-        scrollToLastAiBubble();
+        scrollToNewMessage();
       }
     })();
   }, [initialMessage]);
@@ -235,14 +227,19 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
     setSpeakingIndex(msgIndex);
     setIsPaused(false);
     const speechText = stripForSpeech(text);
-    const langCode = LANG_MAP[userLanguages[0]] || 'en-IN';
+    const langCode = ISO_TO_SARVAM[appLang] || 'en-IN';
     try {
+      console.log('Calling Sarvam TTS');
       const res = await fetch('https://my-maharaj.vercel.app/api/sarvam-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-maharaj-secret': process.env.EXPO_PUBLIC_MAHARAJ_API_SECRET } as Record<string, string>,
         body: JSON.stringify({ text: speechText, language: langCode }),
       });
       const data = await res.json();
+      console.log('Sarvam response ok:', res.ok, 'has audio:', !!data.audio);
+      if (Platform.OS === 'web') {
+        Alert.alert('TTS Debug', `ok:${res.ok} audio:${!!data.audio} status:${res.status}`);
+      }
       if (!data.audio) throw new Error('No audio');
       if (Platform.OS === 'web') {
         const audio = new (window as any).Audio(`data:audio/wav;base64,${data.audio}`);
@@ -257,8 +254,11 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
         });
         await sound.playAsync();
       }
-    } catch {
+    } catch (err) {
+      console.log('Sarvam TTS error:', err);
+      Alert.alert('TTS Debug', String(err));
       setSpeakingIndex(null);
+      setIsPaused(false);
     }
   }
 
@@ -292,7 +292,7 @@ The user has tapped on a Maharaj tip card. Explain this tip in detail, give prac
     setLoading(true);
     try {
       const profileCtx = await getProfileContext();
-      const lang = userLanguages[0] || 'English';
+      const lang = appLang || 'en';
       const isMeal = /cook|make|prepare|suggest|plan|recipe|meal|breakfast|lunch|dinner|dish|food|thali|sabzi|dal|rice|roti/i.test(text);
       const systemPrompt = `CRITICAL: You MUST respond ENTIRELY in ${lang}. Never switch languages mid-response. Even if the user writes in another language, always reply in ${lang}.
 
@@ -315,7 +315,7 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
     } finally {
       setLoading(false);
-      scrollToLastAiBubble();
+      scrollToNewMessage();
     }
   }
 
@@ -333,6 +333,8 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
     r.onend = () => setListening(false);
     r.start();
   }
+
+  const lastAiIdx = messages.reduce((last, m, i) => m.role === 'assistant' ? i : last, -1);
 
   return (
     <ScreenWrapper title="Ask Maharaj" onBack={() => router.back()} showHome>
@@ -361,50 +363,49 @@ Use ONLY authentic Indian dish names. Be warm, practical, specific to this famil
             </View>
           )}
 
-          {messages.map((msg, i) => {
-            const isLastAI = i === messages.length - 1 && msg.role === 'assistant';
-            return (
-              <View
-                key={i}
-                ref={isLastAI ? lastAiBubbleRef : undefined}
-                style={msg.role === 'user' ? s.userBubble : s.aiBubble}
-              >
-                {msg.role === 'user' ? (
-                  <Text style={{fontSize:14,lineHeight:22,color:colors.white}}>{msg.content}</Text>
-                ) : (
-                  <View>{renderResponseText(msg.content)}</View>
-                )}
-                {msg.role === 'assistant' && (
-                  <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:8,gap:8}}>
-                    {speakingIndex === i ? (
-                      <>
-                        <TouchableOpacity
-                          style={{backgroundColor:colors.gold,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
-                          onPress={isPaused ? resumeSpeaking : pauseSpeaking}
-                        >
-                          <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>{isPaused ? 'Resume' : 'Pause'}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={{backgroundColor:'rgba(26,58,92,0.12)',borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
-                          onPress={stopSpeaking}
-                        >
-                          <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Stop</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
+          {messages.map((msg, i) => (
+            <View
+              key={i}
+              style={msg.role === 'user' ? s.userBubble : s.aiBubble}
+            >
+              {msg.role === 'assistant' && i === lastAiIdx && (
+                <View nativeID="last-ai-bubble" />
+              )}
+              {msg.role === 'user' ? (
+                <Text style={{fontSize:14,lineHeight:22,color:colors.white}}>{msg.content}</Text>
+              ) : (
+                <View>{renderResponseText(msg.content)}</View>
+              )}
+              {msg.role === 'assistant' && (
+                <View style={{flexDirection:'row',alignSelf:'flex-end',marginTop:8,gap:8}}>
+                  {speakingIndex === i ? (
+                    <>
                       <TouchableOpacity
-                        style={{backgroundColor:colors.navy,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center',opacity:speakingIndex !== null ? 0.4 : 1}}
-                        onPress={() => speakMessage(msg.content, i)}
-                        disabled={speakingIndex !== null}
+                        style={{backgroundColor:colors.gold,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
+                        onPress={isPaused ? resumeSpeaking : pauseSpeaking}
                       >
-                        <Text style={{fontSize:14,fontWeight:'600',color:colors.gold}}>Speak</Text>
+                        <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>{isPaused ? 'Resume' : 'Pause'}</Text>
                       </TouchableOpacity>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
+                      <TouchableOpacity
+                        style={{backgroundColor:'rgba(26,58,92,0.12)',borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center'}}
+                        onPress={stopSpeaking}
+                      >
+                        <Text style={{fontSize:14,fontWeight:'600',color:colors.navy}}>Stop</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      style={{backgroundColor:colors.navy,borderRadius:24,paddingHorizontal:16,paddingVertical:8,alignItems:'center',justifyContent:'center',opacity:speakingIndex !== null ? 0.4 : 1}}
+                      onPress={() => speakMessage(msg.content, i)}
+                      disabled={speakingIndex !== null}
+                    >
+                      <Text style={{fontSize:14,fontWeight:'600',color:colors.gold}}>Speak</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          ))}
 
           {loading && (
             <View style={s.aiBubble}>
