@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   ImageBackground,
   Platform,
   SafeAreaView,
@@ -206,12 +207,12 @@ export default function FamilyDetailScreen() {
             <Text style={s.avatarTxt}>{initials}</Text>
           </TouchableOpacity>
           <Logo size="small" />
-          <View style={{ width: 40 }} />
+          <Image source={require('../../../assets/blueflute-logo.png')} style={{ width: 80, height: 28 }} resizeMode="contain" />
         </View>
 
         {/* Back */}
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Text style={s.backTxt}>← Back</Text>
+          <Text style={s.backTxt}>Back</Text>
         </TouchableOpacity>
 
         {loading ? (
@@ -245,7 +246,10 @@ export default function FamilyDetailScreen() {
             </TouchableOpacity>
             {ttsError ? <Text style={{ textAlign: 'center', color: '#DC2626', fontSize: 13, marginTop: 10 }}>{ttsError}</Text> : null}
 
-            <Text style={s.footer}>Powered by SarvamAI · My Maharaj</Text>
+            <View style={[s.footerBar, { marginTop: 24 }]}>
+              <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
+              <Text style={s.footerLine2}>www.bluefluteconsulting.com</Text>
+            </View>
           </ScrollView>
         )}
       </SafeAreaView>
@@ -279,5 +283,7 @@ const s = StyleSheet.create({
     elevation: 5,
   },
   playTxt:  { fontSize: 16, fontWeight: '800', color: NAVY, letterSpacing: 0.3 },
-  footer:   { textAlign: 'center', fontSize: 11, color: MUTED, marginTop: 24 },
+  footerBar:   { backgroundColor: '#1B3A5C', paddingVertical: 12, alignItems: 'center' },
+  footerLine1: { color: '#1A6B5C', fontSize: 12, fontWeight: '600' },
+  footerLine2: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },
 });
