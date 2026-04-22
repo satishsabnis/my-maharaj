@@ -136,13 +136,7 @@ export default function CookHomeScreen() {
         <Text style={s.cardName} numberOfLines={1}>{item.familyName}</Text>
         <Text style={s.cardLoc}  numberOfLines={1}>{item.location}</Text>
 
-        {item.confirmed ? (
-          <View style={s.mealList}>
-            <Text style={s.mealRow} numberOfLines={1}>🌅 {meals.breakfast || '—'}</Text>
-            <Text style={s.mealRow} numberOfLines={1}>☀️ {meals.lunch || '—'}</Text>
-            <Text style={s.mealRow} numberOfLines={1}>🌙 {meals.dinner || '—'}</Text>
-          </View>
-        ) : (
+        {!item.confirmed && (
           <Text style={s.unconfirmed}>Plan not confirmed</Text>
         )}
 
@@ -150,9 +144,6 @@ export default function CookHomeScreen() {
         <View style={s.cardFooter}>
           <View style={s.badge}>
             <Text style={s.badgeTxt}>{item.memberCount} members</Text>
-          </View>
-          <View style={[s.badge, { backgroundColor: 'rgba(27,58,92,0.08)' }]}>
-            <Text style={s.badgeTxt}>{item.language || 'hi-IN'}</Text>
           </View>
         </View>
       </TouchableOpacity>
