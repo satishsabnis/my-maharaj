@@ -6,7 +6,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   ImageBackground,
+  Modal,
   Platform,
   RefreshControl,
   SafeAreaView,
@@ -74,6 +76,7 @@ export default function CookHomeScreen() {
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [error,       setError]       = useState('');
+  const [drawerOpen,  setDrawerOpen]  = useState(false);
 
   const cookPhone = getLocal('cook_phone');
   const cookName  = getLocal('cook_name') || cookPhone;
@@ -160,16 +163,21 @@ export default function CookHomeScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
         <View style={s.header}>
-          {/* Cook avatar */}
-          <TouchableOpacity style={s.avatar} onPress={logout}>
-            <Text style={s.avatarTxt}>{initials}</Text>
-          </TouchableOpacity>
+          {/* Hamburger + avatar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={() => setDrawerOpen(true)}>
+              <Text style={s.hamburger}>≡</Text>
+            </TouchableOpacity>
+            <View style={s.avatar}>
+              <Text style={s.avatarTxt}>{initials}</Text>
+            </View>
+          </View>
 
           {/* Logo centre */}
           <Logo size="small" />
 
-          {/* BFC logo placeholder — right slot */}
-          <View style={{ width: 40 }} />
+          {/* BFC logo */}
+          <Image source={require('../../assets/blueflute-logo.png')} style={{ width: 80, height: 28 }} resizeMode="contain" />
         </View>
 
         <View style={s.greetRow}>
@@ -203,8 +211,31 @@ export default function CookHomeScreen() {
           />
         )}
 
-        <Text style={s.footer}>Powered by SarvamAI · My Maharaj</Text>
+        <View style={s.footerBar}>
+          <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
+          <Text style={s.footerLine2}>www.bluefluteconsulting.com</Text>
+        </View>
       </SafeAreaView>
+
+      {/* Hamburger drawer */}
+      <Modal visible={drawerOpen} transparent animationType="slide" onRequestClose={() => setDrawerOpen(false)}>
+        <TouchableOpacity style={s.drawerOverlay} activeOpacity={1} onPress={() => setDrawerOpen(false)}>
+          <View style={s.drawer} onStartShouldSetResponder={() => true}>
+            <View style={s.drawerHeader}>
+              <Text style={s.drawerTitle}>Menu</Text>
+              <TouchableOpacity onPress={() => setDrawerOpen(false)}>
+                <Text style={s.drawerClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={s.drawerItem} onPress={() => setDrawerOpen(false)}>
+              <Text style={s.drawerItemTxt}>Refer & Earn</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.drawerItemLast} onPress={() => { logout(); setDrawerOpen(false); }}>
+              <Text style={s.drawerLogout}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -235,5 +266,17 @@ const s = StyleSheet.create({
   badge:     { backgroundColor: 'rgba(201,162,39,0.12)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeTxt:  { fontSize: 10, color: NAVY, fontWeight: '500' },
   retryBtn:  { backgroundColor: NAVY, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  footer:    { textAlign: 'center', fontSize: 11, color: MUTED, paddingBottom: 12, paddingTop: 4 },
+  hamburger: { fontSize: 24, color: NAVY, lineHeight: 28 },
+  footerBar:   { backgroundColor: '#1B3A5C', paddingVertical: 12, alignItems: 'center' },
+  footerLine1: { color: '#1A6B5C', fontSize: 12, fontWeight: '600' },
+  footerLine2: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },
+  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', flexDirection: 'row', justifyContent: 'flex-end' },
+  drawer:        { width: 260, backgroundColor: WHITE, paddingTop: 48, paddingHorizontal: 20 },
+  drawerHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  drawerTitle:   { fontSize: 16, fontWeight: '700', color: NAVY },
+  drawerClose:   { fontSize: 20, color: NAVY, paddingHorizontal: 4 },
+  drawerItem:    { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(27,58,92,0.1)' },
+  drawerItemTxt: { fontSize: 15, color: NAVY },
+  drawerItemLast:{ paddingVertical: 16 },
+  drawerLogout:  { fontSize: 15, color: '#DC2626' },
 });
