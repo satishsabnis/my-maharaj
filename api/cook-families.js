@@ -51,12 +51,22 @@ export default async function handler(req, res) {
   // NOTE: profiles table uses 'id' as the primary key, not 'user_id'
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('id, family_name, language_preference')
+    .select('id, family_name, full_name, plan_summary_language')
     .in('id', userIds);
 
   if (profilesErr) {
     // Log but do not hard-fail — families should still show even without profile names
     console.error('[cook-families] profiles query error:', profilesErr.message);
+  }
+
+  // Fetch member counts for all linked families
+  const { data: memberRows } = await supabase
+    .from('family_members')
+    .select('user_id')
+    .in('user_id', userIds);
+  const memberCountMap = {};
+  for (const row of (memberRows ?? [])) {
+    memberCountMap[row.user_id] = (memberCountMap[row.user_id] || 0) + 1;
   }
 
   // Fetch today's confirmed meal plans for all linked families
@@ -124,8 +134,8 @@ export default async function handler(req, res) {
       visitTime:   link.visit_time || '',
       visitTimes:  link.visit_times || {},
       days:        link.days || [],
-      memberCount: 0,
-      language:    profile.language_preference || 'hi-IN',
+      memberCount: memberCountMap[link.family_user_id] || 0,
+      language:    'hi-IN',
       confirmed:   !!meals,
       meals:       meals
         ? { breakfast: meals.breakfast.mainDish, lunch: meals.lunch.mainDish, dinner: meals.dinner.mainDish }
@@ -143,8 +153,8 @@ export default async function handler(req, res) {
       id:          link.id,
       familyName:  profile.family_name || 'Your Family',
       location:    '',
-      language:    profile.language_preference || 'hi-IN',
-      memberCount: 0,
+      language:    'hi-IN',
+      memberCount: memberCountMap[link.family_user_id] || 0,
       meals: meals || {
         breakfast: { label: 'Breakfast', mainDish: 'Not confirmed', supporting: [] },
         lunch:     { label: 'Lunch',     mainDish: 'Not confirmed', supporting: [] },
