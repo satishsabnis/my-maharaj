@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   // NOTE: profiles table uses 'id' as the primary key, not 'user_id'
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('id, family_name')
+    .select('id, family_name, language_preference')
     .in('id', userIds);
 
   if (profilesErr) {
@@ -77,49 +77,23 @@ export default async function handler(req, res) {
   const plans = planResults.filter(Boolean);
 
   // Build a map: user_id → today's meals
+  function parseDescription(description) {
+    if (!description) return [];
+    return description.split(' | ').map(seg => {
+      const parts = seg.split(': ');
+      return parts.length > 1 ? parts.slice(1).join(': ') : seg;
+    }).slice(1);
+  }
+
   function extractTodayMeals(plan) {
     const days = plan?.plan_json?.days ?? [];
     const todayDay = days.find(d => d.date === today) || days[0];
     if (!todayDay) return null;
 
-    function getBreakfast(d) {
-      return d?.anatomy?.breakfast?.dishName || d?.dishes?.breakfast || d?.breakfast?.name || d?.breakfast?.options?.[0]?.name || '';
-    }
-    function getLunchMain(d) {
-      const curry = d?.anatomy?.lunch?.curry;
-      if (Array.isArray(curry)) return curry[0]?.dishName || '';
-      if (curry?.dishName) return curry.dishName;
-      return d?.dishes?.lunch_curry_1 || d?.lunch?.name || d?.lunch?.options?.[0]?.name || '';
-    }
-    function getLunchSupporting(d) {
-      const items = [];
-      if (d?.anatomy?.lunch?.veg?.dishName)   items.push(d.anatomy.lunch.veg.dishName);
-      if (d?.anatomy?.lunch?.bread?.dishName)  items.push(d.anatomy.lunch.bread.dishName);
-      if (d?.anatomy?.lunch?.rice?.dishName)   items.push(d.anatomy.lunch.rice.dishName);
-      if (d?.anatomy?.lunch?.raita?.dishName)  items.push(d.anatomy.lunch.raita.dishName);
-      if (items.length === 0 && d?.dishes?.lunch_veg_1) items.push(d.dishes.lunch_veg_1);
-      return items.filter(Boolean);
-    }
-    function getDinnerMain(d) {
-      const curry = d?.anatomy?.dinner?.curry;
-      if (Array.isArray(curry)) return curry[0]?.dishName || '';
-      if (curry?.dishName) return curry.dishName;
-      return d?.dishes?.dinner_curry_1 || d?.dinner?.name || d?.dinner?.options?.[0]?.name || '';
-    }
-    function getDinnerSupporting(d) {
-      const items = [];
-      if (d?.anatomy?.dinner?.veg?.dishName)   items.push(d.anatomy.dinner.veg.dishName);
-      if (d?.anatomy?.dinner?.bread?.dishName)  items.push(d.anatomy.dinner.bread.dishName);
-      if (d?.anatomy?.dinner?.rice?.dishName)   items.push(d.anatomy.dinner.rice.dishName);
-      if (d?.anatomy?.dinner?.raita?.dishName)  items.push(d.anatomy.dinner.raita.dishName);
-      if (items.length === 0 && d?.dishes?.dinner_veg_1) items.push(d.dishes.dinner_veg_1);
-      return items.filter(Boolean);
-    }
-
     return {
-      breakfast: { label: 'Breakfast', mainDish: getBreakfast(todayDay),   supporting: [] },
-      lunch:     { label: 'Lunch',     mainDish: getLunchMain(todayDay),    supporting: getLunchSupporting(todayDay) },
-      dinner:    { label: 'Dinner',    mainDish: getDinnerMain(todayDay),   supporting: getDinnerSupporting(todayDay) },
+      breakfast: { label: 'Breakfast', mainDish: todayDay?.breakfast?.name || '',  supporting: [] },
+      lunch:     { label: 'Lunch',     mainDish: todayDay?.lunch?.name || '',       supporting: parseDescription(todayDay?.lunch?.description) },
+      dinner:    { label: 'Dinner',    mainDish: todayDay?.dinner?.name || '',      supporting: parseDescription(todayDay?.dinner?.description) },
     };
   }
 
@@ -151,7 +125,7 @@ export default async function handler(req, res) {
       visitTimes:  link.visit_times || {},
       days:        link.days || [],
       memberCount: 0,
-      language:    'hi-IN',
+      language:    profile.language_preference || 'hi-IN',
       confirmed:   !!meals,
       meals:       meals
         ? { breakfast: meals.breakfast.mainDish, lunch: meals.lunch.mainDish, dinner: meals.dinner.mainDish }
@@ -167,9 +141,9 @@ export default async function handler(req, res) {
     const meals   = planMap[link.family_user_id];
     const detail = {
       id:          link.id,
-      familyName:  profile.full_name || 'Your Family',
+      familyName:  profile.family_name || 'Your Family',
       location:    '',
-      language:    'hi-IN',
+      language:    profile.language_preference || 'hi-IN',
       memberCount: 0,
       meals: meals || {
         breakfast: { label: 'Breakfast', mainDish: 'Not confirmed', supporting: [] },
