@@ -41,6 +41,19 @@ function getLocal(key: string): string {
   return window.localStorage.getItem(key) || '';
 }
 
+async function translateText(text: string, lang: string): Promise<string> {
+  if (!text) return text;
+  try {
+    const res = await fetch('/api/sarvam-translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, targetLanguage: lang }),
+    });
+    const d = await res.json();
+    return d.translatedText || text;
+  } catch { return text; }
+}
+
 type MealSection = {
   label: string;
   mainDish: string;
@@ -83,7 +96,27 @@ export default function FamilyDetailScreen() {
         const res = await fetch(`/api/cook-families?phone=${encodeURIComponent(cookPhone)}&familyId=${encodeURIComponent(id)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load family');
-        setFamily(data.family);
+        let familyData = data.family;
+        if (cookLang !== 'en-IN' && familyData?.meals) {
+          const m = familyData.meals;
+          const [bfMain, luMain, diMain, bfSupport, luSupport, diSupport] = await Promise.all([
+            translateText(m.breakfast.mainDish, cookLang),
+            translateText(m.lunch.mainDish, cookLang),
+            translateText(m.dinner.mainDish, cookLang),
+            Promise.all((m.breakfast.supporting || []).map((s: string) => translateText(s, cookLang))),
+            Promise.all((m.lunch.supporting     || []).map((s: string) => translateText(s, cookLang))),
+            Promise.all((m.dinner.supporting    || []).map((s: string) => translateText(s, cookLang))),
+          ]);
+          familyData = {
+            ...familyData,
+            meals: {
+              breakfast: { ...m.breakfast, mainDish: bfMain, supporting: bfSupport },
+              lunch:     { ...m.lunch,     mainDish: luMain,  supporting: luSupport },
+              dinner:    { ...m.dinner,    mainDish: diMain,  supporting: diSupport },
+            },
+          };
+        }
+        setFamily(familyData);
       } catch (e: any) {
         setError(e.message || 'Could not load family details.');
       } finally {
