@@ -246,7 +246,8 @@ export default function FamilyDetailScreen() {
             </TouchableOpacity>
             {ttsError ? <Text style={{ textAlign: 'center', color: '#DC2626', fontSize: 13, marginTop: 10 }}>{ttsError}</Text> : null}
 
-            <View style={[s.footerBar, { marginTop: 24 }]}>
+            <Text style={s.poweredBy}>Powered by SarvamAI</Text>
+            <View style={[s.footerBar, { marginTop: 4 }]}>
               <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
               <Text style={s.footerLine2}>www.bluefluteconsulting.com</Text>
             </View>
@@ -283,6 +284,7 @@ const s = StyleSheet.create({
     elevation: 5,
   },
   playTxt:  { fontSize: 16, fontWeight: '800', color: NAVY, letterSpacing: 0.3 },
+  poweredBy:   { textAlign: 'center', fontSize: 11, color: 'rgba(27,58,92,0.5)', paddingVertical: 8 },
   footerBar:   { backgroundColor: '#1B3A5C', paddingVertical: 12, alignItems: 'center' },
   footerLine1: { color: '#1A6B5C', fontSize: 12, fontWeight: '600' },
   footerLine2: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },

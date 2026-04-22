@@ -245,9 +245,13 @@ export default function CookLoginScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={s.footer}>Powered by SarvamAI · Blue Flute Consulting LLC-FZ</Text>
           </ScrollView>
         </KeyboardAvoidingView>
+        <Text style={s.poweredBy}>Powered by SarvamAI</Text>
+        <View style={s.footerBar}>
+          <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
+          <Text style={s.footerLine2}>www.bluefluteconsulting.com</Text>
+        </View>
       </SafeAreaView>
 
       {/* Country code picker modal */}
@@ -313,5 +317,8 @@ const s = StyleSheet.create({
   btnGoldTxt: { fontSize: 15, fontWeight: '700', color: NAVY },
   switchBtn:  { alignItems: 'center', marginTop: 16 },
   switchTxt:  { fontSize: 13, color: MUTED, textDecorationLine: 'underline' },
-  footer:     { marginTop: 32, fontSize: 11, color: 'rgba(27,58,92,0.45)', textAlign: 'center' },
+  poweredBy:   { textAlign: 'center', fontSize: 11, color: 'rgba(27,58,92,0.5)', paddingVertical: 8 },
+  footerBar:   { backgroundColor: '#1B3A5C', paddingVertical: 12, alignItems: 'center' },
+  footerLine1: { color: '#1A6B5C', fontSize: 12, fontWeight: '600' },
+  footerLine2: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },
 });

@@ -211,6 +211,7 @@ export default function CookHomeScreen() {
           />
         )}
 
+        <Text style={s.poweredBy}>Powered by SarvamAI</Text>
         <View style={s.footerBar}>
           <Text style={s.footerLine1}>Powered by Blue Flute Consulting LLC-FZ</Text>
           <Text style={s.footerLine2}>www.bluefluteconsulting.com</Text>
@@ -230,6 +231,15 @@ export default function CookHomeScreen() {
             <TouchableOpacity style={s.drawerItem} onPress={() => setDrawerOpen(false)}>
               <Text style={s.drawerItemTxt}>Refer & Earn</Text>
             </TouchableOpacity>
+            <View style={{ alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(27,58,92,0.1)' }}>
+              <Text style={{ fontSize: 13, color: '#1B3A5C', fontWeight: '700', marginBottom: 12 }}>Share My Maharaj</Text>
+              <Image
+                source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://www.my-maharaj.com' }}
+                style={{ width: 160, height: 160 }}
+                resizeMode="contain"
+              />
+              <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.5)', marginTop: 8 }}>www.my-maharaj.com</Text>
+            </View>
             <TouchableOpacity style={s.drawerItemLast} onPress={() => { logout(); setDrawerOpen(false); }}>
               <Text style={s.drawerLogout}>Logout</Text>
             </TouchableOpacity>
@@ -267,6 +277,7 @@ const s = StyleSheet.create({
   badgeTxt:  { fontSize: 10, color: NAVY, fontWeight: '500' },
   retryBtn:  { backgroundColor: NAVY, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   hamburger: { fontSize: 24, color: NAVY, lineHeight: 28 },
+  poweredBy:   { textAlign: 'center', fontSize: 11, color: 'rgba(27,58,92,0.5)', paddingVertical: 8 },
   footerBar:   { backgroundColor: '#1B3A5C', paddingVertical: 12, alignItems: 'center' },
   footerLine1: { color: '#1A6B5C', fontSize: 12, fontWeight: '600' },
   footerLine2: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },
