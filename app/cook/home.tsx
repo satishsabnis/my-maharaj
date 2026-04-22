@@ -81,7 +81,7 @@ export default function CookHomeScreen() {
   const initials  = cookName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'MK';
 
   const today     = new Date();
-  const dateStr   = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateStr   = today.toLocaleDateString('hi-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const load = useCallback(async () => {
     setError('');
