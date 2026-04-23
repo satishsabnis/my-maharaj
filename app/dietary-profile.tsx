@@ -1044,8 +1044,15 @@ export default function DietaryProfileScreen() {
             healthNotes: data.health_notes,
           },
         });
+        setTimeout(() => {
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            if (window.confirm(`Upload a lab report for ${memberForm.name.trim()}?`)) {
+              router.push('/lab-report' as never);
+            }
+          }
+        }, 300);
       }
-      
+
       setMemberModalOpen(false);
       markDirty();
     } catch (error) {
@@ -1392,6 +1399,14 @@ export default function DietaryProfileScreen() {
             })}
           </View>
         )}
+        <TouchableOpacity
+          style={{ marginTop: 8, alignSelf: 'flex-start' }}
+          onPress={() => router.push('/lab-report' as never)}
+        >
+          <Text style={{ fontSize: 11, color: colors.teal, fontWeight: '600', textDecorationLine: 'underline' }}>
+            Upload lab report for {member.name}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }, [openEditMember, deleteMember]);
