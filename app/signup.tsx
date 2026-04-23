@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { track, identifyUser } from '../lib/analytics';
 import Logo from '../components/Logo';
@@ -20,6 +21,17 @@ export default function SignupScreen() {
   const [passErr, setPassErr]     = useState('');
   const [confErr, setConfErr]     = useState('');
   const [referralCode, setReferralCode] = useState('');
+
+  useEffect(() => {
+    async function checkPendingCode() {
+      const pending = await AsyncStorage.getItem('pending_referral_code');
+      if (pending) {
+        setReferralCode(pending);
+        await AsyncStorage.removeItem('pending_referral_code');
+      }
+    }
+    void checkPendingCode();
+  }, []);
 
   function validate(): boolean {
     let ok = true;
