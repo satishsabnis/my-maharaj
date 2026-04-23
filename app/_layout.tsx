@@ -250,6 +250,7 @@ export default function Layout() {
       <Stack.Screen name="review-plan" />
       <Stack.Screen name="plan-summary" />
       <Stack.Screen name="family-recipes" />
+      <Stack.Screen name="ref/[code]" />
       <Stack.Screen name="cook" options={{ headerShown: false }} />
     </Stack>
     </LanguageProvider>
