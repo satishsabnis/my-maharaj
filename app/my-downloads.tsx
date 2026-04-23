@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Modal, Platform, ScrollView,
+  ActivityIndicator, BackHandler, Modal, Platform, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { colors } from '../constants/theme';
 
@@ -77,6 +77,38 @@ export default function MyDownloadsModal({ visible, onClose }: { visible: boolea
     setSelectedPlan(null);
     void loadPlans();
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const onBack = () => {
+      if (view === 'plan' || view === 'shopping') {
+        setView('table');
+        return true;
+      }
+      if (view === 'table') {
+        onClose();
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [visible, view]);
+
+  useEffect(() => {
+    if (!visible || Platform.OS !== 'web' || typeof window === 'undefined') return;
+    window.history.pushState(null, '', window.location.href);
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+      if (view === 'plan' || view === 'shopping') {
+        setView('table');
+      } else {
+        onClose();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [visible, view]);
 
   async function loadPlans() {
     setLoading(true);
