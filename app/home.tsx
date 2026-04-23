@@ -44,6 +44,9 @@ export default function HomeScreen() {
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralStats, setReferralStats] = useState<{total:number;active:number;monthsAvailable:number} | null>(null);
+  const [referralDrawerOpen, setReferralDrawerOpen] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -178,6 +181,7 @@ export default function HomeScreen() {
       setUpcomingFestivals(nearFestivals);
     }
     void load();
+    void loadReferralData();
   }, []);
 
   // Drawer
@@ -217,6 +221,21 @@ export default function HomeScreen() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  async function loadReferralData() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const [codeRes, statsRes] = await Promise.all([
+        fetch('/api/referral?action=get_code', { headers: { Authorization: `Bearer ${session.access_token}` } }),
+        fetch('/api/referral?action=get_stats', { headers: { Authorization: `Bearer ${session.access_token}` } }),
+      ]);
+      const codeData = await codeRes.json();
+      const statsData = await statsRes.json();
+      if (codeData.code) setReferralCode(codeData.code);
+      if (statsData.total !== undefined) setReferralStats(statsData);
+    } catch {}
   }
 
   function DrawerRow({ label, onPress, signOut }: { label: string; onPress: () => void; signOut?: boolean }) {
@@ -490,6 +509,7 @@ export default function HomeScreen() {
                 <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{paddingBottom:60}}>
                   <DrawerRow label="Family Profile" onPress={() => { closeDrawer(); router.push('/dietary-profile' as never); }} />
                   <DrawerRow label="My Family Recipes" onPress={() => { closeDrawer(); router.push('/family-recipes' as never); }} />
+                  <DrawerRow label="Refer a Friend" onPress={() => { closeDrawer(); setTimeout(() => setReferralDrawerOpen(true), 300); }} />
                   <DrawerRow label="My Fridge" onPress={() => { closeDrawer(); router.push('/my-fridge' as never); }} />
                   <DrawerRow label="Meal Prep" onPress={() => { closeDrawer(); router.push('/meal-prep' as never); }} />
                   <DrawerRow label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
@@ -514,6 +534,60 @@ export default function HomeScreen() {
             </Animated.View>
           </TouchableOpacity>
         )}
+
+        {/* ── REFERRAL MODAL ── */}
+        <Modal visible={referralDrawerOpen} transparent animationType="slide" onRequestClose={() => setReferralDrawerOpen(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#2E5480', marginBottom: 4 }}>Refer a Friend</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(27,58,92,0.5)', marginBottom: 20, lineHeight: 18 }}>
+                Share your code. When your friend subscribes, their 4th month is free. You get 1 free month too.
+              </Text>
+
+              <View style={{ backgroundColor: 'rgba(46,84,128,0.06)', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.5)', marginBottom: 6 }}>Your referral code</Text>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#2E5480', letterSpacing: 2 }}>{referralCode || 'Loading...'}</Text>
+              </View>
+
+              {referralStats && (
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+                  <View style={{ flex: 1, backgroundColor: 'rgba(46,84,128,0.06)', borderRadius: 10, padding: 12, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#2E5480' }}>{referralStats.active}</Text>
+                    <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.5)', marginTop: 2 }}>Active referrals</Text>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: 'rgba(201,162,39,0.1)', borderRadius: 10, padding: 12, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#C9A227' }}>{referralStats.monthsAvailable}</Text>
+                    <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.5)', marginTop: 2 }}>Free months banked</Text>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={{ backgroundColor: '#2E5480', borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 10 }}
+                onPress={async () => {
+                  if (!referralCode) return;
+                  const message = `Join me on My Maharaj — the AI meal planner for Indian families. Use my code ${referralCode} when you sign up and get your 4th month free. Download here: https://app.my-maharaj.com/ref/${referralCode}`;
+                  if (Platform.OS === 'web' && navigator.share) {
+                    await navigator.share({ title: 'My Maharaj', text: message });
+                  } else if (Platform.OS === 'web') {
+                    await navigator.clipboard.writeText(message);
+                  }
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: 'white' }}>Share Code</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ borderWidth: 0.5, borderColor: 'rgba(27,58,92,0.15)', borderRadius: 12, padding: 12, alignItems: 'center' }}
+                onPress={() => setReferralDrawerOpen(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, color: 'rgba(27,58,92,0.5)' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* ── ACCOUNT MODAL ── */}
         <Modal visible={accountModalOpen} transparent animationType="slide" onRequestClose={() => setAccountModalOpen(false)}>
