@@ -2,7 +2,7 @@
   "expo": {
     "name": "My Maharaj",
     "slug": "my-maharaj",
-    "version": "3.0.0",
+    "version": "4.1.48",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mymaharaj",
@@ -28,19 +28,26 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.blueflute.mymaharaj",
       "versionCode": 1,
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/logo.png",
+      "favicon": "./assets/favicon.png",
       "name": "My Maharaj",
-      "shortName": "Maharaj"
+      "shortName": "Maharaj",
+      "display": "standalone",
+      "themeColor": "#2E5480",
+      "backgroundColor": "#FFFFFF",
+      "description": "AI-powered Indian meal planning for families in the GCC"
     },
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-camera"
+      "expo-camera",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
