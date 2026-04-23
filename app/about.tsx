@@ -33,7 +33,12 @@ export default function AboutScreen() {
           {/* About */}
           <Text style={s.secTitle}>About</Text>
           <View style={s.card}>
-            <Text style={{fontSize:13,color:colors.navy,lineHeight:19}}>My Maharaj is an AI-powered meal planning assistant built for Indian families in the GCC. Maharaj understands your community, your family's preferences, your health conditions, and your kitchen — and plans your entire week so you never have to think about what to cook.</Text>
+            <Text style={{fontSize:13,color:colors.navy,lineHeight:20,marginBottom:10}}>
+              Think of Maharaj as a family cook who has been with you for years. Before sitting down to plan your week, he first goes through everything he knows about your family — who eats what, who is on a diet, whose birthday is coming up, what is left in the pantry. He thinks about what was cooked last week so he does not repeat the same dishes. He checks if there is a festival or a fasting day. Only once he has the full picture does he start writing the menu.
+            </Text>
+            <Text style={{fontSize:13,color:colors.navy,lineHeight:20,marginBottom:10}}>
+              The more your family profile is filled in, the better Maharaj plans. A family that has told Maharaj their cuisines, dietary rules, health conditions, and fridge contents will get a plan that feels like it was written by someone who truly knows them. A family that has filled in nothing will still get a good plan, but it will feel like a restaurant menu rather than a home kitchen. The goal is for Maharaj to know your family so well that the plan needs no editing at all.
+            </Text>
           </View>
 
           {/* Powered by */}
@@ -45,12 +50,19 @@ export default function AboutScreen() {
             <TouchableOpacity onPress={() => Linking.openURL('https://www.bluefluteconsulting.com')} style={{marginTop:4}}>
               <Text style={{fontSize:13,color:colors.emerald}}>www.bluefluteconsulting.com</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL('mailto:info@bluefluteconsulting.com')} style={{marginTop:4}}>
+              <Text style={{fontSize:13,color:colors.emerald}}>info@bluefluteconsulting.com</Text>
+            </TouchableOpacity>
 
             <View style={{height:1,backgroundColor:'rgba(26,58,92,0.1)',marginVertical:10}} />
 
-            <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center'}}>Powered by Claude AI by Anthropic</Text>
-            <TouchableOpacity onPress={() => Linking.openURL('https://www.anthropic.com')}>
-              <Text style={{fontSize:13,color:colors.emerald,textAlign:'center'}}>claude.ai</Text>
+            <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center',marginBottom:2}}>AI powered by Anthropic Claude</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.anthropic.com')} style={{marginBottom:8}}>
+              <Text style={{fontSize:13,color:colors.emerald,textAlign:'center'}}>www.anthropic.com</Text>
+            </TouchableOpacity>
+            <Text style={{fontSize:13,color:colors.textMuted,textAlign:'center',marginBottom:2}}>Voice powered by Sarvam AI</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.sarvam.ai')}>
+              <Text style={{fontSize:13,color:colors.emerald,textAlign:'center'}}>www.sarvam.ai</Text>
             </TouchableOpacity>
           </View>
 
@@ -82,21 +94,6 @@ export default function AboutScreen() {
             </View>
             <Text style={{fontSize:12,color:colors.emerald}}>{'\u203A'}</Text>
           </TouchableOpacity>
-
-          {/* Version History */}
-          <Text style={[s.secTitle, {marginTop:16}]}>Version History</Text>
-          <View style={s.card}>
-            {[
-              { ver: 'Beta v3.04', desc: 'V3 full redesign — V3 colour system, anticipation feed, meal anatomy, festivals, RLHF' },
-              { ver: 'Beta v2.04', desc: 'Fix batches 1-7 — background, non-veg enforcement, cuisine filter, Jain logic, Scan to Shop' },
-              { ver: 'Beta v1.0', desc: 'Initial release — meal generation, Ask Maharaj, family profile' },
-            ].map((row, i) => (
-              <View key={i} style={{flexDirection:'row',paddingVertical:4,borderBottomWidth:i<2?0.5:0,borderBottomColor:'rgba(26,58,92,0.08)'}}>
-                <Text style={{fontSize:13,fontWeight:'500',color:colors.navy,width:90}}>{row.ver}</Text>
-                <Text style={{fontSize:13,color:colors.textMuted,flex:1}}>{row.desc}</Text>
-              </View>
-            ))}
-          </View>
 
           {/* Share */}
           <View style={{height:1,backgroundColor:'rgba(26,58,92,0.1)',marginVertical:16}} />
