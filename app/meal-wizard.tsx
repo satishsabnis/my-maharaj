@@ -1089,6 +1089,8 @@ Return ONLY valid JSON (no markdown) in this exact format:
     'black bean','kala vatana','harbhara','hara chana','green gram whole',
     'whole moong','sabut moong','sabut masoor','whole urad','kali dal',
     'maa ki dal','maa di dal','langarwali dal','punjabi dal',
+    'watana','kala watana','black watana','dried vatana','dried watana',
+    'whole vatana','whole watana','moth','val dal','vaal',
   ];
   const MARINATE_KW = [
     'chicken','murg','murgh','mutton','lamb','gosht','fish','machli',
@@ -1115,10 +1117,18 @@ Return ONLY valid JSON (no markdown) in this exact format:
         const dayDate = day.date || '';
 
         (['breakfast','lunch','dinner','snack'] as const).forEach(meal => {
-          const dish = day[meal];
-          if (!dish) return;
-          const dishName = typeof dish === 'string' ? dish : (dish.name ?? '');
-          if (!dishName || dishName === '\u2014') return;
+          const slot = day[meal];
+          if (!slot) return;
+
+          // Support all plan_json shapes
+          const dishName =
+            typeof slot === 'string' ? slot :
+            slot.name ? slot.name :
+            slot.options?.[0]?.name ? slot.options[0].name :
+            slot.dishName ? slot.dishName :
+            '';
+
+          if (!dishName || dishName === '—') return;
           const lower = dishName.toLowerCase();
 
           let prepType = '';
