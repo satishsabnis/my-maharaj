@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated, Dimensions, Easing, Image, ImageBackground, Linking, Platform,
-  SafeAreaView, ScrollView, StyleSheet, Text,
+  Animated, Dimensions, Easing, Image, ImageBackground, Linking, Modal, Platform,
+  SafeAreaView, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -39,6 +39,11 @@ export default function HomeScreen() {
   const [mealFeedback, setMealFeedback] = useState({ breakfast: false, lunch: false, dinner: false });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [upcomingFestivals, setUpcomingFestivals] = useState<FestivalEntry[]>([]);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -187,6 +192,31 @@ export default function HomeScreen() {
     closeDrawer();
     await supabase.auth.signOut();
     router.replace('/login');
+  }
+
+  async function doDeleteAccount() {
+    if (deleteInput !== 'DELETE') return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('No session');
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Delete failed');
+      await supabase.auth.signOut();
+      router.replace('/login');
+    } catch (e: any) {
+      setDeleteError(e.message || 'Delete failed. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function DrawerRow({ label, onPress, signOut }: { label: string; onPress: () => void; signOut?: boolean }) {
@@ -469,11 +499,112 @@ export default function HomeScreen() {
                   <DrawerRow label="FAQ" onPress={() => { closeDrawer(); router.push('/faq' as never); }} />
                   <DrawerRow label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
                   <DrawerRow label="Sign Out" signOut onPress={doSignOut} />
+                  <View style={{ height: 16 }} />
+                  <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+                    <TouchableOpacity
+                      style={{ borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, paddingVertical: 12, alignItems: 'center' }}
+                      onPress={() => { closeDrawer(); setTimeout(() => setAccountModalOpen(true), 300); }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '500', color: '#DC2626' }}>Delete Account</Text>
+                    </TouchableOpacity>
+                  </View>
                 </ScrollView>
               </TouchableOpacity>
             </Animated.View>
           </TouchableOpacity>
         )}
+
+        {/* ── ACCOUNT MODAL ── */}
+        <Modal visible={accountModalOpen} transparent animationType="slide" onRequestClose={() => setAccountModalOpen(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1B3A5C', marginBottom: 4 }}>What would you like to do?</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(27,58,92,0.5)', marginBottom: 16 }}>Choose an option below</Text>
+
+              <View style={{ borderWidth: 0.5, borderColor: 'rgba(27,58,92,0.15)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(27,58,92,0.4)', marginBottom: 2 }}>Cancel Subscription</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.3)' }}>Coming soon</Text>
+              </View>
+
+              <TouchableOpacity
+                style={{ borderWidth: 1.5, borderColor: '#2E5480', borderRadius: 10, padding: 12, marginBottom: 10 }}
+                onPress={async () => {
+                  setAccountModalOpen(false);
+                  try {
+                    const user = await getSessionUser();
+                    if (!user) return;
+                    await supabase.from('profiles').update({ deactivated: true }).eq('id', user.id);
+                    await supabase.auth.signOut();
+                    router.replace('/login');
+                  } catch {}
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '500', color: '#2E5480', marginBottom: 2 }}>Deactivate Account</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.5)' }}>Pause your account — reactivate anytime</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, padding: 12, marginBottom: 10 }}
+                onPress={() => { setAccountModalOpen(false); setTimeout(() => setDeleteConfirmOpen(true), 300); }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '500', color: '#DC2626', marginBottom: 2 }}>Delete Account</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(27,58,92,0.5)' }}>Permanently delete all your data</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ borderWidth: 0.5, borderColor: 'rgba(27,58,92,0.15)', borderRadius: 10, padding: 10, alignItems: 'center' }}
+                onPress={() => setAccountModalOpen(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, color: 'rgba(27,58,92,0.5)' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── DELETE CONFIRM MODAL ── */}
+        <Modal visible={deleteConfirmOpen} transparent animationType="slide" onRequestClose={() => { setDeleteConfirmOpen(false); setDeleteInput(''); setDeleteError(''); }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#DC2626', marginBottom: 8 }}>Delete your account?</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(27,58,92,0.5)', marginBottom: 16, lineHeight: 18 }}>
+                This will permanently delete your meal plans, family profile, dish history, and all other data. This cannot be undone.
+              </Text>
+              <Text style={{ fontSize: 12, color: 'rgba(27,58,92,0.5)', marginBottom: 8 }}>
+                Type DELETE to confirm
+              </Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: 'rgba(27,58,92,0.2)', borderRadius: 10, padding: 12, fontSize: 14, color: '#1B3A5C', marginBottom: 12, fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier' }}
+                value={deleteInput}
+                onChangeText={t => { setDeleteInput(t); setDeleteError(''); }}
+                placeholder="Type DELETE here"
+                placeholderTextColor="rgba(27,58,92,0.3)"
+                autoCapitalize="characters"
+              />
+              {deleteError ? <Text style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}>{deleteError}</Text> : null}
+              <TouchableOpacity
+                style={{ backgroundColor: deleteInput === 'DELETE' ? '#DC2626' : '#FEE2E2', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 8, opacity: deleting ? 0.7 : 1 }}
+                onPress={doDeleteAccount}
+                disabled={deleteInput !== 'DELETE' || deleting}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '500', color: deleteInput === 'DELETE' ? 'white' : '#DC2626' }}>
+                  {deleting ? 'Deleting...' : 'Delete my account'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ borderWidth: 0.5, borderColor: 'rgba(27,58,92,0.15)', borderRadius: 10, padding: 10, alignItems: 'center' }}
+                onPress={() => { setDeleteConfirmOpen(false); setDeleteInput(''); setDeleteError(''); }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, color: 'rgba(27,58,92,0.5)' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
       </SafeAreaView>
     </View>
