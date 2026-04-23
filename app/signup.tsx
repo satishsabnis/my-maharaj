@@ -19,6 +19,7 @@ export default function SignupScreen() {
   const [emailErr, setEmailErr]   = useState('');
   const [passErr, setPassErr]     = useState('');
   const [confErr, setConfErr]     = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
   function validate(): boolean {
     let ok = true;
@@ -49,6 +50,15 @@ export default function SignupScreen() {
         track('user_registered');
       }
       router.replace('/onboarding' as never);
+      if (referralCode.trim() && user) {
+        try {
+          await fetch('/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ referred_user_id: user.id, code: referralCode.trim() }),
+          });
+        } catch {}
+      }
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Sign up failed. Please try again.');
     } finally {
@@ -84,6 +94,13 @@ export default function SignupScreen() {
             placeholder="Minimum 8 characters" secureTextEntry error={passErr} />
           <Input label="Confirm Password" value={confirm} onChangeText={setConfirm}
             placeholder="Re-enter your password" secureTextEntry error={confErr} />
+          <Input
+            label="Referral Code (optional)"
+            value={referralCode}
+            onChangeText={t => setReferralCode(t.toUpperCase().trim())}
+            placeholder="e.g. BFCSABNIS3D5D"
+            autoCapitalize="characters"
+          />
 
           {formError ? (
             <View style={s.errorBox}>
