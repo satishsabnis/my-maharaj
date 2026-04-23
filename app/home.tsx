@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, getSessionUser } from '../lib/supabase';
 import { colors, cards } from '../constants/theme';
 import { FESTIVALS_2026, type FestivalEntry } from '../constants/festivals';
+import MyDownloadsModal from './my-downloads';
 
 const SCREEN_W = Dimensions.get('window').width;
 const SCREEN_H = Dimensions.get('window').height;
@@ -47,6 +48,7 @@ export default function HomeScreen() {
   const [referralCode, setReferralCode] = useState('');
   const [referralStats, setReferralStats] = useState<{total:number;active:number;monthsAvailable:number} | null>(null);
   const [referralDrawerOpen, setReferralDrawerOpen] = useState(false);
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -515,6 +517,7 @@ export default function HomeScreen() {
                   <DrawerRow label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
                   <DrawerRow label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
                   <DrawerRow label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
+                  <DrawerRow label="My Downloads" onPress={() => { closeDrawer(); setTimeout(() => setDownloadsOpen(true), 300); }} />
                   <DrawerRow label="Festivals and Functions" onPress={() => { closeDrawer(); router.push('/festivals' as never); }} />
                   <DrawerRow label="FAQ" onPress={() => { closeDrawer(); router.push('/faq' as never); }} />
                   <DrawerRow label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
@@ -534,6 +537,8 @@ export default function HomeScreen() {
             </Animated.View>
           </TouchableOpacity>
         )}
+
+        <MyDownloadsModal visible={downloadsOpen} onClose={() => setDownloadsOpen(false)} />
 
         {/* ── REFERRAL MODAL ── */}
         <Modal visible={referralDrawerOpen} transparent animationType="slide" onRequestClose={() => setReferralDrawerOpen(false)}>
