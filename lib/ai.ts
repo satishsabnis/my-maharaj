@@ -635,6 +635,13 @@ export async function generateMealPlanFast(
     }
   } catch { /* ignore — fall back to full pool */ }
 
+  // Also add family recipes saved by the user into the preferred dish set
+  if (params.familyRecipes && params.familyRecipes.length > 0) {
+    params.familyRecipes.forEach(r => {
+      if (r.recipe_name) regularDishNames.add(r.recipe_name);
+    });
+  }
+
   // ── Step 1c: fetch banned dishes ──────────────────────────────────────────
   const bannedDishNames: Set<string> = new Set();
   try {
