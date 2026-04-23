@@ -1081,9 +1081,25 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
   // ── Detect dishes needing advance prep and create tasks ────────────────────
 
-  const SOAK_KW = ['chole','chana masala','rajma','kadala curry','sabudana','sago','urad dal','chana dal','whole masoor'];
-  const MARINATE_KW = ['chicken','murg','murgh','mutton','lamb','gosht','fish','machli','pomfret','surmai','rawas'];
-  const GRIND_KW = ['coconut chutney','fresh chutney','ginger garlic paste'];
+  const SOAK_KW = [
+    'chole','chana masala','rajma','kadala curry','sabudana','sago',
+    'urad dal','chana dal','whole masoor','matki','moth bean','kala chana',
+    'black chickpea','vatana','dried peas','lobia','black eyed peas','chawli',
+    'dalimbi','val ','field bean','kabuli','chickpea','kidney bean',
+    'black bean','kala vatana','harbhara','hara chana','green gram whole',
+    'whole moong','sabut moong','sabut masoor','whole urad','kali dal',
+    'maa ki dal','maa di dal','langarwali dal','punjabi dal',
+  ];
+  const MARINATE_KW = [
+    'chicken','murg','murgh','mutton','lamb','gosht','fish','machli',
+    'pomfret','surmai','rawas','bangda','hilsa','rohu','prawn','kolambi',
+    'jhinga','shrimp','tuna','crab','lobster','seafood','keema','kheema',
+    'mince','tikka','tandoori','kebab','kabab',
+  ];
+  const FERMENT_KW = [
+    'dosa','uttapam','idli','appam','amboli','neer dosa','set dosa',
+    'rava dosa','pesarattu','bhatura','bhature','khamiri',
+  ];
 
   async function generateMealPrepTasks(confirmedPlan: any[], userId: string, planId: string) {
     try {
@@ -1110,13 +1126,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
 
           if (SOAK_KW.some(kw => lower.includes(kw))) {
             prepType = 'Soak';
-            instruction = `Soak ${dishName} overnight (8-10 hours) in water.`;
+            instruction = `Soak ${dishName} overnight (8-10 hours) in enough water to cover well. Drain before cooking.`;
           } else if (MARINATE_KW.some(kw => lower.includes(kw))) {
             prepType = 'Marinate';
-            instruction = `Marinate ${dishName} with spices for at least 2 hours, ideally overnight.`;
-          } else if (GRIND_KW.some(kw => lower.includes(kw))) {
-            prepType = 'Grind';
-            instruction = `Grind fresh paste/chutney for ${dishName} before cooking.`;
+            instruction = `Marinate ${dishName} with spices for at least 2 hours, ideally overnight in the fridge.`;
+          } else if (FERMENT_KW.some(kw => lower.includes(kw))) {
+            prepType = 'Ferment';
+            instruction = `Prepare ${dishName} batter and leave to ferment overnight at room temperature. Use fresh the next morning.`;
           }
 
           if (!prepType) return;

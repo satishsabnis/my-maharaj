@@ -60,6 +60,7 @@ const pillStyles: Record<string, { bg: string; color: string }> = {
   Defrost:  { bg: 'rgba(201,162,39,0.12)', color: '#8B6914' },
   Grind:    { bg: 'rgba(30,158,94,0.12)',  color: '#0E6830' },
   Dough:    { bg: 'rgba(138,90,30,0.1)',   color: '#6B4510' },
+  Ferment:  { bg: 'rgba(138,90,30,0.1)',   color: '#6B4510' },
 };
 
 const defaultPill = { bg: 'rgba(26,58,92,0.08)', color: colors.textSecondary };
