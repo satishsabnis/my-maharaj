@@ -394,6 +394,7 @@ function selectDishFromPool(
   healthFocus: string[],
   preferredNames?: Set<string>,
   bannedNames?: Set<string>,
+  ratedUpNames?: Set<string>,
   fridgeKeywords?: Set<string>,
 ): string {
   let candidates: PoolDish[];
@@ -429,39 +430,23 @@ function selectDishFromPool(
     );
   }
 
-  // Prefer unseen dishes; fall back to any candidate if all seen
-  const fresh = candidates.filter(d => !usedNames.has(d.name.toLowerCase()) && !bannedNames?.has(d.name.toLowerCase()));
-  let pick: PoolDish | undefined;
+  // ── Weighted reservoir sampling ──────────────────────────────────────────
+  const eligible = candidates.filter(
+    d => !usedNames.has(d.name.toLowerCase()) && !bannedNames?.has(d.name.toLowerCase())
+  );
 
-  if (fresh.length > 0) {
-    // 80/20 rule: if preferred (family regular) dishes provided, try them first 80% of the time
-    if (preferredNames && preferredNames.size > 0 && Math.random() < 0.8) {
-      const preferred = fresh.filter(d => preferredNames.has(d.name));
-      if (preferred.length > 0) {
-        pick = preferred[Math.floor(Math.random() * preferred.length)];
-      }
-    }
-    // Boost health-tagged dishes if healthFocus is set (and no preferred pick yet)
-    if (!pick && healthFocus.length > 0) {
-      const boosted = fresh.filter(d =>
-        d.health_tags.some(t => healthFocus.some(f => t.toLowerCase().includes(f.toLowerCase())))
-      );
-      if (boosted.length > 0) {
-        pick = boosted[Math.floor(Math.random() * boosted.length)];
-      }
-    }
-    if (!pick && fridgeKeywords && fridgeKeywords.size > 0) {
-      const fridgeBoosted = fresh.filter(d =>
-        [...fridgeKeywords].some(kw => d.name.toLowerCase().includes(kw))
-      );
-      if (fridgeBoosted.length > 0) {
-        pick = fridgeBoosted[Math.floor(Math.random() * fridgeBoosted.length)];
-      }
-    }
-    if (!pick) pick = fresh[Math.floor(Math.random() * fresh.length)];
-  } else if (candidates.length > 0) {
-    pick = candidates[Math.floor(Math.random() * candidates.length)];
+  let best: PoolDish | undefined;
+  let bestKey = -1;
+  for (const d of eligible) {
+    const w = preferredNames?.has(d.name) ? 4
+            : ratedUpNames?.has(d.name)   ? 2
+            : 1;
+    const key = Math.random() ** (1 / w);
+    if (key > bestKey) { bestKey = key; best = d; }
   }
+
+  // Fallback: random pick from the unweighted candidates if none survived
+  const pick = best ?? (candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : undefined);
 
   if (!pick) return SLOT_FALLBACKS[slot] ?? 'Pohe';
   usedNames.add(pick.name.toLowerCase());
@@ -850,46 +835,46 @@ export async function generateMealPlanFast(
       // ── Select dishes for all slots from pool ─────────────────────────────
       const pref = regularDishNames; // 80/20 preferred names (empty set = no preference)
       const breakfast    = slots.includes('breakfast')
-        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'breakfast',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const lunchCurry1  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'lunch_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const lunchCurry2  = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'lunch_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const lunchVeg     = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'lunch_veg',     false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const lunchRaita   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'lunch_raita',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const lunchBread   = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'lunch_bread',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const lunchRice    = slots.includes('lunch')
-        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'lunch_rice',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const dinnerCurry1 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'dinner_curry_1', isEffectivelyNonVeg, usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const dinnerCurry2 = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'dinner_curry_2', false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const dinnerVeg    = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'dinner_veg',    false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const dinnerRaita  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'dinner_raita',  false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const dinnerBread  = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'dinner_bread',  false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const dinnerRice   = slots.includes('dinner')
-        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'dinner_rice',   false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
       const snack        = slots.includes('snack')
-        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref, bannedDishNames, fridgeKeywords)
+        ? selectDishFromPool(dayPool, 'snack',         false,              usedNames, dayHealthFocus, pref, bannedDishNames, new Set<string>(), fridgeKeywords)
         : '';
 
       // RULE: Sunday special — prioritise dishes tagged allowed_days: ['Sunday'] from pool
