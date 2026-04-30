@@ -19,8 +19,15 @@ if (Platform.OS !== 'web') {
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+  try {
+    const { status: current } = await Notifications.getPermissionsAsync();
+    if (current === 'granted') return true;
+    if (current !== 'undetermined') return false; // denied — skip silently
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch {
+    return false;
+  }
 }
 
 export async function checkLipidExpiry(userId: string): Promise<void> {
@@ -182,6 +189,41 @@ export async function scheduleSundayReminder(): Promise<void> {
     } as any,
   });
   await AsyncStorage.setItem('notif_sunday_reminder', id);
+}
+
+// ─── Ghost plan ready notification ───────────────────────────────────────────
+
+export async function scheduleGhostPlanNotification(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Maharaj has planned your week.',
+        body: 'Review and approve in 30 seconds.',
+        data: { screen: 'menu-history', ghost: true },
+      },
+      trigger: null,
+    });
+  } catch {}
+}
+
+// ─── Streak milestone notification ───────────────────────────────────────────
+
+export async function scheduleStreakMilestoneNotification(streakWeeks: number, bankedWeeks: number): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Maharaj Streak — ' + streakWeeks + ' weeks',
+        body: 'Maharaj has banked ' + bankedWeeks + ' free week' + (bankedWeeks > 1 ? 's' : '') + ' for your loyalty. Redeemable when billing goes live.',
+      },
+      trigger: null,
+    });
+  } catch {}
 }
 
 // ─── Cancel notification ─────────────────────────────────────────────────────

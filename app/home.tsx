@@ -23,6 +23,16 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
+function getThisWeekMonday(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diff);
+  mon.setHours(0, 0, 0, 0);
+  return mon.toISOString().split('T')[0];
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -49,6 +59,9 @@ export default function HomeScreen() {
   const [referralStats, setReferralStats] = useState<{total:number;active:number;monthsAvailable:number} | null>(null);
   const [referralDrawerOpen, setReferralDrawerOpen] = useState(false);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
+  const [ghostPlanReady, setGhostPlanReady] = useState(false);
+  const [streakWeeks, setStreakWeeks] = useState(0);
+  const [streakBankedWeeks, setStreakBankedWeeks] = useState(0);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -157,11 +170,15 @@ export default function HomeScreen() {
       }
 
       // ── Fallback: AsyncStorage (pre-v4 / offline) ────────────────────
-      const [md, cwp, occ, prep] = await Promise.all([
+      const [md, cwp, occ, prep, ghostRaw, streakResult] = await Promise.all([
         AsyncStorage.getItem('maharaj_day'),
         AsyncStorage.getItem('confirmed_meal_plan'),
         AsyncStorage.getItem('recurring_occasions'),
         AsyncStorage.getItem('meal_prep_tasks'),
+        AsyncStorage.getItem('ghost_meal_plan'),
+        user
+          ? supabase.from('profiles').select('streak_weeks, streak_banked_weeks').eq('id', user.id).maybeSingle()
+          : Promise.resolve(null),
       ]);
       if (md) setMaharajDay(md);
       if (!planLoaded && cwp) {
@@ -172,6 +189,18 @@ export default function HomeScreen() {
       }
       if (occ) try { setOccasions(JSON.parse(occ)); } catch {}
       if (prep) try { const tasks = JSON.parse(prep); setMealPrepCount(Array.isArray(tasks) ? tasks.length : 0); } catch {}
+      if (ghostRaw) {
+        try {
+          const ghost = JSON.parse(ghostRaw);
+          if (!ghost.approved && ghost.weekStart === getThisWeekMonday()) {
+            setGhostPlanReady(true);
+          }
+        } catch {}
+      }
+      if (streakResult && 'data' in streakResult && streakResult.data) {
+        setStreakWeeks(streakResult.data.streak_weeks ?? 0);
+        setStreakBankedWeeks(streakResult.data.streak_banked_weeks ?? 0);
+      }
 
       // Festival reminder — next 14 days (today inclusive)
       const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
@@ -268,6 +297,34 @@ export default function HomeScreen() {
 
   type FeedCard = { type: string; bg: object; borderColor: string; label: string; labelColor: string; title: string; sub?: string; subtitle?: string; onCardPress?: () => void; buttons: { text: string; style: 'emerald'|'navy'|'outline'; onPress: () => void }[] };
   const feedCards: FeedCard[] = [];
+
+  // Ghost plan card — shown when Maharaj has an unapproved plan for the current week
+  if (ghostPlanReady) {
+    feedCards.push({
+      type: 'ghost-plan',
+      bg: { backgroundColor: 'rgba(201,162,39,0.06)', borderLeftWidth: 4, borderLeftColor: '#C9A227' },
+      borderColor: '#C9A227',
+      label: "Maharaj's suggestion",
+      labelColor: '#C9A227',
+      title: 'Maharaj has planned your week — tap to review',
+      onCardPress: () => router.push('/week-confirm' as never),
+      buttons: [],
+    });
+  }
+
+  // Streak card — shown when user has an active streak
+  if (streakWeeks >= 1) {
+    feedCards.push({
+      type: 'streak',
+      bg: { backgroundColor: 'rgba(201,162,39,0.06)', borderLeftWidth: 4, borderLeftColor: '#C9A227' },
+      borderColor: '#C9A227',
+      label: 'Maharaj streak',
+      labelColor: '#C9A227',
+      title: `${streakWeeks} week streak — keep planning every week`,
+      sub: streakWeeks >= 4 ? `${streakBankedWeeks} free week${streakBankedWeeks !== 1 ? 's' : ''} banked — redeemable when billing goes live` : undefined,
+      buttons: [],
+    });
+  }
 
   // Card A — Today's Plan (always shown)
   const todayPlanTitle = todayMeals
@@ -517,6 +574,7 @@ export default function HomeScreen() {
                   <DrawerRow label="Party Menu" onPress={() => { closeDrawer(); router.push('/party-menu' as never); }} />
                   <DrawerRow label="Outdoor Catering" onPress={() => { closeDrawer(); router.push('/outdoor-catering' as never); }} />
                   <DrawerRow label="Menu History" onPress={() => { closeDrawer(); router.push('/menu-history' as never); }} />
+                  <DrawerRow label="Confirm your week" onPress={() => { closeDrawer(); router.push('/week-confirm' as never); }} />
                   <DrawerRow label="My Downloads" onPress={() => { closeDrawer(); setTimeout(() => setDownloadsOpen(true), 300); }} />
                   <DrawerRow label="Festivals and Functions" onPress={() => { closeDrawer(); router.push('/festivals' as never); }} />
                   <DrawerRow label="FAQ" onPress={() => { closeDrawer(); router.push('/faq' as never); }} />
