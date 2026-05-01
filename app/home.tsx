@@ -62,6 +62,7 @@ export default function HomeScreen() {
   const [ghostPlanReady, setGhostPlanReady] = useState(false);
   const [streakWeeks, setStreakWeeks] = useState(0);
   const [streakBankedWeeks, setStreakBankedWeeks] = useState(0);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const drawerAnim = useRef(new Animated.Value(-SCREEN_W * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -177,7 +178,7 @@ export default function HomeScreen() {
         AsyncStorage.getItem('meal_prep_tasks'),
         AsyncStorage.getItem('ghost_meal_plan'),
         user
-          ? supabase.from('profiles').select('streak_weeks, streak_banked_weeks').eq('id', user.id).maybeSingle()
+          ? supabase.from('profiles').select('streak_weeks, streak_banked_weeks, role').eq('id', user.id).maybeSingle()
           : Promise.resolve(null),
       ]);
       if (md) setMaharajDay(md);
@@ -200,6 +201,7 @@ export default function HomeScreen() {
       if (streakResult && 'data' in streakResult && streakResult.data) {
         setStreakWeeks(streakResult.data.streak_weeks ?? 0);
         setStreakBankedWeeks(streakResult.data.streak_banked_weeks ?? 0);
+        setUserRole((streakResult.data as any).role ?? null);
       }
 
       // Festival reminder — next 14 days (today inclusive)
@@ -579,6 +581,12 @@ export default function HomeScreen() {
                   <DrawerRow label="Festivals and Functions" onPress={() => { closeDrawer(); router.push('/festivals' as never); }} />
                   <DrawerRow label="FAQ" onPress={() => { closeDrawer(); router.push('/faq' as never); }} />
                   <DrawerRow label="About My Maharaj" onPress={() => { closeDrawer(); router.push('/about' as never); }} />
+                  {userRole === 'dietitian' && (
+                    <>
+                      <View style={s.drawerDivider} />
+                      <DrawerRow label="Dietitian Dashboard" onPress={() => { closeDrawer(); router.push('/dietitian-dashboard' as never); }} />
+                    </>
+                  )}
                   <DrawerRow label="Sign Out" signOut onPress={doSignOut} />
                   <View style={{ height: 16 }} />
                   <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
@@ -780,4 +788,5 @@ const s = StyleSheet.create({
   drawerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 13 },
   drawerLabel: { fontSize: 13, fontWeight: '500', color: colors.navy },
   drawerChevron: { fontSize: 16, color: '#D1D5DB' },
+  drawerDivider: { height: 1, backgroundColor: 'rgba(26,58,92,0.12)', marginHorizontal: 20, marginVertical: 6 },
 });

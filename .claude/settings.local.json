@@ -73,7 +73,19 @@
       "Bash(grep -in \"name:''''[^'''']*chicken[^'''']*''''\" seed-dishes*.ts)",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__execute_sql",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(git pull:*)",
+      "Bash(EXPO_PUBLIC_SUPABASE_URL=https://ljgfvoyloeelnmugysrk.supabase.co npx ts-node --skip-project --transpile-only --compiler-options '{\"\"\"\"module\"\"\"\":\"\"\"\"commonjs\"\"\"\"}' scripts/test-sample-plan.ts)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -n \"type === ''grocery''\" api/generate-pdf.js)",
+      "Bash(grep -n \"postBody\\\\|type === ''grocery''\" app/meal-wizard.tsx)",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
+      "mcp__claude_ai_Supabase__list_tables",
+      "WebFetch(domain:www.drikpanchang.com)",
+      "Bash(findstr /r /s \"delete.*account\\\\|account.*delete\\\\|deleteAccount\\\\|Delete Account\" app\\\\*.tsx)",
+      "Bash(findstr /r /s \"selectDishFromPool\\\\|selectDish\\\\|dishPool\\\\|dish_pool\" lib\\\\*.ts app\\\\*.tsx)",
+      "Bash(grep -i \"lib/ai\\\\.ts\\\\|lib\\\\\\\\\\\\\\\\ai\\\\.ts\")"
     ]
   }
 }

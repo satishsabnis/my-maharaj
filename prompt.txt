@@ -1,0 +1,25 @@
+Read these files in full before touching anything: app/dietitian-dashboard.tsx, app/home.tsx, app/_layout.tsx, app/meal-wizard.tsx, app/review-plan.tsx, app/plan-summary.tsx, lib/supabase.ts.
+
+Make exactly three changes. Do not touch anything else.
+
+CHANGE 1 — Gap A: Set is_approved correctly at plan generation time.
+
+In the file that saves a new meal plan to Supabase (likely meal-wizard.tsx or the API route that inserts into meal_plans), after the current user id is known and before the insert into meal_plans, add this check:
+
+Query dietitian_clients where client_id = current user id. If a row exists, set is_approved = false in the meal_plans insert. If no row exists, set is_approved = true. This means plans for dietitian-tagged clients are held for review; all other users get is_approved = true by default.
+
+If meal_plans already inserts without an is_approved field (defaulting to null or true in the DB), add is_approved explicitly to the insert payload using this logic.
+
+CHANGE 2 — Gap B: Show pending review banner on client's plan screens.
+
+In app/review-plan.tsx and app/plan-summary.tsx, after the plan is loaded, query dietitian_clients where client_id = current user id. If a row exists and the loaded plan's is_approved is false, show a banner at the top of the screen (below the header, above the plan content) with this exact text: "Your plan is being reviewed by your dietitian. You will be able to view it once approved." Style: background #D4EDE5, text color #2E5480, font size 13, padding 12 horizontal 16, no border radius, full width. Do not show the plan content at all when this banner is active — show only the banner and a Back button.
+
+CHANGE 3 — Gap C: Dedicated dietitian entry point route.
+
+Create app/dietitian.tsx. This screen has no UI of its own. On mount it calls getSessionUser(). If no session, redirect to /login. If session exists, query profiles.role for that user. If role is dietitian, redirect to /dietitian-dashboard. If role is anything else, redirect to /home. No visual content — just an ActivityIndicator centered on background.png while the check runs.
+
+Add Stack.Screen name="dietitian" to the Stack in app/_layout.tsx after the existing dietitian-dashboard entry.
+
+Do not change any existing screen logic. Do not touch lib/ai.ts. Do not modify the dietitian-dashboard.tsx file.
+
+After completing all changes, provide an audit table with columns: Change | File | Line numbers affected | What was done.

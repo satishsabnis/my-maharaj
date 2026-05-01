@@ -33,6 +33,13 @@ interface MenuPlan {
   dateRange: string;
   cuisines?: string[];
   days: DayPlan[];
+  periodStart?: string;
+}
+
+interface GhostPlan {
+  days: any[];
+  weekStart: string;
+  approved: boolean;
 }
 
 interface DishFeedback {
@@ -68,6 +75,16 @@ function formatDateRange(from?: string | null, to?: string | null): string {
   if (!to)   return fmt(from);
   if (from === to) return fmt(from);
   return `${fmt(from)} — ${fmt(to)}`;
+}
+
+function getThisWeekMonday(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diff);
+  mon.setHours(0, 0, 0, 0);
+  return mon.toISOString().split('T')[0];
 }
 
 function formatCuisines(cuisines?: string[]): string {
@@ -110,10 +127,52 @@ export default function MenuHistoryScreen() {
   // Feedback sheet state
   const [feedbackDish, setFeedbackDish] = useState<string | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [ghostPlan, setGhostPlan] = useState<GhostPlan | null>(null);
+  const [viewingGhost, setViewingGhost] = useState(false);
+
+  // Swap modal state
+  const [swapModal, setSwapModal] = useState<{
+    visible: boolean;
+    dayIndex: number;
+    slotKey: 'breakfast' | 'lunch' | 'dinner' | 'snack' | '';
+    currentDish: string;
+    options: string[];
+  }>({ visible: false, dayIndex: -1, slotKey: '', currentDish: '', options: [] });
+  const [swapLoading, setSwapLoading] = useState(false);
+  const [swapSaving, setSwapSaving] = useState(false);
 
   useFocusEffect(useCallback(() => {
     (async () => {
       const loaded = await loadPlans();
+
+      const ghostFlag = await AsyncStorage.getItem('menu_history_open_ghost');
+      if (ghostFlag === 'true') {
+        await AsyncStorage.removeItem('menu_history_open_ghost');
+        const ghostRaw = await AsyncStorage.getItem('ghost_meal_plan');
+        if (ghostRaw) {
+          try {
+            const ghost: GhostPlan = JSON.parse(ghostRaw);
+            if (loaded && loaded.length > 0) {
+              // User has a plan — show it with the ghost tab active
+              setSelectedPlan(loaded[0]);
+              setViewingGhost(true);
+            } else {
+              // No user plan — create a synthetic entry from the ghost data
+              setSelectedPlan({
+                id: 'ghost',
+                createdAt: new Date().toISOString(),
+                dateRange: 'This week',
+                cuisines: [],
+                days: ghost.days,
+                periodStart: ghost.weekStart,
+              });
+              setViewingGhost(true);
+            }
+          } catch {}
+        }
+        return;
+      }
+
       const flag = await AsyncStorage.getItem('menu_history_auto_open_latest');
       if (flag === 'true') {
         await AsyncStorage.removeItem('menu_history_auto_open_latest');
@@ -126,6 +185,11 @@ export default function MenuHistoryScreen() {
 
   async function loadPlans(): Promise<MenuPlan[]> {
     setLoading(true);
+    // Load ghost plan from AsyncStorage in parallel
+    AsyncStorage.getItem('ghost_meal_plan').then(raw => {
+      if (!raw) { setGhostPlan(null); return; }
+      try { setGhostPlan(JSON.parse(raw)); } catch { setGhostPlan(null); }
+    });
     try {
       // Try Supabase first
       const user = await getSessionUser();
@@ -144,6 +208,7 @@ export default function MenuHistoryScreen() {
               dateRange: formatDateRange(row.period_start, row.period_end),
               cuisines: row.cuisines || [],
               days: row.plan_json?.days ?? [],
+              periodStart: row.period_start ?? undefined,
             }));
             setPlans(mapped);
             setLoading(false);
@@ -219,22 +284,195 @@ export default function MenuHistoryScreen() {
     setFeedbackDish(null);
   }
 
+  // ─── Swap handling ─────────────────────────────────────────────────────────
+
+  function collectUsedDishNames(days: DayPlan[]): string[] {
+    const names = new Set<string>();
+    for (const d of days) {
+      const b = dishName(d.breakfast); if (b) names.add(b);
+      const l = dishName(d.lunch);     if (l) names.add(l);
+      const dn = dishName(d.dinner);   if (dn) names.add(dn);
+      const s = dishName(d.snack);     if (s) names.add(s);
+    }
+    return Array.from(names);
+  }
+
+  async function openSwapModal(
+    dayIndex: number,
+    slotKey: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    currentDishName: string,
+  ) {
+    if (!selectedPlan) return;
+    const cuisines = selectedPlan.cuisines ?? [];
+    const usedDishNames = collectUsedDishNames(selectedPlan.days ?? []);
+    setSwapModal({ visible: true, dayIndex, slotKey, currentDish: currentDishName, options: [] });
+    setSwapLoading(true);
+    try {
+      const opts = await fetchSwapOptions(slotKey, cuisines, currentDishName, usedDishNames);
+      setSwapModal(prev => ({ ...prev, options: opts }));
+    } finally {
+      setSwapLoading(false);
+    }
+  }
+
+  async function fetchSwapOptions(
+    slot: string,
+    cuisines: string[],
+    currentDishName: string,
+    usedDishNames: string[],
+  ): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('dishes')
+        .select('name, cuisine')
+        .contains('meal_type', [slot])
+        .neq('name', currentDishName)
+        .eq('is_banned', false)
+        .limit(20);
+      if (error || !data) return [];
+      const usedSet = new Set(usedDishNames.map(n => n.toLowerCase()));
+      let pool = (data as { name: string; cuisine: string[] }[])
+        .filter(d => !usedSet.has(d.name.toLowerCase()));
+      if (cuisines.length > 0) {
+        const cuisineLower = cuisines.map(c => c.toLowerCase());
+        const filtered = pool.filter(d =>
+          (d.cuisine ?? []).some(dc => cuisineLower.some(c => dc.toLowerCase().includes(c))),
+        );
+        if (filtered.length >= 3) pool = filtered;
+      }
+      // Random 3
+      const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 3).map(d => d.name);
+    } catch (e) {
+      console.error('[MenuHistory] fetchSwapOptions error:', e);
+      return [];
+    }
+  }
+
+  async function confirmSwap(newDishName: string) {
+    if (!selectedPlan || swapModal.dayIndex < 0 || !swapModal.slotKey) return;
+    setSwapSaving(true);
+    try {
+      const dayIndex = swapModal.dayIndex;
+      const slotKey = swapModal.slotKey;
+      const originalDish = swapModal.currentDish;
+
+      // Update plan in memory — preserve shape (string vs {name})
+      const updatedDays: DayPlan[] = (selectedPlan.days ?? []).map((d, i) => {
+        if (i !== dayIndex) return d;
+        const existing = (d as any)[slotKey];
+        const replacement =
+          existing && typeof existing === 'object' && 'name' in existing
+            ? { ...existing, name: newDishName }
+            : newDishName;
+        return { ...d, [slotKey]: replacement };
+      });
+
+      const updatedPlan: MenuPlan = { ...selectedPlan, days: updatedDays };
+
+      // Compute swap_date
+      const targetDay = updatedDays[dayIndex];
+      let swapDate: string | null = targetDay?.date ?? null;
+      if (!swapDate && selectedPlan.periodStart) {
+        const base = new Date(selectedPlan.periodStart);
+        base.setDate(base.getDate() + dayIndex);
+        swapDate = base.toISOString().split('T')[0];
+      }
+
+      // Update Supabase meal_plans.plan_json (only for real plans, not ghost)
+      if (selectedPlan.id && selectedPlan.id !== 'ghost') {
+        const user = await getSessionUser();
+        if (user) {
+          const { error: updErr } = await supabase
+            .from('meal_plans')
+            .update({ plan_json: { days: updatedDays } })
+            .eq('id', selectedPlan.id)
+            .eq('user_id', user.id);
+          if (updErr) console.error('[MenuHistory] meal_plans update error:', updErr.message);
+
+          // Insert swap row
+          supabase.from('meal_swaps').insert({
+            user_id: user.id,
+            plan_id: selectedPlan.id,
+            swap_date: swapDate,
+            slot: slotKey,
+            original_dish: originalDish,
+            swapped_dish: newDishName,
+          }).then(({ error: insErr }) => {
+            if (insErr) console.error('[MenuHistory] meal_swaps insert error:', insErr.message);
+          });
+        }
+      }
+
+      // Update AsyncStorage current_week_plan
+      try {
+        await AsyncStorage.setItem(
+          'current_week_plan',
+          JSON.stringify({ days: updatedDays }),
+        );
+      } catch (e) {
+        console.error('[MenuHistory] AsyncStorage current_week_plan write error:', e);
+      }
+
+      // Refresh local state
+      setPlans(prev => prev.map(p => (p.id === selectedPlan.id ? updatedPlan : p)));
+      setSelectedPlan(updatedPlan);
+      track('meal_swapped', { slot: slotKey, original: originalDish, swapped: newDishName });
+    } finally {
+      setSwapSaving(false);
+      setSwapModal({ visible: false, dayIndex: -1, slotKey: '', currentDish: '', options: [] });
+    }
+  }
+
+  function closeSwapModal() {
+    if (swapSaving) return;
+    setSwapModal({ visible: false, dayIndex: -1, slotKey: '', currentDish: '', options: [] });
+  }
+
   // ─── Detail view ───────────────────────────────────────────────────────────
 
   if (selectedPlan) {
+    const thisMonday = getThisWeekMonday();
+    const showTabs = !!ghostPlan && !ghostPlan.approved &&
+      ghostPlan.weekStart === thisMonday &&
+      selectedPlan.id !== 'ghost' &&
+      !!selectedPlan.periodStart &&
+      selectedPlan.periodStart >= thisMonday;
+    const displayDays: DayPlan[] = (viewingGhost && ghostPlan) ? ghostPlan.days : (selectedPlan.days ?? []);
+    const displayRange = viewingGhost ? "This week (Maharaj's Suggestion)" : selectedPlan.dateRange;
+
     return (
       <ScreenWrapper title="Menu History">
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-          <TouchableOpacity onPress={() => setSelectedPlan(null)} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => { setSelectedPlan(null); setViewingGhost(false); }} activeOpacity={0.7}>
             <Text style={s.backLink}>Back to history</Text>
           </TouchableOpacity>
 
-          <Text style={s.detailRange}>{selectedPlan.dateRange}</Text>
-          {selectedPlan.cuisines && selectedPlan.cuisines.length > 0 && (
+          {showTabs && (
+            <View style={{ flexDirection: 'row', marginBottom: 12, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#2E5480' }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 9, alignItems: 'center', backgroundColor: !viewingGhost ? '#2E5480' : 'transparent' }}
+                onPress={() => setViewingGhost(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: !viewingGhost ? 'white' : '#2E5480' }}>Your Plan</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 9, alignItems: 'center', backgroundColor: viewingGhost ? '#C9A227' : 'transparent' }}
+                onPress={() => setViewingGhost(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: viewingGhost ? '#1A1A1A' : '#C9A227' }}>Maharaj's Suggestion</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Text style={s.detailRange}>{displayRange}</Text>
+          {!viewingGhost && selectedPlan.cuisines && selectedPlan.cuisines.length > 0 && (
             <Text style={s.cuisineSub}>{formatCuisines(selectedPlan.cuisines)}</Text>
           )}
 
-          {(selectedPlan.days ?? []).map((day, idx) => {
+          {displayDays.map((day, idx) => {
             const dateLabel = day.date ? new Date(day.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : '';
             const label = dateLabel || day.day || day.dayName || `Day ${idx + 1}`;
             const bf = dishName(day.breakfast);
@@ -250,6 +488,11 @@ export default function MenuHistoryScreen() {
                     <TouchableOpacity onPress={() => openFeedback(bf)} activeOpacity={0.7}>
                       <Text style={s.mealDish}>{bf}</Text>
                     </TouchableOpacity>
+                    {!viewingGhost && (
+                      <TouchableOpacity onPress={() => openSwapModal(idx, 'breakfast', bf)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={s.swapBtn}>Swap</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : null}
                 {ln ? (
@@ -258,6 +501,11 @@ export default function MenuHistoryScreen() {
                     <TouchableOpacity onPress={() => openFeedback(ln)} activeOpacity={0.7}>
                       <Text style={s.mealDish}>{ln}</Text>
                     </TouchableOpacity>
+                    {!viewingGhost && (
+                      <TouchableOpacity onPress={() => openSwapModal(idx, 'lunch', ln)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={s.swapBtn}>Swap</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : null}
                 {dn ? (
@@ -266,6 +514,11 @@ export default function MenuHistoryScreen() {
                     <TouchableOpacity onPress={() => openFeedback(dn)} activeOpacity={0.7}>
                       <Text style={s.mealDish}>{dn}</Text>
                     </TouchableOpacity>
+                    {!viewingGhost && (
+                      <TouchableOpacity onPress={() => openSwapModal(idx, 'dinner', dn)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={s.swapBtn}>Swap</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : null}
                 {sn ? (
@@ -274,6 +527,11 @@ export default function MenuHistoryScreen() {
                     <TouchableOpacity onPress={() => openFeedback(sn)} activeOpacity={0.7}>
                       <Text style={s.mealDish}>{sn}</Text>
                     </TouchableOpacity>
+                    {!viewingGhost && (
+                      <TouchableOpacity onPress={() => openSwapModal(idx, 'snack', sn)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={s.swapBtn}>Swap</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : null}
               </View>
@@ -284,6 +542,7 @@ export default function MenuHistoryScreen() {
         </ScrollView>
 
         {renderFeedbackSheet()}
+        {renderSwapModal()}
       </ScreenWrapper>
     );
   }
@@ -339,6 +598,46 @@ export default function MenuHistoryScreen() {
               style={{ marginTop: 10, alignItems: 'center' }}
             >
               <Text style={s.askLater}>Ask me later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  function renderSwapModal() {
+    return (
+      <Modal visible={swapModal.visible} transparent animationType="slide" onRequestClose={closeSwapModal}>
+        <View style={s.swapOverlay}>
+          <View style={s.swapSheet}>
+            <Text style={s.swapTitle}>Swap this meal</Text>
+            <Text style={s.swapCurrentDish}>{swapModal.currentDish}</Text>
+
+            {swapLoading ? (
+              <Text style={s.swapEmpty}>Finding alternatives…</Text>
+            ) : swapModal.options.length === 0 ? (
+              <Text style={s.swapEmpty}>No alternatives found.</Text>
+            ) : (
+              swapModal.options.map((opt, i) => (
+                <TouchableOpacity
+                  key={`${opt}-${i}`}
+                  style={s.swapOption}
+                  onPress={() => confirmSwap(opt)}
+                  activeOpacity={0.8}
+                  disabled={swapSaving}
+                >
+                  <Text style={s.swapOptionText}>{opt}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+
+            <TouchableOpacity
+              onPress={closeSwapModal}
+              activeOpacity={0.7}
+              style={s.swapCancel}
+              disabled={swapSaving}
+            >
+              <Text style={s.swapCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -672,5 +971,69 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
     fontWeight: '500',
+  },
+
+  // Swap button + modal
+  swapBtn: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#C9A227',
+    marginLeft: 8,
+  },
+  swapOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  swapSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  swapTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2E5480',
+    marginBottom: 6,
+  },
+  swapCurrentDish: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#2E5480',
+    marginBottom: 14,
+  },
+  swapEmpty: {
+    fontSize: 13,
+    color: colors.textMuted,
+    paddingVertical: 14,
+    textAlign: 'center',
+  },
+  swapOption: {
+    borderWidth: 1.5,
+    borderColor: '#2E5480',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  swapOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#2E5480',
+  },
+  swapCancel: {
+    marginTop: 6,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  swapCancelText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textMuted,
   },
 });

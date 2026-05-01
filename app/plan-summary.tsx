@@ -23,6 +23,7 @@ export default function PlanSummaryScreen() {
   const [plan, setPlan]             = useState<MealPlanDayV4[]>([]);
   const [familyName, setFamilyName] = useState('Your Family');
   const [showPopup, setShowPopup]   = useState(true);
+  const [isPendingReview, setIsPendingReview] = useState(false);
 
   useEffect(() => {
     const handoff = getHandoffPlan();
@@ -37,6 +38,25 @@ export default function PlanSummaryScreen() {
           .eq('id', user.id)
           .maybeSingle();
         if (profile?.family_name) setFamilyName(profile.family_name);
+
+        // Dietitian gate: if user is dietitian-linked and the latest plan is unapproved, show banner
+        const { data: dietitianLinkRow } = await supabase
+          .from('dietitian_clients')
+          .select('client_id')
+          .eq('client_id', user.id)
+          .maybeSingle();
+        if (dietitianLinkRow) {
+          const { data: latestPlan } = await supabase
+            .from('meal_plans')
+            .select('is_approved')
+            .eq('user_id', user.id)
+            .order('generated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (latestPlan && latestPlan.is_approved === false) {
+            setIsPendingReview(true);
+          }
+        }
       }
     })();
   }, []);
@@ -96,6 +116,26 @@ export default function PlanSummaryScreen() {
     } catch (e) {
       console.error('[PlanSummary] PDF error:', e);
     }
+  }
+
+  if (isPendingReview) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ImageBackground source={require('../assets/background.png')} style={p.bg} resizeMode="cover" />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={p.navRow}>
+            <TouchableOpacity style={buttons.back} onPress={() => router.back()} activeOpacity={0.8}>
+              <Text style={buttons.backText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={p.pendingBanner}>
+            <Text style={p.pendingBannerText}>
+              Your plan is being reviewed by your dietitian. You will be able to view it once approved.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
   }
 
   return (
@@ -253,4 +293,7 @@ const p = StyleSheet.create({
   popupBtnOutlineText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   popupBtnFilled:      { flex: 1, backgroundColor: NAVY, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   popupBtnFilledText:  { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+
+  pendingBanner:       { backgroundColor: '#D4EDE5', paddingVertical: 12, paddingHorizontal: 16, width: '100%' },
+  pendingBannerText:   { fontSize: 13, color: '#2E5480' },
 });

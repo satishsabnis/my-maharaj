@@ -224,6 +224,8 @@ interface PoolDish {
   is_non_veg_type: string | null;
   health_tags: string[];
   allowed_days: string[];
+  gi_category?: string | null;
+  is_iron_rich?: boolean | null;
 }
 
 // Regional cuisine fallback chain — when pool is thin, expand to nearby cuisines
@@ -280,23 +282,30 @@ async function fetchDishPool(
     ];
     const uniqueCuisines = [...new Set(allCuisines)];
 
-    let q = supabase
-      .from('dishes')
-      .select('name, cuisine, slot, is_veg, is_jain, is_fasting, is_non_veg_type, health_tags, allowed_days')
-      .eq('is_banned', false)
-      // Overlap filter: any of the requested cuisines must appear in the dish's cuisine array
-      .filter('cuisine', 'ov', `{${uniqueCuisines.join(',')}}`);
+    const buildQuery = (cols: string) => {
+      let q = supabase
+        .from('dishes')
+        .select(cols)
+        .eq('is_banned', false)
+        // Overlap filter: any of the requested cuisines must appear in the dish's cuisine array
+        .filter('cuisine', 'ov', `{${uniqueCuisines.join(',')}}`);
+      if (vegOnly && !jain) q = q.eq('is_veg', true);
+      if (jain)  q = q.eq('is_jain', true);
+      if (!jain) q = q.eq('is_jain', false);
+      q = q.eq('is_fasting', false);
+      return q.limit(600);
+    };
 
-    if (vegOnly && !jain) q = q.eq('is_veg', true);
-    if (jain)  q = q.eq('is_jain', true);
-    if (!jain) q = q.eq('is_jain', false);   // exclude Jain-restricted dishes for non-Jain families
-    q = q.eq('is_fasting', false);            // exclude fasting dishes unless explicitly a fasting day
-
-    const { data, error } = await q.limit(600);
+    // Try with the extended columns first; fall back if those columns don't exist.
+    let { data, error } = await buildQuery('name, cuisine, slot, is_veg, is_jain, is_fasting, is_non_veg_type, health_tags, allowed_days, gi_category, is_iron_rich');
+    if (error) {
+      ({ data, error } = await buildQuery('name, cuisine, slot, is_veg, is_jain, is_fasting, is_non_veg_type, health_tags, allowed_days'));
+    }
     if (!error && data && data.length > 0) {
+      const rows = data as unknown as PoolDish[];
       // Prefer exact cuisine match dishes first
-      const exact   = (data as PoolDish[]).filter(d => d.cuisine.some(dc => cuisineLower.includes(dc.toLowerCase())));
-      const broader = (data as PoolDish[]).filter(d => !exact.includes(d));
+      const exact   = rows.filter(d => d.cuisine.some(dc => cuisineLower.includes(dc.toLowerCase())));
+      const broader = rows.filter(d => !exact.includes(d));
       const filtered = [...exact, ...broader];
       if (filtered.length >= 10) return filtered;
     }
@@ -354,6 +363,68 @@ async function fetchDishPool(
   }
 
   return pool;
+}
+
+// ─── Family health-tag priority sorter ───────────────────────────────────────
+// Reads each family member's health_notes, builds a Set of boost keywords from
+// the whole family combined, plus a back-demote name regex (for high-BP cases).
+// Returns a comparator that pushes boosted dishes to the front and demoted
+// dishes to the back, leaving the rest in their original order.
+
+interface FamilyHealthSorter {
+  boostKeywords: Set<string>;
+  boostGiLow: boolean;
+  boostIronRich: boolean;
+  demoteNameRe: RegExp | null;
+  sort: (pool: PoolDish[]) => PoolDish[];
+}
+
+function buildFamilyHealthSorter(
+  members: { health_notes?: string | null }[],
+  isVegFamily: boolean,
+): FamilyHealthSorter {
+  const notes = members.map(m => (m.health_notes ?? '').toLowerCase()).join(' ');
+  const boostKeywords = new Set<string>();
+  let boostGiLow = false;
+  let boostIronRich = false;
+  let demoteNameRe: RegExp | null = null;
+
+  if (/diabet|sugar/.test(notes)) {
+    boostKeywords.add('diabetic-friendly');
+    boostGiLow = true;
+  }
+  if (/high\s*bp|hypertension|blood\s*pressure/.test(notes)) {
+    demoteNameRe = /\b(salt|pickle|papad|namkeen)\b/i;
+  }
+  if (/anaemia|anemia|iron\s*deficiency/.test(notes)) {
+    boostKeywords.add('iron-rich');
+    boostIronRich = true;
+  }
+  if (/cholesterol/.test(notes)) {
+    boostKeywords.add('omega-3');
+  }
+  if (/protein\s*deficiency/.test(notes) || isVegFamily) {
+    boostKeywords.add('high-protein');
+  }
+
+  const score = (d: PoolDish): number => {
+    let s = 0;
+    if (boostKeywords.size > 0 && (d.health_tags ?? []).some(t => boostKeywords.has(t.toLowerCase()))) s += 1;
+    if (boostGiLow && typeof d.gi_category === 'string' && d.gi_category.toLowerCase() === 'low') s += 1;
+    if (boostIronRich && d.is_iron_rich === true) s += 1;
+    if (demoteNameRe && demoteNameRe.test(d.name)) s -= 2;
+    return s;
+  };
+
+  const sort = (pool: PoolDish[]): PoolDish[] => {
+    if (boostKeywords.size === 0 && !boostGiLow && !boostIronRich && !demoteNameRe) return pool;
+    // Stable order-preserving partition: front (boosted) → middle → back (demoted).
+    const decorated = pool.map((d, i) => ({ d, i, s: score(d) }));
+    decorated.sort((a, b) => (b.s - a.s) || (a.i - b.i));
+    return decorated.map(x => x.d);
+  };
+
+  return { boostKeywords, boostGiLow, boostIronRich, demoteNameRe, sort };
 }
 
 // ─── Slot selection ───────────────────────────────────────────────────────────
@@ -641,6 +712,17 @@ export async function generateMealPlanFast(
     }
   } catch { /* ignore */ }
 
+  // ── Step 1c.b: fetch family members for health-tag priority sorting ──────
+  let familyMembers: { health_notes?: string | null }[] = [];
+  try {
+    const { data: memberRows } = await supabase
+      .from('family_members')
+      .select('health_notes')
+      .eq('user_id', params.userId);
+    if (memberRows) familyMembers = memberRows as { health_notes?: string | null }[];
+  } catch { /* ignore */ }
+  const familyHealthSorter = buildFamilyHealthSorter(familyMembers, !isNonVegPref);
+
   // ── Step 1d: build fridge keyword hints ──────────────────────────────────
   const fridgeKeywords: Set<string> = new Set();
   const PROTEIN_KEYWORDS = ['prawn','chicken','mutton','fish','egg','paneer','tofu','dal','potato','aloo','palak',
@@ -823,6 +905,10 @@ export async function generateMealPlanFast(
       const filtered = pool.filter(d => d.cuisine.some(dc => dayCuisines.includes(dc.toLowerCase())));
       if (filtered.length >= 10) dayPool = filtered;
     }
+
+    // Health-tag priority sort: push family-relevant dishes to front,
+    // demote dishes that conflict with high-BP needs to the back.
+    dayPool = familyHealthSorter.sort(dayPool);
 
     // Light-day health focus (unwell / fasting)
     const dayHealthFocus = struct.lightDay

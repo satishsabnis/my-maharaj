@@ -1062,6 +1062,12 @@ Return ONLY valid JSON (no markdown) in this exact format:
         .eq('user_id', user.id)
         .or('is_excluded.eq.false,is_excluded.is.null');
       const userCuisines = Array.from(new Set((cuisineRows || []).map((r: any) => r.cuisine_name).filter(Boolean)));
+      const { data: dietitianLinkRow } = await supabase
+        .from('dietitian_clients')
+        .select('client_id')
+        .eq('client_id', user.id)
+        .maybeSingle();
+      const isApproved = !dietitianLinkRow;
       const { data, error } = await supabase.from('meal_plans').insert({
         user_id: user.id,
         period_start: periodStart,
@@ -1069,6 +1075,7 @@ Return ONLY valid JSON (no markdown) in this exact format:
         cuisines: userCuisines,
         food_pref: foodPref ?? 'veg',
         plan_json: { days: confirmedPlan },
+        is_approved: isApproved,
       }).select('id').single();
       if (error) { console.error('[MealWizard] savePlanToSupabase error:', error.message); return; }
       // Persist plan UUID so meal-prep screen can filter by current plan

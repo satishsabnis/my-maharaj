@@ -18,6 +18,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Sarvam request:', JSON.stringify({
+      text_length: text?.length,
+      text_preview: text?.slice(0, 100),
+      language: language || 'hi-IN',
+      speaker: 'abhilash',
+    }));
     const response = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
       headers: {
@@ -36,7 +42,10 @@ export default async function handler(req, res) {
       }),
     });
 
-    const data = await response.json();
+    console.log('Sarvam status:', response.status);
+    const rawBody = await response.text();
+    console.log('Sarvam raw response:', rawBody.slice(0, 500));
+    const data = JSON.parse(rawBody);
     console.log('[SARVAM-TTS] status:', response.status, 'error:', data.error || 'none');
     if (!response.ok) {
       console.error('[sarvam-tts] API error:', response.status, JSON.stringify(data));

@@ -249,7 +249,10 @@ export default function Layout() {
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="review-plan" />
       <Stack.Screen name="plan-summary" />
+      <Stack.Screen name="week-confirm" />
       <Stack.Screen name="family-recipes" />
+      <Stack.Screen name="dietitian-dashboard" />
+      <Stack.Screen name="dietitian" />
       <Stack.Screen name="ref/[code]" />
       <Stack.Screen name="cook" options={{ headerShown: false }} />
     </Stack>

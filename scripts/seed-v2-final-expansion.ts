@@ -19,7 +19,7 @@ const NV = (name:string,nh:string|null,nr:string|null,desc:string,cuisine:string
 });
 
 const BI='Bihari'; const UK='Uttarakhandi'; const MN='Manipuri';
-const N='NORTH'; const E='EAST';
+const N='NORTH'; const E='EAST'; const W='WEST'; const S='SOUTH';
 
 const dishes = [
 
@@ -131,7 +131,7 @@ const dishes = [
   V('Kafuli','काफुली',null,'Slow-cooked spinach and fenugreek leaves with a light gram flour thickening — the most celebrated Garhwali vegetable dish.',[UK],N,['lunch_curry'],false,false,false,null,['iron-rich','fibre']),
   V('Phaanu Kumaoni','फानू कुमाऊंनी',null,'Slow-cooked Kumaoni mixed mountain lentils — different regional spicing from Garhwali version.',[UK],N,['lunch_curry'],true,false,false,null,['protein']),
   V('Aloo Tamatar Uttarakhandi','आलू टमाटर',null,'Potatoes in a tomato-onion gravy with Uttarakhandi five-spice.',[UK],N,['lunch_curry'],false,false,false,null),
-  NV('Bhatt ki Churkani','भट्ट की चुड़कानी',null,'Black soybean curry cooked with Uttarakhandi spices — a unique mountain protein.',[UK],N,['lunch_curry'],false,false,false,null,['protein']),
+  V('Bhatt ki Churkani','भट्ट की चुड़कानी',null,'Black soybean curry cooked with Uttarakhandi spices — a unique mountain protein.',[UK],N,['lunch_curry'],false,false,false,null,['protein']),
   NV('Chicken Uttarakhandi','उत्तराखंडी चिकन',null,'Chicken cooked with onion, tomato and Pahadi spices in mustard oil.',[UK],N,['lunch_curry'],'chicken'),
   V('Gahat Dal','गहत दाल',null,'Horse gram dal pressure-cooked with ginger and dried red chilli — a Uttarakhandi winter staple.',[UK],N,['lunch_curry'],true,false,false,null,['protein']),
   V('Chainsoo','चैनसू',null,'Roasted black horse gram dal cooked with cumin and dried red chilli — a thick Garhwali dal.',[UK],N,['lunch_curry'],true,false,false,null,['protein']),

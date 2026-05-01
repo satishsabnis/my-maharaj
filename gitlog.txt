@@ -1,0 +1,491 @@
+ff4b705 Initial commit
+bcfa8cc Sprint 1 complete - auth, profile, chat, Gemini AI
+a16b52d Sprint 2 complete - card dashboard, meal wizard, family profiles
+9f7acb1 Replace Gemini with Claude API for meal plan generation
+796e76b Switch from Gemini to Claude API for meal generation
+1addc14 Add cuisines, diet options, cholesterol, tiffin, desserts
+72fafe2 Switch party-menu from Gemini to Claude API
+bad871c Add logo, fix family members flow, 3-option meals with recipes, shopping list export
+7c328df Replace placeholder logo with actual My Maharaj logo
+89cce4a Fix JSON parse error: per-day API calls, concise output, retry UI
+a42654c Simplify JSON schema to fix token cutoff issues
+fcacbb0 Fix meal generation - one meal at a time approach
+b18b290 Fix veg days, family members, meal preferences, back buttons, logo size
+224054d Add logo animations throughout app
+08c96c2 Fix logo, multi-select nutrition, back buttons, family members
+38b7c29 Fix logo, family setup flow, non-veg in meal plan
+fbac0b8 Fix grocery list, recipes content, lipid optional
+004385f Fix logo, profile, meal wizard
+8415d85 Fix landing page
+e8f69d7 Professional rebuild - complete app
+058b414 Fix UI issues - buttons, borders, logo, header, animation
+27919c6 Complete app rebuild - single HTML
+934f4b5 App - keys removed for security
+f5109e0 Add vercel routing config
+97ce2d4 Fix vercel config
+dc0ef59 Fix Supabase URL - remove space
+86aab40 Add cuisine selection step to meal wizard (wstep-4), shift subsequent steps +1, WIZARD_STEPS=11
+cefa110 Fix wizard reset, cuisine mix, horizontal options, select all, summary table, party menu
+8895e98 Add secure Claude API proxy via Vercel serverless function
+32600a4 Multi-cuisine selection, 3 options per meal, mixed cuisines across meals
+1e42fb4 Fix serverless function and vercel config
+acfa632 Consistent button sizes throughout app
+8d0dd40 Fix 3 options per meal, correct meal types, button sizes
+7f9c2dd Complete menu generation with components table, proper meal definitions
+0f12321 Add serving sizes step, remove hardcoded recipes from prompt
+9609688 Add Cook at Home vs Order Out step with Zomato and Swiggy links
+f07c5c1 Fix dietary profile, full menu sections, cook/order step, card reorder
+808d3ea All 13 fixes: meal selection, dish search, dietary profile, full menu, cook/order, zomato, buttons, party drinks, catering drinks+fix, pantry intelligence
+b644867 Two cuisine tables Indian+International, professional party menu card with PDF download
+6fef7f4 Fix grocery rename, festivals dates, party menu scroll, meal plan button, real dish names, pause/stop generation
+67b550c Direct fixes: festival dates, button colors, scroll
+b2873ed Fix grocery rename and button color
+e5cbf62 Fix button color and grocery rename via PowerShell
+bd17567 Fix festival days away text
+e780fef Add Talabat Noon Careem Keeta delivery buttons
+1563b5b Fix Generate My Plan button color to gold
+106ced8 Fix button color, delivery apps, custom meals
+5f742b0 Fix model name
+de7d35d Increase function timeout to 60 seconds
+b7009ed Fix JSON extraction from Claude response
+3c1ac2a Restore Claude API proxy
+31ee7be Reduce prompt size and tokens to fix timeout
+57cbb1a Fix JSON parse with indexOf
+81f7f87 Fix vercel.json use routes not rewrites
+89137e0 Simplify vercel.json
+de5dce8 Add vercelignore to exclude gstack
+d5a6013 Trigger fresh deployment
+f95fb3f Trigger fresh deployment
+6e9d9ec Trigger fresh deployment
+d3fbe19 Trigger fresh deployment
+185f52b Fix deployment
+b310f11 Fix deployment
+5bd625d Components, Outdoor catering, festivals, ai
+50d7e57 Fix vercel.json for Expo web deployment
+d818b7d Fix button color, outdoor catering, festival dates, meal speed, vercel deploy
+ed3cf4b Fix outdoor catering API, festival dates, add outdoor card to home
+c45835b Redesign home - Blue Flute colors, card order, AI banner, footer
+5d47d7f Update party-menu.tsx
+7caa9cf Update home.tsx
+29e9b07 Update ai.ts
+f2f500e Update outdoor-catering.tsx
+f7aeb65 Update home.tsx
+9ea9b1a All fixes
+1dcf6b7 Merge branch 'master' of https://github.com/satishsabnis/my-maharaj
+551230f Fix all files - clean versions
+09c3474 Fix meal plan batch calls
+46c6ffc Fix meal plan blank screen
+c619986 Fix meal plan blank screen and dietary profile save errors
+1bfeefd Fix React error 310 useState in map
+1f68e82 Fix useState in map
+934c371 Fix meal plan and dietary profile
+208d7dc Phase 1: BF background, 2-col grid, Ask Maharaj AI, Order Out
+758234d Trigger redeploy Phase 1
+2982edf Fix meal-wizard syntax error and stale closure
+7f90095 Fix: Restored correct Master logic from temporary backup
+d7b7c72 Fix: Redirect home page to Meal Wizard
+48536c5 Force deploy to master
+b74e20a Final Maharaj Fix
+acc3473 Remove broken public/index.html
+97ee9c6 Fix entry point to use expo-router
+3a59410 Fix web output to static for Expo Router
+2a31199 Revert "Fix: Redirect home page to Meal Wizard"
+af56c88 Phase 2: cuisine selection, cook/order screen, expanded nutrition goals, Full Thali fix
+85f584b Add cuisine preferences to dietary profile
+263252c Fix duplicate INDIAN_CUISINES constant
+3411365 Fix duplicate selectedCuisines declaration
+07d773f Fix duplicate selectedCuisines
+56018f9 Fix: 3 meal options, no repeat meals, fasting uniqueness, cuisine visible on laptop
+ff05dbb Clean rewrite: dietary-profile with ScreenWrapper, cuisines, all fixes
+300cb6b Fix ScreenWrapper TypeScript types
+f35d512 Phase 3: ScreenWrapper on all screens - BF background + logo + home button
+8032617 Phase 4: language select, guest cuisine step, cuisine rotation per day
+7d440cc Phase 5: festival-aware meal planning
+7994602 Phase 6: guest cuisine revert confirmation after expiry
+7288581 Phase 7: multilingual support - Hindi, Marathi, Gujarati, Tamil + EN toggle
+0818966 Phase 8: My Fridge, Lab Report, language fix, dayCuisine fix
+663e1ae Phase 9: no repeat meals across week, cuisine banner, skeleton loading
+d4af73a Phase 7-9: multilingual support, My Fridge, Lab Report, skeleton loading, no repeat meals, cuisine banner
+23120fc Fix home cards, transparent BF logo, regenerate button, mobile batch fix
+6087372 Fix: transparent Blue Flute logo
+273259e Fix home: add My Fridge and Lab Report cards, transparent logo
+22fdbe1 Force redeploy
+3473992 Fix: correct festival dates, party menu layout, Mixed food option, meal slots, cancel buttons, outdoor regen
+43684ad Fix: Ask Maharaj inline results, Family Profile, correct card order, cancel before regen
+10aba45 Mega fix: Mixed food, meal slots, guest cuisine+count, cook-or-order, cancel buttons, outdoor complete rewrite, party beverages, My Fridge manual entry, Lab Report manual entry, Family Profile nationality+native language, home hero card, bigger logo, favicon
+a52f284 Fix party-menu: beverages section with correct emoji
+6181356 Fix: Maharaj logo centered and bigger in all screen headers
+947a05f Fix: Maharaj logo centered and bigger in all screen headers
+8fc0222 Fix: all screens + lab report manual entry + install required packages
+d2f3372 Major fix: guest cuisine, beverages, veg-days, cook-or-order, manual entries, Maharaj logo, PDF
+582f6b7 Remove android folder - switching to EAS build
+802acb9 Force Vercel redeploy
+d39a846 Claude Code: comprehensive fixes - emojis, logos, beverages, labels
+ca1dd6f Claude Code: lab report fix, meal prefs fix, selection screen buttons
+5ba050f Claude Code: header logo, guest cuisine, nutrition step buttons
+98185cf Claude Code: QA pass - emojis, logos, beverages verified
+ba593f6 Claude Code: shopping list consolidation, PDF download, table format
+f890504 Claude Code: cook-or-order screen, family profile done button, fridge manual entry
+6863e03 Claude Code: veg-days logic, cuisine confirmation, festival dates, home hero card
+6901d2a Claude Code: ask-maharaj result cards, lab report reminders, fridge deduction
+c0eda7c Claude Code: final cleanup - emojis, back button, cancel styling, header layout
+28f62a3 Claude Code: location detection, dynamic city in AI prompts
+020eb85 Claude Code: mobile layout fixes, meal wizard logic, beverages fallback, safe area
+a4f31d4 Claude Code: generation logic, home layout, mobile padding, new APK
+54526c3 Claude Code: ask maharaj polish, family profile, fridge, lab report
+3ee40a4 Claude Code: multi-page bill and lab report scanning, manual entry fixes
+5113b64 Claude Code: splash every launch for brand recall, white icon, first launch language flow
+ed0c9e2 Pre-build: fix app name, package, eas preview APK config
+568e5ad Claude Code: critical bug fixes - beverages, slots, grocery, error display
+b785eb5 Claude Code: force beverages in prompts
+04861b1 Claude Code: add snack slot to AI generation and data model
+f01172f Claude Code: fix API URL for APK - hardcode Vercel base URL
+77fbd69 Claude Code: slots fix, thali prompt, cancel back, party reset, shopping quantities, ticker tape
+06a424a Claude Code: cuisine confirmation step, per-day cuisine override, fix AI cuisine adherence
+4ff5e9f Claude Code: cuisine enforcement, ticker tape fix, beverages debug, slots and servings fix
+31c7fe1 Claude Code: ask maharaj voice+format+copy, cuisine strict fix, beverages second call, hover fix, ticker fix, fridge scan table
+9b1b7bc Claude Code: beverages JSON parse fix with fallback, slots empty check, cuisine remove, ask maharaj scroll and voice
+afee7f4 Claude Code: avatar dropdown, meal prep screen, calendar picker, slots fix, ask maharaj language+voice, beverages fix, background consistency, modal fix, icons restored
+f4a9e5e Claude Code: legal disclaimer screen with privacy, health, terms
+304a745 Claude Code: disclaimer view-only mode, Legal & Privacy in avatar dropdown
+c3acf45 Claude Code: splash flow fix, disclaimer, edit profile buttons, cuisines expanded, calendar fix, beverages nuclear fix, modal fix
+a7d7aab Claude Code: urgent fix - period buttons and generate button
+e2e9bb1 Claude Code: fix Not Authenticated error in meal generation
+ff38786 Claude Code: nuclear beverages fix, family member servings count
+e2318f9 Claude Code: beverages fix, family servings, strict slots, variation on regenerate
+7222d56 Claude Code: force beverages, FAB fix, menu history save fix, delivery apps step, meal prep tie-up
+d753547 Claude Code: force beverages, delivery apps on shopping/cook-at-home/order-out, integration message, servings fix
+338d853 Claude Code: tab view selection, strict page 2 + page 4 enforcement, protein restriction, slots fix
+263981b Claude Code: fix session expired - use getSession with refresh across all screens
+01efba6 Claude Code: debug session expired, beverages console logs, fix cuisine save upsert
+99d499f Claude Code: nuclear auth fix, separate beverages API call, cuisine delete-then-insert
+7deae39 Claude Code: fix 400 errors supabase queries, slots toggle fix, servings as number
+e17b600 Claude Code: fix 400 - remove missing profile columns from query, use Dubai fallback
+b150048 Claude Code: fix bfFoodPref undefined - add missing state declarations
+8c98d2a Claude Code: strict Full Thali prompt with all 9 components mandatory
+9eab109 Claude Code: Full Thali details in description, plan summary table after confirmation
+428c78f Claude Code: dish names in selection, printable A4 meal plan table after confirmation
+6c6699e Claude Code: slot differentiation in prompt, Full Thali real dish names, remove recipe from selection, all-day recipes
+e59b5eb Claude Code: 11 UAE delivery apps alphabetical, integration and smart shopping banners
+0916071 Claude Code: fix empty ingredients grocery, delivery apps new step with logo chips, remove from cook-or-order
+6cd477b Claude Code: delivery apps colored circle chips no logos, trademark disclaimer, banners on top
+761b016 Claude Code: delivery apps simple chips, order-out full width banners and buttons
+8a20195 Claude Code: fix order-out.tsx completely broken layout - use ScreenWrapper and ScrollView
+5e8c827 Claude Code: family profile full cuisine list with search filter matching meal wizard
+d1e7560 Pre-build: Maharaj app icon white background, all latest fixes
+57a4d7e Claude Code: APK auth AsyncStorage, exit app with logout, who is home, ask maharaj language+voice+format, 4 delivery chips only
+bcb935b Fix: update background.png on master
+3410eef Fix: add BF background to splash and login screens on master
+ae3d626 Phase 3: Home page rebuilt — drawer navigation, festival banner with reminder, info bar, static ticker, grid layout, FAB, privacy modal, plan ready card
+ffa1fb7 Phase 4+5: Wizard restructured with members/nutrition steps, generating UI updated, AI prompt improved for everyday cooking, family profile enhanced with subscription card, household settings, fasting, store/delivery prefs, cooking skill, budget
+26e4933 Phase 6+7: Party menu and outdoor catering updated — typed occasion field with AI recognition, Mixed as default food type, numeric guest input, beverages section with toggles, alcohol toggle, AI prompt updated
+21bd997 Phase 8-11: Shopping list tabular format with fridge tip, recipes tabular ingredients with health notes, meal plan PDF download, menu history auto-save to AsyncStorage, cook-or-order flow
+ed29115 Phase 13-17: Ask Maharaj family context injection, My Fridge auto-refresh with plan sync, Order Out screen with dietary notes and coming soon, notification scheduling for lab reports and insurance, app startup permissions
+201d7a8 Final cleanup: remove debug console.logs, fix family_members to read from Supabase in order-out, fix subscription tier to read from Supabase profiles
+37094d5 Add upgrade splash screen v2.0 — shows upgrade message with animated progress bar before redirecting to login, welcome banner on login screen
+d5a9a6f Fix force logout: use API endpoint with no-cache headers instead of AsyncStorage version check, add cache-control headers to vercel.json
+467f027 Fix: meal plan PDF table with Maharaj+BF branding, Back/Home buttons on plan summary, Cook at Home alert fixed, QR code on party/outdoor results, gold accent all home cards, festival toggle label 48h, language removed from family profile
+1109307 Major update: rename Family Profile to Family Profile Settings, remove Settings drawer item, add Language/Display/Notifications/Account/AppInfo sections, expanded fasting calendar 16 options, notifications default on with toggle check, phone number field, searchable language selector, date format preference
+c8df82b Fix: upgrade splash Beta text, permanent Beta note on login page, first login redirects to Family Profile Settings, welcome banner on first setup, profile_setup_complete flag set on save
+9e9f683 Fix batch A: language/account save to Supabase, food preference in wizard and profile, cook at home navigation, order out circles removed, festival 48h only, AI text removed, festive menu prompt, dish history no repeats across runs, confirmed plan saved to AsyncStorage, menu history shows confirmed dishes with correct date range
+b4763e6 Fix batch B: recipe page improved layout with navy header and numbered steps, animated ticker tape with Easing, ask maharaj logo 28px and mic emoji icon, AI text removed from header
+9b92ed9 Fix batch C: safe area padding, party menu + outdoor catering overhaul with occasion banner PDF download and menu history save, menu history party/outdoor badges, weather popup on home
+ec439b4 Fix batch D: shopping list cross-references My Fridge with green ticked items and fridge depletion on confirm, SVG mic icon in Ask Maharaj with recording state
+9285518 Batch E: force splash v3.0, 5s duration, beta note on login, first login to profile, festival 48h, FAB logo fixed, ticker on all screens as component, family profile all sections fixed, multi-select languages, fasting days free text, cuisine list corrected, Ask Maharaj logo centred, keyboard fix, strip markdown, layout contained
+06ea15b Batch F: meal plan fixes complete
+21d7403 Batch G: party, history, ask maharaj, weather fixes complete
+9d624b1 Batch H: Ask Maharaj, meal wizard, voice, location, outdoor catering, UI fixes complete
+bfa7c9d Batch I: Ask Maharaj UI rebuild, spinner, dish names, guests, streaming — Beta v2.04.1
+0181463 Batch J: streaming, FAB, Cook at Home, voice — Beta v2.04.2
+8e4a05a Batch K: spinner loop, dish uniqueness, authentic names, Cook at Home, weather intelligence — Beta v2.04.3
+0d03d76 Batch L+M: trending dishes, RAG dish database, feedback loop — Beta v2.04.4
+ddb86bd Add setup-dishes API endpoint for table creation
+a4ef779 Dish RAG: in-memory fallback when Supabase tables unavailable, verified 84 dishes with scoring
+9656a21 Share Meal Plan: formatted WhatsApp-ready text with Web Share API and clipboard fallback
+bc25efa Dish database 292 dishes — all Indian cuisines, authentic names, Jain compliant — Beta v2.04.5
+0072ac6 Dish database expanded to 378 dishes — 255 Jain (agent-generated, zero root veg) + 123 regional — Beta v2.04.5
+c435c07 Dish database: Gujarati, Maharashtrian, Malvani, Mangalorean, Goan — 583 total dishes — Beta v2.04.6
+b4aa124 Dish database: Fasting, Punjabi/North Indian, Rajasthani/Marwadi added — 763 total — Beta v2.04.6
+351c5e5 3 persistent bugs fixed: splash bg, spinner loop, Cook at Home — Beta v2.04.7
+a789dd8 Dish database: South Indian + Mughlai/Awadhi/Lucknowi — 917 total dishes — Beta v2.04.7
+c620a69 Dish database: Indo-Chinese 82 dishes — Kolkata, Street, Jain streams — 999 total — Beta v2.04.7
+b54cdbc Dish database: Bengali+Sindhi+Street Food + cuisine chips synced — 1106 total — Beta v2.04.8
+8935c5b 7 persistent bugs ROOT CAUSE fixed: splash, non-veg, dates, repeats, spinner, cook at home — Beta v2.04.9
+43225e5 Dietary persistence fixed — AsyncStorage save/load, weekFoodPref functional, null→veg default, Ask Maharaj context — Beta v2.04.10
+5ebe1f0 Batch O: CSS spinner, Cook at Home step, Ask Maharaj icon, About page — Beta v2.04.11
+164d380 Batch P: generation screen, spinner CSS, Saturday Signal, cuisine sync, Cook at Home, About page, veg days — Beta v2.04.12
+643db7a Batch Q: background image sweep, Ask Maharaj rendering, Save button state, Saturday Signal top — Beta v2.04.13
+d8e6ca5 Hotfix: restore ScreenWrapper to original ImageBackground — Beta v2.04.14
+09da83e Critical: Jain filter, cuisine enforcement, date range, Ask Maharaj card, spinner logo — Beta v2.04.14
+9b427c2 Force redeploy — Beta v2.04.15
+116f63c Add runtime diagnostics — Beta v2.04.15
+0013f51 Force AI compliance: cuisine and dietary rules rewritten as hard gates — Beta v2.04.15
+dbf681b Surgical: meal wizard background, remove diagnostics — Beta v2.04.16
+678d6df Fix generation days/cuisine/repeats, Cook at Home loop, Meal Prep inline — Beta v2.04.17
+1aa9e08 Order Online shows Coming Soon — matches Order Out screen — Beta v2.04.17
+094252f Home screen: Maharaj hero circle, footer fix, banner routing — Beta v2.04.18
+220a147 Home: consulting text removed, pulse CSS, background full cover — Beta v2.04.18
+16dea5e Home redesign + Ask Maharaj intent routing — Beta v2.04.19
+4a89e14 Home redesign + Ask Maharaj: intent routing, speak button, banners, input fixed — Beta v2.04.20
+473b2da Major rebuild: colour system #2E5480, home hero no ring, ticker amber, drawer reorder, share no asterisks, back text — Beta v2.04.21
+7ff60d1 Drawer: correct order, scrollable to Sign Out — Beta v2.04.21
+6f3b4ae Build Step 9 Cook/Order choice, fix Meal Prep screen fallback — Beta v2.04.22
+5975c54 Major: home hero 400px, dish dedup sequential, Jain toggle, cuisine grouping, Ask Maharaj chips, order out banner — Beta v2.04.23
+a9604f0 Major: header standardisation, dish dedup, Jain logic, home hero 400px, cuisine grouping, Ask Maharaj chips — Beta v2.04.23
+1f56efc Fix 21 items: generation screen, plan summary, meal prep structure, consistent styling — Beta v2.04.24
+3ecb75f Fix plan-detail step, Pause button gold, Tap to begin gap — Beta v2.04.24
+d523682 Batch 1 consistency pass — colour, background, headers, scroll | Beta v2.04.25
+6b8c3a2 Batch 2 navigation and header fixes — plan-detail header, pause toggle, notification routing, logo gap | Beta v2.04.26
+674ee55 Fix Pause button borderRadius 12 to 8 — Beta v2.04.26
+1886891 Batch 3 AI quality — dish dedup, dietary enforcement, cuisine filter | Beta v2.04.27
+da86380 Fix version sync — constants/version.ts created, About screen updated to Beta v2.04.28 | Beta v2.04.28
+f331451 Batch 4 Jain logic and Family Profile — Jain questions, cuisine tab, Save button state | Beta v2.04.29
+45ad5f4 Fix Jain Q2 default to true — Beta v2.04.30
+0aa748c Batch 5 Ask Maharaj polish — input bar pinned, Poppins scope, no duplicate logo | Beta v2.04.31
+a929c4f Batch 6 — Scan to Shop (trolley + barcode), Outdoor Catering occasion-aware | Beta v2.04.32
+a267e54 Batch 7 UX fixes — logo gap, online shopping screen, day count, back intercept, header logo removed | Beta v2.04.33
+c346a89 Batch 7 follow-up — Fix 3 complete, emoji removed | Beta v2.04.34
+c26898e Home screen — Maharaj logo infinite pulse animation | Beta v2.04.35
+09de23b Background image consistency — all 23 screens corrected to spec | Beta v2.04.36
+a732a73 V3 Batch 1 — theme.ts design system + Family Profile V3 rebuild | Beta v3.04.01
+87b4fa1 V3 Batch 2 — Meal Wizard V3 full rebuild | Beta v3.04.02
+c987e2a V3 Batch 2 follow-up — carry-forward lunch and fasting strips | Beta v3.04.03
+5cfe23b V3 Batch 3 — Home Screen V3 with anticipation feed | Beta v3.04.04
+2d1545f Fix — drawer ScrollView so Sign Out is reachable | Beta v3.04.05
+631d998 Fix — plan summary language label corrected for cook role | Beta v3.04.06
+43676da Fix — BFC logo in header + disclaimer removed from launch flow | Beta v3.04.07
+61d8d38 V3 Batches 4-7 — Festivals, Menu History, Meal Prep, Party Menu, Outdoor Catering | Beta v3.04.08
+44fc3c4 V3 Batch 9 — About, Privacy Policy, FAQ placeholder, Disclaimer links | Beta v3.04.09
+b7f2a13 V3 Batch 8 — Supabase migration — meal_plans, dish_feedback, meal_prep_tasks | Beta v3.04.10
+4eab6e1 Fix — ticker marquee, login text, Ask Maharaj logo, generation back button, batch generation speed | Beta v3.04.11
+a89fa74 V3 release — merge v3-development into master | Beta v3.04.11
+26984b9 Fix — logo 200%, button consistency, spacing, online shopping V3, recipes placeholder | Beta v3.04.12
+32323df Fix — split dish name tap (recipe) and pencil tap (alternatives) in plan summary | Beta v3.04.13
+d0847ad V3 release — Beta v3.04.13 | all batches complete
+a97c624 Config — version 3.0.0, iOS bundleIdentifier, Android versionCode | Beta v3.04.13
+4539e58 Fix — font sizes, hero size, generation screen layout, meal anatomy, shopping list data | Beta v3.04.14
+4844646 V3 hotfix — Beta v3.04.14
+b442daf Fix — update dependencies for expo doctor | Beta v3.04.14
+b44a134 chore: add gstack skill routing rules to CLAUDE.md
+aee82b1 Fix Android build — replace expo-barcode-scanner with expo-camera | Beta v3.04.14
+d32d0b5 Batch A — RLS on family_members, plan_summary_language column | Beta v3.04.14
+978ffc7 Batch B — Analytics (Mixpanel) + Forgot password | Beta v2.04.33
+c53e31e Config — Mixpanel token wired | Beta v3.04.15
+5cc2f94 Batch C — meal anatomy structure + shopping list ingredients | Beta v3.04.16
+58dd150 Batch D — Sunday push notification + onboarding flow | Beta v3.04.17
+45ec985 Batch E — referral loop | Beta v3.04.18
+5407eba Fix — remove em-dash from referral share message
+a51410c Batch F — Family Recipe Import — upload, Claude Vision extraction, drawer, wizard integration | Beta v3.04.19
+80e6fd8 Fix — web platform crash: guard native-only imports in analytics and notifications | Beta v3.04.19
+5c85ae6 Fix — GStack QA bugs: JSON.parse guards, blank state handlers, stale list refresh, Ask Maharaj context | Beta v3.04.21
+cb577cb Fix Batch A — 16 bug fixes and UX improvements from live testing | Beta v3.04.22
+68dfcce Fix Batch B — splash, tip tap, scan to shop, scroll fix, pre-generated alternatives, real recipes, festival dates, family recipes list | Beta v3.04.23
+9c0426e Batch C — horizontal swipe plan summary, server-side PDF generation, download wiring | Beta v3.04.24
+49c1d11 Fix — persist full family profile to Supabase, restore on login, never clear profile on version change | Beta v3.04.26
+a7cc136 Fix grocery→what-next loop — Done replaces Next | Beta v3.04.27
+48321f6 Fix — generate only selected days, not full date range between first and last day | Beta v3.04.28
+0422675 Fix — selectedDays date conversion UTC timezone bug, use toYMD() instead of toISOString() | Beta v3.04.29
+2b98019 Fix — unify both date systems to selectedDays, fix Fri diff <= 0 bug | Beta v3.04.30
+3453cc4 Fix — anatomy rendering: only enter anatomy path when slots have real data | Beta v3.04.31
+36e6616 Debug — add anatomy logging to diagnose blank plan summary | Beta v3.04.32
+ec104b4 Fix — increase max_tokens to 4096, remove alternatives from generation to fix anatomy truncation | Beta v3.04.33
+635d501 Fix — plan summary vertical scroll: add flex:1 to day View and inner ScrollView | Beta v3.04.34
+879997b Cleanup — remove dead alternatives step from WizardStep type and maps | Beta v3.04.35
+88eb307 Fix — day tab sync on swipe, per-day confirmation before Confirm My Week | Beta v3.04.36
+aef1a78 Fix — remove confirmed plan screen, celebration popup, PDF language, scan to shop, hero gap, family profile in generation | Beta v3.04.37
+7b5db75 Fix — expose silent profile save failures, force save on button tap | Beta v3.04.38
+ec938f1 Debug — minimal profile save test to isolate Supabase upsert failure | Beta v3.04.39
+7943665 Fix — Supabase schema: profiles upsert onConflict, missing tables and columns | Beta v3.04.40
+156621d Fix — restore full profile upsert replacing debug minimal version | Beta v3.04.42
+e9f8546 Debug — log profile values before upsert | Beta v3.04.43
+aff9d0e Fix — profiles upsert phone_number → mobile_number column name | Beta v3.04.44
+9e233f1 Cleanup — remove profile save debug logs | Beta v3.04.45
+4491161 Fix — wire meal template and Sunday special into generation prompt | Beta v3.04.46
+7f5c887 Debug — log generation params before AI call | Beta v3.04.46
+cfe82d1 Fix — community from AsyncStorage in generation, Supabase RLS policies | Beta v3.04.47
+d99a48c Fix — disable menu_history and dish_history writes to stop 400 errors | Beta v3.04.48
+d433a10 Fix — Sunday empty meals fallback, stronger cuisine enforcement | Beta v3.04.49
+748c87a Fix ReferenceError — remove IIFE, hoist hasAnatomy/hasLegacy to map scope | Beta v3.04.50
+beaeb5c Fix — re-enable menu_history and dish_history writes after schema fix | Beta v3.04.51
+b3b8877 Fix — enforce Sunday special, non-veg, and multiple curry template in generation | Beta v3.04.52
+ece8211 Debug — log exact prompt sent to Claude | Beta v3.04.53
+efeb097 Fix — isVeg example in JSON shape was misleading Claude to generate veg dishes | Beta v3.04.54
+7336aa9 Debug — log Claude raw response for diagnosis | Beta v3.04.56
+4e761fc Test — switch generation model from Haiku to Sonnet | Beta v3.04.56
+e5f111f Revert — model back to Haiku, remove debug logs | Beta v3.04.57
+ed795cc Debug — log cuisines from DB and per day assignment | Beta v3.04.58
+2f41a15 Fix — pass all cuisines to every day, not rotating one per day | Beta v3.04.58
+1a887a1 Fix — nonveg and Sunday special enforcement for Haiku | Beta v3.04.59
+9bd77ca Refactor — two-stage meal generation: Stage 1 dish selection, Stage 2 parallel ingredients | Beta v3.04.59
+2a50681 Debug — log Sunday special values in selectDishesForDay | Beta v3.04.61
+ad5aa5c Fix — fallback sunday_extra_curry and sunday_sweet from Supabase when AsyncStorage empty | Beta v3.04.62
+6a371ed Fix — restore TouchableOpacity on hero logo to re-enable Ask Maharaj navigation | Beta v3.04.63
+bbbd2db Fix — add AUTHENTIC_DISHES reference to Stage 1 prompt to enforce real dish names | Beta v3.04.64
+8922963 fix: sunday 3-dish injection in selectDishesForDay — Beta v3.04.65
+7b930e5 fix: wednesday non-veg ban enforced in code via avoidance text parsing — Beta v3.04.66
+cbc712e fix: post-generation avoidance filter logs violations after plan assembled — Beta v3.04.67
+701a337 fix: non-veg dinner guarantee — force dinner_curry_1 if dinner is all-veg for non-veg user — Beta v3.04.68
+0f8aec2 fix: JSON.parse guard + avoidance replace + await prepTasks + curry undefined guard + remove PII logs — Beta v3.04.70
+e1b3366 fix: dish feedback scoped to user only + destructuring default empty arrays — Beta v3.04.71
+63f1136 fix: dynamic slot label + recipe dish guard + alternatives on-demand fetch — Beta v3.04.72
+3968a7e fix: curry display blank + Goan fish isNonVeg + ingredient retry — Beta v3.04.73
+25f756b fix: isNonVegDish undefined guard + DishSelection sanitise + day failure logging — Beta v3.04.74
+3171ae7 fix: day chips show today+6 days with dates, square design, selectedDays stores dateStr — Beta v3.04.75
+4a092da fix: freeText passed as dedicated userContext to selectDishesForDay prompt — Beta v3.04.76
+f4c20ec fix: additional_dietary_rules passed to generation + plan_summary_language used + avoidance key mismatch fixed — Beta v3.04.77
+c52d451 fix: all 5 wiring gaps — breakfastPrefs + vegType fasting + nutritionFocus from health + community expansion + avoidance fallback — Beta v3.04.78
+b1feadb refactor: full rewrite of dietary-profile.tsx — clean save, veg_days, all fields wired — Beta v3.04.79
+d3bb088 debug: add step logs to saveProfile to find crash point — Beta v3.04.80
+1550fe4 cleanup: remove diagnostic logs from saveProfile — Beta v3.04.81
+87e4fe7 refactor: dietary-profile v2 + veg_days surgical fix in meal-wizard — Beta v3.04.82
+7576131 fix: increase selectDishesForDay max_tokens to 800 + throttle ingredient calls to 5 concurrent — Beta v3.04.83
+645a90f fix: truncate AUTHENTIC_DISHES per cuisine to 300 chars + max_tokens 1200 in selectDishesForDay — Beta v3.04.84
+c20f525 fix: remove AUTHENTIC_DISHES from selectDishesForDay prompt + fix sunday dish name parsing + reduce max_tokens to 600 — Beta v3.04.85
+3974d0e fix: revert selectDishesForDay to short clean prompt — v3.0 style — Beta v3.04.86
+5325801 fix: add week_start and week_end to meal_plans insert — Beta v3.04.87
+f882256 fix: remove week_end from meal_plans insert + null guard curry in buildGrocery — Beta v3.04.88
+39f6212 fix: remove Scan to Shop from grocery screen — will move to My Fridge — Beta v3.04.89
+e0deb3b redesign: plan summary card layout + Back/Regenerate/Confirm day buttons — Beta v3.04.90
+1798c7f redesign: What Next — Download Plan + Cook at Home sub-cards + Order Out, remove Share card — Beta v3.04.91
+4a7fd8e feat: Sarvam translate serverless function — api/sarvam-translate.js
+dfd8c14 feat: Sarvam translation for plan summary PDF in Indian languages — Beta v3.04.93
+8bad42e fix: SARVAM_LANG_MAP handles both language names and codes — Beta v3.04.94
+fb254f8 fix: HTML content-type detection for Indian language PDF + variation seed in selectDishesForDay — Beta v3.04.95
+e5e8d24 fix: replace pdf-lib with HTML generation — supports all Indian languages natively — Beta v3.04.96
+b76070f tmp: add PDF debug log
+8e18dfd fix: planPDFContent reads curry array correctly + remove debug log — Beta v3.04.97
+184d2da fix: remove spurious Back button from login screen — Beta v3.04.98
+7272c93 fix: remove dead backBtn and backArrow styles from login — Beta v3.04.98
+f4ad324 fix: eye icon for password toggle in Input component — Beta v3.04.99
+40e5d7d fix: stagger day generation + retry delay to eliminate 429 rate limit errors — Beta v3.05.00
+792729e fix: PDF day name + mobile responsive + Sunday fallback + web blob fix — Beta v3.05.01
+2c30d14 fix: table-layout fixed + word-wrap + mobile column widths — Beta v3.05.02
+23ca1a5 v3.05.03 — Home anatomy readers, subtitle feedback, anatomy plan save
+1a9a3e9 fix: home View Plan navigates to plan-summary via AsyncStorage handoff — Beta v3.05.04
+211025d feat: Maharaj Cook web app — /cook route with login, family grid, detail, recipe, TTS — Beta v3.05.05
+8bb77e8 feat: My Cook section in Family Profile + cook login bg fix + day-matching in cook-families API — Beta v3.05.06
+db94824 fix: cook save error handling + UAE phone default + per-day visit times — Beta v3.05.07
+7ca704c fix: cook save via service role API route to bypass RLS — Beta v3.05.08
+5563965 tmp: cook-save debug logs
+ba05c32 fix: cook-save upsert to handle duplicate cook_families + remove debug logs — Beta v3.05.09
+b7c8b30 fix: cook-save fetch uses relative URL /api/cook-save — Beta v3.05.10
+46aec5e fix: show full cook phone number + remove cook via service role API — Beta v3.05.11
+c5002e7 feat: country code selector for all phone inputs + auto-format visit time — Beta v3.05.12
+305027f God mode fixes — TTS play/error, remove cook web confirm | Beta v3.05.13
+b6fed47 feat: replace OTP with PIN login for cook MVP — simpler, no SMS required — Beta v3.05.14
+cca2cd4 fix: god mode cook-families API — profiles.id fix + all bugs — Beta v3.05.15
+e5b8fe6 fix: god mode — background image all cook screens + family name from profiles.full_name — Beta v3.05.16
+b53a9b1 tmp: debug family name lookup
+c3346eb fix: god mode cook home + family detail — navigation, family name, meals, TTS — Beta v3.05.17
+25dad60 feat: cook self-registration with own PIN — family no longer sets cook PIN — Beta v3.05.18
+4944150 fix: profiles column family_name not full_name in cook-families API — Beta v3.05.19
+d7d571d tmp: debug profiles query
+f001c80 fix: remove city column from profiles query in cook-families API — Beta v3.05.19
+66d2523 fix: remove language column from profiles query — does not exist — Beta v3.05.20
+debb2ef fix: period_start/end from actual plan dates + cook API date filter — Beta v3.05.21
+9f55856 fix: god mode meal_plans column fixes across all files + cook API gets latest plan — Beta v3.05.22
+76e93ce fix: Sarvam TTS speaker shubh + correct request format + audio playback fix — Beta v3.05.23
+4ea0d34 fix: Sarvam TTS speaker changed to anushka — compatible with bulbul:v2 — Beta v3.05.24
+2b9059b fix: Sarvam TTS speaker changed to abhilash — male Hindi voice — Beta v3.05.25
+5a25905 fix: profiles column full_name → family_name in dietary-profile — Beta v3.05.26
+1ce64da chore: remove debug console.log lines from lib/ai.ts
+78d70ee feat: veg Saturday rule — all meals forced veg on Saturdays
+fc3ebd8 feat: Sunday special dishes — force sunday_extra_curry dish into Sunday lunch or dinner
+4a2ecc7 chore: bump version to Beta v3.05.60
+7554821 feat: Option C — Claude never names dishes, all dish selection from Supabase dishPool | Beta v3.05.62
+346b9a9 fix: fetchDishPool — remove broken season filter, add is_banned, fix cuisine overlap query | Beta v3.05.62
+1f5bac3 feat: maintenance banner — Maharaj upgrading his kitchen
+924348d chore: add migrate-dishes-v2.sql — new slot-based dishes schema
+1c67040 chore: seed-v2-maharashtrian — 60 dishes seeded to Supabase
+3b33259 chore: seed-v2-goan — 57 rows (60 slot-entries) seeded to Supabase
+f612e2d feat: DB rebuild — 217 dishes, new schema, fetchDishPool column fix
+a1b2a13 fix: exclude Jain and fasting dishes for non-Jain families, delete corrupted dishes
+ae23aca debug: temp Alert for non-veg check — remove after debugging
+c3423bc fix: remove synthetic dish names, fix 3-day truncation, correct Kande Pohe slot, remove debug logs
+39481a1 fix: Sunday special reads allowed_days from pool, prioritises Sunday-tagged dishes
+21ff253 fix: Sunday special queries Supabase directly, bypasses cuisine pool filter
+78cb6fe security: add shared secret auth to api/claude.js and api/stream.js
+cf7e7a9 fix: TypeScript errors in meal-wizard.tsx and dietary-profile.tsx
+d046ba1 fix: remove maintenance banners from home and meal-wizard screens
+1195038 security: add auth check to api/setup-dishes.js
+b60f617 security: move Supabase anon key to environment variable
+af4d0c3 fix: restore JWT anon key for Supabase auth compatibility
+e8d231d fix: add CORS headers to api/invalidate-sessions
+6a4b43e fix: add cache-control to CORS allowed headers in invalidate-sessions
+1283a15 fix: wildcard CORS headers on invalidate-sessions
+541e325 fix: add CORS headers to api/claude.js and api/stream.js
+1d6e10b fix: change default food preference fallback from veg to nonveg
+50b7ea9 fix: sync food preference to AsyncStorage when Family Profile is saved
+514cc80 feat: onboarding — 4 screens, background.png edge to edge, 3-day sample plan
+c712302 feat: Family Recipes — Our Recipes, scan/upload/manual entry, Our Regular Dishes, 80/20 plan generation
+7252df5 fix: Today's Plan card routes to Menu History and auto-opens last plan
+74f6358 fix: remove Plan Your Week from hamburger drawer
+aadf595 fix: home hero spacing reduced, Meal Prep empty state fixed
+8b8c425 fix: same-day duplicates, PDF landscape+logo+QR, day chip dates, dish ban feature
+373ca56 fix: skip onboarding for completed profiles, bump v3.05.87
+02e831b fix: week history cap+insert, meal prep fonts, family recipes buttons, fridge auto-check
+9ef1f68 fix: home card tappable, menu history dates, dropdown fonts, stepper back, favs colour
+ac18304 feat: PDF rebuilt with pdfmake, Sarvam translation, prominent family name, BFC logo, QR
+659249a fix: PDF import, login guard, hero size, date null guard, bad prep tasks
+bf9509e fix: routing uses Supabase profile_completed as sole source of truth, remove AsyncStorage dependency
+ac249b9 fix: food pref from Supabase profiles veg_days, PDF family name from Supabase, shopping list ingredients
+3e984af fix: party menu JSON parse robustness, retry logic, max_tokens 1500, Vercel maxDuration 60s on API functions
+08a0190 feat: add 772 dishes across 12 new cuisines — Rajasthani, Awadhi, Kashmiri, Himachali, Hyderabadi, Sindhi, Odia, Assamese, Chhattisgarhi, Bihari, Uttarakhandi, Manipuri — projected DB 2922 dishes
+bbe361d feat: onboarding v4 — fix step 3/4, new review-plan screen, home popup, profile gating on regen, Supabase-only routing
+d58f109 fix: signup routing — v4 onboarding path, not dead profile-setup
+4cdce14 feat(gen): v4 sample plan — zone filter, dedup, slot anatomy (data layer)
+fa6aa4a feat(ui): v4.01.03 review anatomy, swap sheet, plan summary, PDF download
+8c91639 feat: v4.01.04 — swap randomisation, plan-summary table, PDF header, direct download, pulsing hero
+e3761f3 fix: home screen route 404s — disable dead cards or route to valid targets
+2496fa9 fix: v4.01.06 meal-wizard 3-day cap for pre-profile users, any 3 of 7, no auto-select
+62d6fff fix: v4.01.07 home reads active plan from Supabase (v4 shape), AsyncStorage fallback only
+621dc7e fix: v4.01.08 dietary-profile save sets dietary_profile_completed flag
+580887d fix: v4.01.09 PDF header — larger fonts, centered alignment, bigger Maharaj logo, new tagline
+07dca27 fix: v4.01.10 meal-wizard reads jain_family and cooking_pattern from Supabase
+37198a8 fix: v4.01.11 grocery PDF generator + review-plan 3-day progress indicator
+0e35349 fix: v4.01.12 grocery PDF client payload — downloadPDF now sends type and content
+6eab720 fix: v4.01.13 PDF header dates — correct plan range, add list date, DD-MM-YYYY format
+45bc16f fix: v4.01.14 PDF header alignment — RIGHT column vertical centring and QR horizontal centring under BFC logo
+0f3e79e chore: v4.01.15 tech debt — remove dead AsyncStorage write, delete profile-setup.tsx, fix lib/ai.ts TS errors
+f09d7dd feat: v4.01.16 Family Recipes redesign — Share & Capture card, sheet pre-open, brand colours, working search, removed In plans badge, Supabase family_recipes read
+ced150b feat: v4.01.17 My Fridge Scan fork — Bill + Trolley sheet, tech debt cleanup
+6c606c2 fix: v4.01.18 Menu History dates from period_start/period_end, cuisines snapshot on plan save, stop writing Various/date_range
+c9a9dab feat: v4.01.19 Party Menu form + results UX redesign — masked date, expanded styles, veg/nonveg + dish counts, hero parity, typography fix, Regenerate relabel, ScreenWrapper, dead code cleanup
+5039c75 feat: v4.01.20 Party Menu swap sheet — cuisine buckets, zone expansion, DB query, applySwap
+e5bdbec feat: v4.01.21 Party Menu branded PDF — type=party branch in generate-pdf, replace HTML download with pdfmake API call
+6af138b feat: v4.01.22 — outdoor-catering consistency fixes + branded PDF
+e77b79e feat: v4.01.23 festivals fixes + home screen reminder card
+c14de8a fix: v4.01.24 meal prep regression + ScreenWrapper
+6a2c48e feat: v4.01.25 — Ask Maharaj scroll fix, Sarvam TTS, per-message speak state, ScreenWrapper, button/font fixes
+32d1d72 fix: v4.01.28 Festival dates corrected for 2026 + Coming Up filter fix
+750639e fix: v4.01.29 Festivals full calendar — simple list view
+07c7de8 fix: v4.01.30 Meal Prep fallback query for pre-v4.01.24 plans
+d096180 fix: v4.01.31 Meal wizard back button exits screen on plan discard
+05a7739 feat: v4.01.32 Ask Maharaj language fix + scroll fix v2
+de2489c feat: v4.01.33 Sunday feast popup + wired generation
+236f0e7 feat: v4.01.34 TTS CORS fix + expo-audio migration
+09b0010 feat: v4.01.35 TTS smart 500 char truncation — Sarvam limit
+ba61a74 feat: v4.01.36 Maharaj avatar on chat bubbles
+7bc75a8 feat: v4.01.37 — 5-screen onboarding intro carousel
+97693d3 fix: v4.01.38 — intro carousel spec compliance (copy, bg, cards, banner, dots)
+ebb56fc fix: v4.01.38 — replace intro carousel with final spec version
+8093500 fix: v4.01.39 — remove Poppins fontFamily refs from intro.tsx (no fonts loaded)
+b6fa710 chore: add maharaj-logo.png asset
+a711784 fix: v4.01.40 — intro carousel bg, overlay, logo size, day card layout
+f1bc04c fix: v4.01.41 — remove hasSeenOnboarding gate, always route to /login
+fe36968 fix: v4.01.42 — cook-families extractTodayMeals, language_preference, family_name
+4fe6d6b fix: v4.01.43 — cook-families member count, profile select, home meal list cleanup
+d88d9f0 fix: v4.01.44 — cook family translation, Hindi date locale
+ac5d267 fix: v4.01.45 — BFC logo, hamburger drawer, navy footer bar, back button text
+f302bfa fix: v4.01.46 — poweredBy SarvamAI label, navy footer on login, QR drawer in cook portal
+d44991a fix: v4.01.47 — add family recipes into preferred dish set for 80/20 rule
+837cb86 fix: v4.01.48 — lab report link on member card, lab report prompt after new member saved
+a5fa865 fix: v4.01.49 — app.json web PWA metadata, version bump to 4.1.48
+b1b4a5d feat: v4.01.50 — delete account API + account management modal with deactivate/delete flow
+5486928 feat: v4.01.51 — referral system: API, signup code field, refer-a-friend drawer + stats
+20bc1d9 feat: v4.01.52 — referral landing route, pending code handoff to signup
+d16ed15 fix: v4.01.53 — expand SOAK_KW/MARINATE_KW, replace GRIND_KW with FERMENT_KW, add Ferment pill
+f5ccc0c feat: v4.01.54 — My Downloads modal (plan table + PDF), disclaimer in plan summary
+a25eb2e fix: v4.01.55 — my-downloads back button handling (hardware + web popstate)
+250d29f fix: v4.01.56 — generateMealPrepTasks multi-shape dish extraction, expand SOAK_KW
+788d032 fix: v4.01.57 — about screen new copy, Anthropic+Sarvam credits, remove version history

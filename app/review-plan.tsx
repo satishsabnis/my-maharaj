@@ -78,6 +78,9 @@ export default function ReviewPlanScreen() {
   const [regenConfirmVisible, setRegenConfirmVisible] = useState(false);
   const [regenConfirmText, setRegenConfirmText]       = useState('');
 
+  // Dietitian pending-review gate
+  const [isPendingReview, setIsPendingReview] = useState(false);
+
   // Swap sheet
   type SwapState = {
     visible: boolean;
@@ -149,6 +152,25 @@ export default function ReviewPlanScreen() {
         onProgress: (n) => setCompletedDays(n),
       });
       setPlan(days);
+
+      // Dietitian gate: if user is dietitian-linked and has an unapproved plan, show banner
+      const { data: dietitianLinkRow } = await supabase
+        .from('dietitian_clients')
+        .select('client_id')
+        .eq('client_id', user.id)
+        .maybeSingle();
+      if (dietitianLinkRow) {
+        const { data: latestPlan } = await supabase
+          .from('meal_plans')
+          .select('is_approved')
+          .eq('user_id', user.id)
+          .order('generated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestPlan && latestPlan.is_approved === false) {
+          setIsPendingReview(true);
+        }
+      }
     } catch (e) {
       console.error('[ReviewPlan] loadData error:', e);
     } finally {
@@ -253,6 +275,13 @@ export default function ReviewPlanScreen() {
         .or('is_excluded.eq.false,is_excluded.is.null');
       const userCuisines = Array.from(new Set((cuisineRows || []).map((r: any) => r.cuisine_name).filter(Boolean)));
 
+      const { data: dietitianLinkRow } = await supabase
+        .from('dietitian_clients')
+        .select('client_id')
+        .eq('client_id', user.id)
+        .maybeSingle();
+      const isApproved = !dietitianLinkRow;
+
       await supabase.from('meal_plans').insert({
         user_id: user.id,
         period_start: dates[0],
@@ -260,6 +289,7 @@ export default function ReviewPlanScreen() {
         cuisines:     userCuisines,
         plan_json:    { days: plan },
         generated_at: new Date().toISOString(),
+        is_approved:  isApproved,
       });
 
       await supabase.from('profiles')
@@ -375,6 +405,28 @@ export default function ReviewPlanScreen() {
                 </View>
               );
             })}
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // ── Pending-review gate ───────────────────────────────────────────────────
+
+  if (isPendingReview) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ImageBackground source={require('../assets/background.png')} style={r.bg} resizeMode="cover" />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={r.navRow}>
+            <TouchableOpacity style={buttons.back} onPress={() => router.back()} activeOpacity={0.8}>
+              <Text style={buttons.backText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={r.pendingBanner}>
+            <Text style={r.pendingBannerText}>
+              Your plan is being reviewed by your dietitian. You will be able to view it once approved.
+            </Text>
           </View>
         </SafeAreaView>
       </View>
@@ -726,4 +778,7 @@ const r = StyleSheet.create({
   popupBtnOutlineText: { fontSize: 15, fontWeight: '700', color: NAVY },
   popupBtnFilled:      { flex: 1, backgroundColor: NAVY, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   popupBtnFilledText:  { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+
+  pendingBanner:       { backgroundColor: '#D4EDE5', paddingVertical: 12, paddingHorizontal: 16, width: '100%' },
+  pendingBannerText:   { fontSize: 13, color: '#2E5480' },
 });

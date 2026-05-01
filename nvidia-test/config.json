@@ -1,0 +1,11 @@
+{
+  "models": [
+    {
+      "title": "NVIDIA Kimi K2.5",
+      "provider": "openai",
+      "model": "kimi/kimi-k2.5",
+      "apiBase": "https://integrate.api.nvidia.com/v1",
+      "apiKey": "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"
+    }
+  ]
+}

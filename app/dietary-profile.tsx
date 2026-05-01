@@ -1399,14 +1399,16 @@ export default function DietaryProfileScreen() {
             })}
           </View>
         )}
-        <TouchableOpacity
-          style={{ marginTop: 8, alignSelf: 'flex-start' }}
-          onPress={() => router.push('/lab-report' as never)}
-        >
-          <Text style={{ fontSize: 11, color: colors.teal, fontWeight: '600', textDecorationLine: 'underline' }}>
-            Upload lab report for {member.name}
+        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', opacity: 0.45 }}>
+          <Text style={{ fontSize: 13, color: '#2E5480', fontWeight: '600' }}>
+            Lab Report
           </Text>
-        </TouchableOpacity>
+          <View style={{ marginLeft: 8, backgroundColor: '#C9A227', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+            <Text style={{ fontSize: 10, color: '#1A1A1A', fontWeight: '500' }}>
+              Coming Soon
+            </Text>
+          </View>
+        </View>
       </View>
     );
   }, [openEditMember, deleteMember]);
